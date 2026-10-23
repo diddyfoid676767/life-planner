@@ -1312,7 +1312,7 @@ details.overdue[open] summary { margin-bottom: 10px; }
 /* Tighter layouts (2.12): long side columns scroll inside instead of leaving gaps */
 .study-side .subjcard { margin: 0; }
 #view[data-view="personal"] .grid.g2 { align-items: start; }
-#view[data-view="personal"] .grid.g2 > .card { max-height: calc(100vh - 150px); overflow: auto; position: sticky; top: 70px; }
+#view[data-view="personal"] .grid.g2 > .card { max-height: calc(100vh - 170px); overflow: auto; position: sticky; top: 70px; }
 @media (max-width: 900px) { #view[data-view="personal"] .grid.g2 > .card { max-height: none; position: static; } }
 /* Calendar: the picked day sits under the month, laid out across (2.14) */
 .calwrap { display: flex; flex-direction: column; gap: 14px; }
@@ -1698,3 +1698,15 @@ html[data-glass] .card, html[data-glass] .sidebar { background: color-mix(in srg
 .chnums { display: flex; justify-content: space-between; font-size: .72rem; color: var(--muted); margin-top: 2px; }
 .chnew { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 10px; }
 .chnew select { flex: 1; min-width: 110px; }
+
+/* calendar: month grid and the selected day side by side, sized to the window so nothing scrolls */
+main:has(> .calwrap), main:has(.calwrap) { max-width: 1680px; }
+.calwrap { display: grid; grid-template-columns: minmax(0, 1fr) minmax(300px, 360px); align-items: stretch; gap: 14px; height: max(560px, calc(100vh - 170px)); }
+.calwrap .cal { grid-template-rows: auto repeat(6, minmax(0, 1fr)); min-height: 0; }
+.calwrap .cal .day { min-height: 0; }
+.calwrap .calday { display: flex; flex-direction: column; min-height: 0; overflow: hidden; margin: 0; }
+.calwrap .calday .card-head { flex-direction: column; align-items: flex-start; gap: 4px; }
+.calwrap .calday .card-head > span[style] { display: none; }
+.calwrap .calday .caladd { display: flex; flex-wrap: wrap; gap: 4px; }
+.calwrap .calday > .list { display: flex; flex-direction: column; gap: 6px; overflow-y: auto; flex: 1; min-height: 0; padding-right: 2px; }
+@media (max-width: 900px) { .calwrap { grid-template-columns: 1fr; height: auto; } .calwrap .cal .day { min-height: 64px; } .calwrap .calday > .list { overflow: visible; } }

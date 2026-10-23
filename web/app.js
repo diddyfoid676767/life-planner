@@ -1361,7 +1361,7 @@ function checkReminders() {
   if (pending.length > 3) notify(`${pending.length} reminders`, pending.map(p => `• ${p[0]} (${p[1]})`).join('\n'), 'batch');
   else for (const p of pending) notify(...p);
   // forget fired reminders older than 60 days
-  for (const [k, v] of Object.entries(D.fired)) if (now - v > 60 * 86400e3) { delete D.fired[k]; changed = true; }
+  for (const [k, v] of Object.entries(D.fired)) if (typeof v !== 'number' || v < 1e12) { D.fired[k] = now; changed = true; } else if (now - v > 60 * 86400e3) { delete D.fired[k]; changed = true; }
   if (changed) save();
 }
 function updateNotifyBtn() {
@@ -1835,6 +1835,7 @@ document.addEventListener('change', e => {
   if (el.dataset.change === 'showItem') { D.game.hidden[el.dataset.id] = !el.checked; save(); }
   if (el.dataset.change === 'gardenFx') { D.game.fx = { ...(D.game.fx || {}), [el.dataset.v]: el.checked }; ui.gfxOpen = true; save(); render(); }
   if (el.dataset.change === 'bedTime' && el.value) { D.settings.bedtime = { ...bedCfg(), time: el.value }; save(); }
+  if (el.dataset.change === 'bedTimeWk' && el.value) { D.settings.bedtime = { ...bedCfg(), wk: el.value }; save(); }
   if (el.dataset.change === 'treeSpecies') { D.settings.treeFor = { ...(D.settings.treeFor || {}), [el.dataset.id]: el.value }; save(); render(); }
   if (el.dataset.change === 'dayPick' && el.value) { ui.daySel = el.value; render(); }
   if (el.dataset.change === 'navShow') { const h = new Set(D.settings.navHidden || []); el.checked ? h.delete(el.dataset.v) : h.add(el.dataset.v); D.settings.navHidden = [...h]; save(); render(); }

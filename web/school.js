@@ -154,7 +154,7 @@ function checkBells() {
     // a gentle nudge at the end of any lesson that wasn't in class mode
     for (const { b, i } of unrated(t)) {
       const key = `cls:n:${t}:${i}`, late = nowMin() - hmToMin(b.end);
-      if (late < 5 && !D.fired[key]) { D.fired[key] = 1; save(); notify('🔔 ' + b.n + ' is over', 'Rate your effort for a few coins.', 'cls'); }
+      if (late < 5 && !D.fired[key]) { D.fired[key] = Date.now(); save(); notify('🔔 ' + b.n + ' is over', 'Rate your effort for a few coins.', 'cls'); }
     }
   }
   if (view === 'school') {
