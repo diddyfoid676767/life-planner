@@ -33,12 +33,6 @@ GOOS=windows GOARCH=amd64 go build -tags noseed -trimpath -ldflags "-s -w -H win
 
 ## Making a release
 
-Set `version` in `update.go` (for example `2.11`), commit, then push a
-matching tag:
-
-```
-git tag v2.11
-git push origin v2.11
-```
-
-GitHub Actions builds the exe and publishes the release.
+Set `version` in `update.go` (for example `2.12`) and push to `main`. GitHub
+Actions builds the exe and publishes a release for that version if there
+isn't one yet.

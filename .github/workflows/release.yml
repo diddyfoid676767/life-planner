@@ -1,8 +1,11 @@
 name: Release
 
+# Publishes a release whenever main has a version (const version in update.go)
+# that doesn't have a release yet.
 on:
   push:
-    tags: ['v*']
+    branches: [main]
+  workflow_dispatch:
 
 permissions:
   contents: write
@@ -12,14 +15,20 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - name: Read the app version
+        id: v
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          ver=$(sed -n 's/^const version = "\(.*\)"/\1/p' update.go)
+          echo "tag=v$ver" >> "$GITHUB_OUTPUT"
+          if gh release view "v$ver" >/dev/null 2>&1; then echo "new=no" >> "$GITHUB_OUTPUT"; else echo "new=yes" >> "$GITHUB_OUTPUT"; fi
       - uses: actions/setup-go@v5
+        if: steps.v.outputs.new == 'yes'
         with:
           go-version-file: go.mod
-      - name: Check the tag matches the app version
-        run: |
-          want="${GITHUB_REF_NAME#v}"
-          grep -q "const version = \"$want\"" update.go || { echo "update.go version does not match tag $GITHUB_REF_NAME"; exit 1; }
       - name: Build
+        if: steps.v.outputs.new == 'yes'
         run: |
           mkdir -p out/LifePlanner
           GOOS=windows GOARCH=amd64 go build -tags noseed -trimpath -ldflags "-s -w -H windowsgui" -o out/LifePlanner/LifePlanner.exe .
@@ -28,8 +37,10 @@ jobs:
           sha256sum LifePlanner.exe > LifePlanner.exe.sha256
           zip -qr LifePlanner.zip LifePlanner
       - name: Publish release
+        if: steps.v.outputs.new == 'yes'
         env:
           GH_TOKEN: ${{ github.token }}
+          TAG: ${{ steps.v.outputs.tag }}
         run: |
-          gh release create "$GITHUB_REF_NAME" --title "Life Planner ${GITHUB_REF_NAME#v}" --generate-notes \
+          gh release create "$TAG" --target "$GITHUB_SHA" --title "Life Planner ${TAG#v}" --generate-notes \
             out/LifePlanner.zip out/LifePlanner.exe out/LifePlanner.exe.sha256
