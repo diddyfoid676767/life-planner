@@ -93,7 +93,20 @@ const NAV_HTML = document.getElementById('tabs')?.innerHTML || '';
 function navOrder() {
   NAV_BASE = NAV_BASE || navDefault();
   if (!D.settings.navOrder?.length) return navDefaultFull();
-  const saved = (D.settings.navOrder || []).filter(v => NAV_BASE.includes(v) || isNavHead(v));
+  let saved = (D.settings.navOrder || []).filter(v => NAV_BASE.includes(v) || isNavHead(v));
+  // orders saved before headings existed lost the sections: put the built-in
+  // headings back above the first tab of each section, keeping your tab order
+  if (!D.settings.navHeads) {
+    if (saved.join() === 'today,calendar,study,school,forest,training,arena,friends,personal,inbox') { D.settings.navOrder = []; D.settings.navHeads = 1; return navDefaultFull(); } // never really changed
+    if (!saved.some(isNavHead)) {
+      const full = navDefaultFull(), groupOf = {}; let g = null;
+      for (const v of full) isNavHead(v) ? g = v : groupOf[v] = g;
+      const out = [], used = new Set();
+      for (const v of saved) { const h = groupOf[v]; if (h && !used.has(h)) { used.add(h); out.push(h); } out.push(v); }
+      saved = out; D.settings.navOrder = out;
+    }
+    D.settings.navHeads = 1;
+  }
   return [...saved, ...NAV_BASE.filter(v => !saved.includes(v))];
 }
 // the built-in order, with its Plan / Study / Life headings
@@ -107,22 +120,28 @@ const navHeadName = v => String(v).split(':').slice(2).join(':');
 function applyNav() {
   const nav = document.getElementById('tabs'); if (!nav) return;
   NAV_BASE = NAV_BASE || navDefault();
-  const custom = !!D.settings.navOrder?.length, hidden = D.settings.navHidden || [];
-  if (!custom && nav.classList.contains('custom')) nav.innerHTML = NAV_HTML;
+  const custom = true, hidden = D.settings.navHidden || [];
   nav.classList.toggle('custom', custom);
   if (custom) {
     const spacer = nav.querySelector('.navspacer');
-    nav.querySelectorAll('.navh').forEach(x => x.remove());
+    nav.querySelectorAll('.navh, .navh-add').forEach(x => x.remove());
     for (const v of navOrder()) {
-      if (isNavHead(v)) { const h = document.createElement('div'); h.className = 'navgroup navh'; h.textContent = navHeadName(v); nav.insertBefore(h, spacer); continue; }
+      if (isNavHead(v)) { const h = document.createElement('div'); h.className = 'navgroup navh'; h.dataset.v = v;
+        h.innerHTML = `<span>${esc(navHeadName(v))}</span><i class="navh-ed" data-act="navHeadRename" data-v="${esc(v)}" title="Rename section">✎</i><i class="navh-ed" data-act="navHeadDel" data-v="${esc(v)}" title="Remove section">✕</i>`;
+        nav.insertBefore(h, spacer); continue; }
       const b = nav.querySelector(`button[data-view="${v}"]`); if (b) nav.insertBefore(b, spacer);
     }
+    const add = document.createElement('div'); add.className = 'navh-add'; add.dataset.act = 'navHeadNew'; add.textContent = '+ Section'; add.title = 'Add a section heading'; nav.insertBefore(add, spacer);
   }
   nav.querySelectorAll('button[data-view]').forEach(b => { b.hidden = hidden.includes(b.dataset.view) && !NAV_FIXED.includes(b.dataset.view) && b.dataset.view !== view; b.draggable = b.dataset.view !== 'settings'; });
 }
 function navHead(act, v) {
   const o = navOrder();
-  if (act === 'add') {
+  if (act === 'new') {
+    const name = (prompt('New section name, e.g. School') || '').trim().slice(0, 24); if (!name) return;
+    D.settings.navOrder = [...o, `h:${Date.now().toString(36)}:${name}`];
+    toast('📂 Section added', 'It sits at the bottom of the tabs. Drag tabs under it, or move it in Settings → Theme.');
+  } else if (act === 'add') {
     const inp = document.getElementById('navHeadName'), name = (inp?.value || '').trim().slice(0, 24);
     if (!name) { inp?.focus(); return; }
     D.settings.navOrder = [`h:${Date.now().toString(36)}:${name}`, ...o];
@@ -153,13 +172,16 @@ let navDrag = null;
 document.addEventListener('dragstart', e => { const b = e.target.closest?.('#tabs button[data-view]'); if (!b) return; navDrag = b.dataset.view; b.classList.add('dragging'); e.dataTransfer.effectAllowed = 'move'; });
 document.addEventListener('dragover', e => {
   if (!navDrag) return;
-  const b = e.target.closest?.('#tabs button[data-view]'); if (!b || b.dataset.view === 'settings') return;
+  const b = e.target.closest?.('#tabs button[data-view], #tabs .navh'); if (!b || b.dataset.view === 'settings') return;
   e.preventDefault();
+  if (b.classList.contains('navh')) { document.querySelectorAll('#tabs .dropabove, #tabs .dropbelow').forEach(x => x.classList.remove('dropabove', 'dropbelow')); b.classList.add('dropbelow'); return; }
   document.querySelectorAll('#tabs .dropabove, #tabs .dropbelow').forEach(x => x.classList.remove('dropabove', 'dropbelow'));
   const r = b.getBoundingClientRect(); b.classList.add(e.clientY < r.top + r.height / 2 ? 'dropabove' : 'dropbelow');
 });
 document.addEventListener('drop', e => {
   if (!navDrag) return;
+  const h = e.target.closest?.('#tabs .navh');
+  if (h) { e.preventDefault(); const o = navOrder().filter(v => v !== navDrag); o.splice(o.indexOf(h.dataset.v) + 1, 0, navDrag); D.settings.navOrder = o; save(); render(); return; }
   const b = e.target.closest?.('#tabs button[data-view]');
   if (b && b.dataset.view !== navDrag && b.dataset.view !== 'settings') {
     e.preventDefault();

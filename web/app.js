@@ -1767,6 +1767,7 @@ document.addEventListener('click', e => {
     case 'setTheme': D.settings.theme = el.dataset.v; save(); render(); break;
     case 'setThemeMode': D.settings.themeMode = el.dataset.v; save(); render(); break;
     case 'navHeadAdd': navHead('add'); break;
+    case 'navHeadNew': navHead('new'); break;
     case 'navHeadRename': navHead('rename', el.dataset.v); break;
     case 'navHeadDel': navHead('del', el.dataset.v); break;
     case 'navMove': navMove(el.dataset.v, +el.dataset.n); save(); render(); break;

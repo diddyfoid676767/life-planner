@@ -1710,3 +1710,13 @@ main:has(> .calwrap), main:has(.calwrap) { max-width: 1680px; }
 .calwrap .calday .caladd { display: flex; flex-wrap: wrap; gap: 4px; }
 .calwrap .calday > .list { display: flex; flex-direction: column; gap: 6px; overflow-y: auto; flex: 1; min-height: 0; padding-right: 2px; }
 @media (max-width: 900px) { .calwrap { grid-template-columns: 1fr; height: auto; } .calwrap .cal .day { min-height: 64px; } .calwrap .calday > .list { overflow: visible; } }
+#tabs .navh { display: flex; align-items: center; gap: 4px; }
+#tabs .navh span { flex: 1; }
+#tabs .navh .navh-ed { font-style: normal; cursor: pointer; opacity: 0; padding: 0 3px; border-radius: 4px; text-transform: none; letter-spacing: 0; font-size: .75rem; }
+#tabs .navh:hover .navh-ed { opacity: .7; }
+#tabs .navh .navh-ed:hover { opacity: 1; background: var(--panel2); }
+#tabs .navh.dropbelow { box-shadow: inset 0 -3px 0 var(--accent); }
+#tabs .navh-add { font-size: .72rem; color: var(--muted); padding: 6px 12px; cursor: pointer; opacity: 0; transition: opacity .2s; }
+#tabs:hover .navh-add { opacity: .7; }
+#tabs .navh-add:hover { opacity: 1; color: var(--text); }
+@media (max-width: 900px) { #tabs .navh-add { display: none; } }
