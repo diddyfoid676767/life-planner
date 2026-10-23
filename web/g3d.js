@@ -1,6 +1,6 @@
 'use strict';
 /* Real 3D garden (three.js, bundled in web/vendor so it works offline).
-   The island is a grid of grass tiles floating above a 3D valley with hills,
+   The island is a soft lawn (a grid of tiles underneath) floating high above a sea with hills,
    mountains, clouds and a sky that follows the time of day. Drag empty space
    to spin the camera, scroll to zoom, drag a tree or decoration to move it,
    click a tree for its card. Trees only move when your pointer brushes
@@ -59,7 +59,7 @@ function g3dispose() {
 }
 function skyTex(top, bottom) {
   const c = document.createElement('canvas'); c.width = 2; c.height = 256; const x = c.getContext('2d'), g = x.createLinearGradient(0, 0, 0, 256);
-  g.addColorStop(0, top); g.addColorStop(.55, bottom); g.addColorStop(1, bottom); x.fillStyle = g; x.fillRect(0, 0, 2, 256);
+  g.addColorStop(0, top); g.addColorStop(.42, top); g.addColorStop(.62, bottom); g.addColorStop(1, bottom); x.fillStyle = g; x.fillRect(0, 0, 2, 256);
   return new THREE.CanvasTexture(c);
 }
 function glowTex(col) {
@@ -74,7 +74,7 @@ function bubbleTex() {
   x.font = '64px sans-serif'; x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillText('🍃', 64, 70);
   return (G3.bubTex = new THREE.CanvasTexture(c));
 }
-const GY = -34; // valley floor, well below the floating island
+const GY = -60; // valley floor, well below the floating island
 const hills = (x, z) => Math.sin(x * .045) * 3.2 + Math.cos(z * .05) * 2.6 + Math.sin((x + z) * .09) * 1.4 + Math.cos(x * .13 - z * .07) * .8;
 
 function g3build() {
@@ -112,46 +112,55 @@ function g3build() {
     if (sc.night && !sc.noAurora) { const au = new THREE.Mesh(new THREE.PlaneGeometry(500, 60, 40, 1), new THREE.MeshBasicMaterial({ color: '#63e6be', transparent: true, opacity: .22, side: THREE.DoubleSide, fog: false, depthWrite: false })); au.position.set(0, 160, -380); const p = au.geometry.attributes.position, b = p.array.slice(); W.add(au);
       G3.tickers.push(t => { for (let i = 0; i < p.count; i++) p.setY(i, b[i * 3 + 1] + Math.sin(b[i * 3] * .02 + t * .5) * 18); p.needsUpdate = true; }); }
   }
-  // the valley around the island: rolling hills, a lake, far mountains and woods
-  const tg = new THREE.PlaneGeometry(900, 900, 90, 90).rotateX(-Math.PI / 2), tp = tg.attributes.position, tcol = [];
-  const hc = new THREE.Color(shade(sc.hills, night ? -.5 : -.3)), hc2 = new THREE.Color(shade(sc.g2, night ? -.5 : -.4));
-  for (let i = 0; i < tp.count; i++) { const x = tp.getX(i), z = tp.getZ(i), d = Math.hypot(x, z); const y = GY + hills(x, z) + Math.max(0, d - 120) * .06; tp.setY(i, y); const c = hc.clone().lerp(hc2, (Math.sin(x * .03) + 1) / 2 * .6); tcol.push(c.r, c.g, c.b); }
-  tg.setAttribute('color', new THREE.Float32BufferAttribute(tcol, 3)); tg.computeVertexNormals();
-  const terrain = new THREE.Mesh(tg, new THREE.MeshStandardMaterial({ vertexColors: true, flatShading: true, roughness: 1 })); terrain.receiveShadow = true; W.add(terrain);
-  const lake = new THREE.Mesh(new THREE.CircleGeometry(38, 40).rotateX(-Math.PI / 2), new THREE.MeshStandardMaterial({ color: night ? '#1c3a5e' : '#4dabf7', roughness: .1, metalness: .3, transparent: true, opacity: .9 }));
-  lake.position.set(-half - 30, GY + .8, half + 20); W.add(lake);
-  for (let i = 0; i < 26; i++) { const a = i / 26 * Math.PI * 2 + Math.random() * .2, d = 400 + Math.random() * 120, h = 60 + Math.random() * 80;
-    const m = new THREE.Mesh(new THREE.ConeGeometry(h * .8, h, 6), m3mat(night ? '#2b3550' : shade(sc.hills, -.35))); m.position.set(Math.cos(a) * d, GY + h / 2, Math.sin(a) * d); W.add(m);
-    if (h > 75) { const cap = new THREE.Mesh(new THREE.ConeGeometry(h * .28, h * .35, 6), m3mat('#f8f9fa')); cap.position.set(m.position.x, GY + h - h * .175, m.position.z); W.add(cap); } }
-  const woods = new THREE.InstancedMesh(new THREE.ConeGeometry(1.4, 4.5, 6).translate(0, 2.2, 0), m3mat(night ? '#1d3a2b' : '#2b8a3e'), 160), mt = new THREE.Matrix4();
-  for (let i = 0; i < 160; i++) { let x, z; do { x = (Math.random() - .5) * 420; z = (Math.random() - .5) * 420; } while (Math.hypot(x, z) < half + 25 || Math.hypot(x + half + 30, z - half - 20) < 42); const s = .7 + Math.random() * .8; mt.compose(new THREE.Vector3(x, GY + hills(x, z), z), new THREE.Quaternion(), new THREE.Vector3(s, s, s)); woods.setMatrixAt(i, mt); }
-  woods.castShadow = true; W.add(woods);
-  // clouds
-  if (gfx('clouds')) for (let i = 0; i < 14; i++) {
-    const c = new THREE.Group(), s = 2 + Math.random() * 3;
-    for (let k = 0; k < 5; k++) c.add(at(new THREE.Mesh(new THREE.IcosahedronGeometry(s * (.6 + Math.random() * .5), 1), m3mat(night ? '#46507a' : '#ffffff', { rough: 1 })), (k - 2) * s * .7, Math.random() * s * .3, (Math.random() - .5) * s * .6));
-    const a = Math.random() * Math.PI * 2, d = 20 + Math.random() * 140; c.position.set(Math.cos(a) * d, 18 + Math.random() * 26, Math.sin(a) * d);
-    c.traverse(o => { o.castShadow = false; }); W.add(c);
-    const sp = .3 + Math.random() * .5; G3.tickers.push((t, dt) => { c.position.x += sp * dt; if (c.position.x > 200) c.position.x = -200; });
+  // far below: a calm sea, soft rounded hills on the horizon and a few distant islands, all hazy
+  const seaCol = night ? '#16284d' : shade(sky[1], -.35);
+  const sea = new THREE.Mesh(new THREE.CircleGeometry(700, 64).rotateX(-Math.PI / 2), new THREE.MeshStandardMaterial({ color: seaCol, roughness: .25, metalness: .2 }));
+  sea.position.y = GY; W.add(sea);
+  const hillCol = night ? '#1f3350' : shade(sc.hills, -.32), hillCol2 = night ? '#2a3f63' : shade(sc.hills, -.22);
+  for (let i = 0; i < 18; i++) { const a = i / 18 * Math.PI * 2 + Math.sin(i * 7.3) * .15, d = 430 + (i % 3) * 50, r = 80 + (i * 37 % 50);
+    const h = new THREE.Mesh(new THREE.SphereGeometry(r, 32, 16, 0, Math.PI * 2, 0, Math.PI / 2), new THREE.MeshStandardMaterial({ color: i % 2 ? hillCol : hillCol2, roughness: 1 }));
+    h.scale.y = .28 + (i * 13 % 7) / 40; h.position.set(Math.cos(a) * d, GY - 2, Math.sin(a) * d); W.add(h); }
+  // little floating islands drifting in the distance
+  for (let i = 0; i < 5; i++) { const a = i * 1.3 + 2.2, d = 90 + i * 25, g = new THREE.Group();
+    const top = new THREE.Mesh(new THREE.CylinderGeometry(4 + i, 3.6 + i, 1.2, 32), m3mat(night ? shade(sc.g1, -.4) : sc.g1)); g.add(top);
+    const bot = new THREE.Mesh(new THREE.SphereGeometry(3.6 + i, 32, 16, 0, Math.PI * 2, Math.PI / 2, Math.PI / 2), m3mat(night ? '#3b2a1e' : '#8a6248')); bot.scale.y = 1.4; bot.position.y = -.6; g.add(bot);
+    for (let k = 0; k < 3; k++) { const tr = tree3('oak', ['#40c057', '#2f9e44', '#69db7c'][k], 3, 'far' + i + k); tr.position.set((k - 1) * 1.8, .6, Math.sin(k * 2 + i) * 1.2); tr.scale.setScalar(1.3); g.add(tr); }
+    g.position.set(Math.cos(a) * d, -18 + i * 2, Math.sin(a) * d); W.add(g); const ph = i;
+    G3.tickers.push(t => { g.position.y = -18 + ph * 2 + Math.sin(t * .3 + ph) * .6; }); }
+  // soft clouds, some above and some drifting below the island
+  if (gfx('clouds')) for (let i = 0; i < 16; i++) {
+    const c = new THREE.Group(), s = 2.4 + Math.random() * 3, col = night ? '#5c6a96' : '#ffffff';
+    for (let k = 0; k < 6; k++) c.add(at(new THREE.Mesh(new THREE.SphereGeometry(s * (.55 + Math.random() * .45), 24, 16), new THREE.MeshStandardMaterial({ color: col, roughness: 1, transparent: true, opacity: .96 })), (k - 2.5) * s * .55, Math.sin(k * 2.1) * s * .25, (Math.random() - .5) * s * .5));
+    c.scale.y = .7; const a = Math.random() * Math.PI * 2, d = 25 + Math.random() * 120, below = i % 3 === 0;
+    c.position.set(Math.cos(a) * d, below ? -8 - Math.random() * 10 : 16 + Math.random() * 24, Math.sin(a) * d); W.add(c);
+    const sp = .3 + Math.random() * .5; G3.tickers.push((t, dt) => { c.position.x += sp * dt; if (c.position.x > 180) c.position.x = -180; });
   }
-  // the island: tiles, a soil cliff with rocks hanging underneath, grass and flowers
-  const top = night && !sc.night ? shade(sc.g1, -.35) : sc.g1, top2 = night && !sc.night ? shade(sc.g2, -.35) : sc.g2;
-  const tiles = new THREE.InstancedMesh(new THREE.BoxGeometry(T3D * .985, .35, T3D * .985).translate(0, -.175, 0), new THREE.MeshStandardMaterial({ roughness: .95, flatShading: true }), N * N);
-  const tc = new THREE.Color(); let ti = 0;
-  for (let r = 0; r < N; r++) for (let c = 0; c < N; c++) { const [x, z] = tileXZ(r, c, N); mt.makeTranslation(x, 0, z); tiles.setMatrixAt(ti, mt); tc.set((r + c) % 2 ? top : top2).offsetHSL(0, 0, (seeded(`t${r},${c}`)() - .5) * .04); tiles.setColorAt(ti++, tc); }
-  tiles.receiveShadow = true; tiles.userData.ground = true; W.add(tiles); G3.tiles = tiles;
-  const soil = night ? '#3b2a1e' : '#7a5236';
-  W.add(at(m3mesh(new THREE.BoxGeometry(N * T3D + .1, 1.6, N * T3D + .1).translate(0, -.8, 0), soil), 0, -.35, 0));
-  W.add(at(m3mesh(new THREE.BoxGeometry(N * T3D + .2, .3, N * T3D + .2).translate(0, -.15, 0), shade(top2, -.15)), 0, -.3, 0));
-  const rk = seeded('rocks' + N);
-  for (let i = 0; i < 9 + N; i++) { const h = 2 + rk() * 5, m = new THREE.Mesh(new THREE.ConeGeometry(1 + rk() * 2, h, 6).rotateX(Math.PI), m3mat(i % 2 ? shade(soil, -.15) : '#6c5a4c')); m.position.set((rk() - .5) * N * T3D * .8, -1.9 - h / 2, (rk() - .5) * N * T3D * .8); m.castShadow = true; W.add(m); }
-  const blades = N * N * 14, grass = new THREE.InstancedMesh(new THREE.ConeGeometry(.05, .32, 3).translate(0, .16, 0), new THREE.MeshStandardMaterial({ roughness: 1, flatShading: true }), blades);
-  const gr = seeded('grass'), q = new THREE.Quaternion(), e = new THREE.Euler(), vs = new THREE.Vector3();
-  for (let i = 0; i < blades; i++) { const r = Math.floor(i / 14 / N), c = Math.floor(i / 14) % N, [x, z] = tileXZ(r, c, N); e.set((gr() - .5) * .4, gr() * 3, (gr() - .5) * .4); q.setFromEuler(e); const s = .7 + gr() * .8; vs.set(s, s, s);
-    mt.compose(new THREE.Vector3(x + (gr() - .5) * T3D * .9, 0, z + (gr() - .5) * T3D * .9), q, vs); grass.setMatrixAt(i, mt); tc.set(gr() < .5 ? shade(top, -.18) : shade(top, .14)); grass.setColorAt(i, tc); }
-  grass.receiveShadow = true; W.add(grass);
-  if (gfx('flowers')) { const fr = seeded('fl'), n = Math.round(N * N * .5), fl = new THREE.InstancedMesh(new THREE.IcosahedronGeometry(.07, 0), new THREE.MeshStandardMaterial({ roughness: .6, flatShading: true }), n), cols = ['#ffffff', '#ffd43b', '#f783ac', '#b197fc', '#ff8787'];
-    for (let i = 0; i < n; i++) { mt.makeTranslation((fr() - .5) * N * T3D * .97, .22, (fr() - .5) * N * T3D * .97); fl.setMatrixAt(i, mt); tc.set(cols[i % 5]); fl.setColorAt(i, tc); } W.add(fl); }
+  // the island: a soft lawn with rounded edges, a soil layer, and a rocky bottom hanging under it
+  const top = shade(sc.g1, night && !sc.night ? -.38 : -.06), top2 = shade(sc.g2, night && !sc.night ? -.38 : -.06);
+  const L = N * T3D, rr = Math.min(1.4, L * .08);
+  const rounded = (w, r) => { const sh = new THREE.Shape(), h = w / 2; sh.moveTo(-h + r, -h); sh.lineTo(h - r, -h); sh.quadraticCurveTo(h, -h, h, -h + r); sh.lineTo(h, h - r); sh.quadraticCurveTo(h, h, h - r, h); sh.lineTo(-h + r, h); sh.quadraticCurveTo(-h, h, -h, h - r); sh.lineTo(-h, -h + r); sh.quadraticCurveTo(-h, -h, -h + r, -h); return sh; };
+  const lawnTex = (() => { const px = 64 * N, c = document.createElement('canvas'); c.width = c.height = px; const x = c.getContext('2d'), rn = seeded('lawn' + N);
+    x.fillStyle = top; x.fillRect(0, 0, px, px);
+    for (let r = 0; r < N; r++) for (let q = 0; q < N; q++) { x.fillStyle = (r + q) % 2 ? shade(top, .04) : shade(top2, .02); x.globalAlpha = .35; x.fillRect(q * 64, r * 64, 64, 64); } // mowed stripes in a soft checker
+    x.globalAlpha = 1;
+    for (let i = 0; i < px * px / 18; i++) { x.fillStyle = rn() < .5 ? shade(top, -.12) : shade(top, .12); x.globalAlpha = .25 + rn() * .3; const X = rn() * px, Y = rn() * px; x.fillRect(X, Y, 1.2, 2.5 + rn() * 3); }
+    x.globalAlpha = 1; const t = new THREE.CanvasTexture(c); t.anisotropy = 8; return t; })();
+  const lawnGeo = new THREE.ExtrudeGeometry(rounded(L, rr), { depth: .3, bevelEnabled: true, bevelThickness: .12, bevelSize: .12, bevelSegments: 4, curveSegments: 10 }).rotateX(-Math.PI / 2);
+  { const uv = lawnGeo.attributes.uv, pos = lawnGeo.attributes.position; for (let i = 0; i < uv.count; i++) uv.setXY(i, pos.getX(i) / L + .5, .5 - pos.getZ(i) / L); }
+  const lawn = new THREE.Mesh(lawnGeo, [new THREE.MeshStandardMaterial({ map: lawnTex, roughness: .95 }), new THREE.MeshStandardMaterial({ color: shade(top2, -.12), roughness: .95 })]);
+  lawn.position.y = -.42; lawn.receiveShadow = true; W.add(lawn); G3.tiles = lawn;
+  const soil = night ? '#3b2a1e' : '#8a6248';
+  const soilM = new THREE.Mesh(new THREE.ExtrudeGeometry(rounded(L - .1, rr), { depth: 1.1, bevelEnabled: true, bevelThickness: .2, bevelSize: .1, bevelSegments: 3, curveSegments: 10 }).rotateX(-Math.PI / 2), m3mat(soil)); soilM.position.y = -1.65; W.add(soilM);
+  const under = new THREE.Mesh(new THREE.SphereGeometry(L * .62, 48, 24, 0, Math.PI * 2, Math.PI / 2, Math.PI / 2), m3mat(night ? '#2e2620' : '#7a6a5c'));
+  { const p = under.geometry.attributes.position, rn = seeded('under'); for (let i = 0; i < p.count; i++) { const k = 1 + Math.sin(p.getX(i) * .9) * .05 + Math.cos(p.getZ(i) * 1.1) * .05; p.setXYZ(i, p.getX(i) * k, p.getY(i), p.getZ(i) * k); } under.geometry.computeVertexNormals(); }
+  under.scale.set(1, .55, 1); under.position.y = -1.7; W.add(under);
+  // soft tufts and bushes round the edge of the lawn
+  const tuftN = N * 6, tuft = new THREE.InstancedMesh(new THREE.SphereGeometry(.16, 16, 10), new THREE.MeshStandardMaterial({ roughness: .9 }), tuftN), q = new THREE.Quaternion(), vs = new THREE.Vector3(), tc = new THREE.Color(), mt = new THREE.Matrix4(), gr = seeded('tuft');
+  for (let i = 0; i < tuftN; i++) { const side = i % 4, u = (gr() - .5) * (L - .6), e = L / 2 - .25 - gr() * .5, x = side === 0 ? u : side === 1 ? u : side === 2 ? e : -e, z = side === 0 ? e : side === 1 ? -e : u;
+    const s = .6 + gr() * .9; vs.set(s, s * .7, s); mt.compose(new THREE.Vector3(x, .02, z), q, vs); tuft.setMatrixAt(i, mt); tc.set(gr() < .5 ? shade(top, -.15) : shade(top2, -.05)); tuft.setColorAt(i, tc); }
+  tuft.castShadow = true; tuft.receiveShadow = true; W.add(tuft);
+  if (gfx('flowers')) { const fr = seeded('fl'), n = Math.round(N * N * .35), fl = new THREE.InstancedMesh(new THREE.SphereGeometry(.06, 12, 8), new THREE.MeshStandardMaterial({ roughness: .6 }), n), cols = ['#ffffff', '#ffd43b', '#f783ac', '#b197fc', '#ff8787'];
+    for (let i = 0; i < n; i++) { mt.makeTranslation((fr() - .5) * (L - .8), .06, (fr() - .5) * (L - .8)); fl.setMatrixAt(i, mt); tc.set(cols[i % 5]); fl.setColorAt(i, tc); } W.add(fl); }
   // trees and decorations on their tiles
   let bubbles = gfx('bubbles') && pendingLeaves() > 0 ? Math.min(6, 1 + Math.floor(pendingLeaves() / Math.max(1, basketCap()) * 6)) : 0;
   things.forEach((t, i) => {
@@ -191,7 +200,7 @@ function g3build() {
     for (let i = 0; i < n; i++) pos.set([(Math.random() - .5) * span * 2, Math.random() * 20, (Math.random() - .5) * span * 2], i * 3);
     const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.BufferAttribute(pos, 3));
     const col = sc.rain ? '#a5d8ff' : D.game.scene === 'winter' ? '#ffffff' : (sc.fall || ['#8ce99a'])[0];
-    const pts = new THREE.Points(g, new THREE.PointsMaterial({ color: col, size: sc.rain ? .08 : .16, transparent: true, opacity: .9 }));
+    const pts = new THREE.Points(g, new THREE.PointsMaterial({ color: col, size: sc.rain ? .08 : .2, transparent: true, opacity: .9, depthWrite: false, map: G3.dotTex = G3.dotTex || (() => { const c = document.createElement('canvas'); c.width = c.height = 32; const x = c.getContext('2d'); x.fillStyle = '#fff'; x.beginPath(); x.ellipse(16, 16, 14, 8, .6, 0, Math.PI * 2); x.fill(); return new THREE.CanvasTexture(c); })() }));
     W.add(pts); const sp = sc.rain ? 14 : 1.2;
     G3.tickers.push((t, dt) => { for (let i = 0; i < n; i++) { let y = pos[i * 3 + 1] - sp * dt; if (y < -1) y = 20; pos[i * 3 + 1] = y; if (!sc.rain) pos[i * 3] += Math.sin(t + i) * .01; } g.attributes.position.needsUpdate = true; });
   }

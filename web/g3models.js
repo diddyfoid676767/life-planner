@@ -6,11 +6,18 @@
    (windmill blades, flames, flags, water) put a tick(t) on group.userData. */
 
 const M3 = { mats: new Map() };
+// smooth versions of the basic shapes: more segments, so models look rounded rather than faceted
+const CylG = (rt, rb, h, seg = 8, hs = 1, open = false, t0, tl) => new THREE.CylinderGeometry(rt, rb, h, Math.max(16, seg * 2), hs, open, t0, tl);
+const ConeG = (r, h, seg = 8, hs = 1, open = false, t0, tl) => new THREE.ConeGeometry(r, h, Math.max(16, seg * 2), hs, open, t0, tl);
+const IcoG = (r, d = 1) => new THREE.IcosahedronGeometry(r, Math.min(4, d + 2));
+const SphG = (r, ws = 12, hs = 8, ...rest) => new THREE.SphereGeometry(r, Math.max(24, ws * 2), Math.max(16, hs * 2), ...rest);
+const TorG = (r, tube, rs = 8, ts = 16, arc) => new THREE.TorusGeometry(r, tube, Math.max(12, rs * 2), Math.max(32, ts * 2), arc);
+
 function m3mat(color, o = {}) {
-  const key = [color, o.metal || 0, o.rough ?? .85, o.emi || '', o.ei ?? 1, o.op ?? 1, o.flat === false ? 0 : 1].join('|');
+  const key = [color, o.metal || 0, o.rough ?? .85, o.emi || '', o.ei ?? 1, o.op ?? 1, o.flat === true ? 1 : 0].join('|');
   let m = M3.mats.get(key);
   if (!m) {
-    m = new THREE.MeshStandardMaterial({ color, flatShading: o.flat !== false, roughness: o.rough ?? .85, metalness: o.metal || 0,
+    m = new THREE.MeshStandardMaterial({ color, flatShading: o.flat === true, roughness: o.rough ?? .85, metalness: o.metal || 0,
       emissive: o.emi || 0x000000, emissiveIntensity: o.ei ?? 1, transparent: (o.op ?? 1) < 1, opacity: o.op ?? 1 });
     M3.mats.set(key, m);
   }
@@ -20,11 +27,11 @@ function m3clear() { for (const m of M3.mats.values()) m.dispose(); M3.mats.clea
 function m3mesh(geo, color, o = {}) { const m = new THREE.Mesh(geo, m3mat(color, o)); m.castShadow = o.cast !== false; m.receiveShadow = true; return m; }
 const at = (m, x = 0, y = 0, z = 0) => { m.position.set(x, y, z); return m; };
 // shapes with their base on y (not their centre)
-const cyl = (rt, rb, h, col, x, y, z, seg = 7, o) => at(m3mesh(new THREE.CylinderGeometry(rt, rb, h, seg).translate(0, h / 2, 0), col, o), x, y, z);
-const cone = (r, h, col, x, y, z, seg = 8, o) => at(m3mesh(new THREE.ConeGeometry(r, h, seg).translate(0, h / 2, 0), col, o), x, y, z);
+const cyl = (rt, rb, h, col, x, y, z, seg = 7, o) => at(m3mesh(CylG(rt, rb, h, seg).translate(0, h / 2, 0), col, o), x, y, z);
+const cone = (r, h, col, x, y, z, seg = 8, o) => at(m3mesh(ConeG(r, h, seg).translate(0, h / 2, 0), col, o), x, y, z);
 const box = (w, h, d, col, x, y, z, o) => at(m3mesh(new THREE.BoxGeometry(w, h, d).translate(0, h / 2, 0), col, o), x, y, z);
-function ball(r, col, x, y, z, sx = 1, sy = 1, sz = 1, o = {}) { const m = at(m3mesh(new THREE.IcosahedronGeometry(r, o.detail ?? 1), col, o), x, y, z); m.scale.set(sx, sy, sz); return m; }
-const sph = (r, col, x, y, z, o = {}) => at(m3mesh(new THREE.SphereGeometry(r, o.seg || 12, o.seg ? o.seg * .7 : 8, 0, Math.PI * 2, 0, o.half ? Math.PI / 2 : Math.PI), col, o), x, y, z);
+function ball(r, col, x, y, z, sx = 1, sy = 1, sz = 1, o = {}) { const m = at(m3mesh(IcoG(r, o.detail ?? 1), col, o), x, y, z); m.scale.set(sx, sy, sz); return m; }
+const sph = (r, col, x, y, z, o = {}) => at(m3mesh(SphG(r, o.seg || 12, o.seg ? o.seg * .7 : 8, 0, Math.PI * 2, 0, o.half ? Math.PI / 2 : Math.PI), col, o), x, y, z);
 // a limb from (x,y,z), leaning by ax (towards x) and az (towards z) radians
 function limb(r1, r2, len, col, x, y, z, ax, az, seg = 6) {
   const p = new THREE.Group(); p.position.set(x, y, z); p.rotation.set(az, 0, -ax);
@@ -47,7 +54,7 @@ const blobTree = (col, rnd, h = 1.1, o) => {
 const T3 = {
   oak: (c, r) => blobTree(c, r),
   apple(c, r) { const t = blobTree(c, r, 1); t.parts.push(...t.fruit.slice(1, 8).map(([x, y, z]) => ball(.08, '#e03131', x * 1.25, y - .15, z * 1.25, 1, 1, 1, { detail: 0 }))); return t; },
-  maple(c, r) { const pts = [[0, 1.85, 0, .6], ...ringPts(6, .55, 1.45, .45, r)]; return { parts: [cyl(.09, .15, 1.4, BARK3, 0, 0, 0), ...pts.map(([x, y, z, rr], i) => at(m3mesh(new THREE.DodecahedronGeometry(rr, 0), i % 2 ? c : shade(c, -.2)), x, y, z))], fruit: pts }; },
+  maple(c, r) { const pts = [[0, 1.85, 0, .6], ...ringPts(6, .55, 1.45, .45, r)]; return { parts: [cyl(.09, .15, 1.4, BARK3, 0, 0, 0), ...pts.map(([x, y, z, rr], i) => at(m3mesh(IcoG(rr, 0), i % 2 ? c : shade(c, -.2)), x, y, z))], fruit: pts }; },
   cherry(c, r) { const t = blobTree(c, r, 1, {}); t.parts[0].material = m3mat(BARK3D); t.parts.push(...t.fruit.flatMap(([x, y, z]) => [ball(.06, '#fff', x * 1.3, y + .1, z * 1.3, 1, 1, 1, { detail: 0 }), ball(.05, '#ffdeeb', x * 1.2, y - .2, z * 1.3, 1, 1, 1, { detail: 0 })])); return t; },
   birch(c, r) {
     const parts = [cyl(.08, .11, 1.9, '#f1efe9', 0, 0, 0)]; for (let i = 0; i < 6; i++) parts.push(box(.1 + r() * .06, .03, .2, '#3d3a36', (r() - .5) * .08, .2 + i * .26, 0));
@@ -83,13 +90,13 @@ const T3 = {
     return { parts: p, fruit: [[0, 1.65, 0], [.45, 1.12, 0], [-.42, 1.2, 0]] };
   },
   mushroom(c) {
-    const cap = at(m3mesh(new THREE.SphereGeometry(.85, 16, 8, 0, Math.PI * 2, 0, Math.PI / 2).scale(1, .7, 1), c), 0, 1.3, 0);
+    const cap = at(m3mesh(SphG(.85, 16, 8, 0, Math.PI * 2, 0, Math.PI / 2).scale(1, .7, 1), c), 0, 1.3, 0);
     const dots = [[.4, 1.75, .2], [-.3, 1.7, .4], [.1, 1.85, -.3], [-.5, 1.6, -.2], [.55, 1.55, -.3]].map(([x, y, z]) => ball(.1, '#fff', x, y, z, 1, .5, 1, { detail: 0 }));
     return { parts: [cyl(.2, .25, 1.35, '#f8f0e3', 0, 0, 0, 10), cap, ...dots], fruit: [[.6, 1.3, 0], [-.6, 1.3, 0], [0, 1.3, .6]] };
   },
   glowshroom() {
     const c = '#22b8cf', parts = [];
-    [[0, 0, 1, 1.3], [.55, .25, .55, .7], [-.5, -.2, .45, .55]].forEach(([x, z, s, h]) => { parts.push(cyl(.12 * s, .16 * s, h, '#e3fafc', x, 0, z, 8, { emi: '#3bc9db', ei: .25 })); parts.push(at(m3mesh(new THREE.SphereGeometry(.6 * s, 14, 7, 0, Math.PI * 2, 0, Math.PI / 2).scale(1, .6, 1), c, { emi: '#66d9e8', ei: .7 }), x, h, z)); });
+    [[0, 0, 1, 1.3], [.55, .25, .55, .7], [-.5, -.2, .45, .55]].forEach(([x, z, s, h]) => { parts.push(cyl(.12 * s, .16 * s, h, '#e3fafc', x, 0, z, 8, { emi: '#3bc9db', ei: .25 })); parts.push(at(m3mesh(SphG(.6 * s, 14, 7, 0, Math.PI * 2, 0, Math.PI / 2).scale(1, .6, 1), c, { emi: '#66d9e8', ei: .7 }), x, h, z)); });
     return { parts, fruit: [[0, 1.6, 0], [.55, .9, .25], [-.5, .7, -.2]], glow: '#66d9e8' };
   },
   baobab(c) {
@@ -104,7 +111,7 @@ const T3 = {
   dragon(c) {
     const parts = [cyl(.12, .16, .9, '#8d6e63', 0, 0, 0)];
     for (const [ax, az] of [[.5, 0], [-.5, 0], [0, .5], [0, -.5], [.25, .3], [-.25, -.3]]) parts.push(limb(.05, .07, .8, '#8d6e63', 0, .85, 0, ax, az));
-    parts.push(at(m3mesh(new THREE.SphereGeometry(1.05, 14, 6, 0, Math.PI * 2, 0, Math.PI / 2).scale(1, .45, 1), c), 0, 1.45, 0), at(m3mesh(new THREE.CylinderGeometry(1.03, 1.03, .06, 14), shade(c, -.25)), 0, 1.45, 0));
+    parts.push(at(m3mesh(SphG(1.05, 14, 6, 0, Math.PI * 2, 0, Math.PI / 2).scale(1, .45, 1), c), 0, 1.45, 0), at(m3mesh(CylG(1.03, 1.03, .06, 14), shade(c, -.25)), 0, 1.45, 0));
     return { parts, fruit: [[.6, 1.7, 0], [-.6, 1.7, 0], [0, 1.9, .3]] };
   },
   bonsai(c, r) {
@@ -123,16 +130,16 @@ const T3 = {
   },
   candy() {
     const parts = [cyl(.06, .06, 1.6, '#ffffff', 0, 0, 0, 8)];
-    for (let y = .15; y < 1.6; y += .25) { const t = at(m3mesh(new THREE.TorusGeometry(.065, .02, 4, 10), '#f03e3e'), 0, y, 0); t.rotation.x = Math.PI / 2 + .3; parts.push(t); }
+    for (let y = .15; y < 1.6; y += .25) { const t = at(m3mesh(TorG(.065, .02, 4, 10), '#f03e3e'), 0, y, 0); t.rotation.x = Math.PI / 2 + .3; parts.push(t); }
     [[0, 2, 0, '#ffd43b', .38], [-.45, 1.6, .1, '#f783ac', .3], [.45, 1.65, -.1, '#74c0fc', .3], [.05, 1.45, .4, '#b197fc', .26]].forEach(([x, y, z, col, rr]) => {
-      const d = at(m3mesh(new THREE.CylinderGeometry(rr, rr, .14, 18), col, { rough: .3 }), x, y, z); d.rotation.x = Math.PI / 2; parts.push(d);
-      const sw = at(m3mesh(new THREE.TorusGeometry(rr * .6, rr * .1, 4, 18), '#ffffff', { rough: .3 }), x, y, z + .075); parts.push(sw);
+      const d = at(m3mesh(CylG(rr, rr, .14, 18), col, { rough: .3 }), x, y, z); d.rotation.x = Math.PI / 2; parts.push(d);
+      const sw = at(m3mesh(TorG(rr * .6, rr * .1, 4, 18), '#ffffff', { rough: .3 }), x, y, z + .075); parts.push(sw);
     });
     return { parts, fruit: [[0, 2.3, 0], [-.45, 1.9, .1], [.45, 1.95, -.1]] };
   },
   crystal() {
     const parts = [cyl(.06, .08, .5, '#495057', 0, 0, 0)];
-    [[0, 1.3, 0, .5, 1.6], [-.4, .9, .1, .28, .9], [.4, .95, -.1, .3, 1], [.1, .8, .4, .22, .7]].forEach(([x, y, z, rr, sy], i) => { const m = at(m3mesh(new THREE.OctahedronGeometry(rr, 0), ['#4dabf7', '#74c0fc', '#a5d8ff', '#339af0'][i], { op: .85, rough: .15, metal: .2, emi: '#1c7ed6', ei: .35 }), x, y, z); m.scale.y = sy; parts.push(m); });
+    [[0, 1.3, 0, .5, 1.6], [-.4, .9, .1, .28, .9], [.4, .95, -.1, .3, 1], [.1, .8, .4, .22, .7]].forEach(([x, y, z, rr, sy], i) => { const m = at(m3mesh(IcoG(rr, 0), ['#4dabf7', '#74c0fc', '#a5d8ff', '#339af0'][i], { op: .85, rough: .15, metal: .2, emi: '#1c7ed6', ei: .35 }), x, y, z); m.scale.y = sy; parts.push(m); });
     return { parts, fruit: [[0, 2.1, 0], [-.4, 1.4, .1], [.4, 1.5, -.1]], glow: '#74c0fc' };
   },
   rainbow(c, r) { const cols = ['#ff6b6b', '#ffa94d', '#ffd43b', '#69db7c', '#4dabf7', '#9775fa']; const pts = [[0, 1.85, 0, .5], ...ringPts(5, .48, 1.45, .42, r)]; return { parts: [cyl(.1, .16, 1.4, BARK3, 0, 0, 0), ...pts.map(([x, y, z, rr], i) => ball(rr, cols[i % 6], x, y, z))], fruit: pts }; },
@@ -145,7 +152,7 @@ const T3 = {
   },
   frost(c, r) {
     const t = blobTree('#a5d8ff', r, 1.1, { op: .92, rough: .2, emi: '#74c0fc', ei: .25 }); t.parts[0].material = m3mat('#adb5bd');
-    t.parts.push(...t.fruit.slice(1, 7).map(([x, y, z]) => { const ic = at(m3mesh(new THREE.ConeGeometry(.05, .3, 5).rotateX(Math.PI), '#e7f5ff', { op: .9 }), x * 1.2, y - .45, z * 1.2); return ic; }));
+    t.parts.push(...t.fruit.slice(1, 7).map(([x, y, z]) => { const ic = at(m3mesh(ConeG(.05, .3, 5).rotateX(Math.PI), '#e7f5ff', { op: .9 }), x * 1.2, y - .45, z * 1.2); return ic; }));
     return { ...t, glow: '#d0ebff' };
   },
   ember() {
@@ -157,7 +164,7 @@ const T3 = {
   },
   moon(c, r) {
     const t = blobTree('#5f3dc4', r, 1.05, { emi: '#3b2a8a', ei: .3 }); t.parts[0].material = m3mat('#343a40');
-    const cres = at(m3mesh(new THREE.TorusGeometry(.28, .08, 6, 16, Math.PI * 1.3), '#fff3bf', { emi: '#fff3bf', ei: .9 }), .2, 2.7, 0); cres.rotation.z = -.6; t.parts.push(cres);
+    const cres = at(m3mesh(TorG(.28, .08, 6, 16, Math.PI * 1.3), '#fff3bf', { emi: '#fff3bf', ei: .9 }), .2, 2.7, 0); cres.rotation.z = -.6; t.parts.push(cres);
     t.parts.push(...t.fruit.map(([x, y, z]) => ball(.05, '#ffffff', x * 1.3, y + .1, z * 1.3, 1, 1, 1, { detail: 0, emi: '#ffffff', ei: 1 })));
     return { ...t, glow: '#b197fc' };
   },
@@ -189,7 +196,7 @@ const T3 = {
   galaxy(c, r) {
     const cols = ['#5f3dc4', '#3b5bdb', '#862e9c', '#1c7ed6'], pts = [[0, 1.9, 0, .62], ...ringPts(6, .5, 1.5, .45, r)];
     const parts = [cyl(.09, .14, 1.4, '#212529', 0, 0, 0), ...pts.map(([x, y, z, rr], i) => ball(rr, cols[i % 4], x, y, z, 1, 1, 1, { emi: cols[i % 4], ei: .35, rough: .4 }))];
-    const ring = at(m3mesh(new THREE.TorusGeometry(.95, .03, 6, 40), '#ffd8a8', { emi: '#ffd8a8', ei: 1 }), 0, 1.7, 0); ring.rotation.x = 1.2; parts.push(ring);
+    const ring = at(m3mesh(TorG(.95, .03, 6, 40), '#ffd8a8', { emi: '#ffd8a8', ei: 1 }), 0, 1.7, 0); ring.rotation.x = 1.2; parts.push(ring);
     parts.push(...Array.from({ length: 14 }, () => ball(.035, '#ffffff', (r() - .5) * 1.6, 1.1 + r() * 1.2, (r() - .5) * 1.6, 1, 1, 1, { detail: 0, emi: '#ffffff', ei: 1 })));
     const g = { parts, fruit: pts, glow: '#9775fa' }; g.tick = t => { ring.rotation.z = t * .4; }; return g;
   },
@@ -225,26 +232,26 @@ const DECO3 = {
   d_flowers: () => { const g = new THREE.Group(), cols = ['#f783ac', '#ffd43b', '#ffffff', '#b197fc', '#ff8787']; for (let i = 0; i < 14; i++) { const x = Math.cos(i * 2.4) * (.15 + i * .04), z = Math.sin(i * 2.4) * (.15 + i * .04), h = .25 + (i % 3) * .1; g.add(cyl(.012, .012, h, '#2f9e44', x, 0, z, 4), ball(.07, cols[i % 5], x, h, z, 1, .6, 1, { detail: 0 })); } return g; },
   d_bush: () => grp(ball(.45, '#2f9e44', 0, .35, 0, 1.2, .9, 1), ball(.35, '#40c057', .35, .3, .15), ball(.3, '#37b24d', -.35, .28, -.1), ...[[.2, .6, .3], [-.25, .5, .3], [.4, .45, -.2], [0, .7, -.25]].map(([x, y, z]) => ball(.06, '#e03131', x, y, z, 1, 1, 1, { detail: 0 }))),
   d_log: () => { const l = cyl(.22, .22, 1.3, '#8a5a3b', 0, 0, 0, 10); l.rotation.z = Math.PI / 2; l.position.set(.65, .22, 0); const e1 = at(m3mesh(new THREE.CircleGeometry(.2, 10), '#d9a066'), .66, .22, 0); e1.rotation.y = Math.PI / 2; return grp(l, e1, ball(.12, '#69a84f', .2, .42, .05, 1.5, .4, 1)); },
-  d_shrooms: () => grp(...[[0, 0, 1], [.3, .2, .7], [-.25, .15, .6]].flatMap(([x, z, s]) => [cyl(.05 * s, .06 * s, .3 * s, '#f8f0e3', x, 0, z, 6), at(m3mesh(new THREE.SphereGeometry(.2 * s, 10, 5, 0, Math.PI * 2, 0, Math.PI / 2), '#e03131'), x, .3 * s, z), ball(.035 * s, '#fff', x + .08 * s, .38 * s, z, 1, .5, 1, { detail: 0 })])),
+  d_shrooms: () => grp(...[[0, 0, 1], [.3, .2, .7], [-.25, .15, .6]].flatMap(([x, z, s]) => [cyl(.05 * s, .06 * s, .3 * s, '#f8f0e3', x, 0, z, 6), at(m3mesh(SphG(.2 * s, 10, 5, 0, Math.PI * 2, 0, Math.PI / 2), '#e03131'), x, .3 * s, z), ball(.035 * s, '#fff', x + .08 * s, .38 * s, z, 1, .5, 1, { detail: 0 })])),
   d_bench: () => grp(box(1.3, .06, .4, '#a0522d', 0, .4, 0), box(1.3, .25, .06, '#a0522d', 0, .5, -.2), box(.06, .4, .35, '#343a40', -.55, 0, 0), box(.06, .4, .35, '#343a40', .55, 0, 0)),
   d_pond: () => {
-    const water = at(m3mesh(new THREE.CylinderGeometry(.85, .85, .04, 24), '#4dabf7', { op: .85, rough: .05, metal: .3, flat: false, cast: false }), 0, .02, 0); water.scale.z = .75;
+    const water = at(m3mesh(CylG(.85, .85, .04, 24), '#4dabf7', { op: .85, rough: .05, metal: .3, flat: false, cast: false }), 0, .02, 0); water.scale.z = .75;
     const g = grp(water, ...Array.from({ length: 12 }, (_, i) => { const a = i / 12 * Math.PI * 2; return ball(.12, i % 2 ? '#868e96' : '#adb5bd', Math.cos(a) * .9, .05, Math.sin(a) * .7, 1, .6, 1, { detail: 0 }); }),
-      at(m3mesh(new THREE.CylinderGeometry(.14, .14, .02, 10), '#2f9e44'), .3, .05, .1), at(m3mesh(new THREE.CylinderGeometry(.1, .1, .02, 10), '#37b24d'), -.25, .05, -.2), ball(.05, '#f783ac', .3, .08, .1, 1, 1, 1, { detail: 0 }));
+      at(m3mesh(CylG(.14, .14, .02, 10), '#2f9e44'), .3, .05, .1), at(m3mesh(CylG(.1, .1, .02, 10), '#37b24d'), -.25, .05, -.2), ball(.05, '#f783ac', .3, .08, .1, 1, 1, 1, { detail: 0 }));
     g.userData.tick = t => { water.material.color.setHSL(.57, .8, .62 + Math.sin(t) * .02); }; return g;
   },
   d_lantern: () => { const g = grp(cyl(.04, .05, 1.2, '#343a40', 0, 0, 0, 6), box(.24, .3, .24, '#fff3bf', 0, 1.2, 0, { emi: '#ffd43b', ei: .9 }), cone(.2, .15, '#343a40', 0, 1.5, 0, 4)); g.userData.light = { color: '#ffd43b', y: 1.3, power: 1.2, dist: 5 }; return g; },
   d_campfire: () => { const logs = [0, 1.2, 2.4].map(a => { const l = cyl(.06, .06, .7, '#6d4530', 0, .06, 0, 6); l.rotation.set(Math.PI / 2, a, 0); l.position.set(Math.sin(a) * -.35, .06, Math.cos(a) * -.35); return l; }); const f = flame3(0, .05, 0, 1.3); const g = withTick(grp(...logs, ...Array.from({ length: 8 }, (_, i) => ball(.08, '#868e96', Math.cos(i * .8) * .45, .04, Math.sin(i * .8) * .45, 1, .6, 1, { detail: 0 })), f), f); g.userData.light = { color: '#ff922b', y: .6, power: 2, dist: 7, flicker: true }; return g; },
-  d_tent: () => { const t = at(m3mesh(new THREE.ConeGeometry(.85, 1.1, 4).translate(0, .55, 0), '#f76707'), 0, 0, 0); t.rotation.y = Math.PI / 4; const door = at(m3mesh(new THREE.ConeGeometry(.3, .6, 3).translate(0, .3, 0), '#862e00'), 0, 0, .45); return grp(t, door); },
-  d_cabin: () => { const roof = at(m3mesh(new THREE.CylinderGeometry(.85, .85, 1.5, 3, 1).rotateZ(Math.PI / 2).rotateX(Math.PI / 2), '#c92a2a'), 0, 1.1, 0); roof.rotation.y = Math.PI / 2; roof.scale.set(1, .55, 1);
+  d_tent: () => { const t = at(m3mesh(ConeG(.85, 1.1, 4).translate(0, .55, 0), '#f76707'), 0, 0, 0); t.rotation.y = Math.PI / 4; const door = at(m3mesh(ConeG(.3, .6, 3).translate(0, .3, 0), '#862e00'), 0, 0, .45); return grp(t, door); },
+  d_cabin: () => { const roof = at(m3mesh(CylG(.85, .85, 1.5, 3, 1).rotateZ(Math.PI / 2).rotateX(Math.PI / 2), '#c92a2a'), 0, 1.1, 0); roof.rotation.y = Math.PI / 2; roof.scale.set(1, .55, 1);
     return grp(box(1.4, .8, 1.1, '#a0522d', 0, 0, 0), roof, box(.28, .5, .02, '#5c3a21', 0, 0, .56), box(.25, .22, .02, '#fff3bf', -.45, .35, .56, { emi: '#ffd43b', ei: .5 }), box(.15, .5, .15, '#868e96', .45, 1.1, -.2)); },
   d_sign: () => grp(cyl(.04, .05, 1, '#8a5a3b', 0, 0, 0, 6), box(.7, .22, .05, '#d9a066', .15, .7, 0), box(.6, .18, .05, '#c08a52', -.1, .42, .02)),
   d_picnic: () => { const c = document.createElement('canvas'); c.width = c.height = 64; const x = c.getContext('2d'); for (let i = 0; i < 8; i++) for (let j = 0; j < 8; j++) { x.fillStyle = (i + j) % 2 ? '#fff' : '#e03131'; x.fillRect(i * 8, j * 8, 8, 8); } const tex = new THREE.CanvasTexture(c); tex.magFilter = THREE.NearestFilter; const cloth = new THREE.Mesh(new THREE.BoxGeometry(1.1, .02, .9), new THREE.MeshStandardMaterial({ map: tex, roughness: 1 })); cloth.receiveShadow = true; cloth.position.y = .01; return grp(cloth, box(.3, .18, .2, '#c08a52', .25, .02, .1), ball(.08, '#e03131', -.2, .07, -.1, 1, 1, 1, { detail: 0 })); },
-  d_well: () => { const roof = at(m3mesh(new THREE.ConeGeometry(.75, .4, 4).translate(0, .2, 0), '#8a5a3b'), 0, 1.35, 0); roof.rotation.y = Math.PI / 4; return grp(cyl(.5, .5, .5, '#868e96', 0, 0, 0, 12), cyl(.42, .42, .02, '#1864ab', 0, .45, 0, 12), box(.06, 1, .06, '#6d4530', -.45, .4, 0), box(.06, 1, .06, '#6d4530', .45, .4, 0), roof); },
+  d_well: () => { const roof = at(m3mesh(ConeG(.75, .4, 4).translate(0, .2, 0), '#8a5a3b'), 0, 1.35, 0); roof.rotation.y = Math.PI / 4; return grp(cyl(.5, .5, .5, '#868e96', 0, 0, 0, 12), cyl(.42, .42, .02, '#1864ab', 0, .45, 0, 12), box(.06, 1, .06, '#6d4530', -.45, .4, 0), box(.06, 1, .06, '#6d4530', .45, .4, 0), roof); },
   d_windmill: () => { const blades = new THREE.Group(); blades.position.set(0, 2, .45); for (let i = 0; i < 4; i++) { const b = box(.16, .9, .03, '#f8f9fa', 0, 0, 0); b.rotation.z = i * Math.PI / 2; blades.add(b); } const g = grp(cyl(.3, .5, 2, '#e9ecef', 0, 0, 0, 8), cone(.42, .5, '#c92a2a', 0, 2, 0, 8), box(.25, .4, .02, '#8a5a3b', 0, 0, .44), blades); g.userData.tick = t => { blades.rotation.z = t * .9; }; return g; },
   d_flag: () => { const flag = at(m3mesh(new THREE.PlaneGeometry(.6, .35, 6, 1).translate(.3, 0, 0), '#e03131', { flat: false }), .03, 1.3, 0); flag.material.side = THREE.DoubleSide; const pos = flag.geometry.attributes.position, base = pos.array.slice();
     const g = grp(cyl(.025, .03, 1.5, '#868e96', 0, 0, 0, 6), flag); g.userData.tick = t => { for (let i = 0; i < pos.count; i++) pos.setZ(i, Math.sin(t * 4 + base[i * 3] * 6) * base[i * 3] * .15); pos.needsUpdate = true; }; return g; },
-  d_swing: () => { const seat = new THREE.Group(); seat.position.set(0, 1.4, 0); seat.add(cyl(.01, .01, .9, '#adb5bd', 0, -.9, 0, 4)); const tire = at(m3mesh(new THREE.TorusGeometry(.18, .07, 6, 14), '#343a40'), 0, -1, 0); seat.add(tire);
+  d_swing: () => { const seat = new THREE.Group(); seat.position.set(0, 1.4, 0); seat.add(cyl(.01, .01, .9, '#adb5bd', 0, -.9, 0, 4)); const tire = at(m3mesh(TorG(.18, .07, 6, 14), '#343a40'), 0, -1, 0); seat.add(tire);
     const g = grp(limb(.05, .07, 1.6, '#6d4530', -.5, 0, 0, .15, 0), limb(.05, .07, 1.6, '#6d4530', .5, 0, 0, -.15, 0), box(1.2, .08, .08, '#6d4530', 0, 1.45, 0), seat); g.userData.tick = t => { seat.rotation.x = Math.sin(t * 1.6) * .18; }; return g; },
   d_telescope: () => { const tube = cyl(.07, .1, .8, '#1864ab', 0, 0, 0, 10); tube.rotation.z = -.8; tube.position.set(0, .75, 0); return grp(limb(.02, .02, .8, '#495057', 0, 0, 0, .3, .2), limb(.02, .02, .8, '#495057', 0, 0, 0, -.3, .2), limb(.02, .02, .8, '#495057', 0, 0, 0, 0, -.35), tube); },
   d_fountain: () => { const jet = cyl(.04, .06, .6, '#a5d8ff', 0, .5, 0, 8, { op: .7, emi: '#74c0fc', ei: .3 }); const g = grp(cyl(.7, .75, .3, '#adb5bd', 0, 0, 0, 16), cyl(.62, .62, .02, '#4dabf7', 0, .28, 0, 16, { op: .85, rough: .05 }), cyl(.12, .15, .5, '#adb5bd', 0, .3, 0, 8), cyl(.3, .25, .1, '#adb5bd', 0, .8, 0, 12), jet); g.userData.tick = t => { jet.scale.y = 1 + Math.sin(t * 6) * .12; }; return g; },
