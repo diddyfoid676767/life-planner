@@ -155,6 +155,7 @@ function startBattle(id, mode = 'ladder') {
   const me = battleStats(); if (boosts.includes('drink')) STAT_IDS.forEach(k => me[k] += 8);
   battle = { mode, i, me, hp: 100, hpMax: 100 + Math.round(Math.max(0, me.end - 50) / 2), energy: 60, round: 0, over: false, win: false, busy: false,
     luck: boosts.includes('charm') ? 3 : 0, boosts, used: {}, wave: 1, seed: Date.now() % 100000, combo: 0, best: 0 };
+  const rd = readiness(); battle.hpMax = Math.max(60, battle.hpMax + rd.hp); battle.energy = Math.min(100, battle.energy + rd.energy); battle.ready = rd;
   battle.hp = battle.hpMax;
   setRival(mode === 'survival' ? survivalRival(1) : e);
   let ov = document.getElementById('battlefx');

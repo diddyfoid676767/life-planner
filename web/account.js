@@ -40,7 +40,7 @@ async function refreshFriends(force) {
   friendRowsAt = Date.now();
   try {
     const list = await (await fetch('/api/account/people?u=' + encodeURIComponent(names.join(',')), { cache: 'no-store' })).json();
-    if (Array.isArray(list)) { friendRows = list.map(toBoardRow); if (view === 'training' && !modal.open) render(); }
+    if (Array.isArray(list)) { friendRows = list.map(toBoardRow); if (view === 'friends' && !modal.open) render(); }
   } catch { }
 }
 setInterval(() => { if (acct.signedIn) { publishMe(); refreshFriends(); } }, 5 * 60000);
@@ -68,7 +68,7 @@ function accountCard() {
 // friend search on the leaderboard
 function friendSearchHtml() {
   if (ONLINE || !acct.configured) return '';
-  if (!acct.signedIn) return `<div class="friendbox"><h3>👥 Friends</h3><p class="muted small-text">Log in to add friends by username and see their numbers live.</p><button class="btn primary" data-act="goto" data-v="settings">Log in or create an account</button></div>`;
+  if (!acct.signedIn) return `<div class="friendbox"><h3>👥 Friends</h3><p class="muted small-text">Log in to add friends by username and see their numbers live.</p><button class="btn primary" data-act="friendsLogin">Log in or create an account</button></div>`;
   const names = friendNames();
   return `<div class="friendbox"><h3>👥 Friends <span class="muted small-text">you're @${esc(acct.username)}</span></h3>
     <div class="row"><input id="friendSearch" placeholder="Search usernames…" autocomplete="off" style="flex:1;min-width:200px"></div>
@@ -104,7 +104,7 @@ document.addEventListener('click', async e => {
       await acctPost({ action: a, username, password });
       await loadAccount(); acctBusy = false;
       await publishMe(true); await refreshFriends(true);
-      toast(a === 'login' ? `👋 Welcome back, @${username}` : `🎉 You're @${username}`, 'Find friends on Training & Arena → Leaderboard.');
+      toast(a === 'login' ? `👋 Welcome back, @${username}` : `🎉 You're @${username}`, 'Find friends on the Friends page.');
     } catch (err) { acctBusy = false; toast(a === 'login' ? "Couldn't log in" : "Couldn't create the account", err.message, { cls: 'danger' }); }
     render();
   } else if (a === 'logout') {

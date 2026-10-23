@@ -274,11 +274,14 @@ const ui = { daySel: null, calMonth: null, calSel: null, calFilter: { study: tru
 
 function render() {
   applyTheme();
+  applyNav();
+  if (view === 'health') { view = 'training'; ui.bodyPage = 'health'; }
+  if (view === 'day') view = 'today';
   document.querySelectorAll('#tabs button').forEach(b => b.classList.toggle('active', b.dataset.view === view));
   const v = $('#view');
   const y = window.scrollY;
   if (v.dataset.view !== view) { v.classList.remove('enter'); void v.offsetWidth; v.classList.add('enter'); v.dataset.view = view; }
-  v.innerHTML = ({ today: viewToday, day: viewDay, calendar: viewCalendar, study: viewStudy, forest: viewForest, training: viewTraining, arena: viewTraining, school: viewSchool, health: viewHealth, personal: viewPersonal, inbox: viewInbox, settings: viewSettings })[view]();
+  v.innerHTML = ({ today: viewToday, calendar: viewCalendar, study: viewStudy, forest: viewForest, training: viewTraining, arena: viewArena, friends: viewFriends, school: viewSchool, health: () => { view = 'training'; ui.bodyPage = 'health'; return viewTraining(); }, personal: viewPersonal, inbox: viewInbox, settings: viewSettings })[view]();
   updateInboxBadge();
   gameFeedback();
   window.scrollTo(0, y);
@@ -294,8 +297,12 @@ function countCard(label, x, title, color, extra = '') {
     <div class="title" style="font-weight:600;margin-top:4px">${esc(title)}</div><div class="muted small-text">${fmtDate(x.date)}${x.time ? ' · ' + fmtTime(x.time) : ''}${extra}</div></div>`;
 }
 
+// Today: one screen with your day at a glance, quick add, the week strip and
+// the picked day's timeline, tasks and what's coming up.
 function viewToday() {
   const t = today();
+  if (!ui.daySel) ui.daySel = t;
+  const d = ui.daySel, isToday = d === t;
   const now = new Date(), h = now.getHours();
   const greet = h < 12 ? 'Good morning' : h < 17 ? 'Good afternoon' : 'Good evening';
   const tod = h < 12 ? 'morning' : h < 17 ? 'afternoon' : 'evening';
@@ -303,14 +310,12 @@ function viewToday() {
   const nextT = nextOf(D.trainingEvents, e => e.date >= t);
   const deadlines = agenda(t, addDays(t, 366)).filter(e => !e.done && (e.tag === 'Deadline' || e.kind === 'todo'));
   const nextD = deadlines[0];
-  const wk = mondayOf(t), wkEnd = addDays(wk, 6);
 
-  const todays = agenda(t, t);
+  const todays = agenda(t, t), items = isToday ? todays : agenda(d, d);
   const overdue = agenda(addDays(t, -21), addDays(t, -1)).filter(e => e.checkable && !e.done);
-  const soon = agenda(addDays(t, 1), addDays(t, 3));
   const allTodos = D.todos.filter(x => !x.done).sort((a, b) => (a.due || '9999').localeCompare(b.due || '9999'));
-  const todos = allTodos.slice(0, 5);
   const checkable = todays.filter(e => e.checkable), doneN = checkable.filter(e => e.done).length;
+  const dCheck = items.filter(e => e.checkable), dDone = dCheck.filter(e => e.done).length;
   const studied = D.focusLogs.filter(l => l.date === t).reduce((a, l) => a + l.mins, 0);
   const goal = +D.settings.dailyGoal || 60, streak = studyStreak();
   const nowT = now.toTimeString().slice(0, 5);
@@ -318,16 +323,10 @@ function viewToday() {
   const nStudy = todays.filter(e => e.kind === 'session').length, nTrain = todays.filter(e => e.kind === 'workout').length;
   const bits = [nStudy && `${nStudy} study block${nStudy === 1 ? '' : 's'}`, nTrain && `${nTrain} workout${nTrain === 1 ? '' : 's'}`, todays.filter(e => e.kind === 'assessment').length && `${todays.filter(e => e.kind === 'assessment').length} SAC/assessment`].filter(Boolean);
   const summary = todays.length ? `${todays.length} thing${todays.length === 1 ? '' : 's'} on today${bits.length ? ': ' + bits.join(', ') : ''}.${nextUp ? ` Next up: <b>${esc(nextUp.title)}</b> at ${fmtTime(nextUp.time)}.` : ''}` : 'Nothing planned today. A great day to get ahead.';
+  const studyMins = items.filter(e => e.kind === 'session').reduce((a, e) => a + (+e.mins || 0), 0);
+  const trainMins = items.filter(e => e.kind === 'workout').reduce((a, e) => a + (+e.mins || 0), 0);
 
-  const welcome = D.settings.welcomed ? '' : `<div class="card welcome">
-    <div class="card-head"><h2>👋 Welcome to your Life Planner</h2><button class="btn small" data-act="dismissWelcome">Got it</button></div>
-    <ol style="margin:0;padding-left:20px">
-      <li><b>Study:</b> your exams, SACs and study blocks are already in. Tick blocks off as you go, and press ▶ to start a focus timer that grows a tree.</li>
-      <li><b>Training:</b> your weekly sessions are in. Add your next race or comp and use <b>Build plan</b>.</li>
-      <li><b>Events &amp; Tasks:</b> add birthdays, appointments, deadlines and to-dos. Each can have reminders.</li>
-      <li>Turn on reminders (bottom left) for pop-up notifications.</li>
-    </ol></div>`;
-
+  const welcome = D.settings.welcomed ? '' : `<div class="card welcome twelcome"><b>👋 Welcome to your Life Planner.</b> <span class="muted">Type anything into Quick add, tick things off as you go, and press ▶ to grow a tree while you study.</span><button class="btn small" data-act="dismissWelcome">Got it</button></div>`;
   const apps = D.links.filter(l => l.group === 'Apps').map(l => l.url
     ? `<a class="appchip" href="${esc(safeUrl(l.url))}" target="_blank" rel="noopener noreferrer"><i style="background:${appColor(l.title)}">${esc(l.title[0] || '?')}</i>${esc(l.title)}</a>`
     : `<button class="appchip" data-act="edit" data-kind="link" data-id="${l.id}" title="Click to add its web address"><i>?</i>${esc(l.title)} (set link)</button>`).join('');
@@ -339,30 +338,44 @@ function viewToday() {
     const n = diffDays(t, x.date);
     return `<div class="upitem" style="--c:${color}"><span class="upic">${icon}</span><div style="min-width:0"><div class="uplbl">${label}</div><div class="uptitle" title="${esc(title)}">${esc(title)}</div><div class="muted small-text">${fmtDate(x.date)}${x.time ? ' · ' + fmtTime(x.time) : ''}</div></div><span class="updays ${n <= 1 ? 'hot' : n <= 7 ? 'warm' : ''}">${n <= 0 ? 'Today' : n === 1 ? 'Tomorrow' : `${n} days`}</span></div>`;
   };
-  const soonDays = [1, 2, 3].map(k => addDays(t, k));
-  return `${welcome}
-  <div class="hero slim ${tod}">
+  const wk = mondayOf(d);
+  const strip = Array.from({ length: 7 }, (_, i) => {
+    const x = addDays(wk, i), list = agenda(x, x), dt = parseYmd(x);
+    const ck = list.filter(e => e.checkable), dn = ck.filter(e => e.done).length;
+    return `<button class="dpill ${x === d ? 'sel' : ''} ${x === t ? 'today' : ''}" data-act="daySel" data-date="${x}" title="${fullDate(x)}">
+      <span class="dn">${DOW[dt.getDay()]} <b>${dt.getDate()}</b></span>
+      <span class="dots">${list.slice(0, 6).map(e => `<i style="background:${e.color}"></i>`).join('')}</span>
+      <span class="dbar"><i style="width:${ck.length ? dn / ck.length * 100 : 0}%"></i></span></button>`;
+  }).join('');
+  const after = d < t ? t : d, soonDays = [1, 2, 3].map(k => addDays(after, k)), soon = agenda(soonDays[0], soonDays[2]);
+  const todoList = allTodos.slice(0, 12);
+  return `<div class="tpage">${welcome}
+  <div class="hero slim thero ${tod}">
     <div class="hero-text"><div class="hero-date">${fullDate(t)} ${now.getFullYear()}</div>
       <h1>${greet}${D.settings.name ? ', ' + esc(D.settings.name) : ''}</h1><p>${summary}</p>
-      ${nowLine || unr ? `<button class="hnow" data-act="goto" data-v="school">🏫 ${nowLine}${nowLine && unr ? ' · ' : ''}${unr ? `${unr} period${unr === 1 ? '' : 's'} to rate` : ''} →</button>` : ''}
-      <div class="row"><button class="btn big white" data-act="focusNew">▶ Start studying</button><button class="btn ghostlight" data-act="goto" data-v="day">Day plan →</button></div></div>
+      ${nowLine || unr ? `<button class="hnow" data-act="goto" data-v="school">🏫 ${nowLine}${nowLine && unr ? ' · ' : ''}${unr ? `${unr} period${unr === 1 ? '' : 's'} to rate` : ''} →</button>` : ''}</div>
+    <button class="btn white thero-go" data-act="focusNew">▶ Start studying</button>
     <div class="hstats">${stat(`${doneN}/${checkable.length}`, 'ticked off', checkable.length ? doneN / checkable.length : 0)}${stat(fmtMins(studied) || '0m', `of ${fmtMins(goal)} study goal`, studied / goal)}${stat('🔥 ' + streak, 'day streak', streak / 7)}</div>
   </div>
-  <div class="card todaynext">${upItem('📝', 'Next SAC / exam', nextA, nextA ? `${subj(nextA.subjectId).name}: ${nextA.title}` : '', nextA ? subj(nextA.subjectId).color : 'var(--accent)')}${upItem('⏰', 'Next deadline', nextD, nextD?.title, CATS.Deadline)}${upItem('🏁', 'Next race / event', nextT, nextT?.name, TEVENT_COLOR)}</div>
-  <div class="today-grid">
-    <div class="card"><div class="card-head"><h2>Today</h2><span class="muted small-text">${doneN}/${checkable.length} done</span></div>
-      ${timelineHtml(todays, { now: true, empty: 'Nothing on today. Add something below.' })}
-      <div class="addrow">${addMenu(t)}</div></div>
-    <div class="stack">
-      <div class="card"><div class="card-head"><h2>Tasks</h2><span class="muted small-text">${allTodos.length} open</span>${allTodos.length > todos.length ? `<button class="btn small" data-act="goto" data-v="personal">All →</button>` : ''}</div>
-        <form class="row" data-form="quickTodo" style="margin-bottom:8px"><input type="text" name="text" placeholder="＋ Add a task and press Enter" style="flex:1" maxlength="300"><input type="date" name="due" style="width:auto" title="Due date (optional)"><button class="btn primary">Add</button></form>
-        ${todos.length ? `<ul class="list tasks compact">${todos.map(todoHtml).join('')}</ul>` : '<div class="empty">No open tasks. 🎉</div>'}</div>
-      ${overdue.length ? `<details class="card overdue"><summary><b>⚠ ${overdue.length} overdue or missed</b> <span class="muted small-text">from the last 3 weeks</span></summary>${listHtml(overdue, '', { showDate: true, move: true })}</details>` : ''}
+  ${quickAddHtml()}
+  <div class="tweek"><div class="tweek-nav"><button class="btn small" data-act="dayNav" data-n="-7" title="Previous week">«</button><button class="btn small" data-act="dayNav" data-n="-1" title="Previous day">‹</button></div>
+    <div class="daystrip">${strip}</div>
+    <div class="tweek-nav"><button class="btn small" data-act="dayNav" data-n="1" title="Next day">›</button><button class="btn small" data-act="dayNav" data-n="7" title="Next week">»</button>${isToday ? '' : '<button class="btn small primary" data-act="dayNav" data-n="0">Today</button>'}<input type="date" value="${d}" data-change="dayPick" title="Jump to a date"></div></div>
+  <div class="tgrid">
+    <div class="card tday"><div class="card-head"><h2>${isToday ? 'Today' : esc(fullDate(d))}</h2><span class="muted small-text">${isToday ? '' : relDays(diffDays(t, d)) + ' · '}${dDone}/${dCheck.length} done${studyMins ? ` · 📚 ${fmtMins(studyMins)}` : ''}${trainMins ? ` · 🏃 ${fmtMins(trainMins)}` : ''}</span></div>
+      <div class="tscroll">${timelineHtml(items, { now: isToday, notes: true, empty: isToday ? 'Nothing on today. Use Quick add or the buttons below.' : 'Nothing planned for this day yet.' })}</div>
+      <div class="addrow">${addMenu(d)}</div></div>
+    <div class="card ttasks"><div class="card-head"><h2>Tasks</h2><span class="muted small-text">${allTodos.length} open</span>${allTodos.length > todoList.length ? `<button class="btn small" data-act="goto" data-v="personal">All →</button>` : ''}</div>
+      <form class="row" data-form="quickTodo" style="margin-bottom:8px"><input type="text" name="text" placeholder="＋ Add a task and press Enter" style="flex:1" maxlength="300"><input type="date" name="due" style="width:auto" title="Due date (optional)"></form>
+      <div class="tscroll">${todoList.length ? `<ul class="list tasks compact">${todoList.map(todoHtml).join('')}</ul>` : '<div class="empty">No open tasks. 🎉</div>'}
+      ${overdue.length ? `<details class="overdue"><summary><b>⚠ ${overdue.length} overdue or missed</b> <span class="muted small-text">last 3 weeks</span></summary>${listHtml(overdue, '', { showDate: true, move: true })}</details>` : ''}</div></div>
+    <div class="tside">
+      <div class="card todaynext">${upItem('📝', 'Next SAC / exam', nextA, nextA ? `${subj(nextA.subjectId).name}: ${nextA.title}` : '', nextA ? subj(nextA.subjectId).color : 'var(--accent)')}${upItem('⏰', 'Next deadline', nextD, nextD?.title, CATS.Deadline)}${upItem('🏁', 'Next race / event', nextT, nextT?.name, TEVENT_COLOR)}</div>
+      <div class="card tsoon"><div class="card-head"><h2>Coming up</h2><button class="btn small" data-act="goto" data-v="calendar">Calendar →</button></div>
+        <div class="tscroll soon3">${soonDays.map(x => { const its = soon.filter(e => e.date === x); return `<div><button class="mini-day linkish" data-act="daySel" data-date="${x}"><b>${longDay(x)}</b> <span class="muted">${fmtDate(x)}</span></button>${its.length ? `<ul class="minis">${its.slice(0, 4).map(miniRow).join('')}</ul>${its.length > 4 ? `<button class="btn small" data-act="daySel" data-date="${x}">+${its.length - 4} more</button>` : ''}` : '<div class="muted small-text">Nothing planned</div>'}</div>`; }).join('')}</div></div>
     </div>
   </div>
-  <div class="card"><div class="card-head"><h2>Next 3 days</h2><button class="btn small" data-act="goto" data-v="calendar">Calendar →</button></div>
-    <div class="soon3">${soonDays.map(d => { const its = soon.filter(e => e.date === d); return `<div><div class="mini-day"><b>${longDay(d)}</b> <span class="muted">${fmtDate(d)}</span></div>${its.length ? `<ul class="minis">${its.slice(0, 6).map(miniRow).join('')}</ul>${its.length > 6 ? `<button class="btn small" data-act="calDay" data-v="${d}">+${its.length - 6} more</button>` : ''}` : '<div class="empty small-text">Nothing planned</div>'}</div>`; }).join('')}</div></div>
-  <div class="apps-row">${apps}<button class="appchip add" data-act="new" data-kind="link" data-date="Apps" title="Add a quick-open button">＋</button></div>`;
+  <div class="apps-row">${apps}<button class="appchip add" data-act="new" data-kind="link" data-date="Apps" title="Add a quick-open button">＋</button></div></div>`;
 }
 const APP_COLORS = { google: '#4285f4', outlook: '#0078d4', teams: '#5b5fc7', onenote: '#7719aa', garmin: '#007cc3', 'brain.fm': '#1f2a44', 'school portal': '#8b1e3f' };
 function appColor(title) { const k = Object.keys(APP_COLORS).find(k => title.toLowerCase().includes(k)); return k ? APP_COLORS[k] : 'var(--accent)'; }
@@ -374,38 +387,6 @@ function todoHtml(x) {
   return `<li class="item tinted ${x.done ? 'done' : ''}" style="--c:${TODO_COLOR}"><input type="checkbox" data-toggle="todo" data-id="${x.id}" ${x.done ? 'checked' : ''}>
     <div class="main"><div class="title">${esc(x.text)} ${tag}</div>${x.due ? `<div class="meta">Due ${fmtDate(x.due)}</div>` : ''}</div>
     <button class="iconbtn" data-act="edit" data-kind="todo" data-id="${x.id}" title="Edit">✎</button></li>`;
-}
-
-
-// One tickable table per day: Done | Time | Session | Details.
-function viewDay() {
-  if (!ui.daySel) ui.daySel = today();
-  const d = ui.daySel, t = today();
-  const items = agenda(d, d);
-  const checkable = items.filter(e => e.checkable), done = checkable.filter(e => e.done).length;
-  const studyMins = items.filter(e => e.kind === 'session').reduce((a, e) => a + (+e.mins || 0), 0);
-  const trainMins = items.filter(e => e.kind === 'workout').reduce((a, e) => a + (+e.mins || 0), 0);
-  const focused = D.focusLogs.filter(l => l.date === d).reduce((a, l) => a + l.mins, 0);
-  const wk = mondayOf(d);
-  const strip = Array.from({ length: 7 }, (_, i) => {
-    const x = addDays(wk, i), list = agenda(x, x), dt = parseYmd(x);
-    const ck = list.filter(e => e.checkable), dn = ck.filter(e => e.done).length;
-    return `<button class="dpill ${x === d ? 'sel' : ''} ${x === t ? 'today' : ''}" data-act="daySel" data-date="${x}">
-      <span class="dn">${DOW[dt.getDay()]}</span><b>${dt.getDate()}</b>
-      <span class="dots">${list.slice(0, 5).map(e => `<i style="background:${e.color}"></i>`).join('')}</span>
-      <span class="dbar"><i style="width:${ck.length ? dn / ck.length * 100 : 0}%"></i></span></button>`;
-  }).join('');
-  return `${pageHead(fullDate(d), relDays(diffDays(t, d)),
-      `<button class="btn" data-act="dayNav" data-n="-7" title="Previous week">«</button><button class="btn" data-act="dayNav" data-n="-1">‹</button><button class="btn" data-act="dayNav" data-n="0">Today</button><button class="btn" data-act="dayNav" data-n="1">›</button><button class="btn" data-act="dayNav" data-n="7" title="Next week">»</button><input type="date" value="${d}" data-change="dayPick" style="width:auto">`)}
-    <div class="daystrip">${strip}</div>
-    <div class="day-grid">
-      <div class="card">${timelineHtml(items, { now: d === t, notes: true, empty: 'Nothing planned for this day. Add something on the right.' })}</div>
-      <div class="stack">
-        <div class="card daysum"><div class="sumrings">${ringHtml(checkable.length ? done / checkable.length : 0, 'var(--accent)', 'ticked off', `${done}/${checkable.length}`)}${ringHtml(studyMins ? focused / studyMins : 0, '#40c057', 'focus time', fmtMins(focused) || '0m')}</div>
-          <div class="sumstats"><span>📚 <b>${fmtMins(studyMins) || '0m'}</b> study planned</span><span>🏃 <b>${fmtMins(trainMins) || '0m'}</b> training</span><span>📌 <b>${items.filter(e => e.kind === 'event' || e.kind === 'feed').length}</b> events</span></div></div>
-        <div class="card"><h3>Add to this day</h3><div class="addgrid">${addMenu(d)}</div></div>
-      </div>
-    </div>`;
 }
 
 
@@ -451,10 +432,10 @@ function viewCalendar() {
       <div class="seg">${['study', 'training', 'personal', 'calendars'].map(g => `<button class="${f[g] ? 'on' : ''}" data-act="calFilter" data-g="${g}">${g[0].toUpperCase() + g.slice(1)}</button>`).join('')}</div>
     </div>
     <div class="legend">${legendHtml()}</div>
-    <div class="grid calgrid">
+    <div class="calwrap">
       <div class="cal">${cells}</div>
-      <div class="card"><div class="card-head"><h2>${fmtDate(ui.calSel)}</h2><span class="muted small-text">${relDays(diffDays(t, ui.calSel))}</span></div>
-        ${listHtml(sel, 'Nothing on this day.')}<div style="margin-top:12px">${addMenu(ui.calSel)}</div></div>
+      <div class="card calday" id="calDay"><div class="card-head"><h2>${fmtDate(ui.calSel)}</h2><span class="muted small-text">${relDays(diffDays(t, ui.calSel))} · ${sel.length} thing${sel.length === 1 ? '' : 's'}</span><span style="flex:1"></span><div class="caladd">${addMenu(ui.calSel)}</div></div>
+        ${listHtml(sel, 'Nothing on this day.')}</div>
     </div>`;
 }
 
@@ -856,6 +837,7 @@ function viewSettings() {
   <div class="seg settabs">${tabs.map(([k, l]) => `<button class="${sec === k ? 'on' : ''}" data-act="setTab" data-v="${k}">${l}</button>`).join('')}</div>
   <div class="grid g2 settings-grid" data-sec="${sec}">
     ${themeCard()}
+    ${navCard()}
     ${accountCard().replace('class="card acctcard"', 'class="card acctcard" data-sec="account"')}
     ${ONLINE ? `<div class="card" data-sec="calendars" style="grid-column:1/-1"><div class="card-head"><h2>Calendars</h2><button class="btn small" data-act="gcalRefresh">Refresh</button><button class="btn small primary" data-act="gcalChoose">Choose calendars</button></div>
       <p class="muted small-text" style="margin-top:0">Shows your Google Calendar (${(D.settings.gcal?.ids || ['primary']).length} calendar(s) selected). The first time, claude.ai asks you to allow access to Google Calendar. To include your school Outlook or Garmin calendar, subscribe to its iCal link inside Google Calendar (Other calendars → + → From URL).</p>
@@ -1008,6 +990,7 @@ const editors = {
   assessment(id, pre = {}) {
     if (!D.subjects.length) { alert('Add a subject first (Study tab).'); return; }
     const a = id ? find('assessment', id) : { subjectId: D.subjects[0].id, type: 'SAC', title: '', date: pre.date || '', time: '', weight: '', score: '', notes: '', done: false, remind: D.settings.remind.assessment };
+    if (!id && pre.fill) Object.assign(a, pre.fill);
     showForm({
       title: id ? 'Edit assessment' : 'Add SAC / exam',
       fields: [{ type: 'row', fields: [{ key: 'subjectId', label: 'Subject', type: 'select', options: subjOpts(), value: a.subjectId }, { key: 'type', label: 'Type', type: 'select', options: ASSESS_TYPES, value: a.type }] },
@@ -1022,6 +1005,7 @@ const editors = {
   session(id, pre = {}) {
     if (!D.subjects.length) { alert('Add a subject first (Study tab).'); return; }
     const s = id ? find('session', id) : { subjectId: D.subjects[0].id, date: pre.date || today(), time: '16:30', duration: 60, topic: '', notes: '', done: false, remind: D.settings.remind.session };
+    if (!id && pre.fill) Object.assign(s, pre.fill);
     showForm({
       title: id ? 'Edit study session' : 'Add study session',
       fields: [{ key: 'subjectId', label: 'Subject', type: 'select', options: subjOpts(), value: s.subjectId },
@@ -1035,6 +1019,7 @@ const editors = {
   },
   tevent(id, pre = {}) {
     const e = id ? find('tevent', id) : { name: '', sport: 'Running', date: pre.date || '', time: '', location: '', goal: '', result: '', notes: '', remind: D.settings.remind.tevent };
+    if (!id && pre.fill) Object.assign(e, pre.fill);
     showForm({
       title: id ? 'Edit training event' : 'Add training event',
       fields: [{ key: 'name', label: 'Event name', value: e.name, required: true, placeholder: 'e.g. Run Melbourne 10 km' },
@@ -1052,6 +1037,7 @@ const editors = {
   },
   workout(id, pre = {}) {
     const w = id ? find('workout', id) : { title: '', sport: 'Running', eventId: '', date: pre.date || today(), time: '', duration: 45, distance: '', intensity: 'Moderate', notes: '', done: false, remind: D.settings.remind.workout };
+    if (!id && pre.fill) Object.assign(w, pre.fill);
     showForm({
       title: id ? 'Edit workout' : 'Add workout',
       fields: [{ key: 'title', label: 'Workout', value: w.title, required: true, placeholder: 'e.g. Easy 5 km run' },
@@ -1066,6 +1052,7 @@ const editors = {
   },
   event(id, pre = {}) {
     const e = id ? find('event', id) : { title: '', category: pre.category || 'Personal', date: pre.date || today(), time: '', endTime: '', repeat: pre.category === 'Birthday' ? 'yearly' : 'none', until: '', location: '', notes: '', done: false, remind: D.settings.remind.event };
+    if (!id && pre.fill) Object.assign(e, pre.fill);
     const isDl = e.category === 'Deadline';
     showForm({
       title: id ? 'Edit ' + (isDl ? 'deadline' : 'event') : 'Add ' + (isDl ? 'deadline' : 'event'),
@@ -1108,6 +1095,7 @@ const editors = {
   deadline(id, pre = {}) { editors.event(id, { ...pre, category: 'Deadline' }); },
   todo(id, pre = {}) {
     const t = id ? find('todo', id) : { text: '', due: pre.date || '', done: false, notes: '', remind: D.settings.remind.todo };
+    if (!id && pre.fill) Object.assign(t, pre.fill);
     showForm({
       title: id ? 'Edit task' : 'Add task',
       fields: [{ key: 'text', label: 'Task', value: t.text, required: true }, { key: 'due', label: 'Due date (optional)', type: 'date', value: t.due },
@@ -1686,11 +1674,11 @@ document.addEventListener('click', e => {
     case 'edit': editors[kind](id); break;
     case 'new': editors[kind](null, { date }); break;
     case 'moveToday': { const x = find(kind, id); if (kind === 'todo') x.due = today(); else x.date = today(); save(); render(); break; }
-    case 'calDay': ui.daySel = el.dataset.v; view = 'day'; window.scrollTo(0, 0); render(); break;
+    case 'calDay': ui.daySel = el.dataset.v; view = 'today'; window.scrollTo(0, 0); render(); break;
     case 'goto': view = el.dataset.v; window.scrollTo(0, 0); render(); break;
     case 'dismissWelcome': D.settings.welcomed = true; save(); render(); break;
     case 'calNav': { const n = +el.dataset.n; if (n === 0) { const d = new Date(); ui.calMonth = new Date(d.getFullYear(), d.getMonth(), 1); ui.calSel = today(); } else ui.calMonth = new Date(ui.calMonth.getFullYear(), ui.calMonth.getMonth() + n, 1); render(); break; }
-    case 'calSel': ui.calSel = date; render(); break;
+    case 'calSel': ui.calSel = date; render(); document.getElementById('calDay')?.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); break;
     case 'daySel': ui.daySel = date; render(); break;
     case 'studyDay': ui.studyDay = date; render(); break;
     case 'inboxSort': ui.inboxSort = el.dataset.v; render(); break;
@@ -1735,6 +1723,9 @@ document.addEventListener('click', e => {
     case 'buyCos': buyCos(id); break;
     case 'avDance': { const st = document.querySelector('#wardStage .avatar'); if (st) { const d = myAv().dance; st.parentNode.classList.remove('dance-' + d); void st.parentNode.offsetWidth; st.parentNode.classList.add('dance-' + d); setTimeout(() => st.parentNode.classList.remove('dance-' + d), 2200); } break; }
     case 'arenaPage': ui.arenaPage = el.dataset.v; render(); break;
+    case 'bodyPage': view = 'training'; ui.bodyPage = el.dataset.v; render(); break;
+    case 'friendCompare': compareFriend(el.dataset.id); break;
+    case 'friendsLogin': view = 'settings'; ui.setTab = 'account'; render(); break;
     case 'claimQuest': claimQuest(id); break;
     case 'fight': startBattle(id); break;
     case 'arenaSel': ui.arenaSel = el.dataset.v; render(); break;
@@ -1763,6 +1754,9 @@ document.addEventListener('click', e => {
     case 'forestRange': ui.forestRange = el.dataset.v; render(); break;
     case 'setTheme': D.settings.theme = el.dataset.v; save(); render(); break;
     case 'setThemeMode': D.settings.themeMode = el.dataset.v; save(); render(); break;
+    case 'navMove': navMove(el.dataset.v, +el.dataset.n); save(); render(); break;
+    case 'navReset': D.settings.navOrder = []; D.settings.navHidden = []; save(); render(); break;
+    case 'setThemeBg': D.settings.themeBg = el.dataset.v; save(); render(); break;
     case 'forestView': D.settings.forestView = el.dataset.v; save(); render(); break;
     case 'evFilter': ui.evFilter = el.dataset.v; render(); break;
     case 'planStudy': planStudy(id); break;
@@ -1817,6 +1811,8 @@ document.addEventListener('change', e => {
   if (el.dataset.change === 'bedTime' && el.value) { D.settings.bedtime = { ...bedCfg(), time: el.value }; save(); }
   if (el.dataset.change === 'treeSpecies') { D.settings.treeFor = { ...(D.settings.treeFor || {}), [el.dataset.id]: el.value }; save(); render(); }
   if (el.dataset.change === 'dayPick' && el.value) { ui.daySel = el.value; render(); }
+  if (el.dataset.change === 'navShow') { const h = new Set(D.settings.navHidden || []); el.checked ? h.delete(el.dataset.v) : h.add(el.dataset.v); D.settings.navHidden = [...h]; save(); render(); }
+  if (el.dataset.change === 'themeGlass') { D.settings.themeGlass = el.checked; save(); render(); }
   if (el.dataset.change === 'importInbox' && el.files[0]) el.files[0].text().then(txt => { try { const d = JSON.parse(txt); if (!Array.isArray(d.items)) throw 0; D.inbox = d; save(); render(); } catch { alert("That isn't a Missed info summary file."); } });
   if (el.dataset.change === 'importIcs' && el.files[0]) {
     const file = el.files[0];
@@ -1848,7 +1844,7 @@ document.addEventListener('submit', e => {
 });
 document.addEventListener('keydown', e => {
   if (modal.open || e.ctrlKey || e.metaKey || e.altKey || /INPUT|TEXTAREA|SELECT/.test(document.activeElement.tagName)) return;
-  const keys = { '1': 'today', '2': 'day', '3': 'calendar', '4': 'study', '5': 'training', '6': 'personal', '7': 'inbox', '8': 'settings' };
+  const keys = { '1': 'today', '2': 'calendar', '3': 'study', '4': 'training', '5': 'arena', '6': 'friends', '7': 'personal', '8': 'inbox', '9': 'settings' };
   if (keys[e.key]) { view = keys[e.key]; render(); }
 });
 window.addEventListener('beforeunload', e => { if (dirty) { flush(); e.preventDefault(); } });

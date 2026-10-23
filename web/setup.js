@@ -169,21 +169,18 @@ function finishSetup() {
 // Each page gets a step on its menu button, then one per section. A step whose
 // section isn't on screen (no data yet, a card that's turned off) is skipped.
 const TOUR_PAGES = {
-  today: ['☀️ Today', 'Your home page. Everything that matters today, in one place.', [
+  today: ['☀️ Today', 'Your home page. Your whole day on one screen.', [
     ['.hero', 'Your day at a glance', 'How many things you\'ve ticked off, your study goal and your streak. <b>Start studying</b> starts a focus timer straight away.'],
-    ['.todaynext', 'Coming up next', 'Your next SAC or exam, next deadline and next race, with how many days are left.'],
-    ['.today-grid > .card', 'Today\'s timeline', 'Everything on today in time order. Tick things off as you go, press <b>▶ Focus</b> on a study block, and use the buttons underneath to add more.'],
-    ['.today-grid > .stack', 'Tasks', 'Type a task and press Enter to add it. Overdue and missed things show underneath so nothing slips.'],
-    ['.soon3', 'The next 3 days', 'A quick look ahead. Click a day to open it in Day plan.'],
+    ['.quickadd', 'Quick add', 'Type things like <b>"Biology SAC next Thursday 9am"</b> or <b>"dentist 3 Nov 4pm"</b>. It works out what it is, the subject, the date and the time, and puts it in the right place. For a SAC it offers to plan your revision too. Press <b>/</b> anywhere to jump here.'],
+    ['.tweek', 'Pick a day', 'Click any day to plan it. The dots show what\'s on and the green bar shows how much is ticked off. Use the arrows to move between days and weeks.'],
+    ['.tday', 'The day, in time order', 'Tick things off as you go, press <b>▶ Focus</b> on a study block, and use the buttons underneath to add more.'],
+    ['.ttasks', 'Tasks', 'Type a task and press Enter to add it. Overdue and missed things show underneath so nothing slips.'],
+    ['.tside', 'Coming up', 'Your next SAC, deadline and race, plus the next three days. Click a day to open it.'],
     ['.apps-row', 'Your apps', 'Shortcuts to the apps and websites you use for school and training.']]],
-  day: ['🕒 Day plan', 'Plan any day hour by hour.', [
-    ['.daystrip', 'Pick a day', 'Jump between days. The dots show what\'s on and the bar shows how much is ticked off.'],
-    ['.day-grid > .card', 'The day, hour by hour', 'Drag things to move them, click to edit, and press ▶ Focus on study blocks.'],
-    ['.day-grid > .stack', 'Totals and quick add', 'How much study and training is planned, plus buttons to add anything to this day.']]],
   calendar: ['📅 Calendar', 'The whole month at once.', [
     ['.calbar', 'Month and filters', 'Move between months, connect a Google or school calendar, and choose what to show.'],
-    ['.cal', 'Month view', 'Click any day to see it on the right. Events from linked calendars show up here too.'],
-    ['.calgrid > .card', 'The day you picked', 'Everything on that day, with buttons to add study, SACs, workouts, events, deadlines and tasks.']]],
+    ['.cal', 'Month view', 'Click any day to see it underneath. Events from linked calendars show up here too.'],
+    ['.calday', 'The day you picked', 'Everything on that day, laid out across the page, with buttons to add study, SACs, workouts, events, deadlines and tasks.']]],
   study: ['📚 Study', 'Subjects, SACs and study blocks.', [
     ['.upnext-row', 'What\'s next', 'Your next study block, next SAC or exam and today\'s progress. <b>Plan more</b> builds a revision plan for a SAC.'],
     ['.study-grid2 > .study-side:first-child > .card:first-child', 'This week', 'Pick a day to see its study blocks. Press <b>▶ Start</b> to focus. A session of 10+ minutes plants a tree.'],
@@ -198,16 +195,16 @@ const TOUR_PAGES = {
     ['.forest-tabs', 'Trees, critters and the shop', 'Choose each subject\'s tree, meet your critters, and spend coins on scenes, decorations and upgrades.'],
     ['.forest-cols > .stack:first-child', 'Challenges', 'New challenges every day and week. Claim the coins when you finish one.'],
     ['.forest-cols > .stack:last-child', 'Milestones and your trees', 'Big goals with bigger rewards, plus which tree each subject grows.']]],
-  training: ['🏃 Training & Arena', 'Workouts power up your athlete.', [
-    ['.ahero', 'Your athlete', 'Stats grow when you tick off workouts. 💪 Grit is the Arena\'s currency.'],
-    ['.arenatabs', 'Arena tabs', 'Battle gym leaders and bosses, unlock and upgrade moves, log personal bests, and spend Grit in the shop and wardrobe.'],
-    ['.stravacard', 'Automatic imports', 'Connect Garmin through intervals.icu, or import from Strava, so workouts come in by themselves. Tick them off to count them.'],
-    ['.train-top', 'This week\'s training', 'Your next event, sessions done this week and your training load.'],
-    ['.card.board', 'Week board', 'Every planned workout this week. Tick them off as you do them.']]],
-  health: ['💤 Health & sleep', 'Sleep, steps and how you feel.', [
-    ['.htiles', 'Last night and today', 'Sleep, steps, resting heart rate and body battery from your watch.'],
-    ['.hgrid', 'Two-week trends', 'Sleep and steps compared to your goals.'],
-    ['.hlogcard', 'Log today', 'No watch? Log your sleep, mood and energy here.']]],
+  training: ['💪 Training & Health', 'Your physical profile. Everything here powers your Arena athlete.', [
+    ['.btiles', 'This week at a glance', 'Training time, sessions done, your combo, sleep, steps and resting heart rate.'],
+    ['.rdcard', 'Readiness', 'Freshness, last night\'s sleep and your heart rate make a readiness score. A high score gives you bonus HP and energy in Arena battles.'],
+    ['.bodytabs', 'Training, sleep and bests', '<b>Training</b> has your plan and Garmin or Strava imports, <b>Sleep &amp; health</b> has your sleep log and trends, and <b>Bests</b> tracks personal records.']]],
+  arena: ['⚔️ Arena', 'Battle with the athlete your workouts built.', [
+    ['.ahero', 'Your athlete', 'Your stats, today\'s readiness bonus, 💪 Grit, combo and battles left today.'],
+    ['.arenatabs', 'Arena tabs', 'Battle gym leaders and bosses, check quests, unlock and upgrade moves, and spend Grit on gear and outfits.']]],
+  friends: ['👥 Friends', 'Race your friends at studying and training.', [
+    ['.fme', 'Your week', 'Your numbers this week. Friends see these and your avatar, nothing else.'],
+    ['.friends-main', 'Leaderboards and friends', 'Switch between study, training and health boards, search friends by username, and press <b>Compare</b> to go head to head.']]],
   personal: ['✅ Events & Tasks', 'Everything outside school study.', [
     ['.grid.g2 > .card:first-child', 'Events & deadlines', 'Birthdays, appointments and deadlines. Filter them by type, and give each one its own reminders.'],
     ['.grid.g2 > .card:last-child', 'Tasks', 'Your whole to-do list grouped by when it\'s due. Add one at the top.']]],

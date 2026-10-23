@@ -4,6 +4,10 @@
    (cls:<date>:<period>), and a fully rated good day pays a bonus (clsday:). */
 
 const EFFORT = [['😴', 'Switched off'], ['😐', 'Drifted a lot'], ['🙂', 'OK'], ['💪', 'Solid work'], ['🔥', 'Locked in']];
+// effort is rated out of 10 (older ratings were out of 5, so they count double)
+const eff10 = r => r ? (r.e10 || (r.effort ? r.effort * 2 : 0)) : 0;
+const effIcon = n => EFFORT[Math.max(0, Math.ceil(n / 2) - 1)][0];
+const effColor = n => `hsl(${Math.round((n - 1) / 9 * 125)} 70% 45%)`;
 const DEFAULT_BELLS = [
   { n: 'Mentor', start: '08:50', end: '09:10', brk: true },
   { n: 'Period 1', start: '09:10', end: '10:00' }, { n: 'Period 2', start: '10:00', end: '10:50' },
@@ -62,10 +66,10 @@ const periodCoins = r => r.effort + (r.phone ? 2 : 0) + (r.goal && r.goalMet ? 2
 function rateDay(d) {
   const log = schoolLog(d), bells = schoolCfg().bells, lessons = bells.map((b, i) => i).filter(i => !bells[i].brk);
   if (!lessons.every(i => log[i] && log[i].effort)) return;
-  const avg = lessons.reduce((a, i) => a + log[i].effort, 0) / lessons.length;
-  if (avg >= 3.5 && !(('clsday:' + d) in D.game.ledger)) {
+  const avg = lessons.reduce((a, i) => a + eff10(log[i]), 0) / lessons.length;
+  if (avg >= 7 && !(('clsday:' + d) in D.game.ledger)) {
     D.game.ledger['clsday:' + d] = 10;
-    celebrate({ icon: '<span class="critbig">🏫</span>', color: '#3b5bdb', kicker: 'Full school day', title: 'Every period rated', text: `Average effort ${avg.toFixed(1)} out of 5. +10 ${COIN} bonus.` });
+    celebrate({ icon: '<span class="critbig">🏫</span>', color: '#3b5bdb', kicker: 'Full school day', title: 'Every period rated', text: `Average effort ${avg.toFixed(1)} out of 10. +10 ${COIN} bonus.` });
   }
 }
 function effortStreak() {
@@ -102,28 +106,29 @@ function openRating(d, i, early) {
     <div class="unlabel">${esc(b.n)} · ${fmtTime(b.start)}–${fmtTime(b.end)}</div>
     <h2 style="margin:4px 0 2px">How was your effort in ${esc(subjLabel(sid))}?</h2>
     ${r.goal ? `<p class="muted" style="margin:0">Your goal: <b>${esc(r.goal)}</b></p>` : ''}
-    <div class="efforts">${EFFORT.map(([e, l], k) => `<button data-e="${k + 1}" class="${r.effort === k + 1 ? 'on' : ''}"><span>${e}</span><small>${l}</small></button>`).join('')}</div>
+    <div class="efforts10">${Array.from({ length: 10 }, (_, k) => `<button data-e="${k + 1}" class="${eff10(r) === k + 1 ? 'on' : ''}" style="--ec:${effColor(k + 1)}">${k + 1}</button>`).join('')}</div>
+    <div class="efflabel" id="effLabel">${eff10(r) ? `${effIcon(eff10(r))} ${EFFORT[Math.ceil(eff10(r) / 2) - 1][1]}` : 'Pick a number from 1 (switched off) to 10 (locked in)'}</div>
     <label class="clschk"><input type="checkbox" id="clsPhone" ${r.phone ? 'checked' : ''}> 📵 My phone stayed away <span class="muted">+2 ${COIN}</span></label>
     ${r.goal ? `<label class="clschk"><input type="checkbox" id="clsMet" ${r.goalMet ? 'checked' : ''}> 🎯 I hit my goal <span class="muted">+2 ${COIN}</span></label>` : ''}
     <input type="text" id="clsHw" placeholder="Homework or something to remember? (adds a task due tomorrow)" maxlength="200">
     <div class="row" style="justify-content:flex-end;margin-top:10px"><span class="muted small-text" style="margin-right:auto">Effort pays 1 to 5 ${COIN}. Be honest, it's only for you.</span>
       <button class="btn primary" data-save disabled>Save</button></div></div>`;
   document.body.appendChild(ov);
-  let pick = r.effort || 0;
+  let pick = eff10(r);
   const saveBtn = ov.querySelector('[data-save]'); saveBtn.disabled = !pick;
   ov.addEventListener('click', e => {
     const eb = e.target.closest('[data-e]');
-    if (eb) { pick = +eb.dataset.e; ov.querySelectorAll('[data-e]').forEach(x => x.classList.toggle('on', x === eb)); saveBtn.disabled = false; return; }
+    if (eb) { pick = +eb.dataset.e; ov.querySelectorAll('[data-e]').forEach(x => x.classList.toggle('on', x === eb)); ov.querySelector('#effLabel').textContent = `${effIcon(pick)} ${pick}/10 · ${EFFORT[Math.ceil(pick / 2) - 1][1]}`; saveBtn.disabled = false; return; }
     if (e.target.closest('[data-x]') || e.target === ov) { ov.remove(); render(); return; }
     if (e.target.closest('[data-save]') && pick) {
-      const rec = schoolLog(d)[i] = Object.assign(schoolLog(d)[i] || {}, { subj: sid, effort: pick, phone: ov.querySelector('#clsPhone').checked, goalMet: !!ov.querySelector('#clsMet')?.checked, at: new Date().toISOString() });
+      const rec = schoolLog(d)[i] = Object.assign(schoolLog(d)[i] || {}, { subj: sid, effort: Math.ceil(pick / 2), e10: pick, phone: ov.querySelector('#clsPhone').checked, goalMet: !!ov.querySelector('#clsMet')?.checked, at: new Date().toISOString() });
       const hw = ov.querySelector('#clsHw').value.trim();
       if (hw) D.todos.push({ id: uid(), text: `${sid && sid !== 'free' && sid !== 'sport' ? subj(sid).name + ': ' : ''}${hw}`, due: addDays(d, 1), done: false, notes: `From ${b.n}`, remind: D.settings.remind.todo });
       const c = periodCoins(rec), first = !(`cls:${d}:${i}` in D.game.ledger);
       D.game.ledger[`cls:${d}:${i}`] = c;
       ov.remove(); save(); render();
       if (first) coinPop(c);
-      toast(`${EFFORT[pick - 1][0]} ${b.n} saved`, `+${c} ${COIN}${hw ? ' · homework added to tasks' : ''}`);
+      toast(`${effIcon(pick)} ${b.n}: ${pick}/10 saved`, `+${c} ${COIN}${hw ? ' · homework added to tasks' : ''}`);
       rateDay(d); save(); updateSchoolBadge();
     }
   });
@@ -171,7 +176,7 @@ function weekEffort() {
   const from = mondayOf(today()), rows = {};
   for (let d = from; d <= today(); d = addDays(d, 1)) for (const [i, r] of Object.entries(D.school?.log?.[d] || {})) {
     if (!r.effort) continue;
-    const k = r.subj || ''; (rows[k] = rows[k] || []).push(r.effort);
+    const k = r.subj || ''; (rows[k] = rows[k] || []).push(eff10(r));
   }
   return Object.entries(rows).map(([k, v]) => ({ k, avg: v.reduce((a, b) => a + b, 0) / v.length, n: v.length })).sort((a, b) => b.avg - a.avg);
 }
@@ -202,7 +207,7 @@ function viewSchool() {
       <div class="clsclock" id="clsClock">${clockTxt(cp)}</div><div class="clsbar"><i id="clsBar" style="width:${100 * (1 - cp.left / cp.len)}%"></i></div>
       ${on ? `<div class="clslive">${r.goal ? `🎯 <b>${esc(r.goal)}</b>` : 'In class focus'} · 📵 phone away</div>
           <div class="row" style="justify-content:center"><button class="btn" data-cls="end">End early and rate</button></div>`
-        : r.effort ? `<p class="muted" style="text-align:center">Rated ${EFFORT[r.effort - 1][0]} already.</p>`
+        : r.effort ? `<p class="muted" style="text-align:center">Rated ${effIcon(eff10(r))} ${eff10(r)}/10 already.</p>`
           : `<div class="row clsstart"><input type="text" id="clsGoal" placeholder="Lesson goal (optional), e.g. finish Q1 to 8" maxlength="120"><button class="btn primary" data-cls="start" data-i="${cp.i}">▶ Start class focus</button></div>`}
     </div>`;
   } else {
@@ -214,15 +219,15 @@ function viewSchool() {
   const rows = isSchoolDay(t) ? cfg.bells.map((b, i) => {
     if (b.brk) return `<div class="clsrow brk"><span class="clstime">${fmtTime(b.start)}</span><span class="muted">${esc(b.n)}</span></div>`;
     const sid = periodSubj(t, i), r = log[i] || {}, over = hmToMin(b.end) <= m, now = cp && cp.i === i;
-    const right = r.effort ? `<span class="clsdone" title="${EFFORT[r.effort - 1][1]}">${EFFORT[r.effort - 1][0]} +${D.game.ledger[`cls:${t}:${i}`] || 0} ${COIN}</span>${r.phone ? '<span title="Phone away">📵</span>' : ''}<button class="iconbtn" data-cls="rate" data-i="${i}" title="Change rating">✎</button>`
+    const right = r.effort ? `<span class="clsdone" title="${EFFORT[r.effort - 1][1]}">${effIcon(eff10(r))} ${eff10(r)}/10 +${D.game.ledger[`cls:${t}:${i}`] || 0} ${COIN}</span>${r.phone ? '<span title="Phone away">📵</span>' : ''}<button class="iconbtn" data-cls="rate" data-i="${i}" title="Change rating">✎</button>`
       : over ? `<button class="btn small primary" data-cls="rate" data-i="${i}">Rate effort</button>` : now ? '<span class="tag green">Now</span>' : '';
     return `<div class="clsrow ${now ? 'now' : ''} ${over && !r.effort ? 'due' : ''}" style="--c:${subjColor(sid)}"><span class="clstime">${fmtTime(b.start)}</span><b class="clsn">${esc(b.n)}</b>${subjSelect(t, i, sid)}${evChips(t, b)}<span style="flex:1"></span>${right}</div>`;
   }).join('') : '';
   const wk = weekEffort();
-  const week = wk.length ? `<div class="card"><h2>Effort this week</h2><div class="bars">${wk.map(w => `<div class="bar"><span>${esc(w.k ? subjLabel(w.k) : 'No subject set')}</span><div class="track"><div class="fill" style="width:${w.avg / 5 * 100}%;background:${subjColor(w.k)}"></div></div><span class="muted">${EFFORT[Math.round(w.avg) - 1][0]} ${w.avg.toFixed(1)} · ${w.n}</span></div>`).join('')}</div>
-    <p class="muted small-text" style="margin:8px 0 0">Average effort out of 5 for each subject since Monday.</p></div>` : '';
+  const week = wk.length ? `<div class="card"><h2>Effort this week</h2><div class="bars">${wk.map(w => `<div class="bar"><span>${esc(w.k ? subjLabel(w.k) : 'No subject set')}</span><div class="track"><div class="fill" style="width:${w.avg / 10 * 100}%;background:${subjColor(w.k)}"></div></div><span class="muted">${effIcon(Math.round(w.avg))} ${w.avg.toFixed(1)}/10 · ${w.n}</span></div>`).join('')}</div>
+    <p class="muted small-text" style="margin:8px 0 0">Average effort out of 10 for each subject since Monday.</p></div>` : '';
   return `${head}<div class="clsgrid"><div>${hero}${rows ? `<div class="card"><div class="card-head"><h2>Today's periods</h2></div>${rows}
-      <p class="muted small-text" style="margin:8px 0 0">The subject you pick is remembered for ${cd ? `Day ${cd} of your timetable` : 'this day of the week'}. Rate each period: 1 to 5 ${COIN} for effort, +2 for phone away, +2 for hitting your goal. Rate every period with an average of 3.5+ for a +10 ${COIN} day bonus.</p></div>` : ''}</div>
+      <p class="muted small-text" style="margin:8px 0 0">The subject you pick is remembered for ${cd ? `Day ${cd} of your timetable` : 'this day of the week'}. Rate each period out of 10: up to 5 ${COIN} for effort, +2 for phone away, +2 for hitting your goal. Rate every period with an average of 7+ for a +10 ${COIN} day bonus.</p></div>` : ''}</div>
     <div>${week}${bellCard()}</div></div>`;
 }
 function bellCard() {

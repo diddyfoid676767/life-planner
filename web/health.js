@@ -40,7 +40,7 @@ async function healthSync() {
       next.src = 'garmin';
       if (JSON.stringify(next) !== JSON.stringify(cur)) { days[d] = next; changed = true; }
     }
-    if (changed) { save(); if (view === 'health' && !modal.open) render(); }
+    if (changed) { save(); if (view === 'training' && ui.bodyPage === 'health' && !modal.open) render(); }
   } catch { }
 }
 
@@ -50,7 +50,7 @@ function healthTile(icon, label, big, sub, pct, color) {
     <div class="muted small-text">${sub || '&nbsp;'}</div></div>`;
 }
 
-function viewHealth() {
+function viewHealth(embedded) {
   const H = healthCfg(), t = today(), last = hday(t), y = hday(addDays(t, -1));
   const days14 = healthRange(14), rows = days14.map(d => ({ d, ...hday(d) }));
   const slept = rows.filter(r => r.sleep), avgSleep = slept.length ? slept.reduce((a, r) => a + r.sleep, 0) / slept.length : 0;
@@ -94,10 +94,11 @@ function viewHealth() {
     </div>
     <button class="btn primary" data-hact="saveSleep" style="margin-top:10px">Save sleep</button></div>`;
 
-  const garminHint = !Object.values(H.days).some(d => d.src === 'garmin') ? `<p class="muted small-text">Got a Garmin? Connect intervals.icu under <a href="#" data-act="goto" data-v="training">Training &amp; Arena → Plan → Auto-import from Garmin</a> and your sleep, steps and resting heart rate fill in here by themselves.</p>` : '';
+  const garminHint = !Object.values(H.days).some(d => d.src === 'garmin') ? `<p class="muted small-text">Got a Garmin? Connect intervals.icu under <a href="#" data-act="bodyPage" data-v="plan">Training &amp; Health → Training → Auto-import from Garmin</a> and your sleep, steps and resting heart rate fill in here by themselves.</p>` : '';
 
-  return `${pageHead('Health &amp; sleep', 'Sleep, steps and recovery, from Garmin and what you log', `<label class="small-text muted">Sleep goal <select data-hgoal="sleep">${[420, 450, 480, 510, 540].map(m => `<option value="${m}" ${H.goals.sleep === m ? 'selected' : ''}>${fmtHm(m)}</option>`).join('')}</select></label>
-      <label class="small-text muted">Steps goal <select data-hgoal="steps">${[6000, 8000, 10000, 12000, 15000].map(s => `<option value="${s}" ${H.goals.steps === s ? 'selected' : ''}>${s.toLocaleString()}</option>`).join('')}</select></label>`)}
+  const goals = `<label class="small-text muted">Sleep goal <select data-hgoal="sleep">${[420, 450, 480, 510, 540].map(m => `<option value="${m}" ${H.goals.sleep === m ? 'selected' : ''}>${fmtHm(m)}</option>`).join('')}</select></label>
+      <label class="small-text muted">Steps goal <select data-hgoal="steps">${[6000, 8000, 10000, 12000, 15000].map(s => `<option value="${s}" ${H.goals.steps === s ? 'selected' : ''}>${s.toLocaleString()}</option>`).join('')}</select></label>`;
+  return `${embedded ? `<div class="row hgoals">${goals}</div>` : pageHead('Health &amp; sleep', 'Sleep, steps and recovery, from Garmin and what you log', goals)}
   <div class="htiles">${tiles}</div>
   ${tips.length ? `<div class="card htips">${tips.map(x => `<p>💡 ${x}</p>`).join('')}</div>` : ''}
   <div class="hgrid">

@@ -357,31 +357,34 @@ function arenaShop(g) {
     <p class="muted small-text">Gear (stat boosts) is in the Locker, and avatar cosmetics are in the Wardrobe.</p>`;
 }
 
-// ---------- the page: Training and Arena in one ----------
-function viewArena() { return viewTraining(); }
-function viewTraining() {
-  const page = ui.arenaPage || 'plan', a = athlete(), g = grit(), ci = comboInfo(), fr = freshness();
-  const nq = questDefs().filter(q => q.have >= q.need && !(q.key in D.arena.ledger)).length;
-  const tab = (v, l) => `<button class="${page === v ? 'on' : ''}" data-act="arenaPage" data-v="${v}">${l}</button>`;
+// ---------- the Arena page (training and health live in body.js) ----------
+function arenaStrip(a = athlete()) {
+  const g = grit(), ci = comboInfo(), fr = freshness(), rd = readiness();
   const frCol = fr >= 75 ? '#40c057' : fr >= 50 ? '#fab005' : '#e03131';
   const tier = a.ovr >= 85 ? 'special' : a.ovr >= 70 ? 'gold' : a.ovr >= 55 ? 'silver' : 'bronze';
-  const strip = `<div class="ahero ${tier}"><div class="ahero-av" style="background:${BG_CSS[myAv().bg] || 'rgba(255,255,255,.15)'}">${avatarFull(avatarSpec(), { size: 120, cls: 'idle' })}${petHtml(myAv().pet, 26)}</div>
+  return `<div class="ahero ${tier}"><div class="ahero-av" style="background:${BG_CSS[myAv().bg] || 'rgba(255,255,255,.15)'}">${avatarFull(avatarSpec(), { size: 120, cls: 'idle' })}${petHtml(myAv().pet, 26)}</div>
     <div class="ahero-main"><div class="ahero-name"><b>${esc(D.settings.name || 'Athlete')}</b><span class="ahero-ovr">${a.ovr} <small>${a.pos}</small></span></div>
-      <div class="ahero-goal">🎯 ${esc(D.settings.trainingGoal || 'Get fitter, faster and stronger')}</div>
+      <div class="ahero-goal">${rd.icon} ${esc(rd.label)} today${rd.hp ? ` · ${rd.hp > 0 ? '+' : ''}${rd.hp} HP` : ''}${rd.energy ? ` · +${rd.energy} energy` : ''} in battles <a href="#" data-act="goto" data-v="training" class="ahero-link">from your training &amp; sleep →</a></div>
       <div class="ahero-stats">${STATS.map(([k, , ab, col]) => `<div title="${statInfo(k)[1]}"><span>${ab}</span><div class="sbar"><i style="width:${a.total[k]}%;background:${col}"></i></div><b>${a.total[k]}</b></div>`).join('')}</div></div>
     <div class="ahero-side"><div><span>${GRIT}</span><b>${g}</b><small>Grit</small></div><div><span>${COIN}</span><b>${coins()}</b><small>Coins</small></div>
       <div><span>🔥</span><b>${ci.combo}</b><small>Combo</small></div><div><span style="color:${frCol}">●</span><b>${fr}%</b><small>Fresh</small></div><div><span>⚔️</span><b>${tokensLeft()}</b><small>Battles</small></div></div></div>`;
-  const tabs = `<div class="seg arenatabs">${tab('plan', '📅 Plan')}${tab('athlete', `🏠 Athlete${nq ? ` <span class="dotbadge">${nq}</span>` : ''}`)}${tab('battle', '⚔️ Battle')}${tab('moves', '🥋 Moves')}${tab('bests', '📈 Bests')}${tab('locker', '🎒 Locker')}${tab('wardrobe', '👕 Wardrobe')}${tab('shop', '🛒 Shop')}${ONLINE ? '' : tab('board', '🏆 Leaderboard')}</div>`;
-  const head = pageHead('🏃 Training', '', `<button class="btn" data-act="new" data-kind="workout">+ Workout</button><button class="btn primary" data-act="new" data-kind="tevent">+ Event</button>`) + strip + tabs;
+}
+function viewArena() {
+  let page = ui.arenaPage || 'battle';
+  if (page === 'plan') page = 'battle';
+  if (page === 'bests') { ui.bodyPage = 'bests'; view = 'training'; return viewTraining(); }
+  const a = athlete(), g = grit(), ci = comboInfo(), fr = freshness();
+  const frCol = fr >= 75 ? '#40c057' : fr >= 50 ? '#fab005' : '#e03131';
+  const nq = questDefs().filter(q => q.have >= q.need && !(q.key in D.arena.ledger)).length;
+  const tab = (v, l) => `<button class="${page === v ? 'on' : ''}" data-act="arenaPage" data-v="${v}">${l}</button>`;
+  const tabs = `<div class="seg arenatabs">${tab('battle', '⚔️ Battle')}${tab('athlete', `🏠 Athlete${nq ? ` <span class="dotbadge">${nq}</span>` : ''}`)}${tab('moves', '🥋 Moves')}${tab('locker', '🎒 Locker')}${tab('wardrobe', '👕 Wardrobe')}${tab('shop', '🛒 Shop')}</div>`;
+  const head = pageHead('⚔️ Arena', 'Your stats come from the workouts you tick off', `<button class="btn" data-act="goto" data-v="training">💪 Training &amp; Health</button>`) + arenaStrip(a) + tabs;
   let body;
-  if (page === 'plan') body = trainingPlan();
-  else if (page === 'battle') body = arenaBattles(a);
+  if (page === 'battle') body = arenaBattles(a);
   else if (page === 'moves') body = arenaMoves();
-  else if (page === 'bests') body = arenaBests();
   else if (page === 'locker') body = arenaLocker(g);
   else if (page === 'wardrobe') body = arenaWardrobe();
   else if (page === 'shop') body = arenaShop(g);
-  else if (page === 'board') body = typeof viewBoard === 'function' ? viewBoard() : '';
   else body = arenaHome(a, ci, fr, frCol);
   return head + body;
 }
