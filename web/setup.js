@@ -184,7 +184,7 @@ const TOUR_PAGES = {
   study: ['📚 Study', 'Subjects, SACs and study blocks.', [
     ['.upnext-row', 'What\'s next', 'Your next study block, next SAC or exam and today\'s progress. <b>Plan more</b> builds a revision plan for a SAC.'],
     ['.study-grid2 > .study-side:first-child > .card:first-child', 'This week', 'Pick a day to see its study blocks. Press <b>▶ Start</b> to focus. A session of 10+ minutes plants a tree.'],
-    ['.examhub', 'Exam lead-up', 'A countdown for each exam and how ready you are. <b>Build my exam plan</b> lays out timed past papers and topic revision around your SACs, with a light day before each exam. After a paper, <b>Log a paper</b> with your score and the topics you lost marks on, and your next blocks focus on them.'],
+    ['.examhub', 'Exam lead-up', 'A countdown for each exam and how ready you are. <b>Add exam prep</b> adds timed past papers, SAC prep and a light day before each exam to your current plan. After a paper, <b>Log a paper</b> with your score and the topics you lost marks on, and your next blocks focus on them.'],
     ['.subjcard', 'Subjects and links', 'Your classes and their colours, plus links to study guides and notes.'],
     ['.study-grid2 > .study-side:last-child > .card:first-child', 'SACs & exams', 'Every assessment with a countdown. Tick one off when it\'s done to earn coins.'],
     ['.study-grid2 > .study-side:last-child > .card:last-child', 'Studied this week', 'Focus time per subject against what you planned.']]],

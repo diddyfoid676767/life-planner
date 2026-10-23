@@ -1908,7 +1908,7 @@ async function initOnline() {
   checkClaudeLink();
   loadAccount().then(a => { if (a.signedIn) { publishMe(true); refreshFriends(true); } if (view === 'settings' && !modal.open) render(); });
   checkUpdate();
-  setInterval(checkUpdate, 5 * 60000);
+  setInterval(checkUpdate, 60000); // cheap local check, so a downloaded update installs within a minute
   checkReminders();
   setInterval(checkReminders, 30000);
   setInterval(ping, 20000);

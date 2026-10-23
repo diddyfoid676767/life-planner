@@ -13,7 +13,7 @@ const EXAM_TOPICS = [
   [/chem/i, ['Stoichiometry', 'Organic chemistry', 'Equilibrium', 'Redox & electrochemistry', 'Analysis techniques']],
   [/business/i, ['Key terms & definitions', 'Case study application', 'Extended response', 'Operations & strategy']],
 ];
-const examPrep = () => (D.examPrep = Object.assign({ papers: [], hoursSchool: 2, hoursWeekend: 4, schoolStart: '16:30', weekendStart: '09:30', perExam: 3 }, D.examPrep || {}));
+const examPrep = () => (D.examPrep = Object.assign({ papers: [], hoursSchool: 2, hoursWeekend: 4, schoolStart: '17:00', weekendStart: '09:30', perExam: 3 }, D.examPrep || {}));
 const isExam = a => /exam/i.test(a.type || '') && a.type !== 'Practice exam';
 function upcomingExams(from = today(), days = 60) {
   return D.assessments.filter(a => isExam(a) && !a.done && a.date >= from && diffDays(from, a.date) <= days).sort((a, b) => (a.date + (a.time || '')).localeCompare(b.date + (b.time || '')));
@@ -63,24 +63,25 @@ function buildExamPlan() {
   if (!exams.length) { alert('Add your exams first (as SAC / Exam with the type "Exam"), then build the plan.'); return; }
   const P = examPrep(), h = new Date().getHours();
   showForm({
-    title: '🎓 Build my exam plan',
+    title: '🎓 Add exam prep to my plan',
     saveLabel: 'Build plan',
-    fields: [{ type: 'html', html: `<p class="muted small-text" style="margin-top:0">Plans revision for ${exams.map(a => `<b>${esc(subj(a.subjectId).name)}</b> (${fmtDate(a.date)})`).join(', ')}. Timed past papers go on days with enough time, topic blocks fill the rest, SACs and tests coming up get prep time, and the day before each exam is a light review. Rebuilding replaces the plan's unfinished blocks and keeps everything you've done.</p>` },
+    fields: [{ type: 'html', html: `<p class="muted small-text" style="margin-top:0">Plans revision for ${exams.map(a => `<b>${esc(subj(a.subjectId).name)}</b> (${fmtDate(a.date)})`).join(', ')}. Your current study plan stays as it is. This adds timed past papers on days with enough free time, prep for SACs in the next few days that don't have any yet, and a light review the day before each exam, all after what you've already got planned. You can edit or delete any block afterwards, and there's an Undo.</p>` },
       { type: 'row', fields: [{ key: 'start', label: 'Start from', type: 'date', value: h >= 18 ? addDays(today(), 1) : today(), required: true }, { key: 'perExam', label: 'Past papers per exam', type: 'number', value: P.perExam, min: 0, step: 1 }] },
       { type: 'row', fields: [{ key: 'hoursSchool', label: 'Hours on a school day', type: 'number', value: P.hoursSchool, min: 0, step: .5 }, { key: 'schoolStart', label: 'Starting at', type: 'time', value: P.schoolStart }] },
       { type: 'row', fields: [{ key: 'hoursWeekend', label: 'Hours on a weekend or holiday', type: 'number', value: P.hoursWeekend, min: 0, step: .5 }, { key: 'weekendStart', label: 'Starting at', type: 'time', value: P.weekendStart }] },
-      { key: 'replace', label: 'Fold my existing exam revision and regular study blocks into the plan (keeps their topics; SAC prep stays as it is)', type: 'bool', value: true }],
+      { key: 'mode', label: 'What to add', type: 'select', value: 'add', options: [['add', 'Past papers, SAC prep and light days only (keeps my plan)'], ['fill', 'Those, plus extra topic revision in any free time'], ['rebuild', 'Rebuild: fold my exam revision blocks into a new plan']] }],
     onSave: v => {
-      Object.assign(P, { perExam: Math.max(0, Math.min(6, v.perExam ?? 3)), hoursSchool: Math.max(0, Math.min(10, v.hoursSchool ?? 2)), hoursWeekend: Math.max(0, Math.min(12, v.hoursWeekend ?? 4)), schoolStart: v.schoolStart || '16:30', weekendStart: v.weekendStart || '09:30' });
+      Object.assign(P, { perExam: Math.max(0, Math.min(6, v.perExam ?? 3)), hoursSchool: Math.max(0, Math.min(10, v.hoursSchool ?? 2)), hoursWeekend: Math.max(0, Math.min(12, v.hoursWeekend ?? 4)), schoolStart: v.schoolStart || '17:00', weekendStart: v.weekendStart || '09:30' });
       const before = D.sessions.slice();
-      const made = makeExamPlan(v.start || today(), v.replace);
+      const made = makeExamPlan(v.start || today(), v.mode || 'add');
       if (!made) { alert('There was no free time to plan in. Try more hours or an earlier start.'); return false; }
-      setTimeout(() => undoToast(`🎓 Exam plan ready: ${made.blocks} blocks including ${made.papers} timed past papers${made.swapped ? `, reorganising ${made.swapped} of your existing blocks` : ''}.`, () => { D.sessions = before; }), 50);
+      setTimeout(() => undoToast(`🎓 Exam prep added: ${made.blocks} blocks including ${made.papers} timed past papers${made.swapped ? `, reorganising ${made.swapped} of your existing blocks` : ''}.`, () => { D.sessions = before; }), 50);
     },
   });
 }
 
-function makeExamPlan(start, replace) {
+function makeExamPlan(start, mode = 'add') {
+  const replace = mode === 'rebuild';
   const P = examPrep();
   const exams = upcomingExams(addDays(start, 1)), last = exams[exams.length - 1].date;
   // the old plan's unfinished blocks go, and (if you choose) your regular study blocks in the same period
@@ -141,6 +142,12 @@ function makeExamPlan(start, replace) {
   };
   for (const d of days) {
     if (taperDays.has(d)) continue;
+    if (mode === 'add') { // only prep for SACs in the next 3 days that have nothing planned, up to 2 blocks each
+      const planned = a => Object.values(plan).flat().filter(b => b.a === a).length;
+      const due = sacs.filter(a => a.date > d && diffDays(d, a.date) <= 3 && !D.sessions.some(s => s.assessmentId === a.id && !s.examPlan) && planned(a) < 2).sort((x, y) => x.date.localeCompare(y.date));
+      for (const sac of due.slice(0, 2)) add(d, { a: sac, duration: 45, topic: `Prep for ${sac.title}` }); // urgent, so it goes in even on a full day
+      continue;
+    }
     const picked = {};
     while (cap[d] >= 40) {
       const opts = [
@@ -157,7 +164,9 @@ function makeExamPlan(start, replace) {
   const created = [];
   for (const d of Object.keys(plan).sort()) {
     const startT = examDays.has(d) ? '17:00' : weekend(d) ? P.weekendStart : P.schoolStart;
-    let m = hmToMin(startT);
+    // start after anything already planned that day
+    const busy = [...D.sessions, ...D.workouts].filter(s => s.date === d && s.time && !s.examPlan).map(s => hmToMin(s.time) + (+s.duration || 30));
+    let m = Math.max(hmToMin(startT), ...busy.filter(x => x > hmToMin(startT) - 60).map(x => x + 10));
     for (const b of plan[d].sort((x, y) => (y.paper || y.paperPart ? 1 : 0) - (x.paper || x.paperPart ? 1 : 0))) {
       created.push({ id: uid() + created.length, subjectId: b.a.subjectId, assessmentId: b.a.id, date: d, time: `${String(Math.floor(m / 60) % 24).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`, duration: b.duration, topic: b.topic, notes: '', done: false, remind: D.settings.remind.session, examPlan: true, ...(b.paper ? { paper: true } : {}) });
       m += b.duration + 10;
@@ -233,9 +242,9 @@ function examHub() {
       <button class="btn small" data-act="logPaper" data-id="${a.id}">Log a paper</button></div>`;
   }).join('');
   return `<div class="card examhub"><div class="card-head"><h2>🎓 Exam lead-up</h2><span class="muted small-text">${exams.length} exam${exams.length === 1 ? '' : 's'} · the first is ${relDays(diffDays(t, exams[0].date))}</span>
-      <span style="flex:1"></span><button class="btn small" data-act="logPaper">📝 Log a past paper</button><button class="btn small primary" data-act="examPlan">${hasPlan ? 'Rebuild my plan' : '✨ Build my exam plan'}</button></div>
+      <span style="flex:1"></span><button class="btn small" data-act="logPaper">📝 Log a past paper</button><button class="btn small primary" data-act="examPlan">${hasPlan ? 'Redo exam extras' : '✨ Add exam prep to my plan'}</button></div>
     <div class="examcards">${cards}</div>
-    ${hasPlan ? '' : `<p class="muted small-text" style="margin:10px 0 0">Build a plan and it lays out timed past papers and topic revision for every exam around your SACs, with a light day before each one. You can study ${P.hoursSchool}h on school days and ${P.hoursWeekend}h on weekends (change it when you build).</p>`}</div>`;
+    ${hasPlan ? '' : `<p class="muted small-text" style="margin:10px 0 0">Add exam prep and it slots timed past papers into your current plan wherever there's room, preps any SAC that has nothing planned, and keeps the day before each exam light. You can study ${P.hoursSchool}h on school days and ${P.hoursWeekend}h on weekends (change it when you build).</p>`}</div>`;
 }
 // a card on Today the day before an exam
 function examEveCard() {
