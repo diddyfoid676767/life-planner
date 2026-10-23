@@ -216,7 +216,7 @@ const TOUR_PAGES = {
     ['.catchips', 'Filter by type', 'Show just the action items, deadlines or events.'],
     ['.mailcards', 'Each email', 'Due dates go straight into your planner. Cross one off and it never reminds you again.']]],
   settings: ['⚙️ Settings', 'Make the planner yours.', [
-    ['.settabs', 'Settings sections', 'Your details, <b>Theme</b> colours, calendars, reminders, backups and app options. You can replay this tour from here.']]],
+    ['.settabs', 'Settings sections', 'Your details, your <b>Account</b> for friends, <b>Theme</b> colours, calendars, reminders, backups and app options. You can replay this tour from here.']]],
 };
 let TOUR = [], tourAt = -1;
 function startTour() {

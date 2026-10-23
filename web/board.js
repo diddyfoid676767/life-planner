@@ -33,7 +33,8 @@ function healthWeek(from = mondayOf(today())) {
   return { sleep: slept.length ? Math.round(slept.reduce((a, d) => a + d.sleep, 0) / slept.length) : 0, steps: days.reduce((a, d) => a + (d.steps || 0), 0) };
 }
 function viewBoard() {
-  boardFriends = D.friends || [];
+  boardFriends = [...(D.friends || []).filter(f => !friendRows.some(r => r.name === f.name)), ...friendRows];
+  publishMe(); refreshFriends();
   const kind = ui.boardKind || 'study', sorts = BOARD_SORTS[kind], key = ui.boardSort?.[kind] || sorts[0][0];
   const sortDef = sorts.find(s => s[0] === key) || sorts[0];
   const wk = mondayOf(today());
@@ -46,7 +47,7 @@ function viewBoard() {
       <span style="flex:1"></span><div class="catchips">${sorts.map(([k, l]) => `<button class="cchip ${key === k ? 'on' : ''}" data-act="boardSort" data-v="${k}">${l}</button>`).join('')}</div></div>
     <div class="podium">${rows.slice(0, 3).map((r, i) => `<div class="pod p${i + 1} ${r.me ? 'me' : ''} ${r.ghost ? 'ghost' : ''}"><div class="podav">${safeBadge(r.av, i === 0 ? 120 : 96)}</div><b>${esc(r.name)}</b><span>${sortDef[2](r.v)}</span><div class="podstep">${medal(i)}</div></div>`).join('')}</div>
     <ol class="boardlist">${rows.map((r, i) => `<li class="${r.me ? 'me' : ''} ${r.ghost ? 'ghost' : ''}"><span class="brank">${medal(i)}</span>${safeBadge(r.av, 44)}<b>${esc(r.name)}</b><span style="flex:1"></span><span class="bval">${sortDef[2](r.v)}</span></li>`).join('')}</ol>
-    ${boardSetupHtml()}</div>`;
+    ${friendSearchHtml()}${boardSetupHtml()}</div>`;
 }
 // ---------- friend codes ----------
 // LP1.<base64url of deflated JSON>: { v, id, n, w, s (study), k (training), h (health), av, t }

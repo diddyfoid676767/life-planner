@@ -850,12 +850,13 @@ function viewSettings() {
   const r = D.settings.remind;
   const remindRow = (k, label) => `<tr><th>${label}</th>${REMIND_OPTS.map(([v, l]) => `<td><label class="rcheck" title="${l}"><input type="checkbox" data-remdef="${k}" value="${v}" ${r[k].includes(v) ? 'checked' : ''}></label></td>`).join('')}</tr>`;
   const sec = ui.setTab || 'general';
-  const tabs = [['general', '👤 You'], ['theme', '🎨 Theme'], ['calendars', '📅 Calendars'], ['reminders', '🔔 Reminders'], ['backup', '💾 Backup'], ['app', '🖥 App']];
+  const tabs = [['general', '👤 You'], ...(acct.configured && !ONLINE ? [['account', '🔑 Account']] : []), ['theme', '🎨 Theme'], ['calendars', '📅 Calendars'], ['reminders', '🔔 Reminders'], ['backup', '💾 Backup'], ['app', '🖥 App']];
   const perm = 'Notification' in window ? Notification.permission : 'unsupported';
   return `${pageHead('Settings', '', '')}
   <div class="seg settabs">${tabs.map(([k, l]) => `<button class="${sec === k ? 'on' : ''}" data-act="setTab" data-v="${k}">${l}</button>`).join('')}</div>
   <div class="grid g2 settings-grid" data-sec="${sec}">
     ${themeCard()}
+    ${accountCard().replace('class="card acctcard"', 'class="card acctcard" data-sec="account"')}
     ${ONLINE ? `<div class="card" data-sec="calendars" style="grid-column:1/-1"><div class="card-head"><h2>Calendars</h2><button class="btn small" data-act="gcalRefresh">Refresh</button><button class="btn small primary" data-act="gcalChoose">Choose calendars</button></div>
       <p class="muted small-text" style="margin-top:0">Shows your Google Calendar (${(D.settings.gcal?.ids || ['primary']).length} calendar(s) selected). The first time, claude.ai asks you to allow access to Google Calendar. To include your school Outlook or Garmin calendar, subscribe to its iCal link inside Google Calendar (Other calendars → + → From URL).</p>
       ${GCAL.map(c => `<div class="row small-text"><span class="dot" style="background:${c.color};width:10px;height:10px;border-radius:50%;display:inline-block"></span>${esc(c.name)}: ${c.items.length} events${c.smart ? ` (${c.items.filter(x => !feedKeeps(c, x)).length} hidden by school filter)` : ''}</div>`).join('')}</div>` : ''}
@@ -1897,6 +1898,7 @@ async function initOnline() {
   checkBrainfm().then(() => { if (view === 'settings' && !modal.open) render(); });
   checkTempFolder();
   checkClaudeLink();
+  loadAccount().then(a => { if (a.signedIn) { publishMe(true); refreshFriends(true); } if (view === 'settings' && !modal.open) render(); });
   checkUpdate();
   setInterval(checkUpdate, 5 * 60000);
   checkReminders();

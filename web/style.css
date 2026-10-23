@@ -643,7 +643,7 @@ details.overdue[open] summary { margin-bottom: 10px; }
 .settings-grid > .card[data-sec] { display: none; }
 .settings-grid[data-sec="general"] > .card[data-sec="general"], .settings-grid[data-sec="calendars"] > .card[data-sec="calendars"],
 .settings-grid[data-sec="reminders"] > .card[data-sec="reminders"], .settings-grid[data-sec="backup"] > .card[data-sec="backup"],
-.settings-grid[data-sec="app"] > .card[data-sec="app"], .settings-grid[data-sec="theme"] > .card[data-sec="theme"] { display: block; }
+.settings-grid[data-sec="app"] > .card[data-sec="app"], .settings-grid[data-sec="theme"] > .card[data-sec="theme"], .settings-grid[data-sec="account"] > .card[data-sec="account"] { display: block; }
 .settings-grid > .card[data-sec][style*="display:none"] { display: none !important; }
 .remtable { border-collapse: separate; border-spacing: 0; width: 100%; font-size: .82rem; }
 .remtable th { font-weight: 600; color: var(--muted); padding: 6px 8px; text-align: center; white-space: nowrap; }
@@ -1317,3 +1317,14 @@ details.overdue[open] summary { margin-bottom: 10px; }
 #view[data-view="calendar"] .calgrid { align-items: start; }
 #view[data-view="calendar"] .calgrid > .card { max-height: calc(100vh - 140px); overflow: auto; position: sticky; top: 70px; }
 @media (max-width: 900px) { #view[data-view="personal"] .grid.g2 > .card, #view[data-view="calendar"] .calgrid > .card { max-height: none; position: static; } }
+
+/* Accounts (2.13) */
+.settings-grid .card[data-sec="account"] { grid-column: 1 / -1; }
+.acct-login { max-width: 380px; margin: 10px auto; text-align: center; }
+.acct-hero { font-size: 2.6rem; width: 76px; height: 76px; margin: 0 auto 8px; border-radius: 22px; display: grid; place-items: center; background: linear-gradient(135deg, var(--accent), var(--accent2)); }
+.acct-login form { display: flex; flex-direction: column; gap: 10px; text-align: left; margin-top: 14px; }
+.acct-login label { display: flex; flex-direction: column; gap: 4px; font-weight: 600; font-size: .9rem; }
+.acct-login input { padding: 10px 12px; border-radius: 10px; border: 1px solid var(--border); background: var(--panel2); }
+.acct-login .row { justify-content: center; margin-top: 4px; }
+.acct-login .row .btn { flex: 1; padding: 10px; }
+.acct-chip { display: inline-flex; align-items: center; gap: 8px; }
