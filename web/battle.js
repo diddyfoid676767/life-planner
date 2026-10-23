@@ -172,7 +172,13 @@ function startBattle(id, mode = 'ladder') {
   else if (mode === 'survival') e = null;
   else if (mode === 'wander') { if (wanderWon()) { toast('Already beaten', 'A new challenger turns up soon.'); return; } e = wanderRival(); }
   else { i = ENEMIES.findIndex(x => x.id === id); if (i < 0 || i > unlockedUpTo()) return; e = ENEMIES[i]; }
-  if (!tokensLeft()) { toast('No battles left today', 'Tick off a workout or buy a Battle ticket in the shop.'); return; }
+  if (!tokensLeft()) {
+    // out of free battles: offer a ticket right here instead of a dead button
+    const price = SHOP_ITEMS.find(x => x.id === 'ticket').grit;
+    if (grit() < price) { toast('No battles left today', `You get 2 a day plus 1 for each workout you tick off (up to 3). A 🎟️ Battle ticket costs ${price} ${GRIT} and you have ${grit()}.`, { timeout: 9000 }); return; }
+    if (!confirm(`You've used today's battles. You get 2 a day, plus 1 for each workout you tick off.\n\nUse a Battle ticket for ${price} Grit to fight now? (You have ${grit()} Grit.)`)) return;
+    buyItem('ticket');
+  }
   const items = D.arena.items = D.arena.items || {};
   const boosts = Object.keys(ui.boost || {}).filter(k => ui.boost[k] && (items[k] || 0) > 0);
   boosts.forEach(k => items[k]--); ui.boost = {}; if (boosts.length) save();
@@ -543,14 +549,14 @@ function battleModesHtml() {
   return `<div class="grid g3 bmodes">
     <div class="card bmode wander"><div class="card-head"><h2>🆕 New challenger</h2>${wwon ? '<span class="tag green">✓ Beaten</span>' : `<span class="muted small-text">leaves in ${wv.left} day${wv.left === 1 ? '' : 's'}</span>`}</div>
       <div class="row" style="align-items:center;gap:12px"><span class="bmicon">${wv.icon}</span><div class="main"><b>${esc(wv.name)}</b> <span class="muted small-text">Lv ${wv.r}</span><div class="muted small-text">${esc(wv.line)} +90 Grit and gear.</div></div>
-      ${wwon ? '' : `<button class="btn primary" data-act="fightMode" data-v="wander" ${tokensLeft() ? '' : 'disabled'}>⚔️ Fight</button>`}</div></div>
+      ${wwon ? '' : `<button class="btn primary" data-act="fightMode" data-v="wander">⚔️ Fight</button>`}</div></div>
     <div class="card bmode daily"><div class="card-head"><h2>📅 Daily challenge</h2>${won ? '<span class="tag green">✓ Won today</span>' : '<span class="muted small-text">+60 Grit and loot</span>'}</div>
       <div class="row" style="align-items:center;gap:12px"><span class="bmicon">${d.icon}</span><div class="main"><b>${esc(d.name)}</b> <span class="muted small-text">rating ${d.r}</span><div class="muted small-text">${esc(d.mod.label)}</div></div>
-      ${won ? '' : `<button class="btn primary" data-act="fightMode" data-v="daily" ${tokensLeft() ? '' : 'disabled'}>⚔️ Fight</button>`}</div>
+      ${won ? '' : `<button class="btn primary" data-act="fightMode" data-v="daily">⚔️ Fight</button>`}</div>
       <p class="muted small-text" style="margin-bottom:0">${dailyWins()} daily win${dailyWins() === 1 ? '' : 's'} so far.${ownsCos('p_eagle') ? '' : ' Win 3 for the Eagle pet.'}</p></div>
     <div class="card bmode survival"><div class="card-head"><h2>🌊 Survival</h2><span class="muted small-text">best: ${best} wave${best === 1 ? '' : 's'}</span></div>
       <div class="row" style="align-items:center;gap:12px"><span class="bmicon">🔥</span><div class="main"><b>Wave after wave</b><div class="muted small-text">Each rival is tougher. You heal 20 between waves. 12 Grit a wave, loot from wave 4, Arena lights background at wave 8.</div></div>
-      <button class="btn primary" data-act="fightMode" data-v="survival" ${tokensLeft() ? '' : 'disabled'}>Start</button></div></div>
+      <button class="btn primary" data-act="fightMode" data-v="survival">Start</button></div></div>
   </div>
   <div class="card"><div class="card-head"><h2>How fights work</h2><button class="btn small" data-act="arenaPage" data-v="moves">🥋 Moves →</button></div>
     <p class="small-text" style="margin:0">Every stat is a <b>type</b>: ${STAT_IDS.map(k => `${typeBadge(k)} beats ${typeBadge(TYPE_BEATS[k])}`).join(' · ')}. Super effective hits do 1.5×. Your type is your best stat, a rival's type is what it leans on. Moves can burn 🔥, make dizzy 😵‍💫, weaken 📉 or pump you up 💢, and rivals can hit you with statuses too. Each round the rival shows its <b>next move</b>. ⚠️ Big hits: <b>dodge</b>. Normal attacks: <b>counter</b> or <b>block</b>. 🛡️ Guarding: save energy or use a guard-breaking move. Attacks and blocks are timed, so press <b>Space</b> when the marker is in the middle for a <b>PERFECT</b>. Gym leaders have a second phase at 40% HP. Unlock and level up moves in the <b>Moves</b> tab.</p></div>`;

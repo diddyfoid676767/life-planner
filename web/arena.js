@@ -215,7 +215,7 @@ function claimQuest(key) {
 }
 
 // ---------- battles ----------
-const battlesToday = () => (D.arena.battles || []).filter(b => b.at.slice(0, 10) === today()).length;
+const battlesToday = () => (D.arena.battles || []).filter(b => ymd(new Date(b.at)) === today()).length; // local day, not UTC
 const tokensLeft = () => Math.max(0, 2 + Math.min(3, doneWorkouts().filter(w => w.date === today()).length) + ((D.arena.tickets || {})[today()] || 0) - battlesToday());
 const beaten = id => (D.arena.battles || []).some(b => b.e === id && b.win);
 const unlockedUpTo = () => { let i = 0; while (i < ENEMIES.length - 1 && beaten(ENEMIES[i].id)) i++; return i; };
@@ -436,7 +436,7 @@ function arenaBattles(a) {
       return `<div class="rung ${locked ? 'locked' : ''} ${won ? 'won' : ''} ${e.boss ? 'bossrung' : ''}"><div class="rpos">${e.boss ? '👑' : i + 1}</div><div class="renemy">${locked ? '🔒' : e.icon}</div>
         <div class="main"><b>${locked ? (e.boss ? 'Gym leader' : '???') : esc(e.name)}</b> <span class="muted small-text">Lv ${e.r}${e.boss ? ` · gym leader · ${e.hp} HP` : ''}</span>${locked ? '<div class="muted small-text">Beat the rival above to unlock.</div>' : `<div class="muted small-text">${esc(e.line)}</div>
           <div class="bstats">${STATS.map(([k, , ab, col]) => `<span style="--sc:${col}" class="${me[k] > es[k] ? 'edge' : ''}">${ab} <b>${es[k]}</b></span>`).join('')}</div>`}</div>
-        ${won ? `<span class="tag green">✓ ${e.boss ? lg.badge + ' Badge' : 'Beaten'}</span>` : ''}${locked ? '' : `<button class="btn ${won ? '' : 'primary'}" data-act="fight" data-id="${e.id}" ${tokensLeft() ? '' : 'disabled'}>⚔️ Fight</button>`}</div>`;
+        ${won ? `<span class="tag green">✓ ${e.boss ? lg.badge + ' Badge' : 'Beaten'}</span>` : ''}${locked ? '' : `<button class="btn ${won ? '' : 'primary'}" data-act="fight" data-id="${e.id}">⚔️ Fight</button>`}</div>`;
     }).join('')}</div></div>`).join('')}
 ${battleModesHtml()}<div class="card"><div class="card-head"><h2>Boosts</h2><span class="muted small-text">switch on before a fight · buy more in the Shop</span></div><div class="row" style="gap:10px">${boosts.map(x => `<label class="boostchip ${items[x.id] ? '' : 'none'}"><input type="checkbox" data-act="boostToggle" data-id="${x.id}" ${boost[x.id] && items[x.id] ? 'checked' : ''} ${items[x.id] ? '' : 'disabled'}> ${x.icon} ${x.name} <b>×${items[x.id] || 0}</b></label>`).join('')}</div></div>
     <p class="muted small-text">2 battles a day, +1 for each workout ticked off today. Highlighted stats are ones where you're already stronger. Freshness ${freshness()}% scales your stats.</p>`;
