@@ -1728,3 +1728,10 @@ main:has(> .calwrap), main:has(.calwrap) { max-width: 1680px; }
 .g3ctl button { border: 0; background: none; color: var(--text); width: 32px; height: 32px; border-radius: 8px; cursor: pointer; font-size: 1rem; }
 .g3ctl button:hover { background: var(--panel2); }
 .g3wrap .scene-stats, .g3wrap .scene-ctl, .g3wrap .iso-hint { z-index: 2; }
+/* 3D battles: the canvas fills the stage and the fighter elements become invisible anchors */
+.bstage.b3 { height: clamp(320px, 46vh, 460px); background: #0b1622; }
+.b3canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+.bstage.b3 .crowd, .bstage.b3 .lights, .bstage.b3 .ground, .bstage.b3 .proj, .bstage.b3 .fighter .fbox, .bstage.b3 .fighter .fshadow { display: none !important; }
+.bstage.b3 .fighter { bottom: auto; right: auto; width: 120px; height: 170px; margin: -85px 0 0 -60px; transform: none !important; animation: none !important; transition: none; pointer-events: none; }
+.bstage.b3.shake { animation: none; }
+@media (max-width: 700px) { .bstage.b3 { height: 300px; } .bstage.b3 .fighter { transform: none !important; } }
