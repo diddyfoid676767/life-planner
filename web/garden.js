@@ -1,9 +1,9 @@
 'use strict';
 /* Garden idle game: every tree in the forest grows 🍃 leaves over time, even
    while the app is closed. Leaves pile up in the basket until it is full, so
-   come back and collect them. Leaves are the garden's own money (garden
-   upgrades, boxes and the item store), while 🪙 coins are the general money
-   shared with the Arena. Rarer trees grow leaves faster, watered trees grow
+   come back and collect them. Leaves are the garden's own money: garden
+   upgrades, decorations and scenes. 🪙 coins buy everything else (lucky
+   boxes, trees, animals and the Arena), and the two never swap. Rarer trees grow leaves faster, watered trees grow
    faster, and study sessions give a burst of fresh leaves. */
 
 const LEAF = '🍃';
@@ -88,6 +88,88 @@ ITEMS.push(
 );
 BONUS_SPECIES.push(['jacaranda', 'Jacaranda', 'sp_jacaranda'], ['ghostgum', 'Ghost gum', 'sp_ghostgum'], ['bottlebrush', 'Bottlebrush', 'sp_bottlebrush'],
   ['redwood', 'Giant redwood', 'sp_redwood'], ['dragon', 'Dragon tree', 'sp_dragon'], ['frost', 'Frost tree', 'sp_frost'], ['ember', 'Ember tree', 'sp_ember'], ['moon', 'Moonlight tree', 'sp_moon']);
+
+// ---------- 2.17 trees ----------
+Object.assign(SPECIES_DRAW, {
+  wattle(col, dk, lt) {
+    const g = '#7a9a3a', gd = '#5c7a2a';
+    return [`<path d="M-4 0 C-3 -18 -5 -32 -2 -42 L-16 -56 L-13 -58 L0 -48 L2 -62 L6 -62 L4 -46 L16 -56 L18 -53 L5 -40 C6 -26 4 -12 5 0Z" fill="${BARK}"/>
+      ${c(-22, -60, 16, gd)}${c(22, -60, 16, gd)}${c(0, -78, 20, gd)}${c(-14, -64, 13, g)}${c(14, -66, 13, g)}${c(0, -82, 15, g)}
+      ${[[-30, -62], [-22, -72], [-12, -56], [-6, -88], [4, -76], [12, -92], [18, -58], [26, -68], [30, -56], [-18, -84], [8, -62], [20, -80], [-28, -52], [0, -96]].map(([x, y], i) => c(x, y, i % 3 ? 3 : 3.8, i % 2 ? '#fcc419' : '#ffd43b')).join('')}`,
+      [[-18, -64], [18, -66], [0, -84]]];
+  },
+  magnolia(col, dk, lt) {
+    const fl = (x, y, s = 1) => `<g transform="translate(${x} ${y}) scale(${s})"><path d="M0 0 C-7 -3 -8 -11 -3 -14 C-1 -9 1 -9 3 -14 C8 -11 7 -3 0 0Z" fill="#fcc2d7"/><path d="M0 0 C-3 -4 -3 -9 0 -12 C3 -9 3 -4 0 0Z" fill="#fff0f6"/></g>`;
+    return [`<path d="M-5 0 C-4 -16 -6 -28 -2 -38 L-24 -56 L-21 -59 L0 -46 L1 -64 L5 -64 L4 -46 L24 -58 L26 -55 L5 -38 C6 -24 4 -12 6 0Z" fill="${BARK_D}"/>
+      ${c(-22, -62, 12, dk)}${c(22, -64, 12, dk)}${c(0, -76, 14, dk)}
+      ${fl(-26, -58, 1.2)}${fl(-12, -66)}${fl(4, -80, 1.3)}${fl(18, -70, 1.1)}${fl(28, -58)}${fl(-6, -54, .9)}${fl(10, -92)}${fl(-18, -80, 1.1)}`,
+      [[-20, -66], [20, -68], [0, -82]]];
+  },
+  lemon(col, dk, lt) {
+    return [`<path d="M-4 0 L-3 -36 L-12 -48 L-9 -50 L0 -42 L9 -50 L12 -48 L3 -36 L4 0Z" fill="${BARK}"/>
+      ${c(-18, -56, 16, dk)}${c(18, -56, 16, dk)}${c(0, -72, 19, dk)}${c(-12, -60, 13, col)}${c(12, -62, 13, col)}${c(0, -76, 14, col)}${c(-4, -82, 5, lt)}
+      ${[[-22, -50], [-8, -60], [14, -52], [24, -60], [4, -72], [-16, -70], [10, -84]].map(([x, y]) => `<ellipse cx="${x}" cy="${y}" rx="3.6" ry="4.6" fill="#ffe066" stroke="#fab005" stroke-width=".8"/>`).join('')}`,
+      [[-14, -60], [14, -62], [0, -76]]];
+  },
+  spruce(col, dk, lt) {
+    const b = '#4c8fa8', bd = '#2f6f8a', bl = '#a5d8ff';
+    const tier = (y, w) => `<path d="M${-w} ${y} L0 ${y - w * 1.1} L${w} ${y}Z" fill="${bd}"/><path d="M${-w * .8} ${y - 2} L0 ${y - w * 1.1} L${w * .1} ${y - 2}Z" fill="${b}"/>`;
+    return [`<path d="M-4 0 L-3 -16 L3 -16 L4 0Z" fill="${BARK_D}"/>${tier(-14, 30)}${tier(-34, 25)}${tier(-52, 20)}${tier(-68, 15)}${tier(-82, 10)}
+      ${[[-20, -18], [16, -22], [-12, -40], [10, -44], [-6, -60], [4, -74]].map(([x, y]) => c(x, y, 1.6, bl)).join('')}`,
+      [[-14, -26], [12, -46], [0, -70]]];
+  },
+  banyan(col, dk, lt) {
+    return [`<path d="M-12 0 C-10 -16 -12 -30 -8 -44 L8 -44 C12 -30 10 -16 12 0Z" fill="#8a6f5a"/>
+      ${[-40, -30, -20, 20, 30, 40].map(x => `<path d="M${x} 0 L${x * .96} -52" stroke="#8a6f5a" stroke-width="2"/>`).join('')}
+      <path d="M-50 -50 Q-50 -80 -20 -84 Q0 -100 20 -84 Q50 -80 50 -50 Q0 -42 -50 -50Z" fill="${dk}"/>
+      ${c(-30, -64, 16, col)}${c(30, -64, 16, col)}${c(0, -80, 20, col)}${c(-12, -60, 14, col)}${c(14, -60, 14, col)}${c(-6, -88, 6, lt)}`,
+      [[-30, -66], [30, -66], [0, -84]]];
+  },
+  blaze() {
+    const cols = ['#c92a2a', '#e8590c', '#f76707', '#fd7e14', '#fab005'];
+    return [`<path d="M-5 0 L-4 -40 L-14 -54 L-11 -56 L-1 -46 L0 -62 L4 -62 L3 -46 L12 -56 L15 -53 L5 -40 L5 0Z" fill="${BARK}"/>
+      ${[[-24, -60, 16], [24, -60, 16], [0, -80, 20], [-14, -66, 14], [14, -68, 14], [0, -88, 15], [0, -62, 13]].map(([x, y, r], i) => c(x, y, r, cols[i % 5])).join('')}
+      ${[[-30, -6], [-12, -2], [16, -4], [30, -8]].map(([x, y], i) => `<ellipse cx="${x}" cy="${y}" rx="4" ry="1.6" fill="${cols[i]}"/>`).join('')}`,
+      [[-18, -64], [18, -66], [0, -86]]];
+  },
+  glowshroom() {
+    const cap = (x, y, w, h, col) => `<path d="M${x - w} ${y} Q${x - w} ${y - h} ${x} ${y - h} Q${x + w} ${y - h} ${x + w} ${y}Z" fill="${col}"/>`;
+    return [`${c(0, -54, 40, 'rgba(99,230,190,.18)')}<path d="M-6 0 Q-4 -30 -5 -56 L5 -56 Q4 -30 6 0Z" fill="#e6fcf5"/>
+      ${cap(0, -54, 34, 30, '#0ca678')}${cap(0, -58, 28, 24, '#20c997')}
+      ${[[-16, -66], [8, -74], [18, -62], [-4, -62], [-22, -58]].map(([x, y]) => c(x, y, 3, '#c3fae8')).join('')}
+      <path d="M-18 0 Q-17 -10 -18 -16 L-14 -16 Q-15 -10 -14 0Z" fill="#e6fcf5"/>${cap(-16, -15, 9, 9, '#38d9a9')}
+      <path d="M16 0 Q17 -8 16 -12 L20 -12 Q19 -8 20 0Z" fill="#e6fcf5"/>${cap(18, -11, 7, 7, '#63e6be')}`,
+      [[-16, -66], [16, -66], [0, -78]]];
+  },
+  phoenix() {
+    const fe = (a, col, l) => `<path d="M0 -50 Q${Math.cos(a) * l * .5} ${-50 - Math.sin(a) * l * .7} ${Math.cos(a) * l} ${-50 - Math.sin(a) * l} Q${Math.cos(a) * l * .6} ${-46 - Math.sin(a) * l * .4} 0 -46Z" fill="${col}"/>`;
+    return [`${c(0, -64, 40, 'rgba(255,169,77,.2)')}<path d="M-5 0 L-4 -48 L4 -48 L5 0Z" fill="#5c3a21"/>
+      ${[[.35, '#ff6b00', 48], [.7, '#ff922b', 46], [1.05, '#ffa94d', 40], [1.4, '#ffd43b', 34]].map(([a, col, l]) => fe(a, col, l) + fe(Math.PI - a, col, l)).join('')}
+      <path d="M-6 -50 Q0 -90 6 -50Z" fill="#ffd43b"/>${c(0, -86, 4, '#fff3bf')}`,
+      [[-30, -66], [30, -66], [0, -84]]];
+  },
+  galaxy() {
+    const cols = ['#5f3dc4', '#3b5bdb', '#862e9c', '#1c7ed6'];
+    return [`${c(0, -72, 40, 'rgba(151,117,250,.2)')}<path d="M-5 0 L-4 -44 L-14 -58 L-11 -60 L-1 -50 L0 -66 L4 -66 L3 -50 L12 -60 L15 -57 L5 -44 L5 0Z" fill="#212529"/>
+      ${[[-24, -62, 17], [24, -62, 17], [0, -82, 22], [-14, -68, 14], [16, -70, 14], [0, -64, 14]].map(([x, y, r], i) => c(x, y, r, cols[i % 4])).join('')}
+      <ellipse cx="0" cy="-72" rx="40" ry="9" fill="none" stroke="#ffd8a8" stroke-width="2" transform="rotate(-14 0 -72)"/>
+      ${[[-28, -76], [-10, -58], [18, -58], [28, -80], [-14, -94], [6, -96], [4, -70]].map(([x, y], i) => c(x, y, i % 2 ? 1.4 : 2, '#fff')).join('')}`,
+      [[-18, -66], [18, -68], [0, -86]]];
+  },
+});
+ITEMS.push(
+  { id: 'sp_wattle', type: 'tree', name: 'Golden wattle', rarity: 'rare', species: 'wattle' },
+  { id: 'sp_magnolia', type: 'tree', name: 'Magnolia', rarity: 'rare', species: 'magnolia' },
+  { id: 'sp_lemon', type: 'tree', name: 'Lemon tree', rarity: 'rare', species: 'lemon' },
+  { id: 'sp_spruce', type: 'tree', name: 'Blue spruce', rarity: 'rare', species: 'spruce' },
+  { id: 'sp_banyan', type: 'tree', name: 'Banyan', rarity: 'epic', species: 'banyan' },
+  { id: 'sp_blaze', type: 'tree', name: 'Autumn blaze', rarity: 'epic', species: 'blaze' },
+  { id: 'sp_glowshroom', type: 'tree', name: 'Glowshroom', rarity: 'epic', species: 'glowshroom' },
+  { id: 'sp_phoenix', type: 'tree', name: 'Phoenix tree', rarity: 'legendary', species: 'phoenix' },
+  { id: 'sp_galaxy', type: 'tree', name: 'Galaxy tree', rarity: 'legendary', species: 'galaxy' },
+);
+BONUS_SPECIES.push(['wattle', 'Golden wattle', 'sp_wattle'], ['magnolia', 'Magnolia', 'sp_magnolia'], ['lemon', 'Lemon tree', 'sp_lemon'], ['spruce', 'Blue spruce', 'sp_spruce'],
+  ['banyan', 'Banyan', 'sp_banyan'], ['blaze', 'Autumn blaze', 'sp_blaze'], ['glowshroom', 'Glowshroom', 'sp_glowshroom'], ['phoenix', 'Phoenix tree', 'sp_phoenix'], ['galaxy', 'Galaxy tree', 'sp_galaxy']);
 
 // ---------- leaves ----------
 const LEAF_STAGE = [4, 7, 11, 18];                          // leaves per hour by tree stage

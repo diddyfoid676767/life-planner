@@ -1720,3 +1720,11 @@ main:has(> .calwrap), main:has(.calwrap) { max-width: 1680px; }
 #tabs:hover .navh-add { opacity: .7; }
 #tabs .navh-add:hover { opacity: 1; color: var(--text); }
 @media (max-width: 900px) { #tabs .navh-add { display: none; } }
+.g3wrap { padding: 0; overflow: hidden; }
+.g3host { position: relative; height: clamp(420px, 72vh, 760px); border-radius: inherit; overflow: hidden; background: #0b1622; }
+.g3canvas { width: 100%; height: 100%; display: block; cursor: grab; touch-action: none; }
+.g3canvas:active { cursor: grabbing; }
+.g3ctl { position: absolute; right: 12px; bottom: 44px; display: flex; gap: 4px; z-index: 3; background: color-mix(in srgb, var(--panel) 75%, transparent); backdrop-filter: blur(8px); padding: 4px; border-radius: 12px; border: 1px solid var(--border); }
+.g3ctl button { border: 0; background: none; color: var(--text); width: 32px; height: 32px; border-radius: 8px; cursor: pointer; font-size: 1rem; }
+.g3ctl button:hover { background: var(--panel2); }
+.g3wrap .scene-stats, .g3wrap .scene-ctl, .g3wrap .iso-hint { z-index: 2; }

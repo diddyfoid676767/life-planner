@@ -17,9 +17,16 @@ function gardenLayout(logs) {
   for (const k of Object.keys(pos)) if (!valid.has(k)) delete pos[k];
   const seen = new Set();
   const things = [...logs.map(l => ({ key: l.id, l })), ...decos.map(g => ({ key: 'g:' + g.id, g }))].filter(t => !seen.has(t.key) && seen.add(t.key));
-  let N = Math.max(5, Math.ceil(Math.sqrt(things.length * 1.6)));
+  let N = Math.max(8, Math.ceil(Math.sqrt(things.length * 2.2)));
   for (const t of things) { const p = pos[t.key]; if (p) { const [r, c] = p.split(',').map(Number); N = Math.max(N, r + 1, c + 1); } }
   N = Math.min(N, 24);
+  // the 3D island is bigger: once, move the old corner layout to the middle
+  if (!D.game.grid3 && typeof webglOK === 'function' && webglOK()) {
+    const ps = Object.values(pos).map(p => p.split(',').map(Number));
+    if (ps.length) { const mr = Math.max(...ps.map(p => p[0])), mc = Math.max(...ps.map(p => p[1])), dr = Math.max(0, Math.floor((N - 1 - mr) / 2)), dc = Math.max(0, Math.floor((N - 1 - mc) / 2));
+      for (const k of Object.keys(pos)) { const [r, c] = pos[k].split(',').map(Number); pos[k] = `${r + dr},${c + dc}`; } }
+    D.game.grid3 = 1;
+  }
   const taken = {};
   for (const t of things) {
     const p = pos[t.key];
@@ -27,11 +34,13 @@ function gardenLayout(logs) {
     const [r, c] = p.split(',').map(Number);
     if (r < N && c < N) { t.r = r; t.c = c; taken[p] = t.key; }
   }
-  // new things fill free tiles from the front corner outwards
+  // new things fill free tiles from the middle outwards
   const free = [];
   const reserved = new Set(Object.values(pos)); // tiles kept for trees outside this week or month
   for (let r = 0; r < N; r++) for (let c = 0; c < N; c++) if (!taken[`${r},${c}`] && !reserved.has(`${r},${c}`)) free.push([r, c]);
-  free.sort((a, b) => (a[0] + a[1]) - (b[0] + b[1]) || a[1] - b[1]);
+  const mid = (N - 1) / 2, dist = ([r, c]) => Math.hypot(r - mid, c - mid);
+  const gap = ([r, c]) => dist([r, c]) + (r % 2 || c % 2 ? 3 : 0); // leave a tile between things first, so trees have room to spread
+  free.sort((a, b) => gap(a) - gap(b) || a[0] - b[0] || a[1] - b[1]);
   let k = 0;
   for (const t of things) if (t.r == null && k < free.length) { [t.r, t.c] = free[k++]; pos[t.key] = `${t.r},${t.c}`; taken[pos[t.key]] = t.key; }
   return { N, things: things.filter(t => t.r != null), taken };

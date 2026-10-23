@@ -265,10 +265,10 @@ function viewForest() {
   if (page === 'collection') return `${head}${collectionView()}`;
   return `${head}
     ${leafBar()}
-    <div class="scene-wrap isowrap">${forestGrid(logs)}
+    <div class="scene-wrap ${webglOK() ? 'g3wrap' : 'isowrap'}">${webglOK() ? garden3DHtml(logs) : forestGrid(logs)}
       <div class="scene-stats">${stat(logs.length, logs.length === 1 ? 'tree' : 'trees')}${stat(fmtMins(mins) || '0m', 'studied')}${stat('🔥 ' + streak, 'day streak')}${stat(best, 'best streak')}</div>
       <div class="scene-ctl">${gardenFxPanel()}<div class="seg">${seg('week', 'This week')}${seg('month', 'This month')}${seg('all', 'All time')}</div></div>
-      <div class="iso-hint">Drag a tree to move it · click for details</div></div>
+      <div class="iso-hint">${webglOK() ? 'Drag to spin · scroll to zoom · drag a tree to move it · click for details' : 'Drag a tree to move it · click for details'}</div></div>
     <div class="forest-cols">
       <div class="stack">
       ${challengesCard()}

@@ -192,7 +192,7 @@ const TOUR_PAGES = {
     ['.clsgrid > :first-child', 'Today\'s periods', 'Pick the subject for each period. When the bell goes, rate your effort from 😴 to 🔥 for coins.'],
     ['.clsgrid > :last-child', 'Effort and bell times', 'Your average effort per subject this week. Check the bell times match your school.']]],
   forest: ['🌳 Forest', 'Every focus session grows a tree here.', [
-    ['.scene-wrap', 'Your 3D garden', 'Drag a tree to another tile to rearrange it, click it to name or water it, and brush through trees to see them bend. Trees grow 🍃 leaves: tap a leaf bubble or Collect to bank them. ✨ Effects turns clouds, weather and roaming animals on or off.'],
+    ['.scene-wrap', 'Your 3D garden', 'Drag empty space to spin the island and scroll to zoom. Drag a tree to another tile to move it, click it to name or water it, and brush through trees to see them bend. Trees grow 🍃 leaves: tap a leaf bubble or Collect to bank them. ✨ Effects turns clouds, weather and roaming animals on or off.'],
     ['.forest-tabs', 'Trees, critters and the shop', 'Choose each subject\'s tree, meet your critters, and spend coins on scenes, decorations and upgrades.'],
     ['.forest-cols > .stack:first-child', 'Challenges', 'New challenges every day and week. Claim the coins when you finish one.'],
     ['.forest-cols > .stack:last-child', 'Milestones and your trees', 'Big goals with bigger rewards, plus which tree each subject grows.']]],

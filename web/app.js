@@ -1758,8 +1758,6 @@ document.addEventListener('click', e => {
     case 'gift': claimGift(); break;
     case 'milestone': claimMilestone(id); break;
     case 'openBox': openBox(id); break;
-    case 'openBoxLeaf': openBox(id, 'leaf'); break;
-    case 'storeBuyLeaf': storeBuy(id, 'leaf'); break;
     case 'collectLeaves': collectLeaves(el); render(); break;
     case 'buyLeafUpg': buyLeafUpgrade(id); break;
     case 'setScene': D.game.scene = el.dataset.v; save(); render(); break;
@@ -1768,6 +1766,7 @@ document.addEventListener('click', e => {
     case 'setThemeMode': D.settings.themeMode = el.dataset.v; save(); render(); break;
     case 'navHeadAdd': navHead('add'); break;
     case 'navHeadNew': navHead('new'); break;
+    case 'g3view': g3view(el.dataset.v); break;
     case 'navHeadRename': navHead('rename', el.dataset.v); break;
     case 'navHeadDel': navHead('del', el.dataset.v); break;
     case 'navMove': navMove(el.dataset.v, +el.dataset.n); save(); render(); break;

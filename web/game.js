@@ -176,7 +176,8 @@ function rollItem(box) {
   const weighted = [...pool, ...fresh];
   return weighted[Math.floor(Math.random() * weighted.length)];
 }
-function openBox(boxId, cur = 'coin') {
+function openBox(boxId) {
+  const cur = 'coin'; // lucky boxes are coins only
   const box = BOXES.find(b => b.id === boxId);
   if (!box || (cur === 'leaf' ? leaves() : coins()) < boxPrice(box)) return;
   const item = rollItem(box);
@@ -347,28 +348,35 @@ function challengesCard() {
     <div class="daygroup">This week</div><ul class="chals">${list.filter(c => c.kind === 'This week').map(row).join('')}</ul></div>`;
 }
 function boxesView() {
-  const have = coins(), lv = leaves();
-  return `<div class="card"><div class="card-head"><h2>Lucky boxes</h2><span class="muted small-text">pay with coins or leaves</span><span class="coins">${COIN} <b>${have}</b></span><span class="coins">${LEAF} <b>${fmtLeaf(lv)}</b></span></div>
-    <div class="boxes">${BOXES.map(b => { const p = boxPrice(b); return `<div class="boxcard ${have >= p || lv >= p ? '' : 'poor'}" style="--bc:${b.colors[0]}">
+  const have = coins();
+  return `<div class="card"><div class="card-head"><h2>Lucky boxes</h2><span class="muted small-text">coins only</span><span class="coins">${COIN} <b>${have}</b></span></div>
+    <div class="boxes">${BOXES.map(b => { const p = boxPrice(b); return `<div class="boxcard ${have >= p ? '' : 'poor'}" style="--bc:${b.colors[0]}">
       <div class="boxart">${boxSvg(b, 120)}</div><h3>${b.name}</h3>${b.note ? `<div class="boxnote">${b.note}</div>` : ''}
       <div class="odds">${Object.entries(b.odds).filter(([, p]) => p).map(([r, p]) => `<span style="color:${RARITY[r].color}">${RARITY[r].name} ${p}%</span>`).join('')}</div>
-      <div class="row boxbuy"><button class="btn small ${have >= p ? 'primary' : ''}" data-act="openBox" data-id="${b.id}" ${have >= p ? '' : 'disabled'}>${p} ${COIN}</button><button class="btn small ${lv >= p ? 'primary' : ''}" data-act="openBoxLeaf" data-id="${b.id}" ${lv >= p ? '' : 'disabled'}>${p} ${LEAF}</button></div></div>`; }).join('')}</div></div>`;
+      <button class="btn ${have >= p ? 'primary' : ''}" data-act="openBox" data-id="${b.id}" ${have >= p ? '' : 'disabled'}>Open · ${p} ${COIN}</button></div>`; }).join('')}</div></div>`;
 }
+// Coins and leaves buy different things: trees and animals cost coins, while
+// decorations and scenes for the garden cost leaves. There's no swapping one
+// for the other.
 const STORE_PRICE = { common: 90, rare: 220, epic: 500, legendary: 1200 };
+const LEAF_PRICE = { common: 120, rare: 300, epic: 700, legendary: 1500 };
+const storeCur = i => i.type === 'deco' || i.type === 'scene' ? 'leaf' : 'coin';
+const storePrice = i => (storeCur(i) === 'leaf' ? LEAF_PRICE : STORE_PRICE)[i.rarity];
 function storeView() {
-  const have = coins(), lv = leaves(), cat = ui.storeCat || 'deco';
-  const cats = [['deco', '🏡 Decorations'], ['animal', '🦔 Animals'], ['tree', '🌳 Trees'], ['scene', '🌅 Scenes']];
-  const list = ITEMS.filter(i => i.type === cat).sort((a, b) => STORE_PRICE[a.rarity] - STORE_PRICE[b.rarity]);
-  return `<div class="card"><div class="card-head"><h2>Item store</h2><span class="muted small-text">skip the luck and buy exactly what you want</span><span class="coins">${COIN} <b>${have}</b></span><span class="coins">${LEAF} <b>${fmtLeaf(lv)}</b></span></div>
+  const cat = ui.storeCat || 'tree';
+  const cats = [['tree', `🌳 Trees · ${COIN}`], ['animal', `🦔 Animals · ${COIN}`], ['deco', `🏡 Decorations · ${LEAF}`], ['scene', `🌅 Scenes · ${LEAF}`]];
+  const list = ITEMS.filter(i => i.type === cat).sort((a, b) => storePrice(a) - storePrice(b));
+  const leafy = cat === 'deco' || cat === 'scene', have = leafy ? leaves() : coins(), sym = leafy ? LEAF : COIN;
+  return `<div class="card"><div class="card-head"><h2>Item store</h2><span class="muted small-text">${leafy ? 'garden decorations and scenes are paid with leaves' : 'trees and animals are paid with coins'}</span><span class="coins">${sym} <b>${leafy ? fmtLeaf(have) : have}</b></span></div>
     <div class="seg" style="margin-bottom:10px">${cats.map(([k, l]) => `<button class="${cat === k ? 'on' : ''}" data-act="storeCat" data-v="${k}">${l}</button>`).join('')}</div>
-    <div class="storegrid">${list.map(i => { const p = STORE_PRICE[i.rarity], has = owned(i.id);
+    <div class="storegrid">${list.map(i => { const p = storePrice(i), has = owned(i.id);
       return `<div class="storeitem ${has ? 'own' : ''}" style="--rc:${RARITY[i.rarity].color}"><div class="storeart">${itemIcon(i, 70)}</div><b>${esc(i.name)}</b><span class="small-text" style="color:${RARITY[i.rarity].color}">${RARITY[i.rarity].name}</span>
-        ${has ? '<span class="tag green">✓ Owned</span>' : `<div class="row boxbuy"><button class="btn small ${have >= p ? 'primary' : ''}" data-act="storeBuy" data-id="${i.id}" ${have >= p ? '' : 'disabled'}>${p} ${COIN}</button><button class="btn small ${lv >= p ? 'primary' : ''}" data-act="storeBuyLeaf" data-id="${i.id}" ${lv >= p ? '' : 'disabled'}>${p} ${LEAF}</button></div>`}</div>`; }).join('')}</div></div>`;
+        ${has ? '<span class="tag green">✓ Owned</span>' : `<button class="btn small ${have >= p ? 'primary' : ''}" data-act="storeBuy" data-id="${i.id}" ${have >= p ? '' : 'disabled'}>${p} ${sym}</button>`}</div>`; }).join('')}</div></div>`;
 }
-function storeBuy(id, cur = 'coin') {
+function storeBuy(id) {
   const i = itemById(id); if (!i || owned(id)) return;
-  const p = STORE_PRICE[i.rarity];
-  if (cur === 'leaf') { if (!spendLeaves(p)) return; } else { if (coins() < p) return; D.game.spent += p; }
+  const p = storePrice(i);
+  if (storeCur(i) === 'leaf') { if (!spendLeaves(p)) return; } else { if (coins() < p) return; D.game.spent += p; }
   D.game.items[id] = 1; save(); render();
   toast(`✨ ${i.name} is yours`, i.type === 'scene' ? 'Pick it under Collection to change your forest.' : 'It\'s in your forest now.');
 }
@@ -378,7 +386,7 @@ function earnCard() {
       <li><b>+5</b> per study block ticked off, <b>+25</b> per SAC or exam done, <b>+5</b> per workout, <b>+2</b> per task done</li>
       <li><b>Challenges</b>: 15 to 150 coins each</li><li><b>Daily gift</b>: free coins once a day</li><li><b>Water your trees</b>: coins for each tree you water (once a day each)</li>
       <li><b>Milestones</b> and <b>critter discoveries</b> pay out once</li><li>Duplicates from boxes give coins back</li></ul>
-    <p class="muted small-text" style="margin:8px 0 0">Coins are shared with the Arena (Arena boxes, shop and wardrobe). ${LEAF} Leaves are the garden's own money: your trees grow them every hour.</p></div>`;
+    <p class="muted small-text" style="margin:8px 0 0">${COIN} Coins buy lucky boxes, trees, animals and everything in the Arena. ${LEAF} Leaves are the garden's own money: your trees grow them every hour, and they buy garden upgrades, decorations and scenes. You can't swap one for the other.</p></div>`;
 }
 function collectionView() {
   const groups = [['tree', 'Trees'], ['animal', 'Animals'], ['deco', 'Decorations'], ['scene', 'Forest scenes']];
@@ -399,6 +407,7 @@ function collectionView() {
 let lastCoins = null, lastLevel = null;
 function gameFeedback() {
   if (!D || !D.game) return;
+  if (typeof mountGarden3D === 'function') try { mountGarden3D(); } catch (e) { console.error(e); }
   checkCritters();
   checkMissedDays();
   gnomeCollect();
