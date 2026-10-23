@@ -1,0 +1,8 @@
+# personal data and build output stay out of the repo
+data/
+seeddata/
+seed_embed.go
+pkg/
+dist/
+*.exe
+*.zip
