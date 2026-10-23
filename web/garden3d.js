@@ -63,7 +63,7 @@ function forestGrid(logs) {
   const sky = sc.night ? (sc.sky || ['#0b1a3a', '#24406e']) : night ? ['#16204a', '#3a4a86'] : sc.sky || ['#6ec1ff', '#e6f6ff'];
   const top = night && !sc.night ? shade(sc.g1, -.35) : sc.g1, top2 = night && !sc.night ? shade(sc.g2, -.35) : sc.g2;
   const { N, things } = gardenLayout(logs);
-  const pad = 200, W = N * ISO_W + 160, H = N * ISO_H + ISO_D + pad + 70, ox = W / 2, oy = pad;
+  const pad = 175, W = N * ISO_W + 40, H = N * ISO_H + ISO_D + pad + 30, ox = W / 2, oy = pad;
   const rnd = seeded('sky' + D.game.scene);
   // sky: sun or moon, stars, hills and clouds
   let skyArt = '';
@@ -96,8 +96,8 @@ function forestGrid(logs) {
     if (t.g) return `<g class="gpos" data-d="${d}" transform="translate(${x} ${y})"><g class="gtree deco" data-key="${esc(t.key)}"><g class="sway"><g transform="scale(1.25)">${t.g.svg}</g></g></g></g>`;
     const l = t.l, s = subj(l.subjectId), bub = bubbles > 0 && i % 2 === 0 ? (bubbles--, true) : false;
     return `<g class="gpos" data-d="${d}" data-x="${x}" data-y="${y + 6}" transform="translate(${x} ${y + 6})"><g class="gtree ${l.withered ? 'withered' : treeRec(l.id).wilted ? 'wilt' : ''}" data-key="${esc(t.key)}" data-act="treeInfo" data-id="${l.id}" style="animation-delay:${Math.min(i * 30, 1200)}ms">
-      <title>${esc(treeName(l))} · ${esc(s.name)} · ${fmtMins(l.mins)} · ${fmtDate(l.date)} (drag to move, click for details)</title><g class="sway"><g transform="scale(1.1)">${treeG(speciesFor(l.subjectId), s.color, treeStage(l.mins), l.id)}</g></g></g>
-      ${bub ? `<g class="leafbub" data-act="collectLeaves" transform="translate(0 ${-[44, 84, 124, 146][treeStage(l.mins)]})"><g class="bubin"><circle r="15" fill="#fff" opacity=".92" stroke="#40c057" stroke-width="2"/><text y="6" text-anchor="middle" font-size="17">🍃</text></g><title>Collect your leaves</title></g>` : ''}</g>`;
+      <title>${esc(treeName(l))} · ${esc(s.name)} · ${fmtMins(l.mins)} · ${fmtDate(l.date)} (drag to move, click for details)</title><g class="sway"><g transform="scale(1.4)">${treeG(speciesFor(l.subjectId), s.color, treeStage(l.mins), l.id)}</g></g></g>
+      ${bub ? `<g class="leafbub" data-act="collectLeaves" transform="translate(0 ${-[54, 106, 160, 190][treeStage(l.mins)]})"><g class="bubin"><circle r="15" fill="#fff" opacity=".92" stroke="#40c057" stroke-width="2"/><text y="6" text-anchor="middle" font-size="17">🍃</text></g><title>Collect your leaves</title></g>` : ''}</g>`;
   }).join('');
   const empty = logs.length ? '' : `<text x="${ox}" y="${oy - 60}" text-anchor="middle" font-size="24" font-weight="700" fill="${night ? '#e9f5e9' : '#2b5a2a'}">Study for 10+ minutes to plant your first tree.</text>`;
   // things that move
