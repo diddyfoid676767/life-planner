@@ -369,7 +369,7 @@ function viewToday() {
       <form class="row" data-form="quickTodo" style="margin-bottom:8px"><input type="text" name="text" placeholder="＋ Add a task and press Enter" style="flex:1" maxlength="300"><input type="date" name="due" style="width:auto" title="Due date (optional)"></form>
       <div class="tscroll">${todoList.length ? `<ul class="list tasks compact">${todoList.map(todoHtml).join('')}</ul>` : '<div class="empty">No open tasks. 🎉</div>'}
       ${overdue.length ? `<details class="overdue"><summary><b>⚠ ${overdue.length} overdue or missed</b> <span class="muted small-text">last 3 weeks</span></summary>${listHtml(overdue, '', { showDate: true, move: true })}</details>` : ''}</div></div>
-    <div class="tside">
+    <div class="tside">${examEveCard()}
       <div class="card todaynext">${upItem('📝', 'Next SAC / exam', nextA, nextA ? `${subj(nextA.subjectId).name}: ${nextA.title}` : '', nextA ? subj(nextA.subjectId).color : 'var(--accent)')}${upItem('⏰', 'Next deadline', nextD, nextD?.title, CATS.Deadline)}${upItem('🏁', 'Next race / event', nextT, nextT?.name, TEVENT_COLOR)}</div>
       <div class="card tsoon"><div class="card-head"><h2>Coming up</h2><button class="btn small" data-act="goto" data-v="calendar">Calendar →</button></div>
         <div class="tscroll soon3">${soonDays.map(x => { const its = soon.filter(e => e.date === x); return `<div><button class="mini-day linkish" data-act="daySel" data-date="${x}"><b>${longDay(x)}</b> <span class="muted">${fmtDate(x)}</span></button>${its.length ? `<ul class="minis">${its.slice(0, 4).map(miniRow).join('')}</ul>${its.length > 4 ? `<button class="btn small" data-act="daySel" data-date="${x}">+${its.length - 4} more</button>` : ''}` : '<div class="muted small-text">Nothing planned</div>'}</div>`; }).join('')}</div></div>
@@ -522,6 +522,7 @@ function viewStudy() {
 
   return `<div class="study2">${pageHead('Study', `${fmtMins(sum(tw, twEnd)) || '0m'} studied this week · ${trees} tree${trees === 1 ? '' : 's'} planted`, `<button class="btn" data-act="planStudy">Plan study</button><button class="btn primary" data-act="focusNew">▶ Start studying</button>`)}
   <div class="upnext-row">${nextCard}${sacCard}${todayCard}</div>
+  ${examHub()}
   <div class="study-grid2">
     <div class="study-side">
     <div class="card"><div class="card-head"><h2>${wkLabel}</h2><span class="muted">${fullDate(sd)}</span><span style="flex:1"></span>
@@ -899,7 +900,7 @@ function viewSettings() {
         <label class="row small-text"><input type="checkbox" data-setting="useOnline" ${D.settings.useOnline ? 'checked' : ''}> Open the online version when I start LifePlanner.exe (so PC and phone always match)</label>`}
     </div>
     <div class="card" data-sec="app" style="${ONLINE ? 'display:none' : ''}"><h2>App</h2>
-      <p class="small-text"><b id="verText">Version ${esc(appVersion)}</b> · New versions download by themselves from GitHub. You can also put a LifePlanner zip in your Downloads folder.</p>
+      <p class="small-text"><b id="verText">Version ${esc(appVersion)}</b> <button class="btn small" data-act="checkUpdateNow">Check for updates</button> · New versions download by themselves from GitHub. You can also put a LifePlanner zip in your Downloads folder.</p>
       <label class="row small-text"><input type="checkbox" data-setting="autoUpdate" ${D.settings.autoUpdate !== false ? 'checked' : ''}> Install updates automatically (never during a focus timer)</label>
       <p class="small-text"><b>Brain.fm:</b> <span id="brainfmState">${brainfmApp ? 'opens the app (' + esc(brainfmApp.split(/[\\/]/).pop()) + ')' : 'app not found, so it opens the website'}</span></p>
       <div class="row" style="margin-bottom:10px"><input type="text" placeholder="Brain.fm app path (optional, e.g. C:\\Users\\you\\AppData\\Local\\brain\\Brain.fm.exe)" data-setting="brainfmPath" value="${esc(D.settings.brainfmPath || '')}" style="flex:1;min-width:220px"><button class="btn small" data-act="brainfmTest">Test</button></div>
@@ -1783,6 +1784,17 @@ document.addEventListener('click', e => {
     case 'focusNew': focusPicker(); break;
     case 'delLog': if (confirm('Delete this logged study time?')) { D.focusLogs = D.focusLogs.filter(l => l.id !== id); save(); render(); } break;
     case 'applyUpdate': clearTimeout(autoUpdateTimer); autoUpdateTimer = 0; applyUpdate(); break;
+    case 'examPlan': buildExamPlan(); break;
+    case 'logPaper': logPaper({ assessmentId: el.dataset.id }); break;
+    case 'checkUpdateNow': {
+      el.disabled = true; el.textContent = 'Checking…';
+      fetch('/api/update/check', { method: 'POST' }).then(r => r.json()).then(u => {
+        if (u.error) toast("Couldn't check for updates", u.error, { cls: 'danger' });
+        else if (u.available) { autoUpdateSkip = false; checkUpdate(); toast('⬇️ Update found', `Version ${String(u.latest || '').replace(/^v/, '')} is installing.`); }
+        else toast("✅ You're up to date", `Version ${u.version} is the newest.`);
+      }).catch(() => toast("Couldn't check for updates", 'Try again in a minute.', { cls: 'danger' })).finally(() => { el.disabled = false; el.textContent = 'Check for updates'; });
+      break;
+    }
     case 'skipUpdate': clearTimeout(autoUpdateTimer); autoUpdateTimer = 0; autoUpdateSkip = true; checkUpdate(); break;
     case 'loadStarter': if (confirm('Add your exams, SACs, study blocks, training and tasks from the starter plan? Anything already there stays; nothing is duplicated.')) loadStarter(false); break;
     case 'inboxDismiss': inboxDismiss(id); break;

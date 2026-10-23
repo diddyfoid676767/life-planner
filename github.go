@@ -72,6 +72,7 @@ func checkGitHub() error {
 	if err := json.Unmarshal(b, &rel); err != nil {
 		return err
 	}
+	latestTag = rel.Tag
 	if !newerVersion(rel.Tag, version) {
 		return nil
 	}
@@ -120,13 +121,35 @@ func checkGitHub() error {
 	return nil
 }
 
-// watchGitHub checks for a new release shortly after start, then every 6 hours.
+// latestTag is the newest release GitHub reported, for Settings → App.
+var latestTag string
+
+// watchGitHub checks for a new release shortly after start, then every hour.
 func watchGitHub() {
-	time.Sleep(45 * time.Second)
+	time.Sleep(20 * time.Second)
 	for {
 		if err := checkGitHub(); err != nil {
 			log.Printf("github update check: %v", err)
 		}
-		time.Sleep(6 * time.Hour)
+		time.Sleep(time.Hour)
 	}
+}
+
+// POST /api/update/check: look on GitHub now (the "Check for updates" button).
+func handleUpdateCheck(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	if r.Method != http.MethodPost {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	resp := map[string]any{"version": version}
+	if err := checkGitHub(); err != nil {
+		log.Printf("github update check: %v", err)
+		resp["error"] = "Couldn't reach GitHub. Check your internet connection."
+	}
+	updateMu.Lock()
+	resp["available"] = findUpdate() != nil
+	updateMu.Unlock()
+	resp["latest"] = latestTag
+	json.NewEncoder(w).Encode(resp)
 }

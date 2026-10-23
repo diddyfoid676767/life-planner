@@ -105,6 +105,7 @@ function setbacksCard() {
       <li><label><input type="checkbox" data-setting="strictFocus" ${D.settings.strictFocus ? 'checked' : ''}> <b>Strict focus</b></label>: leaving the planner for over a minute counts as a distraction. ${DISTRACT_LIMIT} in one session withers that tree (half coins).</li></ul>
     ${wilted.length || away.length ? `<p class="small-text">${wilted.length ? `🥀 ${wilted.length} wilted tree${wilted.length === 1 ? '' : 's'}. Water ${wilted.length === 1 ? 'it' : 'them'} in My trees. ` : ''}${away.length ? `${away.map(k => k.emoji).join('')} away right now.` : ''}</p>` : ''}
     ${bedtimeRow()}
+    ${typeof nudgeRow === 'function' ? nudgeRow() : ''}
     <h3 style="margin:14px 0 6px">Holidays</h3>
     <p class="muted small-text" style="margin:0 0 8px">Days in a holiday never count as missed and don't break your streak.</p>
     ${hols.map(h => `<div class="holrow"><span>✈️ <b>${esc(h.name || 'Holiday')}</b> ${fmtDate(h.from)}${h.to !== h.from ? ` – ${fmtDate(h.to)}` : ''}</span><button class="iconbtn" data-act="holDel" data-id="${esc(h.id)}" title="Remove">✕</button></div>`).join('')}

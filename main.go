@@ -99,6 +99,7 @@ func main() {
 	mux.HandleFunc("/api/account/profile", handleAccountProfile)
 	mux.HandleFunc("/api/account/people", handleAccountPeople)
 	mux.HandleFunc("/api/update", handleUpdate)
+	mux.HandleFunc("/api/update/check", handleUpdateCheck)
 	mux.HandleFunc("/api/shortcuts", handleShortcuts)
 	mux.HandleFunc("/api/strava", handleStrava)
 	mux.HandleFunc("/api/strava/activities", handleStravaActivities)

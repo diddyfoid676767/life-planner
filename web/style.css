@@ -1514,3 +1514,27 @@ html[data-glass] .card, html[data-glass] .sidebar { background: color-mix(in srg
 .efforts10 button.on { background: var(--ec); border-color: var(--ec); color: #fff; transform: scale(1.08); box-shadow: 0 6px 16px color-mix(in srgb, var(--ec) 45%, transparent); }
 .efflabel { text-align: center; font-weight: 600; min-height: 1.4em; margin-bottom: 10px; }
 @media (max-height: 820px) { #tabs button { padding: 6px 12px; } .navgroup { padding: 8px 12px 2px; } .sidebar { gap: 4px; padding-top: 14px; } }
+
+/* ---------- exam lead-up ---------- */
+.examhub { margin-bottom: 16px; }
+.examhub .card-head { flex-wrap: wrap; gap: 8px; }
+.examcards { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 12px; }
+.examcard { display: flex; flex-direction: column; gap: 8px; padding: 14px; border-radius: 14px; background: color-mix(in srgb, var(--c) 8%, var(--panel2)); border: 1px solid color-mix(in srgb, var(--c) 30%, var(--border)); border-top: 4px solid var(--c); }
+.examcard.soon { box-shadow: 0 0 0 2px color-mix(in srgb, var(--c) 45%, transparent); }
+.examcard > .btn { align-self: flex-start; margin-top: auto; }
+.ex-top { display: flex; gap: 12px; align-items: center; }
+.ex-days { display: flex; flex-direction: column; align-items: center; min-width: 54px; padding: 6px 4px; border-radius: 12px; background: var(--c); color: #fff; }
+.ex-days b { font-size: 1.5rem; line-height: 1; }
+.ex-days span { font-size: .7rem; opacity: .9; }
+.ex-subj { font-size: .72rem; font-weight: 800; text-transform: uppercase; letter-spacing: .05em; color: var(--c); }
+.ex-title { font-weight: 700; line-height: 1.2; }
+.ex-ready { display: flex; align-items: center; gap: 8px; font-size: .82rem; }
+.ex-ready .meter { flex: 1; height: 8px; border-radius: 6px; background: var(--border); overflow: hidden; }
+.ex-ready .meter i { display: block; height: 100%; border-radius: 6px; }
+.ex-stats { display: flex; flex-wrap: wrap; gap: 4px 10px; font-size: .8rem; color: var(--muted); }
+.ex-weak { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; }
+.ex-eve { font-size: .82rem; font-weight: 600; color: var(--c); }
+.exameve { border-left: 4px solid #7950f2; }
+.evelist { list-style: none; margin: 6px 0 0; padding: 0; font-size: .82rem; display: flex; flex-direction: column; gap: 2px; }
+.qa-topics { margin: -4px 0 10px; }
+.qa-topics .cchip.on { background: var(--accent); color: #fff; border-color: var(--accent); }
