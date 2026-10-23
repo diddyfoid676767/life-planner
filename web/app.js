@@ -273,6 +273,7 @@ let view = 'today';
 const ui = { daySel: null, calMonth: null, calSel: null, calFilter: { study: true, training: true, personal: true, calendars: true }, studyAll: false, assessPast: false, evFilter: 'upcoming', evCat: '', showDoneTodos: false, studyWeek: 0, forestRange: 'week', trainWeek: 0, inboxCat: '', setTab: 'general' };
 
 function render() {
+  applyTheme();
   document.querySelectorAll('#tabs button').forEach(b => b.classList.toggle('active', b.dataset.view === view));
   const v = $('#view');
   const y = window.scrollY;
@@ -541,11 +542,15 @@ function viewStudy() {
   return `<div class="study2">${pageHead('Study', `${fmtMins(sum(tw, twEnd)) || '0m'} studied this week · ${trees} tree${trees === 1 ? '' : 's'} planted`, `<button class="btn" data-act="planStudy">Plan study</button><button class="btn primary" data-act="focusNew">▶ Start studying</button>`)}
   <div class="upnext-row">${nextCard}${sacCard}${todayCard}</div>
   <div class="study-grid2">
+    <div class="study-side">
     <div class="card"><div class="card-head"><h2>${wkLabel}</h2><span class="muted">${fullDate(sd)}</span><span style="flex:1"></span>
       <div class="seg"><button data-act="studyWeek" data-v="-1" title="Previous week">‹</button><button class="${ui.studyWeek === 0 ? 'on' : ''}" data-act="studyWeek" data-v="0">Today</button><button data-act="studyWeek" data-v="1" title="Next week">›</button></div></div>
       <div class="daystrip">${strip}</div>
       <div class="sday">${dueRows}${blockRows || (dueRows ? '' : `<div class="empty big">No study blocks ${sd === t ? 'today' : 'on this day'}.</div>`)}</div>
       <button class="btn" data-act="new" data-kind="session" data-date="${sd}" style="margin-top:10px">+ Add a study block</button></div>
+  <div class="card subjcard"><div class="card-head"><h2>Subjects</h2></div><div class="subjects">${subjects || '<span class="empty">Add your subjects to get started.</span>'}<button class="btn small" data-act="new" data-kind="subject">+ Subject</button></div></div>
+  ${linksHtml(['Study'], 'chips')}
+    </div>
     <div class="study-side">
       <div class="card"><div class="card-head"><h2>SACs &amp; exams</h2><span style="flex:1"></span>
         <div class="seg"><button class="${!ui.assessPast ? 'on' : ''}" data-act="assessPast" data-v="0">Upcoming</button><button class="${ui.assessPast ? 'on' : ''}" data-act="assessPast" data-v="1">Past</button></div>
@@ -557,8 +562,7 @@ function viewStudy() {
         <a href="#" class="forest-link" data-act="goto" data-v="forest">${treeSvg('#40c057', 45, 1, 'oak', 30)}<span><b>${trees} tree${trees === 1 ? '' : 's'}</b> this week · 🔥 ${studyStreak()}-day streak</span><span class="muted">Open forest →</span></a></div>
     </div>
   </div>
-  <div class="card subjcard"><div class="card-head"><h2>Subjects</h2></div><div class="subjects">${subjects || '<span class="empty">Add your subjects to get started.</span>'}<button class="btn small" data-act="new" data-kind="subject">+ Subject</button></div></div>
-  ${linksHtml(['Study'], 'chips')}</div>`;
+</div>`;
 }
 
 function trainingPlan() {
@@ -846,11 +850,12 @@ function viewSettings() {
   const r = D.settings.remind;
   const remindRow = (k, label) => `<tr><th>${label}</th>${REMIND_OPTS.map(([v, l]) => `<td><label class="rcheck" title="${l}"><input type="checkbox" data-remdef="${k}" value="${v}" ${r[k].includes(v) ? 'checked' : ''}></label></td>`).join('')}</tr>`;
   const sec = ui.setTab || 'general';
-  const tabs = [['general', '👤 You'], ['calendars', '📅 Calendars'], ['reminders', '🔔 Reminders'], ['backup', '💾 Backup'], ['app', '🖥 App']];
+  const tabs = [['general', '👤 You'], ['theme', '🎨 Theme'], ['calendars', '📅 Calendars'], ['reminders', '🔔 Reminders'], ['backup', '💾 Backup'], ['app', '🖥 App']];
   const perm = 'Notification' in window ? Notification.permission : 'unsupported';
   return `${pageHead('Settings', '', '')}
   <div class="seg settabs">${tabs.map(([k, l]) => `<button class="${sec === k ? 'on' : ''}" data-act="setTab" data-v="${k}">${l}</button>`).join('')}</div>
   <div class="grid g2 settings-grid" data-sec="${sec}">
+    ${themeCard()}
     ${ONLINE ? `<div class="card" data-sec="calendars" style="grid-column:1/-1"><div class="card-head"><h2>Calendars</h2><button class="btn small" data-act="gcalRefresh">Refresh</button><button class="btn small primary" data-act="gcalChoose">Choose calendars</button></div>
       <p class="muted small-text" style="margin-top:0">Shows your Google Calendar (${(D.settings.gcal?.ids || ['primary']).length} calendar(s) selected). The first time, claude.ai asks you to allow access to Google Calendar. To include your school Outlook or Garmin calendar, subscribe to its iCal link inside Google Calendar (Other calendars → + → From URL).</p>
       ${GCAL.map(c => `<div class="row small-text"><span class="dot" style="background:${c.color};width:10px;height:10px;border-radius:50%;display:inline-block"></span>${esc(c.name)}: ${c.items.length} events${c.smart ? ` (${c.items.filter(x => !feedKeeps(c, x)).length} hidden by school filter)` : ''}</div>`).join('')}</div>` : ''}
@@ -1283,7 +1288,7 @@ let focusTick = null, focusAskCancel = false;
 function renderFocusBar() {
   const bar = $('#focusBar'); const f = D && D.focus;
   if (D && D.game) gameFeedback();
-  if (!f) { bar.hidden = true; clearInterval(focusTick); focusTick = null; document.title = 'Life Planner'; closeFocusFull(); return; }
+  if (!f) { bar.hidden = true; clearInterval(focusTick); focusTick = null; document.title = 'Life Planner'; closeFocusFull(); updateMini(null); return; }
   const s = subj(f.subjectId);
   const draw = () => {
     const m = focusElapsed(f), mm = Math.floor(m), ss = Math.floor((m - mm) * 60);
@@ -1291,8 +1296,9 @@ function renderFocusBar() {
     const pct = Math.min(100, m / focusTarget(f, m) * 100);
     bar.innerHTML = `<i class="fprog" style="width:${pct.toFixed(1)}%"></i><span class="ftree">${treeSvg(s.color, Math.max(10, f.planned || 45), Math.min(1, m / Math.max(10, f.planned || 45)), speciesFor(f.subjectId), 40)}</span><b>${esc(s.name)}</b> <span class="ftime">${time}</span>${f.planned ? `<span class="small-text"> / ${fmtMins(f.planned)}</span>` : ''}${f.pausedAt ? ' <span class="tag amber">Paused</span>' : ''}
       <span class="spacer"></span>${focusAskCancel ? `<span class="small-text"><b>Cancel without logging?</b> No time, coins or tree.</span><button class="btn small danger" data-act="focusCancelYes">Yes, cancel it</button><button class="btn small" data-act="focusCancelNo">Keep going</button>`
-        : `<button class="btn small" data-act="focusPause">${f.pausedAt ? 'Resume' : 'Pause'}</button><button class="btn small primary" data-act="focusStop">Stop &amp; log</button><button class="btn small" data-act="focusCancel" title="Stop without logging">Cancel</button><button class="btn small" data-act="focusMax" title="Big timer">⤢ Big timer</button>`}`;
+        : `<button class="btn small" data-act="focusPause">${f.pausedAt ? 'Resume' : 'Pause'}</button><button class="btn small primary" data-act="focusStop">Stop &amp; log</button><button class="btn small" data-act="focusCancel" title="Stop without logging">Cancel</button><button class="btn small" data-act="focusMax" title="Big timer">⤢ Big timer</button><button class="btn small" data-act="focusMini" title="A small player you can drag anywhere">▣ Mini player</button><button class="btn small" data-act="focusPop" title="A tiny window that stays on top of other apps">⧉ Pop out</button>`}`;
     updateFocusFull();
+    updateMini(f, s, m, time, pct);
     bar.style.setProperty('--c', s.color);
     document.title = `${time} · ${s.name}`;
     if (f.planned && !f.pausedAt && !f.notified && m >= f.planned) { f.notified = true; notify(`${fmtMins(f.planned)} of ${s.name} done`, 'Take a break, or keep going and stop the timer when you finish.', 'focus'); }
@@ -1754,6 +1760,8 @@ document.addEventListener('click', e => {
     case 'openBox': openBox(id); break;
     case 'setScene': D.game.scene = el.dataset.v; save(); render(); break;
     case 'forestRange': ui.forestRange = el.dataset.v; render(); break;
+    case 'setTheme': D.settings.theme = el.dataset.v; save(); render(); break;
+    case 'setThemeMode': D.settings.themeMode = el.dataset.v; save(); render(); break;
     case 'forestView': D.settings.forestView = el.dataset.v; save(); render(); break;
     case 'evFilter': ui.evFilter = el.dataset.v; render(); break;
     case 'planStudy': planStudy(id); break;
@@ -1772,6 +1780,8 @@ document.addEventListener('click', e => {
     case 'focusMax': openFocusFull(); break;
     case 'brainfmOpen': openBrainfm(); break;
     case 'focusStop': stopFocus(true); break;
+    case 'focusMini': D.settings.focusMini = true; save(); renderFocusBar(); break;
+    case 'focusPop': popOutMini(); break;
     case 'focusCancel': focusAskCancel = true; renderFocusBar(); break;
     case 'focusCancelNo': focusAskCancel = false; renderFocusBar(); break;
     case 'focusCancelYes': focusAskCancel = false; stopFocus(false); toast('Study session cancelled', 'Nothing was logged.', { timeout: 3500 }); break;

@@ -166,45 +166,119 @@ function finishSetup() {
 }
 
 // ---------- guided tour ----------
-const TOUR = [
-  ['today', '☀️ Today', 'Your home page: what\'s on today, your next SAC, training and deadlines, plus quick tasks. Press <b>Start studying</b> any time.'],
-  ['day', '🕒 Day plan', 'Today hour by hour. Drag things around to plan your day, and see how much study and training is planned.'],
-  ['calendar', '📅 Calendar', 'Month view of everything. Add a school or Google calendar link in Settings and those events show up here too.'],
-  ['study', '📚 Study', 'Your subjects, SACs and exams, and study blocks. Press ▶ on a block for a focus timer. Every focus session plants a tree.'],
-  ['school', '🏫 Class mode', 'A timer for each school period. When the bell goes, rate your effort from 😴 to 🔥 for a few coins. Add homework in the same box.'],
-  ['forest', '🌳 Forest', 'Your trees, critters and coins. Spend coins in the shop on scenes, mystery boxes and upgrades. Skip a day of study and a tree wilts.'],
-  ['training', '🏃 Training & Arena', 'Plan your workouts and tick them off. Every workout grows your athlete\'s stats and earns 💪 Grit. Battle rivals and bosses, log personal bests, do weekly quests, and dress your avatar in the Wardrobe.'],
-  ['personal', '✅ Events & Tasks', 'Birthdays, appointments, deadlines and to-dos. Each can have its own reminders.'],
-  ['inbox', '📬 Missed info', 'A summary of school emails and notices you might have missed. SACs, tests and other due dates from your email go straight into your planner and to-do list.'],
-  ['settings', '⚙️ Settings', 'Change your setup, connect calendars, export a backup, and replay this tour. Keys 1 to 7 switch pages.'],
-];
-let tourAt = -1;
-function startTour() { tourAt = 0; drawTour(); }
+// Each page gets a step on its menu button, then one per section. A step whose
+// section isn't on screen (no data yet, a card that's turned off) is skipped.
+const TOUR_PAGES = {
+  today: ['☀️ Today', 'Your home page. Everything that matters today, in one place.', [
+    ['.hero', 'Your day at a glance', 'How many things you\'ve ticked off, your study goal and your streak. <b>Start studying</b> starts a focus timer straight away.'],
+    ['.todaynext', 'Coming up next', 'Your next SAC or exam, next deadline and next race, with how many days are left.'],
+    ['.today-grid > .card', 'Today\'s timeline', 'Everything on today in time order. Tick things off as you go, press <b>▶ Focus</b> on a study block, and use the buttons underneath to add more.'],
+    ['.today-grid > .stack', 'Tasks', 'Type a task and press Enter to add it. Overdue and missed things show underneath so nothing slips.'],
+    ['.soon3', 'The next 3 days', 'A quick look ahead. Click a day to open it in Day plan.'],
+    ['.apps-row', 'Your apps', 'Shortcuts to the apps and websites you use for school and training.']]],
+  day: ['🕒 Day plan', 'Plan any day hour by hour.', [
+    ['.daystrip', 'Pick a day', 'Jump between days. The dots show what\'s on and the bar shows how much is ticked off.'],
+    ['.day-grid > .card', 'The day, hour by hour', 'Drag things to move them, click to edit, and press ▶ Focus on study blocks.'],
+    ['.day-grid > .stack', 'Totals and quick add', 'How much study and training is planned, plus buttons to add anything to this day.']]],
+  calendar: ['📅 Calendar', 'The whole month at once.', [
+    ['.calbar', 'Month and filters', 'Move between months, connect a Google or school calendar, and choose what to show.'],
+    ['.cal', 'Month view', 'Click any day to see it on the right. Events from linked calendars show up here too.'],
+    ['.calgrid > .card', 'The day you picked', 'Everything on that day, with buttons to add study, SACs, workouts, events, deadlines and tasks.']]],
+  study: ['📚 Study', 'Subjects, SACs and study blocks.', [
+    ['.upnext-row', 'What\'s next', 'Your next study block, next SAC or exam and today\'s progress. <b>Plan more</b> builds a revision plan for a SAC.'],
+    ['.study-grid2 > .study-side:first-child > .card:first-child', 'This week', 'Pick a day to see its study blocks. Press <b>▶ Start</b> to focus. A session of 10+ minutes plants a tree.'],
+    ['.subjcard', 'Subjects and links', 'Your classes and their colours, plus links to study guides and notes.'],
+    ['.study-grid2 > .study-side:last-child > .card:first-child', 'SACs & exams', 'Every assessment with a countdown. Tick one off when it\'s done to earn coins.'],
+    ['.study-grid2 > .study-side:last-child > .card:last-child', 'Studied this week', 'Focus time per subject against what you planned.']]],
+  school: ['🏫 Class mode', 'A timer for each school period.', [
+    ['.clsgrid > :first-child', 'Today\'s periods', 'Pick the subject for each period. When the bell goes, rate your effort from 😴 to 🔥 for coins.'],
+    ['.clsgrid > :last-child', 'Effort and bell times', 'Your average effort per subject this week. Check the bell times match your school.']]],
+  forest: ['🌳 Forest', 'Every focus session grows a tree here.', [
+    ['.scene-wrap', 'Your 3D garden', 'Hover a tree to see it sway, drag it to another tile to rearrange, and click it to name or water it. Switch to <b>Scene</b> for the classic view.'],
+    ['.forest-tabs', 'Trees, critters and the shop', 'Choose each subject\'s tree, meet your critters, and spend coins on scenes, decorations and upgrades.'],
+    ['.forest-cols > .stack:first-child', 'Challenges', 'New challenges every day and week. Claim the coins when you finish one.'],
+    ['.forest-cols > .stack:last-child', 'Milestones and your trees', 'Big goals with bigger rewards, plus which tree each subject grows.']]],
+  training: ['🏃 Training & Arena', 'Workouts power up your athlete.', [
+    ['.ahero', 'Your athlete', 'Stats grow when you tick off workouts. 💪 Grit is the Arena\'s currency.'],
+    ['.arenatabs', 'Arena tabs', 'Battle gym leaders and bosses, unlock and upgrade moves, log personal bests, and spend Grit in the shop and wardrobe.'],
+    ['.stravacard', 'Automatic imports', 'Connect Garmin through intervals.icu, or import from Strava, so workouts come in by themselves. Tick them off to count them.'],
+    ['.train-top', 'This week\'s training', 'Your next event, sessions done this week and your training load.'],
+    ['.card.board', 'Week board', 'Every planned workout this week. Tick them off as you do them.']]],
+  health: ['💤 Health & sleep', 'Sleep, steps and how you feel.', [
+    ['.htiles', 'Last night and today', 'Sleep, steps, resting heart rate and body battery from your watch.'],
+    ['.hgrid', 'Two-week trends', 'Sleep and steps compared to your goals.'],
+    ['.hlogcard', 'Log today', 'No watch? Log your sleep, mood and energy here.']]],
+  personal: ['✅ Events & Tasks', 'Everything outside school study.', [
+    ['.grid.g2 > .card:first-child', 'Events & deadlines', 'Birthdays, appointments and deadlines. Filter them by type, and give each one its own reminders.'],
+    ['.grid.g2 > .card:last-child', 'Tasks', 'Your whole to-do list grouped by when it\'s due. Add one at the top.']]],
+  inbox: ['📬 Missed info', 'School emails and notices you might have missed.', [
+    ['.summarycard', 'The summary', 'A short catch-up of what came in. <b>Check email now</b> runs a fresh check.'],
+    ['.catchips', 'Filter by type', 'Show just the action items, deadlines or events.'],
+    ['.mailcards', 'Each email', 'Due dates go straight into your planner. Cross one off and it never reminds you again.']]],
+  settings: ['⚙️ Settings', 'Make the planner yours.', [
+    ['.settabs', 'Settings sections', 'Your details, <b>Theme</b> colours, calendars, reminders, backups and app options. You can replay this tour from here.']]],
+};
+let TOUR = [], tourAt = -1;
+function startTour() {
+  TOUR = [];
+  for (const [v, [title, intro, secs]] of Object.entries(TOUR_PAGES)) {
+    TOUR.push({ v, title, text: intro + ' Press <b>Next</b> for a look around.', page: title });
+    for (const [sel, t, text] of secs) TOUR.push({ v, sel, title: t, text, page: title });
+  }
+  tourAt = 0; drawTour(1);
+}
 function endTour() {
   tourAt = -1; document.getElementById('tourfx')?.remove();
   document.querySelectorAll('.tourlit').forEach(x => x.classList.remove('tourlit'));
   D.settings.toured = true; save();
 }
+function tourGo(dir) {
+  for (;;) {
+    tourAt += dir;
+    if (tourAt >= TOUR.length) { endTour(); view = 'today'; render(); toast('🎉 That\'s the tour', 'Replay it any time from Settings.'); return; }
+    if (tourAt < 0) { tourAt = 0; dir = 1; }
+    const st = TOUR[tourAt];
+    if (!st.sel) break;
+    if (view !== st.v) { view = st.v; render(); }
+    const el = document.querySelector('#view ' + st.sel);
+    if (el && el.getBoundingClientRect().height > 0) break;
+  }
+  drawTour(dir);
+}
 function drawTour() {
-  const [v, title, text] = TOUR[tourAt];
-  view = v; render();
+  const st = TOUR[tourAt];
+  if (view !== st.v || !st.sel) { view = st.v; render(); }
   document.querySelectorAll('.tourlit').forEach(x => x.classList.remove('tourlit'));
-  const btn = document.querySelector(`#tabs button[data-view="${v}"]`);
-  if (btn) { btn.classList.add('tourlit'); btn.scrollIntoView({ block: 'nearest' }); }
+  const btn = document.querySelector(`#tabs button[data-view="${st.v}"]`);
+  let target = st.sel ? document.querySelector('#view ' + st.sel) : btn;
+  if (!st.sel) { window.scrollTo(0, 0); if (btn) { btn.classList.add('tourlit'); btn.scrollIntoView({ block: 'nearest' }); } }
+  else if (target) target.scrollIntoView({ block: target.offsetHeight > innerHeight * .7 ? 'start' : 'center' });
   let ov = document.getElementById('tourfx');
   if (!ov) {
     ov = document.createElement('div'); ov.id = 'tourfx'; document.body.appendChild(ov);
     ov.addEventListener('click', e => {
       const b = e.target.closest('[data-t]'); if (!b) return;
-      if (b.dataset.t === 'next') { if (++tourAt >= TOUR.length) { endTour(); view = 'today'; render(); toast('🎉 That\'s the tour', 'Replay it any time from Settings.'); return; } drawTour(); }
-      else if (b.dataset.t === 'back') { tourAt = Math.max(0, tourAt - 1); drawTour(); }
+      if (b.dataset.t === 'next') tourGo(1);
+      else if (b.dataset.t === 'back') tourGo(-1);
+      else if (b.dataset.t === 'page') { const pg = TOUR[tourAt].v; while (tourAt < TOUR.length - 1 && TOUR[tourAt + 1].v === pg) tourAt++; tourGo(1); }
       else endTour();
     });
   }
-  const r = btn ? btn.getBoundingClientRect() : { top: 100, right: 220, height: 40 };
-  const top = Math.max(12, Math.min(window.innerHeight - 230, r.top - 20));
-  ov.innerHTML = `<div class="tourcard" style="top:${top}px;left:${Math.round(r.right + 18)}px"><span class="tourarrow" style="top:${Math.round(r.top + r.height / 2 - top - 8)}px"></span>
-    <div class="unlabel">Tour · ${tourAt + 1} of ${TOUR.length}</div><h3>${title}</h3><p>${text}</p>
-    <div class="row"><button class="btn small" data-t="skip">Skip tour</button><span style="flex:1"></span>${tourAt ? '<button class="btn small" data-t="back">←</button>' : ''}<button class="btn small primary" data-t="next">${tourAt === TOUR.length - 1 ? 'Finish' : 'Next →'}</button></div></div>`;
+  const r = target ? target.getBoundingClientRect() : { top: 100, left: 240, right: 240, bottom: 140, width: 0, height: 40 };
+  const pad = 6, sp = { x: r.left - pad, y: Math.max(4, r.top - pad), w: r.width + pad * 2, h: Math.min(r.height + pad * 2, innerHeight - 8 - Math.max(4, r.top - pad)) };
+  const W = Math.min(340, innerWidth - 32), H = 210;
+  let cx, cy;
+  if (sp.x + sp.w + W + 24 < innerWidth) { cx = sp.x + sp.w + 16; cy = Math.max(12, Math.min(innerHeight - H - 12, sp.y)); }
+  else if (sp.y + sp.h + H + 16 < innerHeight) { cx = Math.max(16, Math.min(innerWidth - W - 16, sp.x)); cy = sp.y + sp.h + 12; }
+  else if (sp.y - H - 16 > 0) { cx = Math.max(16, Math.min(innerWidth - W - 16, sp.x)); cy = sp.y - H - 12; }
+  else { cx = innerWidth - W - 20; cy = innerHeight - H - 20; }
+  const pages = [...new Set(TOUR.map(x => x.v))], pi = pages.indexOf(st.v) + 1;
+  const inPage = TOUR.filter(x => x.v === st.v), k = inPage.indexOf(st) + 1;
+  ov.innerHTML = `<div class="tourspot" style="left:${sp.x}px;top:${sp.y}px;width:${sp.w}px;height:${sp.h}px"></div>
+    <div class="tourcard" style="top:${cy}px;left:${cx}px;width:${W}px">
+    <div class="unlabel">${esc(st.page)} · ${k} of ${inPage.length} <span class="muted">· page ${pi} of ${pages.length}</span></div><h3>${st.title}</h3><p>${st.text}</p>
+    <div class="row"><button class="btn small" data-t="skip">End tour</button>${pi < pages.length ? '<button class="btn small ghost" data-t="page">Next page ⇥</button>' : ''}<span style="flex:1"></span>${tourAt ? '<button class="btn small" data-t="back">←</button>' : ''}<button class="btn small primary" data-t="next">${tourAt === TOUR.length - 1 ? 'Finish' : 'Next →'}</button></div></div>`;
 }
+window.addEventListener('resize', () => { if (tourAt >= 0) drawTour(); });
+document.addEventListener('keydown', e => { if (tourAt >= 0 && (e.key === 'ArrowRight' || e.key === 'Enter')) { e.preventDefault(); tourGo(1); } else if (tourAt >= 0 && e.key === 'ArrowLeft') tourGo(-1); });
 document.addEventListener('keydown', e => { if (tourAt >= 0 && e.key === 'Escape') endTour(); });

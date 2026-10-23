@@ -84,7 +84,7 @@ function viewHealth() {
   if (last.rhr && avgRhr && last.rhr > avgRhr + 4) tips.push('Your resting heart rate is up, which can mean tiredness or a cold coming. Maybe swap hard training for an easy session.');
 
   const log = hday(t);
-  const logCard = `<div class="card"><div class="card-head"><h2>Log today</h2><span class="muted small-text">${log.src === 'garmin' ? 'Sleep from Garmin. Add how you feel.' : 'No watch? Log your sleep here.'}</span></div>
+  const logCard = `<div class="card hlogcard"><div class="card-head"><h2>Log today</h2><span class="muted small-text">${log.src === 'garmin' ? 'Sleep from Garmin. Add how you feel.' : 'No watch? Log your sleep here.'}</span></div>
     <div class="hlog">
       <label>Bed <input type="time" id="hBed" value="${esc(log.bed || '')}"></label>
       <label>Woke <input type="time" id="hWake" value="${esc(log.wake || '')}"></label>
