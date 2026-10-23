@@ -92,9 +92,18 @@ let NAV_BASE = null;
 const NAV_HTML = document.getElementById('tabs')?.innerHTML || '';
 function navOrder() {
   NAV_BASE = NAV_BASE || navDefault();
-  const saved = (D.settings.navOrder || []).filter(v => NAV_BASE.includes(v));
+  if (!D.settings.navOrder?.length) return navDefaultFull();
+  const saved = (D.settings.navOrder || []).filter(v => NAV_BASE.includes(v) || isNavHead(v));
   return [...saved, ...NAV_BASE.filter(v => !saved.includes(v))];
 }
+// the built-in order, with its Plan / Study / Life headings
+function navDefaultFull() {
+  const t = document.createElement('div'); t.innerHTML = NAV_HTML;
+  return [...t.children].map((x, i) => x.classList.contains('navgroup') ? `h:g${i}:${x.textContent.trim()}` : x.dataset?.view).filter(v => v && v !== 'settings');
+}
+// your own headings live in navOrder as "h:<id>:<name>"
+const isNavHead = v => String(v).startsWith('h:');
+const navHeadName = v => String(v).split(':').slice(2).join(':');
 function applyNav() {
   const nav = document.getElementById('tabs'); if (!nav) return;
   NAV_BASE = NAV_BASE || navDefault();
@@ -103,9 +112,25 @@ function applyNav() {
   nav.classList.toggle('custom', custom);
   if (custom) {
     const spacer = nav.querySelector('.navspacer');
-    for (const v of navOrder()) { const b = nav.querySelector(`button[data-view="${v}"]`); if (b) nav.insertBefore(b, spacer); }
+    nav.querySelectorAll('.navh').forEach(x => x.remove());
+    for (const v of navOrder()) {
+      if (isNavHead(v)) { const h = document.createElement('div'); h.className = 'navgroup navh'; h.textContent = navHeadName(v); nav.insertBefore(h, spacer); continue; }
+      const b = nav.querySelector(`button[data-view="${v}"]`); if (b) nav.insertBefore(b, spacer);
+    }
   }
   nav.querySelectorAll('button[data-view]').forEach(b => { b.hidden = hidden.includes(b.dataset.view) && !NAV_FIXED.includes(b.dataset.view) && b.dataset.view !== view; b.draggable = b.dataset.view !== 'settings'; });
+}
+function navHead(act, v) {
+  const o = navOrder();
+  if (act === 'add') {
+    const inp = document.getElementById('navHeadName'), name = (inp?.value || '').trim().slice(0, 24);
+    if (!name) { inp?.focus(); return; }
+    D.settings.navOrder = [`h:${Date.now().toString(36)}:${name}`, ...o];
+  } else if (act === 'rename') {
+    const name = (prompt('Heading name', navHeadName(v)) || '').trim().slice(0, 24); if (!name) return;
+    D.settings.navOrder = o.map(x => x === v ? `h:${v.split(':')[1]}:${name}` : x);
+  } else if (act === 'del') D.settings.navOrder = o.filter(x => x !== v);
+  save(); render();
 }
 function navMove(v, n) {
   const o = navOrder(), i = o.indexOf(v), j = i + n;
@@ -116,8 +141,11 @@ function navCard() {
   const o = navOrder(), hidden = D.settings.navHidden || [];
   const label = v => document.querySelector(`#tabs button[data-view="${v}"] span`)?.textContent || v;
   return `<div class="card" data-sec="theme"><div class="card-head"><h2>Side tabs</h2>${D.settings.navOrder?.length || hidden.length ? '<button class="btn small" data-act="navReset">Reset</button>' : ''}</div>
-    <p class="muted small-text" style="margin-top:0">Drag tabs in the sidebar to reorder them, or use the arrows. Untick a tab to hide it.</p>
-    <ul class="navlist">${o.map((v, i) => `<li><input type="checkbox" data-change="navShow" data-v="${v}" ${hidden.includes(v) ? '' : 'checked'} ${NAV_FIXED.includes(v) ? 'disabled' : ''} style="width:auto"><span>${esc(label(v))}</span>
+    <p class="muted small-text" style="margin-top:0">Drag tabs in the sidebar to reorder them, or use the arrows. Untick a tab to hide it. Add your own headings to group them.</p>
+    <div class="row" style="margin-bottom:8px"><input id="navHeadName" placeholder="New heading, e.g. School" maxlength="24" style="flex:1"><button class="btn small primary" data-act="navHeadAdd">+ Add heading</button></div>
+    <ul class="navlist">${o.map((v, i) => isNavHead(v) ? `<li class="navlist-h"><span>📂 ${esc(navHeadName(v))}</span>
+      <button class="iconbtn" data-act="navHeadRename" data-v="${esc(v)}" title="Rename">✎</button><button class="iconbtn" data-act="navHeadDel" data-v="${esc(v)}" title="Delete heading">✕</button>
+      <button class="iconbtn" data-act="navMove" data-v="${esc(v)}" data-n="-1" ${i ? '' : 'disabled'} title="Move up">↑</button><button class="iconbtn" data-act="navMove" data-v="${esc(v)}" data-n="1" ${i < o.length - 1 ? '' : 'disabled'} title="Move down">↓</button></li>` : `<li><input type="checkbox" data-change="navShow" data-v="${v}" ${hidden.includes(v) ? '' : 'checked'} ${NAV_FIXED.includes(v) ? 'disabled' : ''} style="width:auto"><span>${esc(label(v))}</span>
       <button class="iconbtn" data-act="navMove" data-v="${v}" data-n="-1" ${i ? '' : 'disabled'} title="Move up">↑</button><button class="iconbtn" data-act="navMove" data-v="${v}" data-n="1" ${i < o.length - 1 ? '' : 'disabled'} title="Move down">↓</button></li>`).join('')}</ul></div>`;
 }
 // drag to reorder in the sidebar

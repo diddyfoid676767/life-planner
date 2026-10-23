@@ -22,7 +22,7 @@ async function acctPost(body) {
 
 function myStatsRow() {
   const r = myBoardRow();
-  return { display: (D.settings.name || '').slice(0, 30), avatar: r.av, stats: { week: r.week, study: r.study, work: r.work, health: r.health } };
+  return { display: (D.settings.name || '').slice(0, 30), avatar: r.av, stats: { week: r.week, study: r.study, work: r.work, health: r.health, ...chalPublish() } };
 }
 async function publishMe(force) {
   if (!acct.signedIn || (!force && Date.now() - acctPublishedAt < 10 * 60000)) return;
@@ -32,7 +32,7 @@ async function publishMe(force) {
 const friendNames = () => (D.friendsU = D.friendsU || []);
 function toBoardRow(p) {
   const s = p.stats || {};
-  return { id: 'u:' + p.username, user: p.username, name: p.display || p.username, week: s.week || '', study: s.study || {}, work: s.work || {}, health: s.health || {}, av: p.avatar || null, updated: Date.parse(p.updated_at) || 0 };
+  return { id: 'u:' + p.username, user: p.username, name: p.display || p.username, week: s.week || '', study: s.study || {}, work: s.work || {}, health: s.health || {}, raw: s, av: p.avatar || null, updated: Date.parse(p.updated_at) || 0 };
 }
 async function refreshFriends(force) {
   const names = friendNames();

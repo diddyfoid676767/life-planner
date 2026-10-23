@@ -234,65 +234,6 @@ function bestStreak() {
   return best;
 }
 
-function forestScene(logs) {
-  const W = 1000, H = 440, hr = new Date().getHours();
-  const sc = SCENES[D.game.scene] || SCENES.meadow;
-  const night = sc.night || hr >= 20 || hr < 6, dusk = !night && hr >= 17;
-  const sky = sc.night ? (sc.sky || ['#0b1a3a', '#24406e']) : night ? ['#16204a', '#3a4a86'] : dusk ? ['#ff9a6b', '#ffe0b8'] : sc.sky || ['#8fd0ff', '#e6f6ff'];
-  const rnd = seeded('scene');
-  const stars = night ? Array.from({ length: sc.noAurora ? 90 : 40 }, () => c(Math.round(rnd() * W), Math.round(rnd() * 170), (rnd() * 1.2 + .4).toFixed(1), 'rgba(255,255,255,.85)')).join('') : '';
-  const orb = night ? `${c(830, 70, 26, '#f8f3d4')}${c(842, 62, 24, sky[0])}` : `${c(dusk ? 160 : 840, dusk ? 170 : 72, 48, dusk ? 'rgba(255,210,122,.3)' : 'rgba(255,240,150,.35)')}${c(dusk ? 160 : 840, dusk ? 170 : 72, 32, dusk ? '#ffd27a' : '#ffe066')}`;
-  const cloud = (x, y, s, i) => `<g class="cloud" style="animation-delay:${-i * 13}s"><g transform="translate(${x} ${y}) scale(${s})" fill="${night ? 'rgba(255,255,255,.12)' : 'rgba(255,255,255,.85)'}">${c(0, 0, 18, '')}${c(22, -8, 22, '')}${c(46, 0, 17, '')}<rect x="0" y="-2" width="46" height="19" rx="9"/></g></g>`.replace(/fill=""/g, '');
-  const dim = sc.night ? 0 : night ? -.45 : dusk ? -.15 : 0;
-  const tone = x => dim ? shade(x, dim) : x;
-  const g1 = tone(sc.hills), g2 = tone(sc.g1), g3 = tone(sc.g2);
-  const aurora = sc.night && !sc.noAurora ? `<g class="aurora"><path d="M-20 190 C150 110 300 210 480 140 S800 100 1020 170" stroke="#63e6be" stroke-width="34" fill="none" opacity=".35"/>
-    <path d="M-20 215 C200 150 380 230 560 170 S860 140 1020 205" stroke="#b197fc" stroke-width="26" fill="none" opacity=".3"/></g>` : '';
-  const fr = seeded('fall');
-  const fall = sc.fall ? Array.from({ length: sc.rain ? 70 : 28 }, (_, i) => {
-    const x = Math.round(fr() * W), col = sc.fall[i % sc.fall.length], snow = D.game.scene === 'winter';
-    if (sc.rain) return `<g class="fall rain" style="--sway:-30px;animation-duration:${(1 + fr() * .8).toFixed(2)}s;animation-delay:-${(fr() * 2).toFixed(2)}s"><path d="M${x} 0 l-3 12" stroke="${col}" stroke-width="1.6" stroke-linecap="round" opacity=".8"/></g>`;
-    return `<g class="fall" style="--sway:${Math.round((fr() - .5) * 120)}px;animation-duration:${(7 + fr() * 7).toFixed(1)}s;animation-delay:-${(fr() * 14).toFixed(1)}s">${snow ? c(x, 0, (1.5 + fr() * 2).toFixed(1), col) : `<ellipse cx="${x}" cy="0" rx="4" ry="2.2" fill="${col}" transform="rotate(${Math.round(fr() * 180)} ${x} 0)"/>`}</g>`;
-  }).join('') : '';
-
-  // place trees: scattered slots, drawn back to front
-  const n = logs.length;
-  const cols = Math.max(4, Math.ceil(Math.sqrt(n * 3.2))), rows = Math.max(1, Math.ceil(n / cols));
-  const slots = [];
-  for (let r = 0; r < rows; r++) for (let q = 0; q < cols; q++) slots.push([r, q]);
-  const sr = seeded('slots' + n);
-  for (let i = slots.length - 1; i > 0; i--) { const j = Math.floor(sr() * (i + 1)); [slots[i], slots[j]] = [slots[j], slots[i]]; }
-  const size = Math.min(1.5, 2.6 / Math.sqrt(rows + 1)) * (cols > 10 ? 10 / cols * 1.1 : 1);
-  const placed = logs.map((l, i) => {
-    const [r, q] = slots[i], rr = seeded(l.id);
-    const y = 268 + (rows === 1 ? 110 : r * (150 / (rows - 1)));
-    const x = 70 + (q + .5) * ((W - 140) / cols) + (rr() - .5) * (W / cols) * .5 + (r % 2 ? (W / cols) * .25 : 0);
-    const persp = .62 + .38 * (y - 268) / 150;
-    return { l, x, y, s: size * persp, i };
-  }).sort((a, b) => a.y - b.y);
-  const deco = Array.from({ length: 34 }, (_, i) => {
-    const x = Math.round(rnd() * W), y = 262 + Math.round(rnd() * 170);
-    return i % 3 ? `<path d="M${x} ${y} l-3 -7 M${x} ${y} l0 -9 M${x} ${y} l3 -7" stroke="${g3}" stroke-width="1.6" stroke-linecap="round"/>`
-      : `${c(x, y - 3, 2.6, ['#fff', '#ffd43b', '#f783ac'][i % 3])}`;
-  }).join('');
-  const ground = groundItems().map(g => ({ y: g.y, svg: `<g transform="translate(${g.x} ${g.y}) scale(${(1.25 * (.62 + .38 * (g.y - 268) / 150)).toFixed(3)})"><g class="ftree deco">${g.svg}</g></g>` }));
-  const trees = [...placed.map(p => {
-    const s = subj(p.l.subjectId);
-    return { y: p.y, svg: `<g transform="translate(${p.x.toFixed(1)} ${p.y.toFixed(1)}) scale(${p.s.toFixed(3)})"><g class="ftree click ${p.l.withered ? 'withered' : treeRec(p.l.id).wilted ? 'wilt' : ''}" data-act="treeInfo" data-id="${p.l.id}" style="animation-delay:${Math.min(p.i * 35, 1400)}ms">
-      <title>${esc(treeName(p.l))} · ${esc(s.name)} · ${fmtMins(p.l.mins)} · ${fmtDate(p.l.date)} (click for details)</title>${treeG(speciesFor(p.l.subjectId), s.color, treeStage(p.l.mins), p.l.id)}</g></g>` };
-  }), ...ground].sort((a, b) => a.y - b.y).map(x => x.svg).join('');
-  const empty = n ? '' : `<g transform="translate(500 360) scale(1.6)"><g class="ftree">${treeG('oak', '#40c057', 0)}</g></g>
-    <text x="500" y="410" text-anchor="middle" font-size="18" font-weight="700" fill="${night ? '#e9f5e9' : '#2b5a2a'}">Your forest is waiting. Study for 10+ minutes to plant your first tree.</text>`;
-  return `<svg class="scene" viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMax slice" role="img" aria-label="Your study forest: ${n} trees">
-    <defs><linearGradient id="sky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${sky[0]}"/><stop offset="1" stop-color="${sky[1]}"/></linearGradient>
-      <linearGradient id="grass" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${g2}"/><stop offset="1" stop-color="${g3}"/></linearGradient></defs>
-    <rect width="${W}" height="${H}" fill="url(#sky)"/>${stars}${aurora}${orb}
-    ${cloud(120, 70, 1, 0)}${cloud(470, 50, .8, 1)}${cloud(700, 110, 1.1, 2)}
-    <path d="M0 220 Q140 150 300 200 T620 190 T1000 200 L1000 ${H} L0 ${H} Z" fill="${g1}" opacity=".75"/>
-    <path d="M0 250 Q200 214 420 240 T1000 236 L1000 ${H} L0 ${H} Z" fill="url(#grass)"/>
-    ${deco}${trees}${empty}${critterSprites()}${skyCreatures()}${fall}</svg>`;
-}
-
 function viewForest() {
   const t = today(), wk = mondayOf(t);
   const range = ui.forestRange || 'week';
@@ -304,12 +245,10 @@ function viewForest() {
   const totalMins = D.focusLogs.reduce((a, l) => a + l.mins, 0);
   const grand = allTrees.filter(l => l.mins >= 90).length;
   const seg = (v, label) => `<button class="${range === v ? 'on' : ''}" data-act="forestRange" data-v="${v}">${label}</button>`;
-  const gview = D.settings.forestView || 'grid';
-  const gseg = (v, label) => `<button class="${gview === v ? 'on' : ''}" data-act="forestView" data-v="${v}">${label}</button>`;
   const stat = (big, label) => `<div class="fstat"><b>${big}</b><span>${label}</span></div>`;
   const legend = D.subjects.map(s => {
     const sp = speciesFor(s.id), cnt = allTrees.filter(l => l.subjectId === s.id).length;
-    return `<div class="fleg" style="--c:${s.color}">${treeSvg(s.color, 45, 1, sp, 46)}<div class="main"><b>${esc(s.name)}</b><div class="muted small-text">${esc(speciesName(sp))} · <span style="color:${RARITY[speciesRarity(sp)].color};font-weight:700">${RARITY[speciesRarity(sp)].name}</span> · ${cnt} tree${cnt === 1 ? '' : 's'}</div>${TREE_BUFFS[sp] ? `<div class="tbuff sm">★ ${esc(TREE_BUFFS[sp].text)}</div>` : ''}</div>
+    return `<div class="fleg" style="--c:${s.color}">${treeSvg(s.color, 45, 1, sp, 46)}<div class="main"><b>${esc(s.name)}</b><div class="muted small-text">${esc(speciesName(sp))} · <span style="color:${RARITY[speciesRarity(sp)].color};font-weight:700">${RARITY[speciesRarity(sp)].name}</span> · ${cnt} tree${cnt === 1 ? '' : 's'}</div><div class="tbuff sm">${LEAF} ×${LEAF_RARITY[speciesRarity(sp)]} leaves</div></div>
       <button class="btn small" data-act="treePick" data-id="${s.id}" title="Choose this subject's tree">Change tree</button></div>`;
   }).join('');
   const stages = TREE_STAGES.map(([m, name], i) => `<div class="fstage">${`<svg class="tree" viewBox="-42 -128 84 134" width="40" height="64">${treeG('oak', '#40c057', i, 'stage')}</svg>`}<b>${name}</b><span class="muted small-text">${m}+ min</span></div>`).join('');
@@ -325,10 +264,11 @@ function viewForest() {
   if (page === 'critters') return `${head}${crittersView()}`;
   if (page === 'collection') return `${head}${collectionView()}`;
   return `${head}
-    <div class="scene-wrap ${gview === 'grid' ? 'isowrap' : ''}">${gview === 'grid' ? forestGrid(logs) : forestScene(logs)}
+    ${leafBar()}
+    <div class="scene-wrap isowrap">${forestGrid(logs)}
       <div class="scene-stats">${stat(logs.length, logs.length === 1 ? 'tree' : 'trees')}${stat(fmtMins(mins) || '0m', 'studied')}${stat('🔥 ' + streak, 'day streak')}${stat(best, 'best streak')}</div>
-      <div class="scene-ctl"><div class="seg">${gseg('grid', '🧊 3D garden')}${gseg('scene', '🌄 Scene')}</div><div class="seg">${seg('week', 'This week')}${seg('month', 'This month')}${seg('all', 'All time')}</div></div>
-      ${gview === 'grid' ? '<div class="iso-hint">Drag a tree to move it · hover to see it sway</div>' : ''}</div>
+      <div class="scene-ctl">${gardenFxPanel()}<div class="seg">${seg('week', 'This week')}${seg('month', 'This month')}${seg('all', 'All time')}</div></div>
+      <div class="iso-hint">Drag a tree to move it · click for details</div></div>
     <div class="forest-cols">
       <div class="stack">
       ${challengesCard()}
@@ -336,7 +276,7 @@ function viewForest() {
       </div>
       <div class="stack">
       ${milestonesCard()}
-      <div class="card"><h2>Your trees</h2><p class="muted small-text" style="margin-top:0">Each subject grows its own tree. Pick a different one for any subject. ★ trees come from lucky boxes and give a small buff to every session you grow as that tree.</p><div class="flegs">${legend || '<div class="empty">Add subjects in the Study tab.</div>'}</div><details class="howgrow"><summary class="muted small-text">How trees grow</summary><div class="fstages">${stages}</div>
+      <div class="card"><h2>Your trees</h2><p class="muted small-text" style="margin-top:0">Each subject grows its own tree. Pick a different one for any subject. ★ trees come from boxes and the store, and grow leaves faster: rare ×1.5, epic ×2.5, legendary ×4.</p><div class="flegs">${legend || '<div class="empty">Add subjects in the Study tab.</div>'}</div><details class="howgrow"><summary class="muted small-text">How trees grow</summary><div class="fstages">${stages}</div>
         <p class="muted small-text">A day counts toward your streak when you study 30+ minutes. Grand trees blossom. Click any tree in the forest to name it, water it and see its stats.</p></details></div>
       <div class="card"><h2>Recent sessions</h2>${recent.length ? `<ul class="list">${recent.map(l => `<li class="item tinted" style="--c:${subj(l.subjectId).color}">${treeSvg(subj(l.subjectId).color, l.mins, 1, speciesFor(l.subjectId), 34)}<div class="main"><div class="title">${esc(subj(l.subjectId).name)} · ${fmtMins(l.mins)}</div><div class="meta">${fmtDate(l.date)} ${fmtTime(new Date(l.start).toTimeString().slice(0, 5))}${l.mins < 10 ? ' · too short for a tree' : ''}</div></div><button class="iconbtn" data-act="delLog" data-id="${l.id}" title="Delete">✕</button></li>`).join('')}</ul>` : '<div class="empty">No sessions yet. Press ▶ Focus on a study block or Start studying.</div>'}</div>
       </div>

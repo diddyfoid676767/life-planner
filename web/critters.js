@@ -21,7 +21,8 @@ const TREE_BUFFS = {
   rainbow: { text: '+15% coins and +10% XP', coin: .15, xp: .1 },
   golden: { text: '+20% coins', coin: .2 },
 };
-const treeBuff = l => (l && TREE_BUFFS[l.species]) || {};
+// from 2.16 trees grow leaves instead, so coin buffs only count for sessions before then
+const treeBuff = l => (l && String(l.date) < '2026-10-24' && TREE_BUFFS[l.species]) || {};
 
 const CRITTERS = [
   { id: 'bee', emoji: '🐝', name: 'Honey bees', how: 'Grow 5 trees', need: s => [s.trees, 5], buff: '+5% coins from study', at: [180, 230], fly: true },
@@ -170,10 +171,10 @@ function treeCardHtml(l) {
       <div class="tstats">${stat("Studied", fullDate(l.date))}${stat('Time', `${hm(start)} to ${hm(end)}`)}${stat('Length', fmtMins(l.mins))}
         ${stat('Height', treeHeight(l) + ' m')}${stat('Age', age === 0 ? 'Planted today' : `${age} day${age === 1 ? '' : 's'}`)}${stat('Earned', `${sessionCoins(l)} ${COIN}`)}</div>
       ${l.withered ? `<div class="tbuff bad">🥀 Withered: you left the timer ${DISTRACT_LIMIT}+ times, so it paid half coins.</div>` : r.wilted ? `<div class="tbuff bad">🥀 Wilted after a missed day (${fmtDate(r.wilted)}). Water it to bring it back.</div>` : ''}
-      ${treeBuff(l).text ? `<div class="tbuff">★ ${esc((BONUS_SPECIES.find(b => b[0] === l.species) || [, 'Rare tree'])[1])} buff: <b>${esc(treeBuff(l).text)}</b></div>` : ''}
+      <div class="tbuff">${LEAF} Grows <b>${fmtLeaf(treeLeafRate(l))} leaves an hour</b>${speciesRarity(speciesFor(l.subjectId)) !== 'common' ? ` (${esc(speciesName(speciesFor(l.subjectId)))} ×${LEAF_RARITY[speciesRarity(speciesFor(l.subjectId))]})` : ''}${(new Date(today()) - new Date(r.lastWater || '2000-01-01')) / 864e5 <= 1 ? ', watered ×1.5' : '. Water it for ×1.5'}</div>
       ${sess ? `<p class="small-text muted" style="margin:8px 0 0">Study block: <b>${esc(sess.topic || '')}</b></p>` : ''}
       <div class="row" style="margin-top:14px"><button class="btn ${ok && left > 0 ? 'primary' : ''}" data-tc="water" ${ok && left > 0 ? '' : 'disabled'}>💧 ${ok ? (left > 0 ? `Water (+${waterCoins(l)} ${COIN})` : 'Watered 10 trees today') : 'Watered today'}</button>
-        <span class="muted small-text">Watering makes trees grow a little taller. ${left > 0 ? `${left} left today.` : ''}</span></div>
+        <span class="muted small-text">Watering makes trees grow taller and grow leaves faster for a day. ${left > 0 ? `${left} left today.` : ''}</span></div>
     </div>`;
 }
 function openTreeCard(id) {
@@ -248,8 +249,8 @@ function shopView() {
       <div class="card giftcard ${g ? 'ready' : ''}"><div class="gifticon">🎁</div><div class="main"><h2 style="margin:0">Daily gift</h2><p class="muted small-text" style="margin:4px 0 0">${g ? 'A free gift is waiting for you.' : 'Opened. A new one arrives tomorrow.'}</p></div>
         ${g ? `<button class="btn primary" data-act="gift">Open gift</button>` : `<span class="tag green">+${D.game.ledger[giftKey()]} ${COIN}</span>`}</div>
       ${earnCard()}</div>
-      <div class="card"><h2>Upgrades</h2><div class="upgs">${ups}</div></div></div>
-    ${storeView()}${boxesView()}`;
+      <div class="stack">${leafShopView()}<div class="card"><h2>${COIN} Coin upgrades</h2><div class="upgs">${ups}</div></div></div></div>
+    ${boxesView()}${storeView()}`;
 }
 function milestonesCard() {
   const ms = milestones();
@@ -269,10 +270,10 @@ function openTreePicker(subjectId) {
   const ov = document.createElement('div');
   ov.className = 'treefx';
   ov.innerHTML = `<div class="treecard pickcard"><button class="iconbtn tc-close" data-tp="close" title="Close">✕</button>
-    <h2 style="margin:0 0 4px">Choose a tree for ${esc(s.name)}</h2><p class="muted small-text" style="margin:0 0 12px">Each subject has its own tree, so trees another subject uses are greyed out. ★ trees come from lucky boxes. Their buff counts for every session you grow as that tree from now on.</p>
-    <div class="pickgrid">${all.map(x => { const rc = RARITY[x.r], b = TREE_BUFFS[x.k], tb = takenBy(x.k), ok = x.has && !tb; return `<button class="pick ${x.k === cur ? 'on' : ''} ${ok || x.k === cur ? '' : 'locked'}" ${ok ? `data-tp="${x.k}"` : 'disabled'} style="--rc:${rc.color}" ${tb ? `title="Already used by ${esc(tb.name)}"` : ''}>
+    <h2 style="margin:0 0 4px">Choose a tree for ${esc(s.name)}</h2><p class="muted small-text" style="margin:0 0 12px">Each subject has its own tree, so trees another subject uses are greyed out. ★ trees come from boxes and the store. Rarer trees grow leaves faster, and switching changes every tree this subject has grown.</p>
+    <div class="pickgrid">${all.map(x => { const rc = RARITY[x.r], tb = takenBy(x.k), ok = x.has && !tb; return `<button class="pick ${x.k === cur ? 'on' : ''} ${ok || x.k === cur ? '' : 'locked'}" ${ok ? `data-tp="${x.k}"` : 'disabled'} style="--rc:${rc.color}" ${tb ? `title="Already used by ${esc(tb.name)}"` : ''}>
       <div class="pickart">${x.has ? treeSvg(s.color, 45, 1, x.k, 70) : '<span class="pickq">?</span>'}</div><b>${x.has ? esc(x.n) : '???'}</b><span class="rar">${rc.name}</span>
-      <span class="pbuff">${b ? (x.has ? esc(b.text) : 'Find it in a Tree chest') : 'No buff'}</span>${x.k === cur ? '<span class="tag green">Current</span>' : tb && x.has ? `<span class="tag">Used by ${esc(tb.name)}</span>` : ''}</button>`; }).join('')}</div></div>`;
+      <span class="pbuff">${x.has ? `${LEAF} ×${LEAF_RARITY[x.r]} leaves` : 'Find it in a box or the store'}</span>${x.k === cur ? '<span class="tag green">Current</span>' : tb && x.has ? `<span class="tag">Used by ${esc(tb.name)}</span>` : ''}</button>`; }).join('')}</div></div>`;
   document.body.appendChild(ov);
   const close = () => { ov.remove(); document.removeEventListener('keydown', key); };
   const key = e => { if (e.key === 'Escape') close(); };
@@ -280,7 +281,7 @@ function openTreePicker(subjectId) {
   ov.addEventListener('click', e => {
     if (e.target === ov) return close();
     const b = e.target.closest('[data-tp]'); if (!b) return;
-    if (b.dataset.tp !== 'close') { D.settings.treeFor = { ...(D.settings.treeFor || {}), [subjectId]: b.dataset.tp }; save(); render(); toast(`🌳 ${s.name} now grows ${speciesName(b.dataset.tp)}`, TREE_BUFFS[b.dataset.tp] ? `Buff: ${TREE_BUFFS[b.dataset.tp].text}` : ''); }
+    if (b.dataset.tp !== 'close') { D.settings.treeFor = { ...(D.settings.treeFor || {}), [subjectId]: b.dataset.tp }; save(); render(); toast(`🌳 ${s.name} now grows ${speciesName(b.dataset.tp)}`, `Its trees grow leaves ×${LEAF_RARITY[speciesRarity(b.dataset.tp)]}.`); }
     close();
   });
 }

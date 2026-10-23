@@ -22,7 +22,31 @@ const MOVE_BOOK = [
   { id: 'speccy', stat: 'pow', need: 62, price: 380, icon: '🦘', name: 'Speccy', cost: 55, mult: 2.5, anim: 'speccy', note: 'A huge leap over them for massive damage.' },
   { id: 'blindturn', stat: 'agi', need: 65, price: 420, icon: '🌪️', name: 'Blind turn', cost: 45, mult: 1.7, autododge: true, pierce: .5, anim: 'ankle', note: 'Big hit, and you dodge their next attack.' },
 ];
+MOVE_BOOK.push(
+  { id: 'trash', stat: 'spd', need: 38, price: 90, icon: '🗣️', name: 'Trash talk', cost: 10, weaken: 2, note: 'Gets in their head: they do 25% less damage for 2 rounds.' },
+  { id: 'pump', stat: 'str', need: 40, price: 110, icon: '💢', name: 'Psych up', cost: 15, pump: 3, note: 'You do 30% more damage for 3 rounds.' },
+  { id: 'spin', stat: 'agi', need: 42, price: 130, icon: '😵‍💫', name: 'Dizzy spin', cost: 20, mult: 1, dizzy: .7, anim: 'ankle', note: '70% chance to make them dizzy, so their next attack might miss.' },
+  { id: 'flame', stat: 'pow', need: 44, price: 140, icon: '🔥', name: 'On fire', cost: 25, mult: 1, burn: .7, note: '70% chance to burn them for 7 damage a round for 3 rounds.' },
+  { id: 'icebath', stat: 'end', need: 48, price: 170, icon: '🧊', name: 'Ice bath', cost: 20, regen: 3, guard: 3, note: 'Heal 7 a round and take 30% less damage for 3 rounds.' },
+  { id: 'focus', stat: 'agi', need: 50, price: 200, icon: '🎯', name: 'Laser focus', cost: 15, focus: true, note: 'Your next attack is a guaranteed critical hit.' },
+);
 const MAX_MOVE_LV = 5;
+// Types, like in Pokémon: each stat beats one other stat. Speed beats Strength,
+// Strength beats Power, Power beats Agility, Agility beats Endurance and
+// Endurance beats Speed. Super effective hits do 1.5x, resisted ones 0.67x.
+const TYPE_BEATS = { spd: 'str', str: 'pow', pow: 'agi', agi: 'end', end: 'spd' };
+const typeEff = (atk, defType) => TYPE_BEATS[atk] === defType ? 1.5 : TYPE_BEATS[defType] === atk ? .67 : 1;
+const typeOfRival = e => Object.entries(e.bias || {}).sort((a, b) => b[1] - a[1])[0]?.[0] || 'end';
+const typeOfMe = st => STAT_IDS.reduce((a, k) => st[k] > st[a] ? k : a, 'spd');
+const typeBadge = t => `<span class="tbadge" style="--sc:${statInfo(t)[3]}">${statInfo(t)[2]}</span>`;
+// status effects; numbers are rounds left
+const STATUS = {
+  burn: ['🔥', 'Burned: loses 7 HP a round'], dizzy: ['😵‍💫', 'Dizzy: next attack might miss'], daze: ['💫', 'Dazed: next hit does 40% less'],
+  weak: ['📉', 'Weakened: does 25% less damage'], pumped: ['💢', 'Pumped: does 30% more damage'], guard: ['🛡️', 'Guarded: takes 30% less damage'],
+  regen: ['💚', 'Recovering: heals 7 a round'], focus: ['🎯', 'Focused: next attack crits'],
+};
+// what a rival's hit can do to you, by the stat it attacks with
+const RIVAL_STATUS = { pow: 'burn', str: 'daze', agi: 'dizzy', end: 'weak', spd: 'shock' };
 const moveById = id => MOVE_BOOK.find(m => m.id === id);
 const moveLv = id => (D.arena.moveLv || {})[id] || 1;
 const ownsMove = m => m.basic || !!(D.arena.movesOwned || {})[m.id];
@@ -60,7 +84,7 @@ function arenaMoves() {
   const st = athlete().total, set = moveSet().map(m => m.id), g = grit();
   const card = m => {
     const own = ownsMove(m), can = st[m.stat] >= m.need, inSet = set.includes(m.id), lv = moveLv(m.id), col = statInfo(m.stat)[3];
-    const fx = [m.mult && `${Math.round(m.mult * movePow(m) * 100)}% power`, m.heal && `heals ${Math.round(m.heal * movePow(m))}`, m.pierce && 'breaks guard', m.stun && 'stuns', m.autododge && 'auto-dodge', m.crit && 'crits', m.shield && 'half damage taken', m.refund && `+${m.refund} energy`].filter(Boolean).join(' · ');
+    const fx = [m.mult && `${Math.round(m.mult * movePow(m) * 100)}% power`, m.heal && `heals ${Math.round(m.heal * movePow(m))}`, m.pierce && 'breaks guard', m.stun && 'stuns', m.autododge && 'auto-dodge', m.crit && 'crits', m.shield && 'half damage taken', m.refund && `+${m.refund} energy`, m.burn && '🔥 burns', m.dizzy && '😵‍💫 dizzies', m.weaken && '📉 weakens', m.pump && '💢 pumps you up', m.regen && '💚 recovery', m.guard && '🛡️ guard up', m.focus && '🎯 sure crit', `beats ${statInfo(TYPE_BEATS[m.stat])[2]}`].filter(Boolean).join(' · ');
     return `<div class="mvcard ${own ? 'own' : ''} ${inSet ? 'inset' : ''} ${!own && !can ? 'locked' : ''}" style="--sc:${col}">
       <div class="mvtop"><span class="mvic">${own || can ? m.icon : '🔒'}</span><div class="main"><b>${esc(m.name)}</b><div class="muted small-text">${statInfo(m.stat)[2]} · ⚡${moveCost(m)}${own ? ` · Lv ${lv}` : ''}</div></div>${own ? lvPips(m.id) : ''}</div>
       <p class="small-text">${esc(m.note)}</p><div class="muted small-text">${fx}</div>
@@ -154,7 +178,7 @@ function startBattle(id, mode = 'ladder') {
   boosts.forEach(k => items[k]--); ui.boost = {}; if (boosts.length) save();
   const me = battleStats(); if (boosts.includes('drink')) STAT_IDS.forEach(k => me[k] += 8);
   battle = { mode, i, me, hp: 100, hpMax: 100 + Math.round(Math.max(0, me.end - 50) / 2), energy: 60, round: 0, over: false, win: false, busy: false,
-    luck: boosts.includes('charm') ? 3 : 0, boosts, used: {}, wave: 1, seed: Date.now() % 100000, combo: 0, best: 0 };
+    luck: boosts.includes('charm') ? 3 : 0, boosts, used: {}, wave: 1, seed: Date.now() % 100000, combo: 0, best: 0, st: { me: {}, them: {} }, mytype: typeOfMe(me) };
   const rd = readiness(); battle.hpMax = Math.max(60, battle.hpMax + rd.hp); battle.energy = Math.min(100, battle.energy + rd.energy); battle.ready = rd;
   battle.hp = battle.hpMax;
   setRival(mode === 'survival' ? survivalRival(1) : e);
@@ -183,7 +207,8 @@ function setRival(e) {
   // regular rivals fight to their strengths: strong/tough ones guard, powerful ones swing big, quick ones keep attacking
   const es = enemyStats(e), mix = ai.mix || { atk: 3 + (es.spd + es.agi) / 60, heavy: 1 + es.pow / 40, guard: .8 + (es.str + es.end) / 90 };
   if (e.mod?.id === 'wall') mix.guard += 3;
-  Object.assign(B, { e, es, ai: { ...ai, mix }, ehp: e.hp || 100, emax: e.hp || 100, phase: 1, stunned: false, autododge: false, intent: null, elast: '' });
+  Object.assign(B, { e, es, ai: { ...ai, mix }, ehp: e.hp || 100, emax: e.hp || 100, phase: 1, stunned: false, autododge: false, intent: null, elast: '', etype: typeOfRival(e) });
+  if (B.st) B.st.them = {};
 }
 function battleKey(ev) {
   if (!battle || battle.over) return;
@@ -194,9 +219,9 @@ function battleKey(ev) {
 function drawStage() {
   const B = battle, e = B.e, lg = leagueOf(e) || LEAGUES[B.mode === 'survival' ? 3 : 2], spec = avatarSpec(), ov = document.getElementById('battlefx');
   ov.innerHTML = `<div class="treecard battlecard"><button class="iconbtn tc-close" data-bm="close" title="Leave">✕</button>
-    <div class="bhud"><div class="hpside"><b>${esc(D.settings.name || 'You')}</b><div class="hpbar"><i id="hpMe"></i></div><span id="hpMeT"></span><div class="enbar" title="Energy"><i id="enMe"></i></div><small class="muted" id="enMeT"></small></div>
+    <div class="bhud"><div class="hpside"><b>${esc(D.settings.name || 'You')} ${typeBadge(B.mytype)}</b><div class="hpbar"><i id="hpMe"></i></div><span id="hpMeT"></span><div class="enbar" title="Energy"><i id="enMe"></i></div><small class="muted" id="enMeT"></small><div class="strow" id="stMe"></div></div>
       <div class="bround"><small>${B.mode === 'survival' ? 'Survival' : B.mode === 'daily' ? 'Daily challenge' : B.mode === 'wander' ? 'New challenger' : esc(lg.icon + ' ' + lg.name)}</small><b id="bRound">FIGHT!</b></div>
-      <div class="hpside them"><b id="eName">${e.boss ? '👑 ' : ''}${esc(e.name)}</b><div class="hpbar"><i id="hpThem"></i></div><span id="hpThemT"></span></div></div>
+      <div class="hpside them"><b id="eName">${e.boss ? '👑 ' : ''}${esc(e.name)}</b><div class="hpbar"><i id="hpThem"></i></div><span id="hpThemT"></span><div class="strow" id="stThem"></div></div></div>
     <div class="bstage" style="--sky:${lg.sky};--ground:${lg.ground}">
       <div class="crowd"></div><div class="lights"><i></i><i></i><i></i><i></i></div><div class="ground"></div>
       <div class="fighter me" style="--dir:1" id="fMe"><div class="fbox">${avatarFull(spec, { size: 170 })}${petHtml(myAv().pet, 40)}</div><div class="fshadow"></div><div class="callout" id="cMe"></div></div>
@@ -212,7 +237,14 @@ function hud() {
   set('hpMe', B.hp, B.hpMax); set('hpThem', B.ehp, B.emax);
   const en = document.getElementById('enMe'); if (en) { en.style.width = B.energy + '%'; document.getElementById('enMeT').textContent = `⚡ ${Math.round(B.energy)} energy`; }
   const r = document.getElementById('bRound'); if (r) r.textContent = B.over ? (B.win ? 'K.O.!' : B.mode === 'survival' ? 'GAME OVER' : 'DEFEAT') : B.mode === 'survival' ? `WAVE ${B.wave}` : B.round ? `ROUND ${B.round}` : 'FIGHT!';
-  const n = document.getElementById('eName'); if (n) n.innerHTML = `${B.e.boss ? '👑 ' : ''}${esc(B.e.name)}${B.phase === 2 ? ' <span class="tag red">Phase 2</span>' : ''}`;
+  const n = document.getElementById('eName'); if (n) n.innerHTML = `${B.e.boss ? '👑 ' : ''}${esc(B.e.name)} ${typeBadge(B.etype)}${B.phase === 2 ? ' <span class="tag red">Phase 2</span>' : ''}`;
+  for (const who of ['me', 'them']) {
+    const st = B.st[who], row = document.getElementById(who === 'me' ? 'stMe' : 'stThem'), f = document.getElementById(who === 'me' ? 'fMe' : 'fThem');
+    const list = Object.entries(st).filter(([, v]) => v > 0);
+    if (who === 'them' && B.stunned) list.unshift(['stun', 1]);
+    if (row) row.innerHTML = list.map(([k, v]) => k === 'stun' ? '<span class="stb" title="Stunned: loses its next move">💫 stunned</span>' : `<span class="stb" title="${esc(STATUS[k][1])}">${STATUS[k][0]}${['dizzy', 'daze', 'focus'].includes(k) ? '' : ' ' + v}</span>`).join('');
+    if (f) for (const k of [...Object.keys(STATUS), 'stun']) f.classList.toggle('st-' + k, k === 'stun' ? who === 'them' && !!B.stunned : (st[k] || 0) > 0);
+  }
 }
 const logLine = html => document.getElementById('bLog')?.insertAdjacentHTML('afterbegin', `<div>${html}</div>`);
 function intentText(it) {
@@ -222,8 +254,9 @@ function intentText(it) {
   if (it.type === 'stunned') return '💫 <b>Stunned</b>: can\'t move this round';
   if (it.type === 'guard') return '🛡️ <b>Bracing to guard</b>: your hits do less (specials break through)';
   if (it.type === 'special') return `⚡ <b>${esc(B.ai.special.name)}</b>: ${esc(B.ai.special.hint)}`;
-  const [ic, nm] = MOVES[it.stat];
-  return it.type === 'heavy' ? `⚠️ <b>Winding up a big ${ic} ${nm}</b>: dodge it` : `${ic} <b>${nm}</b> (normal attack): counter or block`;
+  const [ic, nm] = MOVES[it.stat], ef = typeEff(it.stat, B.mytype);
+  const tag = ef > 1 ? ' <span class="effx super">super effective on you</span>' : ef < 1 ? ' <span class="effx weak">you resist it</span>' : '';
+  return (it.type === 'heavy' ? `⚠️ <b>Winding up a big ${ic} ${nm}</b>: dodge it` : `${ic} <b>${nm}</b> (normal attack): counter or block`) + tag;
 }
 function drawControls() {
   const B = battle, el = document.getElementById('bControls'); if (!el) return;
@@ -235,7 +268,7 @@ function drawControls() {
     return;
   }
   const dis = c => B.busy || B.energy < c ? 'disabled' : '';
-  el.innerHTML = `<div class="bsec"><span class="bsl">Moves</span><div class="bmoves m4">${moveSet().map(m => `<button class="bmove" data-bm="m:${m.id}" ${m.once && B.used[m.id] ? 'disabled' : dis(moveCost(m))} style="--sc:${statInfo(m.stat)[3]}" title="${esc(m.note)}"><span>${m.icon}</span><b>${esc(m.name)} <em>Lv${moveLv(m.id)}</em></b><small>⚡${moveCost(m)} · ${statInfo(m.stat)[2]} ${B.me[m.stat]} <i class="${B.me[m.stat] >= B.es[m.stat] ? 'up' : 'down'}">vs ${B.es[m.stat]}</i></small></button>`).join('')}</div></div>
+  el.innerHTML = `<div class="bsec"><span class="bsl">Moves</span><div class="bmoves m4">${moveSet().map(m => `<button class="bmove" data-bm="m:${m.id}" ${m.once && B.used[m.id] ? 'disabled' : dis(moveCost(m))} style="--sc:${statInfo(m.stat)[3]}" title="${esc(m.note)}"><span>${m.icon}</span><b>${esc(m.name)} <em>Lv${moveLv(m.id)}</em></b><small>⚡${moveCost(m)} · ${statInfo(m.stat)[2]} ${B.me[m.stat]} <i class="${B.me[m.stat] >= B.es[m.stat] ? 'up' : 'down'}">vs ${B.es[m.stat]}</i></small>${m.mult ? (typeEff(m.stat, B.etype) > 1 ? '<em class="effx super">▲ super effective</em>' : typeEff(m.stat, B.etype) < 1 ? '<em class="effx weak">▼ resisted</em>' : '') : '<em class="effx buff">status move</em>'}</button>`).join('')}</div></div>
     <div class="bsec"><span class="bsl">Defend</span><div class="bdefs">${Object.entries(DEFENCES).map(([k, d]) => `<button class="bdef" data-bm="d:${k}" ${dis(d.cost)} title="${esc(d.note)}"><span>${d.icon}</span><b>${d.name}</b><small>${d.cost ? '⚡' + d.cost : '+15 ⚡'}</small></button>`).join('')}</div></div>`;
 }
 
@@ -308,23 +341,40 @@ async function battleAct(code) {
   let line = `R${B.round}: `;
   const armour = B.phase === 2 && B.ai.phase?.armour || 1;
   // 1) your move
-  if (mv?.mult) {
-    const stat = mv.stat, crit = mv.crit && Math.random() < mv.crit;
-    let d = dmgRoll(B.me[stat] + B.luck, B.es[stat]) * TIMING[q][0] * mv.mult * movePow(mv) * armour * (1 + Math.min(B.combo, 4) * .05) * (crit ? 2 : 1);
+  const S = B.st;
+  if (mv?.mult && S.me.dizzy && Math.random() < .35) {
+    S.me.dizzy = 0; line += `${mv.icon} ${mv.name}: you're too dizzy and miss! `;
+    banner('MISSED!', 'lose'); document.getElementById('fMe')?.classList.add('wobble'); await sleep(700); document.getElementById('fMe')?.classList.remove('wobble');
+  } else if (mv?.mult) {
+    const stat = mv.stat, crit = S.me.focus || (mv.crit && Math.random() < mv.crit), ef = typeEff(stat, B.etype);
+    let d = dmgRoll(B.me[stat] + B.luck, B.es[stat]) * TIMING[q][0] * mv.mult * movePow(mv) * armour * (1 + Math.min(B.combo, 4) * .05) * (crit ? 2 : 1) * ef;
+    d *= (S.me.pumped ? 1.3 : 1) * (S.me.weak ? .75 : 1) * (S.me.daze ? .6 : 1) * (S.them.guard ? .7 : 1);
+    S.me.daze = 0; S.me.focus = 0; S.me.dizzy = 0;
     if (it.type === 'guard') d *= 1 - .55 * (1 - (mv.pierce || 0));
     d = Math.round(d); B.ehp = Math.max(0, B.ehp - d);
-    line += `${mv.icon} ${mv.name} (${TIMING[q][1].toLowerCase().replace('!', '')})${crit ? ' CRITICAL' : ''} −${d}${it.type === 'guard' ? ' through their guard' : ''}. `;
-    if (crit) banner('CRITICAL HIT!', 'win');
+    line += `${mv.icon} ${mv.name} (${TIMING[q][1].toLowerCase().replace('!', '')})${crit ? ' CRITICAL' : ''}${ef > 1 ? ' super effective' : ef < 1 ? ' resisted' : ''} −${d}${it.type === 'guard' ? ' through their guard' : ''}. `;
+    projectile('me', stat, mv.burn ? 'fire' : '');
     await animateMove('me', mv.anim || stat, d, !mv.basic, mv.name);
+    if (crit) banner('CRITICAL HIT!', 'win'); else if (ef > 1) banner('SUPER EFFECTIVE!', 'win'); else if (ef < 1) banner('Not very effective…', '');
+    if (B.ehp > 0 && mv.burn && Math.random() < mv.burn) { S.them.burn = 3; line += 'They\'re burned! '; fxAt('them', '🔥', 'stpop'); }
+    if (B.ehp > 0 && mv.dizzy && Math.random() < mv.dizzy) { S.them.dizzy = 1; line += 'They\'re dizzy! '; fxAt('them', '😵‍💫', 'stpop'); }
     if (mv.stun) { B.stunned = true; line += 'They\'re stunned! '; }
     if (mv.autododge) B.autododge = true;
     if (mv.refund) B.energy = Math.min(100, B.energy + mv.refund);
     if (mv.shield) B.shield = mv.shield;
   } else if (mv) {
-    const heal = Math.round((mv.heal || 0) * movePow(mv));
+    const heal = Math.round((mv.heal || 0) * movePow(mv)), lv = moveLv(mv.id) >= 3 ? 1 : 0;
     B.hp = Math.min(B.hpMax, B.hp + heal); B.energy = Math.min(100, B.energy + (mv.gain || 0)); B.shield = mv.shield || 0;
-    line += `${mv.icon} ${mv.name}: +${heal} HP${mv.gain ? `, +${mv.gain} energy` : ''}${mv.shield ? ', bracing' : ''}. `;
-    document.getElementById('fMe')?.classList.add('sp-wind'); fxAt('me', `+${heal}`, 'dmgnum heal'); hud(); await sleep(700); document.getElementById('fMe')?.classList.remove('sp-wind');
+    const bits = [heal && `+${heal} HP`, mv.gain && `+${mv.gain} energy`, mv.shield && 'bracing'];
+    if (mv.pump) { S.me.pumped = mv.pump + lv; bits.push('pumped up'); }
+    if (mv.regen) { S.me.regen = mv.regen + lv; bits.push('recovering'); }
+    if (mv.guard) { S.me.guard = mv.guard + lv; bits.push('guard up'); }
+    if (mv.focus) { S.me.focus = 1; bits.push('focused'); }
+    if (mv.weaken) { S.them.weak = mv.weaken + lv; bits.push('they\'re weakened'); fxAt('them', '📉', 'stpop'); }
+    line += `${mv.icon} ${mv.name}: ${bits.filter(Boolean).join(', ')}. `;
+    const f = document.getElementById('fMe'), cls = mv.weaken ? 'sp-taunt' : mv.pump || mv.focus ? 'sp-pump' : 'sp-wind';
+    f?.classList.add(cls); banner(mv.name.toUpperCase() + '!', ''); if (heal) fxAt('me', `+${heal}`, 'dmgnum heal'); else fxAt('me', mv.icon, 'stpop');
+    hud(); await sleep(800); f?.classList.remove(cls);
   }
   if (mv?.once) B.used[mv.id] = 1;
   B.blocks = kind === 'd' && id === 'block' ? (B.blocks || 0) + 1 : 0;
@@ -333,24 +383,37 @@ async function battleAct(code) {
     const special = it.type === 'special', sk = special ? B.ai.special.kind : '';
     const stat = sk === 'copy' ? STAT_IDS.reduce((a, k) => B.me[k] > B.me[a] ? k : a, 'spd') : it.stat || 'pow';
     let hit = dmgRoll(B.es[stat] + (sk === 'copy' ? 20 : 0), B.me[stat]) * (it.type === 'heavy' ? 1.7 * (B.e.mod?.id === 'heavy' ? 1.3 : 1) : special ? 1.5 : 1) * (B.boosts.includes('guard') ? .7 : 1);
-    let hits = sk === 'double' ? 2 : 1, back = 0, out = '';
-    if (B.autododge) { hit = 0; out = 'You read it and slip away. '; B.autododge = false; }
+    const ef = typeEff(stat, B.mytype);
+    hit *= ef * (S.them.weak ? .75 : 1) * (S.them.pumped ? 1.3 : 1) * (S.me.guard ? .7 : 1);
+    let hits = sk === 'double' ? 2 : 1, back = 0, out = ef > 1 ? 'Super effective! ' : ef < 1 ? 'You resist it. ' : '';
+    if (S.them.dizzy && Math.random() < .5) { hit = 0; out = 'They stumble around dizzy and miss! '; fxAt('me', 'MISS', 'dmgnum'); }
+    else if (B.autododge) { hit = 0; out = 'You read it and slip away. '; B.autododge = false; animDef('dodge'); }
     else if (kind === 'd' && id === 'dodge') {
       const p = Math.min(.9, .5 + (B.me.agi - B.es[stat]) / 150 + (it.type === 'heavy' || sk === 'quake' ? .25 : 0) + (sk === 'double' ? .1 : 0));
-      if (Math.random() < p) { hit = 0; out = 'Dodged! '; fxAt('me', 'MISS', 'dmgnum'); } else out = 'Dodge failed. ';
+      if (Math.random() < p) { hit = 0; out = 'Dodged! '; fxAt('me', 'MISS', 'dmgnum'); animDef('dodge'); } else out = 'Dodge failed. ';
     } else if (kind === 'd' && id === 'block') {
       B.energy = Math.min(100, B.energy + 15);
       if (sk === 'quake') out = 'The slam smashes through your block! ';
-      else if (q === 'perfect') { hit = 0; back = 8 + Math.round(B.me.str / 12); out = 'Perfect block! '; }
-      else { hit *= q === 'good' ? .3 : q === 'ok' ? .45 : .65; out = 'Blocked. '; }
+      else if (q === 'perfect') { hit = 0; back = 8 + Math.round(B.me.str / 12); out = 'Perfect block! '; animDef('block', true); }
+      else { hit *= q === 'good' ? .3 : q === 'ok' ? .45 : .65; out = 'Blocked. '; animDef('block'); }
     } else if (kind === 'd' && id === 'counter') {
-      if (it.type === 'atk' && !special) { hit *= q === 'perfect' ? 0 : q === 'miss' ? .8 : .5; back = Math.round(dmgRoll(B.me.str, B.es[stat]) * 1.3 * TIMING[q][0]); out = 'Countered! '; }
+      if (it.type === 'atk' && !special) { hit *= q === 'perfect' ? 0 : q === 'miss' ? .8 : .5; back = Math.round(dmgRoll(B.me.str, B.es[stat]) * 1.3 * TIMING[q][0]); out = 'Countered! '; animDef('counter'); }
       else { hit *= 1.1; out = 'Can\'t counter that! '; }
     }
     if ((sk === 'drain' || sk === 'freeze') && (kind !== 'd' || id !== 'dodge') && hit) { B.energy = Math.max(0, B.energy - (sk === 'freeze' ? 50 : 35)); out += sk === 'freeze' ? 'You\'re frozen! ' : 'Your energy drains! '; }
     const total = Math.round(hit * (1 - (B.shield || 0))) * hits;
     if (special) banner(`⚡ ${B.ai.special.name}!`, 'boss');
-    if (total) { B.hp = Math.max(0, B.hp - total); await animateMove('them', it.type === 'heavy' || special ? 'str' : stat, total, special); }
+    S.them.dizzy = 0;
+    if (total) {
+      B.hp = Math.max(0, B.hp - total); projectile('them', stat, special ? 'boss' : '');
+      await animateMove('them', it.type === 'heavy' || special ? 'str' : stat, total, special);
+      if (ef > 1) banner('SUPER EFFECTIVE!', 'lose');
+      const rs = RIVAL_STATUS[stat];
+      if (B.hp > 0 && Math.random() < (B.e.boss ? .3 : .22) * (S.me.guard ? .5 : 1)) {
+        if (rs === 'shock') { B.energy = Math.max(0, B.energy - 15); out += 'Zapped: −15 energy! '; fxAt('me', '⚡', 'stpop'); }
+        else { S.me[rs] = rs === 'burn' ? 3 : rs === 'weak' ? 2 : 1; out += { burn: 'You\'re burned! ', daze: 'You\'re dazed! ', dizzy: 'You\'re dizzy! ', weak: 'You\'re weakened! ' }[rs]; fxAt('me', STATUS[rs][0], 'stpop'); }
+      }
+    }
     else { document.getElementById('fThem')?.classList.add('atk', 'atk-' + stat); await sleep(500); document.getElementById('fThem')?.classList.remove('atk', 'atk-' + stat); }
     if (back && B.ehp > 0) { back = Math.round(back * armour); B.ehp = Math.max(0, B.ehp - back); await animateMove('me', 'str', back, false); out += `You hit back −${back}. `; }
     line += `${esc(B.e.icon)} ${special ? esc(B.ai.special.name) : it.type === 'heavy' ? 'big ' + MOVES[stat][1] : MOVES[stat][1]}: ${out}${total ? `−${total}.` : ''}`;
@@ -358,7 +421,14 @@ async function battleAct(code) {
   else if (it.type === 'stunned') line += `${B.e.icon} is stunned.`;
   if (kind === 'd' && it.type === 'guard' && id !== 'block') line += ' (wasted: they only guarded)';
   logLine(line);
-  // 3) energy back, phase 2, end of fight
+  // 3) burns and recovery tick, statuses wear off
+  for (const who of ['me', 'them']) {
+    const st = S[who]; if (B.hp <= 0 || B.ehp <= 0) break;
+    if (st.burn > 0) { if (who === 'me') B.hp = Math.max(1, B.hp - 7); else B.ehp = Math.max(0, B.ehp - 7); fxAt(who, '🔥 -7', 'dmgnum burnnum'); logLine(`🔥 ${who === 'me' ? 'Your burn' : 'Their burn'} stings for 7.`); }
+    if (st.regen > 0 && who === 'me') { B.hp = Math.min(B.hpMax, B.hp + 7); fxAt('me', '+7', 'dmgnum heal'); }
+    for (const k of ['burn', 'regen', 'pumped', 'weak', 'guard']) if (st[k] > 0) st[k]--;
+  }
+  // energy back, phase 2, end of fight
   B.energy = Math.min(100, B.energy + 12 + Math.round(B.me.end / 25));
   if (B.e.boss && B.phase === 1 && B.ehp > 0 && B.ehp / B.emax <= .4 && B.ai.phase) {
     B.phase = 2; banner('PHASE 2', 'boss'); say('them', B.ai.phase.line, 2600); logLine(`<b>${B.e.icon} ${esc(B.ai.phase.line)}</b>`);
@@ -387,6 +457,23 @@ async function animateMove(who, anim, dmg, special, name = '') {
   fxAt(loser, `-${dmg}`, 'dmgnum big'); document.querySelector('#battlefx .bstage')?.classList.add('shake'); hud();
   await sleep(480);
   atk.classList.remove('atk', 'sp-' + anim, 'special'); def.classList.remove('hit'); document.querySelector('#battlefx .bstage')?.classList.remove('shake');
+}
+// a shot that flies from the attacker to the defender, styled by its type
+const PROJ = { spd: '💨', pow: '💥', str: '👊', end: '🌀', agi: '✨', fire: '🔥', boss: '☄️' };
+function projectile(from, stat, kind) {
+  const st = document.querySelector('#battlefx .bstage'), a = document.getElementById(from === 'me' ? 'fMe' : 'fThem'), b = document.getElementById(from === 'me' ? 'fThem' : 'fMe');
+  if (!st || !a || !b) return;
+  const sr = st.getBoundingClientRect(), ar = a.getBoundingClientRect(), br = b.getBoundingClientRect();
+  const p = document.createElement('div'); p.className = `proj p-${kind || stat}`; p.textContent = PROJ[kind] || PROJ[stat] || '💥';
+  p.style.setProperty('--sx', (ar.left - sr.left + ar.width / 2) + 'px'); p.style.setProperty('--ex', (br.left - sr.left + br.width / 2) + 'px');
+  p.style.setProperty('--y', (ar.top - sr.top + ar.height * .45) + 'px'); p.style.setProperty('--c', statInfo(stat)[3]); p.style.setProperty('--flip', from === 'me' ? 1 : -1);
+  document.getElementById('bfx')?.appendChild(p); setTimeout(() => p.remove(), 900);
+}
+// your defence, shown on your fighter
+function animDef(kind, perfect) {
+  const f = document.getElementById('fMe'); if (!f) return;
+  f.classList.add('def-' + kind); if (perfect) f.classList.add('def-perfect');
+  setTimeout(() => f.classList.remove('def-' + kind, 'def-perfect'), 900);
 }
 async function nextWave() {
   const B = battle;
@@ -466,5 +553,5 @@ function battleModesHtml() {
       <button class="btn primary" data-act="fightMode" data-v="survival" ${tokensLeft() ? '' : 'disabled'}>Start</button></div></div>
   </div>
   <div class="card"><div class="card-head"><h2>How fights work</h2><button class="btn small" data-act="arenaPage" data-v="moves">🥋 Moves →</button></div>
-    <p class="small-text" style="margin:0">Each round the rival shows its <b>next move</b>. ⚠️ Big hits: <b>dodge</b>. Normal attacks: <b>counter</b> or <b>block</b>. 🛡️ Guarding: save energy or use a guard-breaking move. Attacks and blocks are timed, so press <b>Space</b> when the marker is in the middle for a <b>PERFECT</b>. Gym leaders have a second phase at 40% HP. Unlock and level up moves in the <b>Moves</b> tab.</p></div>`;
+    <p class="small-text" style="margin:0">Every stat is a <b>type</b>: ${STAT_IDS.map(k => `${typeBadge(k)} beats ${typeBadge(TYPE_BEATS[k])}`).join(' · ')}. Super effective hits do 1.5×. Your type is your best stat, a rival's type is what it leans on. Moves can burn 🔥, make dizzy 😵‍💫, weaken 📉 or pump you up 💢, and rivals can hit you with statuses too. Each round the rival shows its <b>next move</b>. ⚠️ Big hits: <b>dodge</b>. Normal attacks: <b>counter</b> or <b>block</b>. 🛡️ Guarding: save energy or use a guard-breaking move. Attacks and blocks are timed, so press <b>Space</b> when the marker is in the middle for a <b>PERFECT</b>. Gym leaders have a second phase at 40% HP. Unlock and level up moves in the <b>Moves</b> tab.</p></div>`;
 }

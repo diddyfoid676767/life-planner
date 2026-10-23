@@ -100,7 +100,7 @@ function viewFriends() {
     ${loginCard}
     <div class="friends-main">
       <div class="stack">${viewBoard()}</div>
-      <div class="stack">${racesCard()}
+      <div class="stack">${challengesFriendsCard()}${racesCard()}
         <div class="card"><div class="card-head"><h2>Friends</h2>${n ? `<span class="muted small-text">${n}</span>` : ''}</div>
           ${acct.signedIn ? friendSearchHtml().replace('<h3>👥 Friends', '<h3 hidden>').replace('class="friendbox"', 'class="friendbox flat"') : ''}
           ${friendCards() || (friendNames().length ? '' : '<p class="muted small-text">No friends yet. Search for a username above, or swap friend codes below.</p>')}

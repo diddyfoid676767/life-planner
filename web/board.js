@@ -6,7 +6,17 @@
    latest code from each friend. */
 
 let boardFriends = [];
+// the overall board: each category scores up to 100 points for whoever leads it
+const OVERALL_CATS = [['📚', 'Study', r => r.study?.mins || 0], ['🏃', 'Training', r => r.work?.mins || 0], ['🔥', 'Streak', r => r.study?.streak || 0], ['🌳', 'Trees', r => r.study?.trees || 0], ['🌙', 'Sleep', r => r.health?.sleep || 0], ['👟', 'Steps', r => r.health?.steps || 0], ['⚔️', 'Wins', r => r.work?.wins || 0], ['💪', 'Grit', r => r.work?.grit || 0]];
+function overallScores(rows) {
+  const max = OVERALL_CATS.map(([, , f]) => Math.max(0, ...rows.map(f)));
+  return rows.map(r => {
+    const parts = OVERALL_CATS.map(([icon, name, f], i) => ({ icon, name, pts: max[i] ? Math.round(f(r) / max[i] * 100) : 0 }));
+    return { ...r, v: parts.reduce((a, p) => a + p.pts, 0), parts };
+  }).sort((a, b) => b.v - a.v);
+}
 const BOARD_SORTS = {
+  overall: [['score', 'Overall', v => `${v} pts`]],
   study: [['mins', 'Study this week', v => fmtMins(v) || '0m'], ['coins', 'Coins', v => `${v} ${COIN}`], ['streak', 'Study streak', v => `🔥 ${v}`], ['trees', 'Trees', v => `🌳 ${v}`]],
   health: [['sleep', 'Avg sleep', v => v ? fmtHm(v) : '–'], ['steps', 'Steps this week', v => (v || 0).toLocaleString()]],
   work: [['mins', 'Training this week', v => fmtMins(v) || '0m'], ['grit', 'Grit', v => `${v} ${GRIT}`], ['ovr', 'Rating', v => `⭐ ${v}`], ['wins', 'Battle wins', v => `⚔️ ${v}`], ['surv', 'Survival best', v => `🌊 ${v}`]],
@@ -36,18 +46,20 @@ function allFriendRows() { return [...(D.friends || []).filter(f => !friendRows.
 function viewBoard() {
   boardFriends = allFriendRows();
   publishMe(); refreshFriends();
-  const kind = ui.boardKind || 'study', sorts = BOARD_SORTS[kind], key = ui.boardSort?.[kind] || sorts[0][0];
+  const kind = ui.boardKind || 'overall', sorts = BOARD_SORTS[kind], key = ui.boardSort?.[kind] || sorts[0][0];
   const sortDef = sorts.find(s => s[0] === key) || sorts[0];
   const wk = mondayOf(today());
   // past weeks of your own as "ghost" rows until friends join
   const ghosts = boardFriends.length ? [] : [1, 2, 3].map(k => { const from = addDays(wk, -7 * k), s = weekStats(from); return { id: 'g' + k, ghost: true, name: k === 1 ? 'You, last week' : `You, ${k} weeks ago`, av: avatarSpec(), study: { mins: s.study }, work: { mins: s.work } }; });
-  const rows = [myBoardRow(), ...boardFriends.filter(f => f.week === wk || key !== 'mins'), ...(key === 'mins' ? ghosts : [])]
+  const rows = kind === 'overall' ? overallScores([myBoardRow(), ...boardFriends.filter(f => f.week === wk)])
+    : [myBoardRow(), ...boardFriends.filter(f => f.week === wk || key !== 'mins'), ...(key === 'mins' ? ghosts : [])]
     .map(r => ({ ...r, v: (r[kind] || {})[key] ?? 0 })).sort((a, b) => b.v - a.v);
   const medal = i => ['🥇', '🥈', '🥉'][i] || `${i + 1}`;
-  return `<div class="card board"><div class="card-head"><div class="seg">${[['study', '📚 Study'], ['work', '🏃 Training'], ['health', '🌙 Health']].map(([k, l]) => `<button class="${kind === k ? 'on' : ''}" data-act="boardKind" data-v="${k}">${l}</button>`).join('')}</div>
-      <span style="flex:1"></span><div class="catchips">${sorts.map(([k, l]) => `<button class="cchip ${key === k ? 'on' : ''}" data-act="boardSort" data-v="${k}">${l}</button>`).join('')}</div></div>
+  return `<div class="card board"><div class="card-head"><div class="seg">${[['overall', '🏆 Overall'], ['study', '📚 Study'], ['work', '🏃 Training'], ['health', '🌙 Health']].map(([k, l]) => `<button class="${kind === k ? 'on' : ''}" data-act="boardKind" data-v="${k}">${l}</button>`).join('')}</div>
+      <span style="flex:1"></span>${kind === 'overall' ? '' : `<div class="catchips">${sorts.map(([k, l]) => `<button class="cchip ${key === k ? 'on' : ''}" data-act="boardSort" data-v="${k}">${l}</button>`).join('')}</div>`}</div>
     <div class="podium">${rows.slice(0, 3).map((r, i) => `<div class="pod p${i + 1} ${r.me ? 'me' : ''} ${r.ghost ? 'ghost' : ''}"><div class="podav">${safeBadge(r.av, i === 0 ? 120 : 96)}</div><b>${esc(r.name)}</b><span>${sortDef[2](r.v)}</span><div class="podstep">${medal(i)}</div></div>`).join('')}</div>
-    <ol class="boardlist">${rows.map((r, i) => `<li class="${r.me ? 'me' : ''} ${r.ghost ? 'ghost' : ''}"><span class="brank">${medal(i)}</span>${safeBadge(r.av, 44)}<b>${esc(r.name)}</b><span style="flex:1"></span><span class="bval">${sortDef[2](r.v)}</span></li>`).join('')}</ol>
+    <ol class="boardlist">${rows.map((r, i) => `<li class="${r.me ? 'me' : ''} ${r.ghost ? 'ghost' : ''}"><span class="brank">${medal(i)}</span>${safeBadge(r.av, 44)}<b>${esc(r.name)}</b><span style="flex:1"></span>${r.parts ? `<span class="bparts">${r.parts.filter(x => x.pts).sort((a, b) => b.pts - a.pts).slice(0, 4).map(x => `<span title="${x.name}: ${x.pts} pts">${x.icon}${x.pts}</span>`).join('')}</span>` : ''}<span class="bval">${sortDef[2](r.v)}</span></li>`).join('')}</ol>
+    ${kind === 'overall' ? `<p class="muted small-text" style="margin:8px 0 0">Everyone gets up to 100 points in each of ${OVERALL_CATS.map(c => c[0] + ' ' + c[1].toLowerCase()).join(', ')} this week: 100 for the leader, and the rest in proportion.</p>` : ''}
     </div>`;
 }
 // ---------- friend codes ----------

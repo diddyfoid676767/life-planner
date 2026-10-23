@@ -24,6 +24,22 @@ const TESTS = [
   { id: 'sq', name: 'Back squat (best set)', unit: 'kg', stat: 'str' },
   { id: 'bench', name: 'Bench press (best set)', unit: 'kg', stat: 'str' },
   { id: 'pull', name: 'Pull-ups (max reps)', unit: 'reps', stat: 'str' },
+  { id: 's60', name: '60m sprint', unit: 's', lower: true, stat: 'spd' },
+  { id: 's200', name: '200m', unit: 's', lower: true, stat: 'spd' },
+  { id: 's400', name: '400m', unit: 's', lower: true, stat: 'spd' },
+  { id: 'tt1k', name: '1km time trial', unit: 'm:ss', lower: true, stat: 'end', time: true },
+  { id: 'tt3k', name: '3km time trial', unit: 'm:ss', lower: true, stat: 'end', time: true },
+  { id: 'tt5k', name: '5km run', unit: 'm:ss', lower: true, stat: 'end', time: true },
+  { id: 'tt10k', name: '10km run', unit: 'm:ss', lower: true, stat: 'end', time: true },
+  { id: 'yoyo', name: 'Yo-yo test', unit: 'level', stat: 'end' },
+  { id: 'illi', name: 'Illinois agility', unit: 's', lower: true, stat: 'agi' },
+  { id: 'tri', name: 'Triple jump (standing)', unit: 'm', stat: 'pow' },
+  { id: 'mb', name: 'Med ball throw', unit: 'm', stat: 'pow' },
+  { id: 'dl', name: 'Deadlift (best set)', unit: 'kg', stat: 'str' },
+  { id: 'push', name: 'Push-ups (max reps)', unit: 'reps', stat: 'str' },
+  { id: 'plank', name: 'Plank hold', unit: 'm:ss', stat: 'str', time: true },
+  { id: 'sit', name: 'Sit-and-reach', unit: 'cm', stat: 'agi' },
+  { id: 'swim50', name: '50m swim', unit: 's', lower: true, stat: 'end' },
 ];
 const GEAR = [
   { id: 'b_run', slot: 'boots', icon: '👟', name: 'Training runners', bonus: { spd: 2 }, price: 80 },
@@ -348,7 +364,7 @@ function buyItem(id) {
 }
 function arenaShop(g) {
   const items = D.arena.items || {};
-  return `<div class="card"><div class="card-head"><h2>🛒 Shop</h2><span class="pill">${COIN} ${coins()}</span><span class="pill">${GRIT} ${g}</span></div>
+  return `${arenaBoxesCard()}<div class="card"><div class="card-head"><h2>🛒 Shop</h2><span class="pill">${COIN} ${coins()}</span><span class="pill">${GRIT} ${g}</span></div>
     <div class="shopgrid">${SHOP_ITEMS.map(it => {
       const can = it.grit ? g >= it.grit : coins() >= it.coins, used = (D.arena.swaps || {})[it.id + ':' + today()];
       return `<div class="sitem"><div class="sicon">${it.icon}</div><b>${it.name}</b><span class="muted small-text">${it.text}</span>${it.boost && items[it.id] ? `<span class="tag">In your bag: ${items[it.id]}</span>` : ''}
@@ -377,7 +393,7 @@ function viewArena() {
   const frCol = fr >= 75 ? '#40c057' : fr >= 50 ? '#fab005' : '#e03131';
   const nq = questDefs().filter(q => q.have >= q.need && !(q.key in D.arena.ledger)).length;
   const tab = (v, l) => `<button class="${page === v ? 'on' : ''}" data-act="arenaPage" data-v="${v}">${l}</button>`;
-  const tabs = `<div class="seg arenatabs">${tab('battle', '⚔️ Battle')}${tab('athlete', `🏠 Athlete${nq ? ` <span class="dotbadge">${nq}</span>` : ''}`)}${tab('moves', '🥋 Moves')}${tab('locker', '🎒 Locker')}${tab('wardrobe', '👕 Wardrobe')}${tab('shop', '🛒 Shop')}</div>`;
+  const tabs = `<div class="seg arenatabs">${tab('battle', '⚔️ Battle')}${tab('athlete', `🏠 Athlete${nq ? ` <span class="dotbadge">${nq}</span>` : ''}`)}${tab('moves', '🥋 Moves')}${tab('locker', '🎒 Locker')}${tab('wardrobe', '👕 Wardrobe')}${tab('shop', '🎁 Boxes & shop')}</div>`;
   const head = pageHead('⚔️ Arena', 'Your stats come from the workouts you tick off', `<button class="btn" data-act="goto" data-v="training">💪 Training &amp; Health</button>`) + arenaStrip(a) + tabs;
   let body;
   if (page === 'battle') body = arenaBattles(a);
@@ -425,8 +441,61 @@ function arenaBattles(a) {
 ${battleModesHtml()}<div class="card"><div class="card-head"><h2>Boosts</h2><span class="muted small-text">switch on before a fight · buy more in the Shop</span></div><div class="row" style="gap:10px">${boosts.map(x => `<label class="boostchip ${items[x.id] ? '' : 'none'}"><input type="checkbox" data-act="boostToggle" data-id="${x.id}" ${boost[x.id] && items[x.id] ? 'checked' : ''} ${items[x.id] ? '' : 'disabled'}> ${x.icon} ${x.name} <b>×${items[x.id] || 0}</b></label>`).join('')}</div></div>
     <p class="muted small-text">2 battles a day, +1 for each workout ticked off today. Highlighted stats are ones where you're already stronger. Freshness ${freshness()}% scales your stats.</p>`;
 }
+// records worked out from everything you've logged
+function bestRecords() {
+  const ws = doneWorkouts(), km = w => parseFloat(String(w.distance || '').replace(',', '.')) || 0;
+  const best = (list, f) => list.reduce((b, x) => { const v = f(x); return v > (b?.v || 0) ? { v, x } : b; }, null);
+  const byWeek = {}, byDay = {};
+  for (const w of ws) { const k = mondayOf(w.date); byWeek[k] = byWeek[k] || { mins: 0, n: 0, km: 0 }; byWeek[k].mins += +w.duration || 0; byWeek[k].n++; byWeek[k].km += km(w); byDay[w.date] = 1; }
+  const streak = (days, need = 1) => { let b = 0, run = 0, prev = null; for (const d of Object.keys(days).sort()) { run = prev && addDays(prev, 1) === d ? run + 1 : 1; b = Math.max(b, run); prev = d; } return b; };
+  const wk = (f) => Object.entries(byWeek).reduce((b, [k, v]) => f(v) > (b?.v || 0) ? { v: f(v), k } : b, null);
+  const runs = ws.filter(w => /run|jog/i.test(w.sport + ' ' + w.title) && km(w) > 0);
+  const paced = runs.filter(w => +w.duration > 0 && km(w) >= 1).map(w => ({ w, pace: +w.duration / km(w) }));
+  const fastest = paced.sort((a, b) => a.pace - b.pace)[0];
+  const H = typeof healthCfg === 'function' ? healthCfg().days : {};
+  const hd = Object.entries(H);
+  const hbest = (k, low) => hd.filter(([, v]) => v[k]).reduce((b, [d, v]) => (b == null || (low ? v[k] < b.v : v[k] > b.v)) ? { v: v[k], d } : b, null);
+  const studyDay = {}; for (const l of D.focusLogs) studyDay[l.date] = (studyDay[l.date] || 0) + l.mins;
+  const sd = Object.entries(studyDay).reduce((b, [d, m]) => m > (b?.v || 0) ? { v: m, d } : b, null);
+  const longS = best(D.focusLogs, l => l.mins);
+  const battles = D.arena.battles || [], wins = battles.filter(b => b.win).length;
+  let winRun = 0, run = 0; for (const b of battles) { run = b.win ? run + 1 : 0; winRun = Math.max(winRun, run); }
+  const lw = best(ws, w => +w.duration || 0), lr = best(runs, km);
+  const totalKm = ws.reduce((a, w) => a + km(w), 0), totalH = ws.reduce((a, w) => a + (+w.duration || 0), 0);
+  const ww = wk(v => v.mins), wn = wk(v => v.n), wkm = wk(v => v.km);
+  const sl = hbest('sleep'), st = hbest('steps'), rhr = hbest('rhr', true), ss = hbest('score');
+  return [
+    ['🏃', 'Training', [
+      ['⏱️', 'Longest workout', lw ? fmtMins(lw.v) : null, lw && `${esc(lw.x.title || lw.x.sport)} · ${fmtDate(lw.x.date)}`],
+      ['📅', 'Biggest training week', ww ? fmtMins(ww.v) : null, ww && `week of ${fmtDate(ww.k)}`],
+      ['🔁', 'Most sessions in a week', wn?.v || null, wn && `week of ${fmtDate(wn.k)}`],
+      ['🔥', 'Longest training streak', streak(byDay) ? `${streak(byDay)} day${streak(byDay) === 1 ? '' : 's'}` : null, 'days in a row with a workout'],
+      ['🧮', 'All-time training', totalH ? fmtMins(totalH) : null, `${ws.length} workout${ws.length === 1 ? '' : 's'}`]]],
+    ['📏', 'Running', [
+      ['🛣️', 'Longest run', lr ? `${+lr.v.toFixed(2)} km` : null, lr && fmtDate(lr.x.date)],
+      ['⚡', 'Fastest pace (1km+)', fastest ? `${Math.floor(fastest.pace)}:${String(Math.round(fastest.pace % 1 * 60)).padStart(2, '0')} /km` : null, fastest && `${+km(fastest.w).toFixed(2)} km · ${fmtDate(fastest.w.date)}`],
+      ['📈', 'Most km in a week', wkm?.v ? `${+wkm.v.toFixed(1)} km` : null, wkm && `week of ${fmtDate(wkm.k)}`],
+      ['🌏', 'All-time distance', totalKm ? `${+totalKm.toFixed(1)} km` : null, 'from workouts with a distance']]],
+    ['🌙', 'Health', [
+      ['😴', 'Longest sleep', sl ? fmtHm(sl.v) : null, sl && fmtDate(sl.d)],
+      ['💯', 'Best sleep score', ss?.v || null, ss && fmtDate(ss.d)],
+      ['👟', 'Most steps in a day', st ? st.v.toLocaleString() : null, st && fmtDate(st.d)],
+      ['❤️', 'Lowest resting HR', rhr ? `${rhr.v} bpm` : null, rhr && fmtDate(rhr.d)]]],
+    ['📚', 'Study & Arena', [
+      ['🎯', 'Longest focus session', longS ? fmtMins(longS.v) : null, longS && `${esc(subj(longS.x.subjectId).name)} · ${fmtDate(longS.x.date)}`],
+      ['📖', 'Most study in a day', sd ? fmtMins(sd.v) : null, sd && fmtDate(sd.d)],
+      ['🔥', 'Longest study streak', typeof bestStreak === 'function' && bestStreak() ? `${bestStreak()} days` : null, '30+ minutes a day'],
+      ['⚔️', 'Battle wins', wins || null, winRun ? `best run: ${winRun} in a row` : ''],
+      ['🌊', 'Survival best', (D.arena.survivalBest || 0) || null, 'waves cleared']]],
+  ];
+}
+function recordsHtml() {
+  return `<div class="card recs"><div class="card-head"><h2>🏆 Your records</h2><span class="muted small-text">worked out from everything you log</span></div>
+    ${bestRecords().map(([icon, title, rows]) => `<div class="recgroup"><div class="daygroup">${icon} ${title}</div><div class="recgrid">${rows.map(([ic, label, v, sub]) => `<div class="rec ${v == null ? 'none' : ''}"><span class="recic">${ic}</span><div class="main"><small>${label}</small><b>${v ?? '–'}</b>${sub && v != null ? `<em>${sub}</em>` : ''}</div></div>`).join('')}</div></div>`).join('')}</div>
+    <h2 style="margin:18px 0 10px">📈 Fitness tests</h2>`;
+}
 function arenaBests() {
-  return `<div class="pbgrid">${TESTS.map(T => {
+  return `${recordsHtml()}<div class="pbgrid">${TESTS.map(T => {
     const h = pbHistory(T.id), last = h.list[h.list.length - 1], si = statInfo(T.stat);
     return `<div class="card pbcard" style="--sc:${si[3]}"><div class="card-head"><h2>${esc(T.name)}</h2><span class="tag" style="background:${si[3]}22;color:${si[3]}">${si[2]}</span></div>
       <div class="pbbest">${h.best != null ? fmtTest(T, h.best) : '<span class="muted">No result yet</span>'}</div>

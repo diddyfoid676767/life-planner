@@ -1268,6 +1268,7 @@ function stopFocus(log, quiet) {
   D.focus = null; focusAskCancel = false;
   if (log && mins >= 1) {
     D.focusLogs.push({ id: uid(), subjectId: f.subjectId, species: speciesFor(f.subjectId), ...((f.distractions || 0) >= DISTRACT_LIMIT ? { withered: true } : {}), sessionId: f.sessionId, date: ymd(new Date(f.startedAt)), start: new Date(f.startedAt).toISOString(), mins });
+    leafSessionBonus(D.focusLogs[D.focusLogs.length - 1]);
     const sess = f.sessionId && find('session', f.sessionId);
     if (sess && !sess.done && (!quiet) && confirm(`Logged ${fmtMins(mins)} of ${subj(f.subjectId).name}. Tick off this study block?`)) sess.done = true;
     else if (!quiet) toast(mins >= 10 ? '🌳 You grew a tree!' : 'Study time logged', `${fmtMins(mins)} of ${subj(f.subjectId).name}`);
@@ -1737,6 +1738,12 @@ document.addEventListener('click', e => {
     case 'addPb': addPb(id); break;
     case 'delPb': if (confirm('Delete this result?')) { D.arena.pbs = D.arena.pbs.filter(p => p.id !== id); save(); render(); } break;
     case 'buyGear': buyGear(id); break;
+    case 'openArenaBox': openArenaBox(id); break;
+    case 'chalSend': sendChallenge(); break;
+    case 'chalYes': answerChallenge(id, true); break;
+    case 'chalNo': answerChallenge(id, false); break;
+    case 'chalClaim': claimFriendChal(id); break;
+    case 'chalCancel': cancelChallenge(id); break;
     case 'equip': { const g = GEAR.find(x => x.id === id); if (g && ownsGear(id)) { D.arena.equip[g.slot] = id; save(); render(); } break; }
     case 'holAdd': addHoliday(); break;
     case 'bedOn': D.settings.bedtime = { ...bedCfg(), on: el.checked }; save(); break;
@@ -1751,14 +1758,20 @@ document.addEventListener('click', e => {
     case 'gift': claimGift(); break;
     case 'milestone': claimMilestone(id); break;
     case 'openBox': openBox(id); break;
+    case 'openBoxLeaf': openBox(id, 'leaf'); break;
+    case 'storeBuyLeaf': storeBuy(id, 'leaf'); break;
+    case 'collectLeaves': collectLeaves(el); render(); break;
+    case 'buyLeafUpg': buyLeafUpgrade(id); break;
     case 'setScene': D.game.scene = el.dataset.v; save(); render(); break;
     case 'forestRange': ui.forestRange = el.dataset.v; render(); break;
     case 'setTheme': D.settings.theme = el.dataset.v; save(); render(); break;
     case 'setThemeMode': D.settings.themeMode = el.dataset.v; save(); render(); break;
+    case 'navHeadAdd': navHead('add'); break;
+    case 'navHeadRename': navHead('rename', el.dataset.v); break;
+    case 'navHeadDel': navHead('del', el.dataset.v); break;
     case 'navMove': navMove(el.dataset.v, +el.dataset.n); save(); render(); break;
     case 'navReset': D.settings.navOrder = []; D.settings.navHidden = []; save(); render(); break;
     case 'setThemeBg': D.settings.themeBg = el.dataset.v; save(); render(); break;
-    case 'forestView': D.settings.forestView = el.dataset.v; save(); render(); break;
     case 'evFilter': ui.evFilter = el.dataset.v; render(); break;
     case 'planStudy': planStudy(id); break;
     case 'planTraining': planTraining(id); break;
@@ -1820,6 +1833,7 @@ document.addEventListener('change', e => {
   if (el.dataset.change === 'lookColor') { setLook(el.dataset.k, el.value); return; }
   if (el.dataset.change === 'evCat') { ui.evCat = el.value; render(); }
   if (el.dataset.change === 'showItem') { D.game.hidden[el.dataset.id] = !el.checked; save(); }
+  if (el.dataset.change === 'gardenFx') { D.game.fx = { ...(D.game.fx || {}), [el.dataset.v]: el.checked }; ui.gfxOpen = true; save(); render(); }
   if (el.dataset.change === 'bedTime' && el.value) { D.settings.bedtime = { ...bedCfg(), time: el.value }; save(); }
   if (el.dataset.change === 'treeSpecies') { D.settings.treeFor = { ...(D.settings.treeFor || {}), [el.dataset.id]: el.value }; save(); render(); }
   if (el.dataset.change === 'dayPick' && el.value) { ui.daySel = el.value; render(); }

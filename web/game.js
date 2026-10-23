@@ -176,17 +176,17 @@ function rollItem(box) {
   const weighted = [...pool, ...fresh];
   return weighted[Math.floor(Math.random() * weighted.length)];
 }
-function openBox(boxId) {
+function openBox(boxId, cur = 'coin') {
   const box = BOXES.find(b => b.id === boxId);
-  if (!box || coins() < boxPrice(box)) return;
+  if (!box || (cur === 'leaf' ? leaves() : coins()) < boxPrice(box)) return;
   const item = rollItem(box);
   const dupe = owned(item.id);
-  D.game.spent += boxPrice(box);
+  if (cur === 'leaf') spendLeaves(boxPrice(box)); else D.game.spent += boxPrice(box);
   D.game.items[item.id] = (D.game.items[item.id] || 0) + 1;
   D.game.opened = (D.game.opened || 0) + 1;
   if (dupe) D.game.bonus = (D.game.bonus || 0) + RARITY[item.rarity].refund;
   save();
-  boxAnimation(box, item, dupe);
+  boxAnimation(box, item, dupe, cur);
 }
 function boxSvg(box, size = 120) {
   const [c1, c2, c3] = box.colors;
@@ -199,28 +199,44 @@ function boxSvg(box, size = 120) {
     <text x="0" y="24" text-anchor="middle" font-size="20" font-weight="800" fill="${c2}" opacity=".7">?</text>
     <defs><linearGradient id="bx${box.id}" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#fff" stop-opacity=".25"/><stop offset="1" stop-color="#000" stop-opacity=".12"/></linearGradient></defs></svg>`;
 }
-function boxAnimation(box, item, dupe) {
-  const rc = RARITY[item.rarity];
+// Multi-stage unboxing: the box drops in, shakes harder while it glows in the
+// prize's rarity colour, bursts open with a flash and the prize rises out of it.
+// Shared by garden boxes and Arena boxes. Click during the build-up to skip.
+function revealFx({ boxHtml, rarity, prizeHtml, title, text, buttons = '', onButton }) {
+  const rc = RARITY[rarity] || RARITY.common, tier = ['common', 'rare', 'epic', 'legendary'].indexOf(rarity);
   const ov = document.createElement('div');
-  ov.className = 'boxfx';
+  ov.className = `boxfx unbox r-${rarity}`;
   ov.style.setProperty('--rc', rc.color);
-  const confetti = Array.from({ length: 40 }, (_, i) => `<i style="--x:${(Math.random() * 2 - 1) * 260}px;--y:${-120 - Math.random() * 260}px;--r:${Math.random() * 720}deg;--d:${(.9 + Math.random() * .8).toFixed(2)}s;background:${['#ffd43b', '#ff6b6b', '#4dabf7', '#69db7c', '#da77f2', rc.color][i % 6]}"></i>`).join('');
-  ov.innerHTML = `<div class="boxstage"><div class="rays"></div><div class="thebox shake">${boxSvg(box, 170)}</div>
-    <div class="reveal"><div class="prize">${itemIcon(item, 150)}</div><div class="rar">${rc.name}</div><h2>${esc(item.name)}</h2>
-      <p>${dupe ? `You already had this, so you get ${RARITY[item.rarity].refund} ${COIN} back.` : itemBlurb(item)}</p>
-      <div class="row" style="justify-content:center">${coins() >= boxPrice(box) ? `<button class="btn" data-again="${box.id}">Open another (${boxPrice(box)} ${COIN})</button>` : ''}<button class="btn primary" data-close>Nice!</button></div></div>
-    <div class="confetti">${confetti}</div></div>`;
+  const confetti = Array.from({ length: 30 + tier * 20 }, (_, i) => `<i style="--x:${(Math.random() * 2 - 1) * 300}px;--y:${-120 - Math.random() * 280}px;--r:${Math.random() * 720}deg;--d:${(.9 + Math.random() * .9).toFixed(2)}s;background:${['#ffd43b', '#ff6b6b', '#4dabf7', '#69db7c', '#da77f2', rc.color, rc.color][i % 7]}"></i>`).join('');
+  const sparks = Array.from({ length: 14 }, (_, i) => `<i style="--a:${i * 360 / 14}deg;--dl:${(Math.random() * .9).toFixed(2)}s"></i>`).join('');
+  ov.innerHTML = `<div class="flash"></div><div class="boxstage"><div class="rays"></div><div class="beam"></div><div class="ring"></div>
+    <div class="thebox"><div class="glow"></div><div class="sparks">${sparks}</div>${boxHtml}</div>
+    <div class="reveal"><div class="prize">${prizeHtml}</div><div class="rar">${'★'.repeat(tier + 1)} ${rc.name}</div><h2>${esc(title)}</h2>
+      <p>${text}</p><div class="row" style="justify-content:center">${buttons}<button class="btn primary" data-close>Nice!</button></div></div>
+    <div class="confetti">${confetti}</div>${tier === 3 ? `<div class="goldrain">${Array.from({ length: 26 }, () => `<i style="left:${Math.random() * 100}%;--d:${(1.6 + Math.random() * 1.8).toFixed(2)}s;--dl:${(Math.random() * 1.5).toFixed(2)}s">✦</i>`).join('')}</div>` : ''}</div>`;
   document.body.appendChild(ov);
+  const timers = [];
+  const stage = (cls, ms) => timers.push(setTimeout(() => ov.classList.add(cls), ms));
+  const open = () => { timers.forEach(clearTimeout); ov.classList.add('charge', 'burst', 'opened'); };
+  stage('charge', 450); stage('burst', 2100); stage('opened', 2350);
   const close = () => { ov.classList.add('out'); setTimeout(() => ov.remove(), 250); render(); };
   ov.addEventListener('click', e => {
-    if (e.target.closest('[data-close]') || e.target === ov) close();
-    const again = e.target.closest('[data-again]');
-    if (again) { ov.remove(); openBox(again.dataset.again); }
+    if (!ov.classList.contains('opened')) return open();
+    if (e.target.closest('[data-close]') || e.target === ov) return close();
+    const b = e.target.closest('[data-again]');
+    if (b && onButton) { ov.remove(); onButton(b.dataset.again); }
   });
-  setTimeout(() => ov.classList.add('opened'), 1300);
+  return ov;
+}
+function boxAnimation(box, item, dupe, cur = 'coin') {
+  const p = boxPrice(box), canAgain = cur === 'leaf' ? leaves() >= p : coins() >= p, sym = cur === 'leaf' ? LEAF : COIN;
+  revealFx({ boxHtml: boxSvg(box, 170), rarity: item.rarity, prizeHtml: itemIcon(item, 150), title: item.name,
+    text: dupe ? `You already had this, so you get ${RARITY[item.rarity].refund} ${COIN} back.` : itemBlurb(item),
+    buttons: canAgain ? `<button class="btn" data-again="${box.id}">Open another (${p} ${sym})</button>` : '',
+    onButton: id => openBox(id, cur) });
 }
 function itemBlurb(item) {
-  return item.type === 'tree' ? `New tree unlocked! Pick it for a subject under "Your trees". Buff: ${TREE_BUFFS[item.species]?.text || 'none'}.`
+  return item.type === 'tree' ? `New tree unlocked! Pick it for a subject under "Your trees". It grows leaves ×${LEAF_RARITY[item.rarity]} faster.`
     : item.type === 'scene' ? 'New forest scene! Switch to it in your Collection.'
     : item.type === 'animal' ? 'A new friend has moved into your forest.' : 'Added to your forest.';
 }
@@ -313,7 +329,8 @@ function gameHeader() {
   const lv = levelInfo(), n = claimable();
   return `<div class="gamebar">
     <div class="lvl"><div class="lvbadge">${lv.n}</div><div class="lvtext"><b>${esc(lv.title)}</b><div class="lvtrack"><i style="width:${Math.round(lv.into / lv.need * 100)}%"></i></div><span class="muted small-text">${lv.into} / ${lv.need} XP to level ${lv.n + 1}</span></div></div>
-    <div class="coins" title="Coins: from studying, ticking off blocks, finished SACs and challenges">${COIN} <b>${coins()}</b></div>
+    <div class="coins" title="Coins: from studying, ticking off blocks, finished SACs and challenges. Shared with the Arena.">${COIN} <b>${coins()}</b></div>
+    <div class="coins leafpill" title="Leaves: grown by your trees, for the garden">${LEAF} <b>${fmtLeaf(leaves())}</b></div>
     ${n ? `<span class="tag green">${n} reward${n === 1 ? '' : 's'} to claim</span>` : ''}</div>`;
 }
 function challengesCard() {
@@ -330,29 +347,29 @@ function challengesCard() {
     <div class="daygroup">This week</div><ul class="chals">${list.filter(c => c.kind === 'This week').map(row).join('')}</ul></div>`;
 }
 function boxesView() {
-  const have = coins();
-  return `<div class="card"><div class="card-head"><h2>Lucky boxes</h2><span class="coins">${COIN} <b>${have}</b></span></div>
-    <div class="boxes">${BOXES.map(b => { const p = boxPrice(b); return `<div class="boxcard ${have >= p ? '' : 'poor'}" style="--bc:${b.colors[0]}">
+  const have = coins(), lv = leaves();
+  return `<div class="card"><div class="card-head"><h2>Lucky boxes</h2><span class="muted small-text">pay with coins or leaves</span><span class="coins">${COIN} <b>${have}</b></span><span class="coins">${LEAF} <b>${fmtLeaf(lv)}</b></span></div>
+    <div class="boxes">${BOXES.map(b => { const p = boxPrice(b); return `<div class="boxcard ${have >= p || lv >= p ? '' : 'poor'}" style="--bc:${b.colors[0]}">
       <div class="boxart">${boxSvg(b, 120)}</div><h3>${b.name}</h3>${b.note ? `<div class="boxnote">${b.note}</div>` : ''}
       <div class="odds">${Object.entries(b.odds).filter(([, p]) => p).map(([r, p]) => `<span style="color:${RARITY[r].color}">${RARITY[r].name} ${p}%</span>`).join('')}</div>
-      <button class="btn ${have >= p ? 'primary' : ''}" data-act="openBox" data-id="${b.id}" ${have >= p ? '' : 'disabled'}>Open · ${p} ${COIN}</button>
-      ${have < p ? `<div class="muted small-text">${p - have} more: about ${fmtMins(p - have)} of study</div>` : ''}</div>`; }).join('')}</div></div>`;
+      <div class="row boxbuy"><button class="btn small ${have >= p ? 'primary' : ''}" data-act="openBox" data-id="${b.id}" ${have >= p ? '' : 'disabled'}>${p} ${COIN}</button><button class="btn small ${lv >= p ? 'primary' : ''}" data-act="openBoxLeaf" data-id="${b.id}" ${lv >= p ? '' : 'disabled'}>${p} ${LEAF}</button></div></div>`; }).join('')}</div></div>`;
 }
 const STORE_PRICE = { common: 90, rare: 220, epic: 500, legendary: 1200 };
 function storeView() {
-  const have = coins(), cat = ui.storeCat || 'deco';
+  const have = coins(), lv = leaves(), cat = ui.storeCat || 'deco';
   const cats = [['deco', '🏡 Decorations'], ['animal', '🦔 Animals'], ['tree', '🌳 Trees'], ['scene', '🌅 Scenes']];
   const list = ITEMS.filter(i => i.type === cat).sort((a, b) => STORE_PRICE[a.rarity] - STORE_PRICE[b.rarity]);
-  return `<div class="card"><div class="card-head"><h2>Item store</h2><span class="muted small-text">skip the luck and buy exactly what you want</span><span class="coins">${COIN} <b>${have}</b></span></div>
+  return `<div class="card"><div class="card-head"><h2>Item store</h2><span class="muted small-text">skip the luck and buy exactly what you want</span><span class="coins">${COIN} <b>${have}</b></span><span class="coins">${LEAF} <b>${fmtLeaf(lv)}</b></span></div>
     <div class="seg" style="margin-bottom:10px">${cats.map(([k, l]) => `<button class="${cat === k ? 'on' : ''}" data-act="storeCat" data-v="${k}">${l}</button>`).join('')}</div>
     <div class="storegrid">${list.map(i => { const p = STORE_PRICE[i.rarity], has = owned(i.id);
       return `<div class="storeitem ${has ? 'own' : ''}" style="--rc:${RARITY[i.rarity].color}"><div class="storeart">${itemIcon(i, 70)}</div><b>${esc(i.name)}</b><span class="small-text" style="color:${RARITY[i.rarity].color}">${RARITY[i.rarity].name}</span>
-        ${has ? '<span class="tag green">✓ Owned</span>' : `<button class="btn small ${have >= p ? 'primary' : ''}" data-act="storeBuy" data-id="${i.id}" ${have >= p ? '' : 'disabled'}>${p} ${COIN}</button>`}</div>`; }).join('')}</div></div>`;
+        ${has ? '<span class="tag green">✓ Owned</span>' : `<div class="row boxbuy"><button class="btn small ${have >= p ? 'primary' : ''}" data-act="storeBuy" data-id="${i.id}" ${have >= p ? '' : 'disabled'}>${p} ${COIN}</button><button class="btn small ${lv >= p ? 'primary' : ''}" data-act="storeBuyLeaf" data-id="${i.id}" ${lv >= p ? '' : 'disabled'}>${p} ${LEAF}</button></div>`}</div>`; }).join('')}</div></div>`;
 }
-function storeBuy(id) {
+function storeBuy(id, cur = 'coin') {
   const i = itemById(id); if (!i || owned(id)) return;
-  const p = STORE_PRICE[i.rarity]; if (coins() < p) return;
-  D.game.spent += p; D.game.items[id] = 1; save(); render();
+  const p = STORE_PRICE[i.rarity];
+  if (cur === 'leaf') { if (!spendLeaves(p)) return; } else { if (coins() < p) return; D.game.spent += p; }
+  D.game.items[id] = 1; save(); render();
   toast(`✨ ${i.name} is yours`, i.type === 'scene' ? 'Pick it under Collection to change your forest.' : 'It\'s in your forest now.');
 }
 function earnCard() {
@@ -360,7 +377,8 @@ function earnCard() {
     <ul class="earn"><li><b>1 ${COIN} per minute</b> in focus sessions of 10+ minutes (up to ${fmtMins(120 + 30 * upg('longer'))} each)</li><li><b>+10</b> for a full tree (45+ minutes)</li><li><b>+${crit('echidna') ? 10 : 5}</b> each day you study 30+ minutes</li>
       <li><b>+5</b> per study block ticked off, <b>+25</b> per SAC or exam done, <b>+5</b> per workout, <b>+2</b> per task done</li>
       <li><b>Challenges</b>: 15 to 150 coins each</li><li><b>Daily gift</b>: free coins once a day</li><li><b>Water your trees</b>: coins for each tree you water (once a day each)</li>
-      <li><b>Milestones</b> and <b>critter discoveries</b> pay out once</li><li>Duplicates from boxes give coins back</li></ul></div>`;
+      <li><b>Milestones</b> and <b>critter discoveries</b> pay out once</li><li>Duplicates from boxes give coins back</li></ul>
+    <p class="muted small-text" style="margin:8px 0 0">Coins are shared with the Arena (Arena boxes, shop and wardrobe). ${LEAF} Leaves are the garden's own money: your trees grow them every hour.</p></div>`;
 }
 function collectionView() {
   const groups = [['tree', 'Trees'], ['animal', 'Animals'], ['deco', 'Decorations'], ['scene', 'Forest scenes']];
@@ -372,7 +390,7 @@ function collectionView() {
       const has = owned(i.id), rc = RARITY[i.rarity];
       return `<div class="citem ${has ? '' : 'locked'}" style="--rc:${rc.color}" title="${has ? esc(i.name) : 'Not found yet'}">
         <div class="cicon">${itemIcon(i, 58)}</div><b>${has ? esc(i.name) : '???'}</b><span class="rar">${rc.name}${(D.game.items[i.id] || 0) > 1 ? ` · ×${D.game.items[i.id]}` : ''}</span>
-        ${i.type === 'tree' && TREE_BUFFS[i.species] ? `<span class="tbuff sm">${esc(TREE_BUFFS[i.species].text)}</span>` : ''}
+        ${i.type === 'tree' ? `<span class="tbuff sm">${LEAF} ×${LEAF_RARITY[i.rarity]} leaves</span>` : ''}
         ${has && (i.type === 'deco' || i.at) ? `<label class="small-text muted"><input type="checkbox" data-change="showItem" data-id="${i.id}" ${D.game.hidden[i.id] ? '' : 'checked'}> show</label>` : ''}</div>`;
     }).join('')}</div>`).join('')}</div>`;
 }
@@ -383,6 +401,7 @@ function gameFeedback() {
   if (!D || !D.game) return;
   checkCritters();
   checkMissedDays();
+  gnomeCollect();
   arenaFeedback();
   const now = coins(), lv = levelInfo().n;
   if (lastCoins !== null && now > lastCoins) {
