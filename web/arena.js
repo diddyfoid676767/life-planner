@@ -315,9 +315,9 @@ function arenaFeedback() {
 
 // ---------- shop: consumables and swaps ----------
 const SHOP_ITEMS = [
-  { id: 'drink', icon: '⚡', name: 'Energy drink', text: '+8 to every stat for one battle.', grit: 40, boost: true },
-  { id: 'charm', icon: '🍀', name: 'Lucky charm', text: '+3 on every dice roll for one battle.', grit: 45, boost: true },
-  { id: 'guard', icon: '🦷', name: 'Mouthguard', text: 'Take 30% less damage for one battle.', grit: 50, boost: true },
+  { id: 'drink', icon: '⚡', name: 'Energy drink', text: 'Your athlete starts the next battle with +1 Attack.', grit: 40, boost: true },
+  { id: 'charm', icon: '🍀', name: 'Lucky charm', text: 'Your athlete starts the next battle focused: 4× the critical hits.', grit: 45, boost: true },
+  { id: 'guard', icon: '🦷', name: 'Mouthguard', text: 'Your athlete starts the next battle with a Reflect: physical hits do half.', grit: 50, boost: true },
   { id: 'ticket', icon: '🎟️', name: 'Battle ticket', text: 'One extra battle today.', grit: 60 },
   { id: 'smoothie', icon: '🥤', name: 'Recovery smoothie', text: '+25% freshness for today.', grit: 50 },
   { id: 'pt', icon: '🧑‍🏫', name: 'Personal trainer', text: '+6 training points on your weakest stat, for good.', grit: 150 },
@@ -380,7 +380,7 @@ function arenaStrip(a = athlete()) {
   const tier = a.ovr >= 85 ? 'special' : a.ovr >= 70 ? 'gold' : a.ovr >= 55 ? 'silver' : 'bronze';
   return `<div class="ahero ${tier}"><div class="ahero-av" style="background:${BG_CSS[myAv().bg] || 'rgba(255,255,255,.15)'}">${avatarFull(avatarSpec(), { size: 120, cls: 'idle' })}${petHtml(myAv().pet, 26)}</div>
     <div class="ahero-main"><div class="ahero-name"><b>${esc(D.settings.name || 'Athlete')}</b><span class="ahero-ovr">${a.ovr} <small>${a.pos}</small></span></div>
-      <div class="ahero-goal">${rd.icon} ${esc(rd.label)} today${rd.hp ? ` · ${rd.hp > 0 ? '+' : ''}${rd.hp} HP` : ''}${rd.energy ? ` · +${rd.energy} energy` : ''} in battles <a href="#" data-act="goto" data-v="training" class="ahero-link">from your training &amp; sleep →</a></div>
+      <div class="ahero-goal">${rd.icon} ${esc(rd.label)} today${rd.hp ? ` · ${rd.hp > 0 ? '+' : ''}${rd.hp}% HP in battles` : ''} <a href="#" data-act="goto" data-v="training" class="ahero-link">from your training &amp; sleep →</a></div>
       <div class="ahero-stats">${STATS.map(([k, , ab, col]) => `<div title="${statInfo(k)[1]}"><span>${ab}</span><div class="sbar"><i style="width:${a.total[k]}%;background:${col}"></i></div><b>${a.total[k]}</b></div>`).join('')}</div></div>
     <div class="ahero-side"><div><span>${GRIT}</span><b>${g}</b><small>Grit</small></div><div><span>${COIN}</span><b>${coins()}</b><small>Coins</small></div>
       <div><span>🔥</span><b>${ci.combo}</b><small>Combo</small></div><div><span style="color:${frCol}">●</span><b>${fr}%</b><small>Fresh</small></div><div><span>⚔️</span><b>${tokensLeft()}</b><small>Battles</small></div></div></div>`;
@@ -393,7 +393,7 @@ function viewArena() {
   const frCol = fr >= 75 ? '#40c057' : fr >= 50 ? '#fab005' : '#e03131';
   const nq = questDefs().filter(q => q.have >= q.need && !(q.key in D.arena.ledger)).length;
   const tab = (v, l) => `<button class="${page === v ? 'on' : ''}" data-act="arenaPage" data-v="${v}">${l}</button>`;
-  const tabs = `<div class="seg arenatabs">${tab('battle', '⚔️ Battle')}${tab('athlete', `🏠 Athlete${nq ? ` <span class="dotbadge">${nq}</span>` : ''}`)}${tab('moves', '🥋 Moves')}${tab('locker', '🎒 Locker')}${tab('wardrobe', '👕 Wardrobe')}${tab('shop', '🎁 Boxes & shop')}</div>`;
+  const tabs = `<div class="seg arenatabs">${tab('battle', '⚔️ Battle')}${tab('athlete', `🏠 Athlete${nq ? ` <span class="dotbadge">${nq}</span>` : ''}`)}${tab('moves', '🥋 Moves & crew')}${tab('locker', '🎒 Locker')}${tab('wardrobe', '👕 Wardrobe')}${tab('shop', '🎁 Boxes & shop')}</div>`;
   const head = pageHead('⚔️ Arena', 'Your stats come from the workouts you tick off', `<button class="btn" data-act="goto" data-v="training">💪 Training &amp; Health</button>`) + arenaStrip(a) + tabs;
   let body;
   if (page === 'battle') body = arenaBattles(a);
@@ -434,12 +434,12 @@ function arenaBattles(a) {
     <div class="ladder">${ENEMIES.map((e, i) => [e, i]).filter(([e]) => e.league === lg.id).map(([e, i]) => {
       const es = enemyStats(e), locked = i > up, won = beaten(e.id);
       return `<div class="rung ${locked ? 'locked' : ''} ${won ? 'won' : ''} ${e.boss ? 'bossrung' : ''}"><div class="rpos">${e.boss ? '👑' : i + 1}</div><div class="renemy">${locked ? '🔒' : e.icon}</div>
-        <div class="main"><b>${locked ? (e.boss ? 'Gym leader' : '???') : esc(e.name)}</b> <span class="muted small-text">Lv ${e.r}${e.boss ? ` · gym leader · ${e.hp} HP` : ''}</span>${locked ? '<div class="muted small-text">Beat the rival above to unlock.</div>' : `<div class="muted small-text">${esc(e.line)}</div>
+        <div class="main"><b>${locked ? (e.boss ? 'Gym leader' : '???') : esc(e.name)}</b> <span class="muted small-text">Lv ${lvOf(e.r)}${e.boss ? ' · gym leader' : ''}</span>${locked ? '' : ` ${typeChips(typesOf(e))}`}${locked ? '<div class="muted small-text">Beat the rival above to unlock.</div>' : `<div class="muted small-text">${esc(e.line)}</div>
           <div class="bstats">${STATS.map(([k, , ab, col]) => `<span style="--sc:${col}" class="${me[k] > es[k] ? 'edge' : ''}">${ab} <b>${es[k]}</b></span>`).join('')}</div>`}</div>
         ${won ? `<span class="tag green">✓ ${e.boss ? lg.badge + ' Badge' : 'Beaten'}</span>` : ''}${locked ? '' : `<button class="btn ${won ? '' : 'primary'}" data-act="fight" data-id="${e.id}">⚔️ Fight</button>`}</div>`;
     }).join('')}</div></div>`).join('')}
 ${battleModesHtml()}<div class="card"><div class="card-head"><h2>Boosts</h2><span class="muted small-text">switch on before a fight · buy more in the Shop</span></div><div class="row" style="gap:10px">${boosts.map(x => `<label class="boostchip ${items[x.id] ? '' : 'none'}"><input type="checkbox" data-act="boostToggle" data-id="${x.id}" ${boost[x.id] && items[x.id] ? 'checked' : ''} ${items[x.id] ? '' : 'disabled'}> ${x.icon} ${x.name} <b>×${items[x.id] || 0}</b></label>`).join('')}</div></div>
-    <p class="muted small-text">2 battles a day, +1 for each workout ticked off today. Highlighted stats are ones where you're already stronger. Freshness ${freshness()}% scales your stats.</p>`;
+    <p class="muted small-text">2 battles a day, +1 for each workout ticked off today. Highlighted stats are ones where you're already stronger. Freshness ${freshness()}% scales your stats, and rivals bring a bigger team the further you go.</p>`;
 }
 // records worked out from everything you've logged
 function bestRecords() {

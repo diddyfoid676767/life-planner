@@ -192,13 +192,13 @@ const TOUR_PAGES = {
     ['.clsgrid > :first-child', 'Today\'s periods', 'Pick the subject for each period. When the bell goes, rate your effort from 😴 to 🔥 for coins.'],
     ['.clsgrid > :last-child', 'Effort and bell times', 'Your average effort per subject this week. Check the bell times match your school.']]],
   forest: ['🌳 Forest', 'Every focus session grows a tree here.', [
-    ['.scene-wrap', 'Your 3D garden', 'Drag empty space to spin the island and scroll to zoom. Drag a tree to another tile to move it, click it to name or water it, and brush through trees to see them bend. Trees grow 🍃 leaves: tap a leaf bubble or Collect to bank them. ✨ Effects turns clouds, weather and roaming animals on or off.'],
+    ['.scene-wrap', 'Your 3D garden', 'Drag empty space to move around, pinch (or ＋ −) to zoom, right-drag or ⟲ ⟳ to spin, and ◇ for an isometric view. Drag a tree to another tile to move it, click it to name or water it, and brush through trees to see them bend. Trees grow 🍃 leaves: tap a leaf bubble or Collect to bank them. ✨ Effects turns clouds, weather and roaming animals on or off.'],
     ['.forest-tabs', 'Trees, critters and the shop', 'Choose each subject\'s tree, meet your critters, and spend coins on scenes, decorations and upgrades.'],
     ['.forest-cols > .stack:first-child', 'Challenges', 'New challenges every day and week. Claim the coins when you finish one.'],
     ['.forest-cols > .stack:last-child', 'Milestones and your trees', 'Big goals with bigger rewards, plus which tree each subject grows.']]],
   training: ['💪 Training & Health', 'Your physical profile. Everything here powers your Arena athlete.', [
     ['.btiles', 'This week at a glance', 'Training time, sessions done, your combo, sleep, steps and resting heart rate.'],
-    ['.rdcard', 'Readiness', 'Freshness, last night\'s sleep and your heart rate make a readiness score. A high score gives you bonus HP and energy in Arena battles.'],
+    ['.rdcard', 'Readiness', 'Freshness, last night\'s sleep and your heart rate make a readiness score. A high score gives your athlete bonus HP in Arena battles.'],
     ['.bodytabs', 'Training, sleep and bests', '<b>Training</b> has your plan and Garmin or Strava imports, <b>Sleep &amp; health</b> has your sleep log and trends, and <b>Bests</b> tracks personal records.']]],
   arena: ['⚔️ Arena', 'Battle with the athlete your workouts built.', [
     ['.ahero', 'Your athlete', 'Your stats, today\'s readiness bonus, 💪 Grit, combo and battles left today.'],

@@ -7,7 +7,7 @@
 
 const ISO_W = 128, ISO_H = 64, ISO_D = 26;
 const isoXY = (r, c) => [(c - r) * ISO_W / 2, (c + r) * ISO_H / 2];
-const GARDEN_FX = [['clouds', '☁️ Clouds'], ['weather', '🍂 Falling leaves and weather'], ['rays', '🌤️ Sun rays'], ['fireflies', '✨ Fireflies at night'], ['critters', '🐾 Roaming animals'], ['flowers', '🌼 Flowers in the grass'], ['bubbles', '🍃 Leaf bubbles on trees']];
+const GARDEN_FX = [['hq', '💡 Fancy lighting and glow (switch off if it\'s slow)'], ['clouds', '☁️ Clouds'], ['weather', '🍂 Falling leaves and weather'], ['rays', '🌤️ Sun rays'], ['fireflies', '✨ Fireflies at night'], ['critters', '🐾 Roaming animals'], ['flowers', '🌼 Flowers in the grass'], ['bubbles', '🍃 Leaf bubbles on trees']];
 const gfx = k => ((D.game.fx || {})[k] ?? true);
 
 function gardenLayout(logs) {

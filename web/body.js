@@ -16,7 +16,7 @@ function readiness() {
   }
   const parts = [[fr, .45], [sleepPct ?? 75, .4], [rhrPct ?? 80, .15]];
   const score = Math.round(parts.reduce((a, [v, w]) => a + v * w, 0));
-  const tier = score >= 85 ? ['🚀', 'Peak', 15, 10] : score >= 70 ? ['💪', 'Ready', 8, 5] : score >= 50 ? ['🙂', 'Okay', 0, 0] : ['😴', 'Run down', -10, 0];
+  const tier = score >= 85 ? ['🚀', 'Peak', 15, 0] : score >= 70 ? ['💪', 'Ready', 8, 0] : score >= 50 ? ['🙂', 'Okay', 0, 0] : ['😴', 'Run down', -10, 0];
   return { score, fr, sleepPct, rhrPct, sleep, rhr, icon: tier[0], label: tier[1], hp: tier[2], energy: tier[3] };
 }
 
@@ -40,7 +40,7 @@ function bodyProfile() {
   const ready = `<div class="card rdcard"><div class="card-head"><h2>Today's readiness</h2></div>
     <div class="rd-top"><div class="rd-ring"><svg viewBox="0 0 120 120" width="132" height="132"><circle cx="60" cy="60" r="52" class="mp-track"/><circle cx="60" cy="60" r="52" fill="none" stroke="${col}" stroke-width="10" stroke-linecap="round" stroke-dasharray="${C.toFixed(1)}" stroke-dashoffset="${(C * (1 - rd.score / 100)).toFixed(1)}" transform="rotate(-90 60 60)"/></svg><div><b>${rd.score}</b><span>${rd.icon} ${rd.label}</span></div></div>
       <div class="rd-parts">${part('Freshness', rd.fr, 'recovery from recent workouts')}${part('Sleep', rd.sleepPct, rd.sleep ? `${fmtHm(rd.sleep)} last night` : 'no sleep logged')}${part('Heart rate', rd.rhrPct, rd.rhr ? `${rd.rhr} bpm resting` : 'from your watch')}</div></div>
-    <div class="rd-arena"><span>⚔️ In the Arena today</span><b>${rd.hp || rd.energy ? `${rd.hp ? `${rd.hp > 0 ? '+' : ''}${rd.hp} HP` : ''}${rd.hp && rd.energy ? ' · ' : ''}${rd.energy ? `+${rd.energy} energy` : ''}` : 'no bonus'}</b><a href="#" data-act="goto" data-v="arena">Battle →</a></div></div>`;
+    <div class="rd-arena"><span>⚔️ In the Arena today</span><b>${rd.hp ? `${rd.hp > 0 ? '+' : ''}${rd.hp}% HP` : 'no bonus'}</b><a href="#" data-act="goto" data-v="arena">Battle →</a></div></div>`;
   const STAT_FROM = { spd: 'sprints, speed work, running', pow: 'jumps, plyos, power lifts', str: 'gym and strength work', end: 'long runs, rides and swims', agi: 'agility, footy and court sports' };
   const stats = `<div class="card"><div class="card-head"><h2>Athlete stats</h2><span class="tag">⭐ ${a.ovr} ${esc(a.pos)}</span></div>
     <div class="bstats">${STATS.map(([k, name, ab, col]) => `<div class="bstat"><div class="row"><b>${esc(name)}</b><span class="muted small-text">from ${STAT_FROM[k]}</span><span style="flex:1"></span><b>${a.total[k]}</b></div><div class="sbar big"><i style="width:${a.total[k]}%;background:${col}"></i></div></div>`).join('')}</div>

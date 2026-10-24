@@ -18,9 +18,7 @@ const tileXZ = (r, c, N) => [(c - (N - 1) / 2) * T3D, (r - (N - 1) / 2) * T3D];
 
 function g3init() {
   if (G3.renderer) return;
-  const R = G3.renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
-  R.setPixelRatio(Math.min(devicePixelRatio || 1, 2));
-  R.shadowMap.enabled = true; R.shadowMap.type = THREE.PCFSoftShadowMap;
+  const R = G3.renderer = fxRenderer();
   G3.canvas = R.domElement; G3.canvas.className = 'g3canvas';
   G3.scene = new THREE.Scene();
   G3.camera = new THREE.PerspectiveCamera(42, 1, .1, 1200);
@@ -32,7 +30,7 @@ function g3init() {
 function g3resize() {
   const host = G3.canvas?.parentNode; if (!host || !host.clientWidth) return;
   const w = host.clientWidth, h = host.clientHeight;
-  G3.renderer.setSize(w, h, false); G3.camera.aspect = w / h; G3.camera.updateProjectionMatrix();
+  fxResize(G3.renderer, G3.comp, w, h); G3.camera.aspect = w / h; G3.camera.updateProjectionMatrix();
 }
 // called after every page render
 function mountGarden3D() {
@@ -60,19 +58,19 @@ function g3dispose() {
 function skyTex(top, bottom) {
   const c = document.createElement('canvas'); c.width = 2; c.height = 256; const x = c.getContext('2d'), g = x.createLinearGradient(0, 0, 0, 256);
   g.addColorStop(0, top); g.addColorStop(.42, top); g.addColorStop(.62, bottom); g.addColorStop(1, bottom); x.fillStyle = g; x.fillRect(0, 0, 2, 256);
-  return new THREE.CanvasTexture(c);
+  return srgb(new THREE.CanvasTexture(c));
 }
 function glowTex(col) {
   const c = document.createElement('canvas'); c.width = c.height = 128; const x = c.getContext('2d'), g = x.createRadialGradient(64, 64, 0, 64, 64, 64);
   g.addColorStop(0, col); g.addColorStop(.3, col + 'aa'); g.addColorStop(1, col + '00'); x.fillStyle = g; x.fillRect(0, 0, 128, 128);
-  return new THREE.CanvasTexture(c);
+  return srgb(new THREE.CanvasTexture(c));
 }
 function bubbleTex() {
   if (G3.bubTex) return G3.bubTex;
   const c = document.createElement('canvas'); c.width = c.height = 128; const x = c.getContext('2d');
   x.fillStyle = 'rgba(255,255,255,.95)'; x.strokeStyle = '#40c057'; x.lineWidth = 8; x.beginPath(); x.arc(64, 64, 54, 0, Math.PI * 2); x.fill(); x.stroke();
   x.font = '64px sans-serif'; x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillText('🍃', 64, 70);
-  return (G3.bubTex = new THREE.CanvasTexture(c));
+  return (G3.bubTex = srgb(new THREE.CanvasTexture(c)));
 }
 const GY = -60; // valley floor, well below the floating island
 const hills = (x, z) => Math.sin(x * .045) * 3.2 + Math.cos(z * .05) * 2.6 + Math.sin((x + z) * .09) * 1.4 + Math.cos(x * .13 - z * .07) * .8;
@@ -86,35 +84,43 @@ function g3build() {
   G3.N = N; const half = N * T3D / 2;
   if (!G3.dist) G3.dist = Math.max(16, N * T3D * 1.45);
   G3.minD = N * T3D * .45; G3.maxD = N * T3D * 2.6 + 20;
-  // sky and fog
-  const skyMesh = new THREE.Mesh(new THREE.SphereGeometry(600, 32, 16), new THREE.MeshBasicMaterial({ map: skyTex(sky[0], sky[1]), side: THREE.BackSide, fog: false, depthWrite: false }));
-  W.add(skyMesh);
-  G3.scene.fog = new THREE.Fog(sky[1], 120 + half * 2, 520 + half * 4);
-  // light
-  W.add(new THREE.HemisphereLight(night ? '#5a6aa8' : sky[1], night ? '#1b2a20' : '#4a6b3a', night ? .45 : .7));
-  W.add(new THREE.AmbientLight('#ffffff', night ? .12 : .18));
-  const sun = new THREE.DirectionalLight(night ? '#9fb3ff' : '#fff1d6', night ? .55 : 1.05);
-  const sunDir = new THREE.Vector3(night ? -.5 : .6, night ? .75 : .8, night ? -.4 : .35).normalize();
+  // sky, fog and light. The sky dome is also baked into an environment map, so
+  // everything is lit softly from all around and shiny things reflect the sky.
+  const sunDir = new THREE.Vector3(night ? -.5 : .55, night ? .55 : .42, night ? -.4 : .45).normalize();
+  const skyMid = sc.night || night ? shade(sky[1], .1) : fxMix(sky[1], sky[0], .3), skyBot = night ? '#0b1430' : shade(sky[1], -.08);
+  W.add(fxSkyDome(600, sky[0], skyMid, skyBot, sunDir, night ? '#c5d0ff' : '#fff1c9', night ? .5 : 1));
+  fxEnv(G3.renderer, G3.scene, sky[0], skyMid, skyBot, sunDir, night ? '#c5d0ff' : '#fff1c9', night ? '#16203a' : shade(sc.hills, -.2));
+  G3.scene.fog = new THREE.FogExp2(skyMid, night ? .0022 : .0013);
+  G3.renderer.toneMappingExposure = night ? 1.05 : .82;
+  W.add(new THREE.HemisphereLight(night ? '#7d8fd0' : shade(sky[0], .3), night ? '#1b2a20' : '#5b7a3a', night ? .2 : .22));
+  const sun = new THREE.DirectionalLight(night ? '#aebfff' : '#ffe8c2', night ? 1.1 : 2.1);
   sun.position.copy(sunDir).multiplyScalar(half + 40); sun.castShadow = true;
-  sun.shadow.mapSize.set(2048, 2048); const sb = half + 8; Object.assign(sun.shadow.camera, { left: -sb, right: sb, top: sb, bottom: -sb, near: 1, far: half * 2 + 120 });
-  sun.shadow.bias = -.0004; sun.shadow.normalBias = .03; W.add(sun, sun.target);
+  const hq = fxHQ();
+  sun.shadow.mapSize.set(hq ? 4096 : 2048, hq ? 4096 : 2048); const sb = half + 4; Object.assign(sun.shadow.camera, { left: -sb, right: sb, top: sb, bottom: -sb, near: 1, far: half * 2 + 120 });
+  sun.shadow.bias = -.0003; sun.shadow.normalBias = .04; sun.shadow.radius = 5; W.add(sun, sun.target);
+  const rim = new THREE.DirectionalLight(night ? '#6c7cff' : '#cfe8ff', night ? .5 : .7); rim.position.set(-sunDir.x * 30, 18, -sunDir.z * 30); W.add(rim); // a cool back light that outlines things
   // sun or moon in the sky, with a glow
-  const orb = new THREE.Mesh(new THREE.SphereGeometry(night ? 9 : 14, 24, 16), new THREE.MeshBasicMaterial({ color: night ? '#fff9db' : '#fff3bf', fog: false }));
+  const orb = new THREE.Mesh(new THREE.SphereGeometry(night ? 9 : 14, 32, 16), new THREE.MeshBasicMaterial({ color: night ? '#fff9db' : '#fff3bf', fog: false, toneMapped: false }));
   orb.position.copy(sunDir).multiplyScalar(420); W.add(orb);
-  const glow = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTex(night ? '#dbe4ff' : '#fff3bf'), fog: false, transparent: true, depthWrite: false, opacity: gfx('rays') ? .9 : .5 }));
+  const glow = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTex(night ? '#dbe4ff' : '#fff3bf'), fog: false, transparent: true, depthWrite: false, opacity: gfx('rays') ? .7 : .35, toneMapped: false }));
   glow.scale.setScalar(night ? 90 : 170); glow.position.copy(orb.position); W.add(glow);
+  // bloom for glowing things
+  if (hq && !G3.comp) G3.comp = fxComposer(G3.renderer, G3.scene, G3.camera, { strength: .35, radius: .55, threshold: .9 });
+  if (!hq && G3.comp) G3.comp = null;
+  if (G3.comp) G3.comp.bloom.strength = night ? .7 : .3;
+  g3resize();
   if (night) {
     const n = 900, pos = new Float32Array(n * 3);
     for (let i = 0; i < n; i++) { const th = Math.random() * Math.PI * 2, ph = Math.random() * 1.3; pos.set([Math.cos(th) * Math.sin(ph) * 560, Math.cos(ph) * 560, Math.sin(th) * Math.sin(ph) * 560], i * 3); }
     const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.BufferAttribute(pos, 3));
-    const stars = new THREE.Points(g, new THREE.PointsMaterial({ color: '#ffffff', size: 1.6, sizeAttenuation: false, fog: false }));
+    const stars = new THREE.Points(g, new THREE.PointsMaterial({ color: '#ffffff', size: 1.8, sizeAttenuation: false, fog: false, toneMapped: false, transparent: true }));
     W.add(stars); G3.tickers.push(t => { stars.material.opacity = .8 + Math.sin(t * 2) * .2; });
     if (sc.night && !sc.noAurora) { const au = new THREE.Mesh(new THREE.PlaneGeometry(500, 60, 40, 1), new THREE.MeshBasicMaterial({ color: '#63e6be', transparent: true, opacity: .22, side: THREE.DoubleSide, fog: false, depthWrite: false })); au.position.set(0, 160, -380); const p = au.geometry.attributes.position, b = p.array.slice(); W.add(au);
       G3.tickers.push(t => { for (let i = 0; i < p.count; i++) p.setY(i, b[i * 3 + 1] + Math.sin(b[i * 3] * .02 + t * .5) * 18); p.needsUpdate = true; }); }
   }
   // far below: a calm sea, soft rounded hills on the horizon and a few distant islands, all hazy
   const seaCol = night ? '#16284d' : shade(sky[1], -.35);
-  const sea = new THREE.Mesh(new THREE.CircleGeometry(700, 64).rotateX(-Math.PI / 2), new THREE.MeshStandardMaterial({ color: seaCol, roughness: .25, metalness: .2 }));
+  const sea = new THREE.Mesh(new THREE.CircleGeometry(700, 64).rotateX(-Math.PI / 2), new THREE.MeshPhysicalMaterial({ color: seaCol, roughness: .12, metalness: 0, clearcoat: 1, clearcoatRoughness: .08, envMapIntensity: 1.3 }));
   sea.position.y = GY; W.add(sea);
   const hillCol = night ? '#1f3350' : shade(sc.hills, -.32), hillCol2 = night ? '#2a3f63' : shade(sc.hills, -.22);
   for (let i = 0; i < 18; i++) { const a = i / 18 * Math.PI * 2 + Math.sin(i * 7.3) * .15, d = 430 + (i % 3) * 50, r = 80 + (i * 37 % 50);
@@ -136,7 +142,7 @@ function g3build() {
     const sp = .3 + Math.random() * .5; G3.tickers.push((t, dt) => { c.position.x += sp * dt; if (c.position.x > 180) c.position.x = -180; });
   }
   // the island: a soft lawn with rounded edges, a soil layer, and a rocky bottom hanging under it
-  const top = shade(sc.g1, night && !sc.night ? -.38 : -.06), top2 = shade(sc.g2, night && !sc.night ? -.38 : -.06);
+  const top = shade(sc.g1, night && !sc.night ? -.38 : -.14), top2 = shade(sc.g2, night && !sc.night ? -.38 : -.14);
   const L = N * T3D, rr = Math.min(1.4, L * .08);
   const rounded = (w, r) => { const sh = new THREE.Shape(), h = w / 2; sh.moveTo(-h + r, -h); sh.lineTo(h - r, -h); sh.quadraticCurveTo(h, -h, h, -h + r); sh.lineTo(h, h - r); sh.quadraticCurveTo(h, h, h - r, h); sh.lineTo(-h + r, h); sh.quadraticCurveTo(-h, h, -h, h - r); sh.lineTo(-h, -h + r); sh.quadraticCurveTo(-h, -h, -h + r, -h); return sh; };
   const lawnTex = (() => { const px = 64 * N, c = document.createElement('canvas'); c.width = c.height = px; const x = c.getContext('2d'), rn = seeded('lawn' + N);
@@ -144,16 +150,16 @@ function g3build() {
     for (let r = 0; r < N; r++) for (let q = 0; q < N; q++) { x.fillStyle = (r + q) % 2 ? shade(top, .04) : shade(top2, .02); x.globalAlpha = .35; x.fillRect(q * 64, r * 64, 64, 64); } // mowed stripes in a soft checker
     x.globalAlpha = 1;
     for (let i = 0; i < px * px / 18; i++) { x.fillStyle = rn() < .5 ? shade(top, -.12) : shade(top, .12); x.globalAlpha = .25 + rn() * .3; const X = rn() * px, Y = rn() * px; x.fillRect(X, Y, 1.2, 2.5 + rn() * 3); }
-    x.globalAlpha = 1; const t = new THREE.CanvasTexture(c); t.anisotropy = 8; return t; })();
+    x.globalAlpha = 1; const t = srgb(new THREE.CanvasTexture(c)); t.anisotropy = 8; return t; })();
   const lawnGeo = new THREE.ExtrudeGeometry(rounded(L, rr), { depth: .3, bevelEnabled: true, bevelThickness: .12, bevelSize: .12, bevelSegments: 4, curveSegments: 10 }).rotateX(-Math.PI / 2);
   { const uv = lawnGeo.attributes.uv, pos = lawnGeo.attributes.position; for (let i = 0; i < uv.count; i++) uv.setXY(i, pos.getX(i) / L + .5, .5 - pos.getZ(i) / L); }
   const lawn = new THREE.Mesh(lawnGeo, [new THREE.MeshStandardMaterial({ map: lawnTex, roughness: .95 }), new THREE.MeshStandardMaterial({ color: shade(top2, -.12), roughness: .95 })]);
   lawn.position.y = -.42; lawn.receiveShadow = true; W.add(lawn); G3.tiles = lawn;
   const soil = night ? '#3b2a1e' : '#8a6248';
   const soilM = new THREE.Mesh(new THREE.ExtrudeGeometry(rounded(L - .1, rr), { depth: 1.1, bevelEnabled: true, bevelThickness: .2, bevelSize: .1, bevelSegments: 3, curveSegments: 10 }).rotateX(-Math.PI / 2), m3mat(soil)); soilM.position.y = -1.65; W.add(soilM);
-  const under = new THREE.Mesh(new THREE.SphereGeometry(L * .62, 48, 24, 0, Math.PI * 2, Math.PI / 2, Math.PI / 2), m3mat(night ? '#2e2620' : '#7a6a5c'));
+  const under = new THREE.Mesh(new THREE.SphereGeometry(L * .46, 48, 24, 0, Math.PI * 2, Math.PI / 2, Math.PI / 2), m3mat(night ? '#2e2620' : '#7a6a5c'));
   { const p = under.geometry.attributes.position, rn = seeded('under'); for (let i = 0; i < p.count; i++) { const k = 1 + Math.sin(p.getX(i) * .9) * .05 + Math.cos(p.getZ(i) * 1.1) * .05; p.setXYZ(i, p.getX(i) * k, p.getY(i), p.getZ(i) * k); } under.geometry.computeVertexNormals(); }
-  under.scale.set(1, .55, 1); under.position.y = -1.7; W.add(under);
+  under.scale.set(1, .75, 1); under.position.y = -1.6; W.add(under);
   // soft tufts and bushes round the edge of the lawn
   const tuftN = N * 6, tuft = new THREE.InstancedMesh(new THREE.SphereGeometry(.16, 16, 10), new THREE.MeshStandardMaterial({ roughness: .9 }), tuftN), q = new THREE.Quaternion(), vs = new THREE.Vector3(), tc = new THREE.Color(), mt = new THREE.Matrix4(), gr = seeded('tuft');
   for (let i = 0; i < tuftN; i++) { const side = i % 4, u = (gr() - .5) * (L - .6), e = L / 2 - .25 - gr() * .5, x = side === 0 ? u : side === 1 ? u : side === 2 ? e : -e, z = side === 0 ? e : side === 1 ? -e : u;
@@ -177,6 +183,7 @@ function g3build() {
     }
     obj.position.set(x, 0, z); obj.userData.key = t.key; obj.userData.bend = { x: 0, z: 0, vx: 0, vz: 0 };
     obj.traverse(o => { if (o.isMesh) { o.castShadow = o.castShadow !== false; o.receiveShadow = true; } });
+    { const bx = new THREE.Box3().setFromObject(obj), r = Math.max(.45, Math.min(1.7, Math.max(bx.max.x - bx.min.x, bx.max.z - bx.min.z) * .55)); const bl = fxBlob(r, night ? .7 : .55); bl.position.set(0, .03, 0); obj.add(bl); } // a soft contact shadow so it sits on the grass
     W.add(obj); G3.objs.push(obj);
     if (obj.userData.tick) G3.tickers.push(obj.userData.tick);
     if (obj.userData.glow && night) { const pl = new THREE.PointLight(obj.userData.glow, .9, 5); pl.position.set(x, 1.6, z); W.add(pl); }
@@ -188,7 +195,7 @@ function g3build() {
       ...CRITTERS.filter(k => crit(k.id) && CRIT3[k.id]).map(k => CRIT3[k.id])];
     const rr = seeded('roam' + today());
     for (const mk of list) { const a = mk(); const r = Math.floor(rr() * N), c = Math.floor(rr() * N), [x, z] = tileXZ(r, c, N); a.position.set(x + (rr() - .5), 0, z + (rr() - .5)); a.rotation.y = rr() * 6;
-      a.scale.multiplyScalar(.8); a.traverse(o => { if (o.isMesh) o.castShadow = true; }); W.add(a); G3.roam.push({ o: a, tx: a.position.x, tz: a.position.z, wait: rr() * 3, hop: rr() * 6 }); }
+      a.scale.multiplyScalar(.8); a.traverse(o => { if (o.isMesh) o.castShadow = true; }); a.add(fxBlob(.45, .5)); W.add(a); G3.roam.push({ o: a, tx: a.position.x, tz: a.position.z, wait: rr() * 3, hop: rr() * 6 }); }
     for (const k of CRITTERS.filter(k => crit(k.id) && k.fly)) G3.fliers.push(g3flier(k.id === 'bee' ? bird3('#fcc419', '#ffffff', .5) : k.id === 'fireflies' ? bird3('#ffe066', '#fff9db', .35) : bird3('#8a5a3b', '#d9a066', 1)));
   }
   if (owned('a_birds')) for (let i = 0; i < 4; i++) G3.fliers.push(g3flier(bird3('#343a40', '#495057', .9), 14 + i, 8 + i * 1.5, i));
@@ -223,10 +230,14 @@ function g3loop() {
   if (document.hidden) return;
   const dt = Math.min(.05, G3.clock.getDelta()), t = G3.clock.elapsedTime;
   if (G3.targetYaw != null) { G3.yaw += (G3.targetYaw - G3.yaw) * Math.min(1, dt * 6); if (Math.abs(G3.targetYaw - G3.yaw) < .002) G3.targetYaw = null; }
-  const d = G3.dist, cam = G3.camera;
-  cam.position.set(Math.sin(G3.yaw) * Math.cos(G3.pitch) * d, Math.sin(G3.pitch) * d, Math.cos(G3.yaw) * Math.cos(G3.pitch) * d);
-  cam.lookAt(0, .6 + d * .14, 0); // aim a little above the island so the sky shows behind it
-  for (const f of G3.tickers) f(t, dt);
+  if (G3.targetPitch != null) { G3.pitch += (G3.targetPitch - G3.pitch) * Math.min(1, dt * 6); if (Math.abs(G3.targetPitch - G3.pitch) < .002) G3.targetPitch = null; }
+  // isometric view: a long lens from far away, so it looks flat like a classic iso game
+  const k = G3.iso ? 3.2 : 1; G3.lens = (G3.lens ?? k) + (k - (G3.lens ?? k)) * Math.min(1, dt * 5);
+  const pan = G3.pan || (G3.pan = { x: 0, z: 0 }), d = G3.dist * G3.lens, cam = G3.camera;
+  if (Math.abs(cam.fov - 42 / G3.lens) > .01) { cam.fov = 42 / G3.lens; cam.updateProjectionMatrix(); }
+  cam.position.set(pan.x + Math.sin(G3.yaw) * Math.cos(G3.pitch) * d, Math.sin(G3.pitch) * d, pan.z + Math.cos(G3.yaw) * Math.cos(G3.pitch) * d);
+  cam.lookAt(pan.x, .6 + G3.dist * .14 / G3.lens, pan.z); // aim a little above the island so the sky shows behind it
+  for (const f of [...G3.tickers]) f(t, dt);
   // brushed trees spring back
   for (const o of G3.objs) { const b = o.userData.bend; if (!b || (!b.x && !b.z && !b.vx && !b.vz)) continue;
     b.vx += (-26 * b.x - 4.5 * b.vx) * dt; b.vz += (-26 * b.z - 4.5 * b.vz) * dt; b.x += b.vx * dt; b.z += b.vz * dt;
@@ -243,7 +254,7 @@ function g3loop() {
     (o.userData.legs || []).forEach((l, i) => { l.rotation.z = Math.sin(a.hop + (i % 2) * Math.PI) * .5; });
   }
   for (const f of G3.fliers) { const ang = t * f.sp + f.ph; f.o.position.set(Math.cos(ang) * f.rad, f.h + Math.sin(t * (f.flutter ? 3 : 1) + f.ph) * (f.flutter ? .4 : 1), Math.sin(ang) * f.rad); f.o.rotation.y = -ang - Math.PI; f.o.userData.flap?.(t); }
-  G3.renderer.render(G3.scene, cam);
+  if (G3.comp) G3.comp.c.render(); else G3.renderer.render(G3.scene, cam);
 }
 
 // ---------- pointer: orbit, zoom, drag things, click, brush ----------
@@ -254,21 +265,35 @@ function g3pick(ev, list) {
 }
 const g3root = o => { while (o && !o.userData.key && !o.userData.bubble) o = o.parent; return o; };
 function g3ground(ev) { const h = g3pick(ev, [G3.tiles]); if (h) return h.point; const p = new THREE.Vector3(); return G3.ray.ray.intersectPlane(new THREE.Plane(new THREE.Vector3(0, 1, 0), 0), p) ? p : null; }
+// slide the view across the ground (dx, dy in screen pixels)
+function g3pan(dx, dy) {
+  const right = new THREE.Vector3().setFromMatrixColumn(G3.camera.matrixWorld, 0).setY(0).normalize(), fwd = new THREE.Vector3(-right.z, 0, right.x);
+  const s = G3.dist * .0016, lim = G3.N * T3D * .65, p = G3.pan || (G3.pan = { x: 0, z: 0 });
+  p.x = Math.max(-lim, Math.min(lim, p.x - right.x * dx * s + fwd.x * dy * s)); p.z = Math.max(-lim, Math.min(lim, p.z - right.z * dx * s + fwd.z * dy * s));
+}
+const g3zoom = f => { G3.dist = Math.max(G3.minD, Math.min(G3.maxD, G3.dist * f)); };
 function g3events() {
-  const cv = G3.canvas; let drag = null, last = null;
+  const cv = G3.canvas, touches = new Map(); let drag = null, last = null, pinch = 0;
+  cv.addEventListener('contextmenu', ev => ev.preventDefault());
   cv.addEventListener('pointerdown', ev => {
-    if (ev.button > 1) return;
+    touches.set(ev.pointerId, { x: ev.clientX, y: ev.clientY });
+    if (touches.size === 2) { const [a, b] = [...touches.values()]; pinch = Math.hypot(a.x - b.x, a.y - b.y); drag = null; return; }
     cv.setPointerCapture(ev.pointerId);
+    if (ev.button === 2 || ev.shiftKey) { drag = { x: ev.clientX, y: ev.clientY, sx: ev.clientX, sy: ev.clientY, rotate: true, moved: false }; return; }
+    if (ev.button > 0) return;
     const hit = g3pick(ev, [...G3.objs, ...G3.bubbles]), root = hit && g3root(hit.object);
-    drag = { sx: ev.clientX, sy: ev.clientY, x: ev.clientX, y: ev.clientY, obj: root?.userData.key ? root : null, bubble: root?.userData.bubble, moved: false, yaw: G3.yaw, pitch: G3.pitch };
+    drag = { sx: ev.clientX, sy: ev.clientY, x: ev.clientX, y: ev.clientY, obj: root?.userData.key ? root : null, home: root?.userData.key ? root.position.clone() : null, bubble: root?.userData.bubble, moved: false, yaw: G3.yaw, pitch: G3.pitch };
   });
   cv.addEventListener('pointermove', ev => {
+    if (touches.has(ev.pointerId)) touches.set(ev.pointerId, { x: ev.clientX, y: ev.clientY });
+    if (touches.size === 2 && pinch) { const [a, b] = [...touches.values()], dd = Math.hypot(a.x - b.x, a.y - b.y); g3zoom(pinch / Math.max(1, dd)); pinch = dd; return; }
     if (drag) {
       const dx = ev.clientX - drag.x, dy = ev.clientY - drag.y; drag.x = ev.clientX; drag.y = ev.clientY;
       if (!drag.moved && Math.hypot(ev.clientX - drag.sx, ev.clientY - drag.sy) > 5) drag.moved = true;
       if (!drag.moved) return;
       if (drag.obj) { const p = g3ground(ev); if (p) { drag.obj.position.set(p.x, .5, p.z); const N = G3.N, c = Math.round(p.x / T3D + (N - 1) / 2), r = Math.round(p.z / T3D + (N - 1) / 2); drag.cell = r >= 0 && c >= 0 && r < N && c < N ? [r, c] : null; G3.hl.visible = !!drag.cell; if (drag.cell) { const [x, z] = tileXZ(r, c, N); G3.hl.position.set(x, .02, z); } } }
-      else { G3.targetYaw = null; G3.yaw -= dx * .008; G3.pitch = Math.max(.12, Math.min(1.35, G3.pitch + dy * .006)); cv.style.cursor = 'grabbing'; }
+      else if (drag.rotate) { G3.targetYaw = null; G3.targetPitch = null; G3.yaw -= dx * .008; G3.pitch = Math.max(.12, Math.min(1.35, G3.pitch + dy * .006)); cv.style.cursor = 'grabbing'; }
+      else { g3pan(dx, dy); cv.style.cursor = 'grabbing'; }
       return;
     }
     // brushing: the pointer pushes trees it passes through (anywhere along the
@@ -290,30 +315,45 @@ function g3events() {
     const h = g3pick(ev, [...G3.objs, ...G3.bubbles]); cv.style.cursor = h ? 'pointer' : 'grab';
   });
   const up = ev => {
+    touches.delete(ev.pointerId); if (touches.size < 2) pinch = 0;
     if (!drag) return; const d = drag; drag = null; cv.style.cursor = 'grab'; G3.hl.visible = false;
-    if (!d.moved) {
+    if (!d.moved && !d.rotate) {
       if (d.bubble) { collectLeaves(cv); render(); return; }
       if (d.obj?.userData.tree) { openTreeCard(d.obj.userData.tree.id); return; }
       return;
     }
     if (d.obj) {
-      const pos = D.game.gridPos, key = d.obj.userData.key;
-      if (d.cell && ev.type !== 'pointercancel') { const to = d.cell.join(','), from = pos[key], other = Object.keys(pos).find(k => pos[k] === to && k !== key); if (other) pos[other] = from; pos[key] = to; save(); }
-      G3.sig = ''; render();
+      // slide things into place instead of rebuilding the whole island (which flashed)
+      const pos = D.game.gridPos, key = d.obj.userData.key, home = d.home;
+      const glide = (o, x, z) => { const fx = o.position.x, fz = o.position.z, fy = o.position.y; let t = 0; const f = (tt, dt) => { t = Math.min(1, t + (dt || .016) * 5); const e = 1 - Math.pow(1 - t, 3); o.position.set(fx + (x - fx) * e, fy * (1 - e) + Math.sin(e * Math.PI) * .25, fz + (z - fz) * e); if (t >= 1) G3.tickers.splice(G3.tickers.indexOf(f), 1); }; G3.tickers.push(f); };
+      if (d.cell && ev.type !== 'pointercancel') {
+        const to = d.cell.join(','), from = pos[key], other = Object.keys(pos).find(k => pos[k] === to && k !== key);
+        if (other) { pos[other] = from; const o2 = G3.objs.find(o => o.userData.key === other); if (o2 && home) glide(o2, home.x, home.z); }
+        pos[key] = to; save();
+        const [x, z] = tileXZ(d.cell[0], d.cell[1], G3.N); glide(d.obj, x, z);
+      } else if (home) glide(d.obj, home.x, home.z);
+      G3.sig = g3signature(); render();
     }
   };
   cv.addEventListener('pointerup', up); cv.addEventListener('pointercancel', up);
   cv.addEventListener('pointerleave', () => { last = null; });
-  cv.addEventListener('wheel', ev => { ev.preventDefault(); G3.dist = Math.max(G3.minD, Math.min(G3.maxD, G3.dist * (1 + Math.sign(ev.deltaY) * .1))); }, { passive: false });
+  // a trackpad pinch (or ctrl + wheel) zooms; a two-finger swipe slides the view around
+  cv.addEventListener('wheel', ev => {
+    ev.preventDefault();
+    if (ev.ctrlKey) g3zoom(Math.exp(Math.max(-.3, Math.min(.3, ev.deltaY * .01))));
+    else g3pan(-ev.deltaX * .8, -ev.deltaY * .8);
+  }, { passive: false });
 }
 function g3view(v) {
   if (v === 'left') G3.targetYaw = (G3.targetYaw ?? G3.yaw) + Math.PI / 4;
   if (v === 'right') G3.targetYaw = (G3.targetYaw ?? G3.yaw) - Math.PI / 4;
   if (v === 'in') G3.dist = Math.max(G3.minD, G3.dist * .82);
   if (v === 'out') G3.dist = Math.min(G3.maxD, G3.dist * 1.2);
-  if (v === 'reset') { G3.targetYaw = -.75; G3.pitch = .42; G3.dist = Math.max(16, G3.N * T3D * 1.45); }
+  if (v === 'reset') { G3.iso = false; G3.targetYaw = -.75; G3.targetPitch = .42; G3.pan = { x: 0, z: 0 }; G3.dist = Math.max(16, G3.N * T3D * 1.45); }
+  if (v === 'iso') { G3.iso = !G3.iso; if (G3.iso) { G3.targetYaw = Math.round((G3.yaw - Math.PI / 4) / (Math.PI / 2)) * (Math.PI / 2) + Math.PI / 4; G3.targetPitch = Math.atan(1 / Math.SQRT2); G3.pan = { x: 0, z: 0 }; G3.dist = Math.max(16, G3.N * T3D * 1.45); } else G3.targetPitch = .42; }
+  document.querySelector('.g3ctl [data-v="iso"]')?.classList.toggle('on', !!G3.iso);
 }
 function garden3DHtml(logs) {
   G3.logs = logs;
-  return `<div class="g3host" id="g3host"><div class="g3ctl"><button data-act="g3view" data-v="left" title="Turn left">⟲</button><button data-act="g3view" data-v="right" title="Turn right">⟳</button><button data-act="g3view" data-v="in" title="Zoom in">＋</button><button data-act="g3view" data-v="out" title="Zoom out">−</button><button data-act="g3view" data-v="reset" title="Reset view">⌂</button></div></div>`;
+  return `<div class="g3host" id="g3host"><div class="g3ctl"><button data-act="g3view" data-v="left" title="Turn left (or right-drag to spin)">⟲</button><button data-act="g3view" data-v="right" title="Turn right">⟳</button><button data-act="g3view" data-v="in" title="Zoom in">＋</button><button data-act="g3view" data-v="out" title="Zoom out">−</button><button data-act="g3view" data-v="iso" title="Isometric view" class="${G3.iso ? 'on' : ''}">◇</button><button data-act="g3view" data-v="reset" title="Reset view">⌂</button></div></div>`;
 }

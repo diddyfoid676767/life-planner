@@ -20,7 +20,8 @@ function upcomingExams(from = today(), days = 60) {
 }
 function subjectTopics(sid) {
   const name = subj(sid).name || '';
-  const base = (EXAM_TOPICS.find(([re]) => re.test(name)) || [, ['Key concepts', 'Practice questions', 'Extended response']])[1];
+  const pack = typeof revisionFor === 'function' && revisionFor(sid);
+  const base = pack ? pack.topics.map(t => t.t) : (EXAM_TOPICS.find(([re]) => re.test(name)) || [, ['Key concepts', 'Practice questions', 'Extended response']])[1];
   const own = examPrep().papers.filter(p => p.subjectId === sid).flatMap(p => p.topics || []);
   return [...new Set([...own, ...base])];
 }
@@ -31,6 +32,8 @@ function weakTopics(sid) {
     const age = Math.max(0, diffDays(p.date, today()));
     for (const t of p.topics || []) score[t] = (score[t] || 0) + 1 / (1 + age / 14);
   }
+  // shaky topics and missed practice questions from the subject's revision tab count too
+  if (typeof revWeak === 'function') for (const [t, w] of Object.entries(revWeak(sid))) score[t] = (score[t] || 0) + w * .6;
   return Object.entries(score).sort((a, b) => b[1] - a[1]).map(([t]) => t);
 }
 // how long a full paper takes, including reading time

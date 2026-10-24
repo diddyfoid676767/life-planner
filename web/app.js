@@ -281,7 +281,7 @@ function render() {
   const v = $('#view');
   const y = window.scrollY;
   if (v.dataset.view !== view) { v.classList.remove('enter'); void v.offsetWidth; v.classList.add('enter'); v.dataset.view = view; }
-  v.innerHTML = ({ today: viewToday, calendar: viewCalendar, study: viewStudy, forest: viewForest, training: viewTraining, arena: viewArena, friends: viewFriends, school: viewSchool, health: () => { view = 'training'; ui.bodyPage = 'health'; return viewTraining(); }, personal: viewPersonal, inbox: viewInbox, settings: viewSettings })[view]();
+  v.innerHTML = ({ today: viewToday, calendar: viewCalendar, study: viewStudyHub, forest: viewForest, training: viewTraining, arena: viewArena, friends: viewFriends, school: viewSchool, health: () => { view = 'training'; ui.bodyPage = 'health'; return viewTraining(); }, personal: viewPersonal, inbox: viewInbox, settings: viewSettings })[view]();
   updateInboxBadge();
   gameFeedback();
   window.scrollTo(0, y);
@@ -521,6 +521,7 @@ function viewStudy() {
   const subjects = D.subjects.map(s => `<span class="subj" style="--c:${s.color}"><span class="dot" style="background:${s.color}"></span>${esc(s.name)}<button class="iconbtn" data-act="edit" data-kind="subject" data-id="${s.id}" title="Edit subject">✎</button></span>`).join('');
 
   return `<div class="study2">${pageHead('Study', `${fmtMins(sum(tw, twEnd)) || '0m'} studied this week · ${trees} tree${trees === 1 ? '' : 's'} planted`, `<button class="btn" data-act="planStudy">Plan study</button><button class="btn primary" data-act="focusNew">▶ Start studying</button>`)}
+  ${studyTabs()}
   <div class="upnext-row">${nextCard}${sacCard}${todayCard}</div>
   ${examHub()}
   <div class="study-grid2">
@@ -1683,6 +1684,8 @@ document.addEventListener('click', e => {
     case 'calSel': ui.calSel = date; render(); document.getElementById('calDay')?.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); break;
     case 'daySel': ui.daySel = date; render(); break;
     case 'studyDay': ui.studyDay = date; render(); break;
+    case 'studyTab': ui.studyTab = el.dataset.v; ui.revTopic = null; window.scrollTo(0, 0); render(); break;
+    case 'rev': revAct(el); break;
     case 'inboxSort': ui.inboxSort = el.dataset.v; render(); break;
     case 'trainWeek': ui.trainWeek = el.dataset.v === '0' ? 0 : (ui.trainWeek || 0) + Number(el.dataset.v); render(); break;
     case 'evCat': ui.evCat = el.dataset.v; render(); break;
@@ -1734,6 +1737,8 @@ document.addEventListener('click', e => {
     case 'moveUnlock': moveUnlock(id); break;
     case 'moveUpgrade': moveUpgrade(id); break;
     case 'moveEquip': moveEquip(id); break;
+    case 'crewToggle': crewToggle(id); break;
+    case 'crewUp': crewUp(id); break;
     case 'fightMode': startBattle(null, el.dataset.v); break;
     case 'addPb': addPb(id); break;
     case 'delPb': if (confirm('Delete this result?')) { D.arena.pbs = D.arena.pbs.filter(p => p.id !== id); save(); render(); } break;

@@ -174,27 +174,38 @@ BONUS_SPECIES.push(['wattle', 'Golden wattle', 'sp_wattle'], ['magnolia', 'Magno
 // ---------- leaves ----------
 const LEAF_STAGE = [4, 7, 11, 18];                          // leaves per hour by tree stage
 const LEAF_RARITY = { common: 1, rare: 1.5, epic: 2.5, legendary: 4 };
+// prices went up in 2.19 and the bigger upgrades only unlock once your garden has enough trees
 const LEAF_UPGRADES = [
-  { id: 'sprinkler', icon: '💦', name: 'Sprinkler', desc: '+20% leaves from every tree per level', prices: [120, 300, 650, 1300, 2500] },
-  { id: 'basket', icon: '🧺', name: 'Bigger basket', desc: 'Holds 4 more hours of leaves per level (starts at 8 hours)', prices: [150, 400, 900] },
-  { id: 'compost', icon: '🪱', name: 'Compost heap', desc: 'Withered and wilted trees grow leaves at full speed', prices: [350] },
-  { id: 'fert', icon: '🧪', name: 'Fertiliser', desc: 'Each study session of 25+ minutes gives 1 more hour of leaves straight away, per level', prices: [250, 700] },
-  { id: 'hive', icon: '🍯', name: 'Bee hive', desc: '+2 leaves per hour for every tree, per level', prices: [500, 1200] },
-  { id: 'gnome', icon: '🧙', name: 'Garden gnome', desc: 'Collects your leaves for you whenever you open the garden', prices: [1800] },
+  { id: 'sprinkler', icon: '💦', name: 'Sprinkler', desc: '+20% leaves from every tree per level', prices: [300, 750, 1600, 3200, 6000] },
+  { id: 'basket', icon: '🧺', name: 'Bigger basket', desc: 'Holds 4 more hours of leaves per level (starts at 8 hours)', prices: [400, 1000, 2200] },
+  { id: 'rain', icon: '🌧️', name: 'Rain barrel', desc: 'Watered trees keep their ×1.5 boost for 1 more day per level', prices: [1200, 3500], need: 10 },
+  { id: 'compost', icon: '🪱', name: 'Compost heap', desc: 'Withered and wilted trees grow leaves at full speed', prices: [900] },
+  { id: 'fert', icon: '🧪', name: 'Fertiliser', desc: 'Each study session of 25+ minutes gives 1 more hour of leaves straight away, per level', prices: [600, 1700] },
+  { id: 'hive', icon: '🍯', name: 'Bee hive', desc: '+2 leaves per hour for every tree, per level', prices: [1300, 3000, 6500], need: 5 },
+  { id: 'mulch', icon: '🍂', name: 'Mulch', desc: 'Saplings and young trees grow leaves as if they were one size bigger', prices: [2500], need: 15 },
+  { id: 'greenhouse', icon: '🏡', name: 'Greenhouse', desc: 'Rare, epic and legendary trees grow 25% more leaves per level', prices: [2000, 4500, 9000], need: 20 },
+  { id: 'gnome', icon: '🧙', name: 'Garden gnome', desc: 'Collects your leaves for you whenever you open the garden', prices: [4500], need: 10 },
+  { id: 'silo', icon: '🏚️', name: 'Leaf silo', desc: 'The basket holds 8 more hours per level', prices: [5000, 12000], need: 30 },
+  { id: 'shears', icon: '✂️', name: 'Golden shears', desc: '+10% leaves from every tree per level', prices: [6000, 9000, 13000, 18000, 25000], need: 50 },
+  { id: 'stream', icon: '🏞️', name: 'Garden stream', desc: 'Every tree counts as watered, all the time', prices: [20000], need: 75 },
 ];
+const gardenTrees = () => D.focusLogs.filter(l => l.mins >= 10 && !l.withered).length;
 function leafState() { D.game.leaves = D.game.leaves || { bank: 150, last: Date.now(), spent: 0, ups: {} }; D.game.leaves.ups = D.game.leaves.ups || {}; return D.game.leaves; }
 const lupg = id => (leafState().ups[id] || []).length;
 const leaves = () => Math.max(0, Math.floor(leafState().bank - (leafState().spent || 0)));
 function treeLeafRate(l) {
   const sp = speciesFor(l.subjectId), r = treeRec(l.id);
-  let v = (LEAF_STAGE[treeStage(l.mins)] + 2 * lupg('hive')) * LEAF_RARITY[speciesRarity(sp)];
+  const st = treeStage(l.mins), rar = speciesRarity(sp);
+  let v = (LEAF_STAGE[lupg('mulch') && st < 2 ? st + 1 : st] + 2 * lupg('hive')) * LEAF_RARITY[rar];
   const d = (new Date(today()) - new Date(r.lastWater || '2000-01-01')) / 864e5;
-  if (d <= 1) v *= 1.5;                                        // watered today or yesterday
+  if (d <= 1 + lupg('rain') || lupg('stream')) v *= 1.5;      // watered recently
+  if (rar !== 'common') v *= 1 + .25 * lupg('greenhouse');
+  v *= 1 + .1 * lupg('shears');
   if (!lupg('compost')) v *= l.withered ? .25 : r.wilted ? .5 : 1;
   return v * (1 + .2 * lupg('sprinkler'));
 }
 const leafRate = () => D.focusLogs.filter(l => l.mins >= 10).reduce((a, l) => a + treeLeafRate(l), 0);
-const basketHours = () => 8 + 4 * lupg('basket');
+const basketHours = () => 8 + 4 * lupg('basket') + 8 * lupg('silo');
 const basketCap = () => Math.round(leafRate() * basketHours());
 function pendingLeaves() {
   const L = leafState(), h = Math.max(0, (Date.now() - L.last) / 36e5);
@@ -221,7 +232,7 @@ function leafBurst(fromEl, n) {
 }
 function buyLeafUpgrade(id) {
   const u = LEAF_UPGRADES.find(x => x.id === id); if (!u) return;
-  const lvl = lupg(id), p = u.prices[lvl]; if (p == null || leaves() < p) return;
+  const lvl = lupg(id), p = u.prices[lvl]; if (p == null || leaves() < p || gardenTrees() < (u.need || 0)) return;
   const L = leafState(); collectLeaves(); L.spent += p; L.ups[id] = [...(L.ups[id] || []), new Date().toISOString()]; save(); render();
   toast(`${u.icon} ${u.name}${u.prices.length > 1 ? ` level ${lvl + 1}` : ''}`, u.desc);
 }
@@ -240,9 +251,9 @@ function leafShopView() {
   const have = leaves();
   return `<div class="card"><div class="card-head"><h2>${LEAF} Garden upgrades</h2><span class="muted small-text">paid with leaves your trees grow</span><span class="coins">${LEAF} <b>${fmtLeaf(have)}</b></span></div>
     <div class="upgs">${LEAF_UPGRADES.map(u => {
-      const lvl = lupg(u.id), max = lvl >= u.prices.length, price = u.prices[lvl];
-      return `<div class="upg ${max ? 'max' : ''}"><div class="upgicon">${u.icon}</div><div class="main"><b>${u.name}</b>${u.prices.length > 1 ? ` <span class="muted small-text">level ${lvl} / ${u.prices.length}</span>` : ''}<div class="muted small-text">${u.desc}</div></div>
-        ${max ? '<span class="tag green">✓ Owned</span>' : `<button class="btn small ${have >= price ? 'primary' : ''}" data-act="buyLeafUpg" data-id="${u.id}" ${have >= price ? '' : 'disabled'}>${price} ${LEAF}</button>`}</div>`;
+      const lvl = lupg(u.id), max = lvl >= u.prices.length, price = u.prices[lvl], locked = !max && gardenTrees() < (u.need || 0);
+      return `<div class="upg ${max ? 'max' : ''} ${locked ? 'locked' : ''}"><div class="upgicon">${locked ? '🔒' : u.icon}</div><div class="main"><b>${u.name}</b>${u.prices.length > 1 ? ` <span class="muted small-text">level ${lvl} / ${u.prices.length}</span>` : ''}<div class="muted small-text">${u.desc}</div></div>
+        ${max ? '<span class="tag green">✓ Owned</span>' : locked ? `<span class="muted small-text">Grow ${u.need} trees (${gardenTrees()} now)</span>` : `<button class="btn small ${have >= price ? 'primary' : ''}" data-act="buyLeafUpg" data-id="${u.id}" ${have >= price ? '' : 'disabled'}>${price} ${LEAF}</button>`}</div>`;
     }).join('')}</div>
     <details class="howgrow"><summary class="muted small-text">How leaves work</summary><p class="muted small-text">Every tree grows leaves each hour, even when the app is closed: saplings ${LEAF_STAGE[0]}, young trees ${LEAF_STAGE[1]}, full trees ${LEAF_STAGE[2]} and grand trees ${LEAF_STAGE[3]}. Rare trees grow ×1.5, epic ×2.5 and legendary ×4 (change a subject's tree to upgrade all of its trees). Watered trees grow ×1.5 for a day. Every study session drops an hour of leaves into the basket. The basket holds ${basketHours()} hours, so collect often.</p></details></div>`;
 }

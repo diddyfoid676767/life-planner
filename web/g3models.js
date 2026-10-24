@@ -18,7 +18,7 @@ function m3mat(color, o = {}) {
   let m = M3.mats.get(key);
   if (!m) {
     m = new THREE.MeshStandardMaterial({ color, flatShading: o.flat === true, roughness: o.rough ?? .85, metalness: o.metal || 0,
-      emissive: o.emi || 0x000000, emissiveIntensity: o.ei ?? 1, transparent: (o.op ?? 1) < 1, opacity: o.op ?? 1 });
+      emissive: o.emi || 0x000000, emissiveIntensity: o.ei ?? 1, transparent: (o.op ?? 1) < 1, opacity: o.op ?? 1, envMapIntensity: o.env ?? .55 });
     M3.mats.set(key, m);
   }
   return m;
