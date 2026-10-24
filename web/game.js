@@ -381,12 +381,13 @@ function storeBuy(id) {
   toast(`✨ ${i.name} is yours`, i.type === 'scene' ? 'Pick it under Collection to change your forest.' : 'It\'s in your forest now.');
 }
 function earnCard() {
-  return `<div class="card"><h2>Ways to earn coins</h2>
-    <ul class="earn"><li><b>1 ${COIN} per minute</b> in focus sessions of 10+ minutes (up to ${fmtMins(120 + 30 * upg('longer'))} each)</li><li><b>+10</b> for a full tree (45+ minutes)</li><li><b>+${crit('echidna') ? 10 : 5}</b> each day you study 30+ minutes</li>
-      <li><b>+5</b> per study block ticked off, <b>+25</b> per SAC or exam done, <b>+5</b> per workout, <b>+2</b> per task done</li>
-      <li><b>Challenges</b>: 15 to 150 coins each</li><li><b>Daily gift</b>: free coins once a day</li><li><b>Water your trees</b>: coins for each tree you water (once a day each)</li>
-      <li><b>Milestones</b> and <b>critter discoveries</b> pay out once</li><li>Duplicates from boxes give coins back</li></ul>
-    <p class="muted small-text" style="margin:8px 0 0">${COIN} Coins buy lucky boxes, trees, animals and everything in the Arena. ${LEAF} Leaves are the garden's own money: your trees grow them every hour, and they buy garden upgrades, decorations and scenes. You can't swap one for the other.</p></div>`;
+  const ways = [['⏱️', `1 ${COIN} a minute`, `in focus sessions of 10+ minutes (up to ${fmtMins(120 + 30 * upg('longer'))} each)`], ['🌳', '+10 a full tree', 'for a 45+ minute session'],
+    ['📅', `+${crit('echidna') ? 10 : 5} a study day`, 'each day you study 30+ minutes'], ['✅', 'Ticking things off', '+5 a study block, +25 a SAC or exam, +5 a workout, +2 a task'],
+    ['🏆', 'Challenges', '15 to 150 coins each'], ['🎁', 'Daily gift', 'free coins once a day'], ['💧', 'Water your trees', 'coins for each tree, once a day each'],
+    ['🎖️', 'Milestones and critters', 'pay out once when you reach or find them'], ['📦', 'Duplicates', 'from boxes give coins back']];
+  return `<div class="card"><div class="card-head"><h2>How to earn</h2></div>
+    <div class="earngrid">${ways.map(([ic, t, d], i) => `<div class="earnitem" style="--i:${i}"><span>${ic}</span><div><b>${t}</b><div class="muted small-text">${d}</div></div></div>`).join('')}</div>
+    <p class="muted small-text" style="margin:12px 0 0">${COIN} Coins buy lucky boxes, trees, animals and everything in the Arena. ${LEAF} Leaves are the garden's own money: your trees grow them every hour, and they buy garden upgrades, decorations and scenes. You can't swap one for the other.</p></div>`;
 }
 function collectionView() {
   const groups = [['tree', 'Trees'], ['animal', 'Animals'], ['deco', 'Decorations'], ['scene', 'Forest scenes']];

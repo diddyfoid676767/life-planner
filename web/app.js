@@ -1759,6 +1759,7 @@ document.addEventListener('click', e => {
     case 'treeSort': ui.treeSort = el.dataset.v; render(); break;
     case 'buyUpg': buyUpgrade(id); break;
     case 'storeCat': ui.storeCat = el.dataset.v; render(); break;
+    case 'shopTab': ui.shopTab = el.dataset.v; render(); break;
     case 'storeBuy': storeBuy(id); break;
     case 'gift': claimGift(); break;
     case 'milestone': claimMilestone(id); break;

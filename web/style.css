@@ -1894,3 +1894,73 @@ main:has(> .calwrap), main:has(.calwrap) { max-width: 1680px; }
 .fc-box { text-align: center; padding: 8px 4px; border-radius: 10px; background: var(--panel2); } .fc-box b { display: block; font-size: 1.1rem; } .fc-box span { font-size: .7rem; color: var(--muted); }
 .fc-box:last-child { background: color-mix(in srgb, #40c057 14%, var(--panel2)); }
 @media (max-width: 900px) { .revtop, .revcards { grid-template-columns: 1fr; } .revhero { flex-direction: column; align-items: stretch; } .rh-rings { justify-content: space-around; } .rn-body { padding-left: 18px; } .revnotes { grid-template-columns: 1fr; } }
+
+/* quick add: change and remove commands (2.20) */
+.qa-chip.cmd { background: color-mix(in srgb, var(--accent) 18%, var(--panel)); color: var(--text); font-weight: 700; }
+.qa-chip.warn { background: color-mix(in srgb, #fab005 18%, var(--panel)); }
+.qa-chip.muted { opacity: .7; }
+.qa-confirm { margin-top: 4px; padding: 12px 14px; border-radius: 14px; border: 1px solid var(--border); background: var(--panel2); animation: revIn .25s ease-out; }
+.qa-confirm.remove { border-color: color-mix(in srgb, #fa5252 45%, var(--border)); }
+.qac-head { display: flex; flex-wrap: wrap; gap: 4px 10px; align-items: baseline; margin-bottom: 8px; }
+.qac-list { list-style: none; margin: 0 0 10px; padding: 0; display: grid; gap: 4px; }
+.qac-list label { display: flex; align-items: center; gap: 8px; padding: 7px 10px; border-radius: 10px; background: var(--panel); cursor: pointer; }
+.qac-list input { width: 17px; height: 17px; }
+.qac-t { flex: 1; min-width: 0; font-weight: 600; overflow: hidden; text-overflow: ellipsis; }
+.qac-when { font-size: .82rem; color: var(--muted); white-space: nowrap; } .qac-when b { color: var(--text); }
+.qa-confirm.remove label:has(input:checked) .qac-t { text-decoration: line-through; text-decoration-color: #fa5252; }
+.btn.danger { background: #fa5252; border-color: #fa5252; color: #fff; }
+
+/* ---------- forest shop (2.20) ---------- */
+.shoppage { animation: revIn .3s ease-out; }
+.shopwallet { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin-bottom: 14px; }
+.sw-card { position: relative; overflow: hidden; display: flex; align-items: center; gap: 12px; padding: 14px 16px; border-radius: 16px; border: 1px solid var(--border); background: var(--panel); flex-wrap: wrap; }
+.sw-card::before { content: ''; position: absolute; inset: 0; opacity: .14; pointer-events: none; }
+.sw-card.coin::before { background: radial-gradient(120% 120% at 0% 0%, #fcc419, transparent 60%); }
+.sw-card.leaf::before { background: radial-gradient(120% 120% at 0% 0%, #40c057, transparent 60%); }
+.sw-card.gift::before { background: radial-gradient(120% 120% at 0% 0%, #f06595, transparent 60%); }
+.sw-card.gift.ready { border-color: color-mix(in srgb, #f06595 55%, var(--border)); box-shadow: 0 0 0 0 rgba(240,101,149,.4); animation: giftGlow 2.4s ease-in-out infinite; }
+@keyframes giftGlow { 50% { box-shadow: 0 0 0 6px rgba(240,101,149,0); } 0%, 100% { box-shadow: 0 0 0 0 rgba(240,101,149,.35); } }
+.sw-ic { font-size: 30px; line-height: 1; filter: drop-shadow(0 3px 6px rgba(0,0,0,.2)); }
+.sw-card.coin .sw-ic { animation: coinSpin 4s ease-in-out infinite; }
+@keyframes coinSpin { 0%, 80%, 100% { transform: rotateY(0); } 90% { transform: rotateY(180deg); } }
+.sw-card .main { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+.sw-card .main span { font-size: .8rem; color: var(--muted); }
+.sw-n { font-size: 1.5rem; line-height: 1.1; font-variant-numeric: tabular-nums; }
+.sw-card small { flex-basis: 100%; color: var(--muted); font-size: .74rem; }
+.sw-card.gift small { display: none; }
+.shoptabs { margin-bottom: 14px; } .shoptabs button { padding: 8px 16px; font-size: .9rem; }
+.shopbody { animation: revIn .28s ease-out; }
+.shopbody > .card + .card { margin-top: 14px; }
+.upgs { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 10px; }
+.upg { position: relative; display: grid; grid-template-columns: 42px minmax(0, 1fr); grid-template-rows: 1fr auto; gap: 6px 10px; align-items: start; padding: 12px; border-radius: 14px; background: var(--bg); border: 1px solid var(--border);
+  animation: tileIn .35s ease-out backwards; animation-delay: calc(var(--i, 0) * 35ms); transition: transform .18s, box-shadow .2s, border-color .2s; }
+@keyframes tileIn { from { opacity: 0; transform: translateY(10px) scale(.98); } }
+.upg:hover { transform: translateY(-2px); box-shadow: var(--shadow); }
+.upg .upgicon { font-size: 28px; width: 42px; height: 42px; display: grid; place-items: center; border-radius: 12px; background: var(--panel2); grid-row: span 2; transition: transform .25s; }
+.upg:hover .upgicon { transform: rotate(-8deg) scale(1.1); }
+.upg .main b { margin-right: 6px; }
+.upg-buy { grid-column: 2; display: flex; justify-content: flex-end; align-items: center; }
+.upg.can { border-color: color-mix(in srgb, var(--accent) 45%, var(--border)); }
+.upg.can .btn.primary { animation: canPulse 2.6s ease-in-out infinite; }
+@keyframes canPulse { 0%, 100% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--accent) 45%, transparent); } 50% { box-shadow: 0 0 0 5px transparent; } }
+.upg.max { opacity: .8; } .upg.max .upgicon { background: color-mix(in srgb, #40c057 18%, var(--panel2)); }
+.upg.locked { opacity: 1; } .upg.locked .upgicon { filter: grayscale(1); opacity: .6; } .upg.locked .main { opacity: .65; }
+.upips { display: inline-flex; gap: 3px; vertical-align: middle; } .upips i { width: 14px; height: 5px; border-radius: 3px; background: var(--border); transition: background .3s; } .upips i.on { background: #40c057; }
+.upg-lock { width: 100%; display: flex; flex-direction: column; gap: 4px; font-size: .75rem; color: var(--muted); }
+.upg-lock .meter { height: 6px; border-radius: 3px; background: var(--panel2); overflow: hidden; } .upg-lock .meter i { display: block; height: 100%; background: linear-gradient(90deg, #40c057, #94d82d); border-radius: 3px; }
+.upg.justbought { animation: boughtPop .6s cubic-bezier(.3,1.6,.5,1); border-color: #40c057; }
+.upg.justbought::after { content: '✨'; position: absolute; top: -6px; right: -4px; font-size: 22px; animation: sparkleUp 1s ease-out forwards; }
+@keyframes boughtPop { 0% { transform: scale(.94); } 60% { transform: scale(1.04); } 100% { transform: scale(1); } }
+@keyframes sparkleUp { to { transform: translateY(-18px) scale(1.4); opacity: 0; } }
+.boxes { grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); }
+.boxcard { animation: tileIn .4s ease-out backwards; }
+.boxcard:nth-child(2) { animation-delay: .05s; } .boxcard:nth-child(3) { animation-delay: .1s; } .boxcard:nth-child(4) { animation-delay: .15s; } .boxcard:nth-child(5) { animation-delay: .2s; }
+.storegrid { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 12px; }
+.storeitem { animation: tileIn .35s ease-out backwards; transition: transform .18s, box-shadow .2s; padding: 14px 10px; }
+.storeitem:hover { transform: translateY(-3px); box-shadow: var(--shadow); }
+.storeitem .storeart { transition: transform .3s; } .storeitem:hover .storeart { transform: scale(1.08) rotate(-3deg); }
+.earngrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 10px; }
+.earnitem { display: flex; gap: 12px; align-items: flex-start; padding: 12px; border-radius: 14px; background: var(--bg); border: 1px solid var(--border); animation: tileIn .35s ease-out backwards; animation-delay: calc(var(--i, 0) * 35ms); }
+.earnitem > span { font-size: 24px; width: 40px; height: 40px; display: grid; place-items: center; border-radius: 12px; background: var(--panel2); flex: none; }
+@media (max-width: 760px) { .shopwallet { grid-template-columns: 1fr 1fr; gap: 8px; } .sw-card { padding: 10px 12px; gap: 8px; } .sw-card small { display: none; } .sw-card.gift { grid-column: 1 / -1; } .sw-n { font-size: 1.25rem; } .sw-ic { font-size: 24px; } .shoptabs { display: flex; overflow-x: auto; } .shoptabs button { flex: none; } }
+@media (prefers-reduced-motion: reduce) { .upg, .storeitem, .boxcard, .earnitem, .shoppage, .shopbody { animation: none; } .sw-card.coin .sw-ic, .sw-card.gift.ready, .upg.can .btn.primary { animation: none; } }

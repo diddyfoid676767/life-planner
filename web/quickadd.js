@@ -69,6 +69,99 @@ function parseQuick(raw) {
   return { kind, type, category, date, time, end, subjectId: subj?.id || '', subject: subj?.name || '', title };
 }
 
+
+// ---------- commands: remove, move, reschedule, mark done ----------
+// "remove speed and agility tomorrow", "move Bio study to Sunday", "push gym back a day",
+// "cancel dentist", "mark English essay done". Nothing changes until you confirm.
+const QA_KINDS = [['session', 'sessions', 'date', i => `Study ${subj(i.subjectId).name || ''}: ${i.topic || ''}`, 'study session block revise revision'],
+  ['workout', 'workouts', 'date', i => i.title + ' ' + (i.sport || ''), 'workout training session'],
+  ['event', 'events', 'date', i => i.title + ' ' + (i.category || ''), 'event'],
+  ['assessment', 'assessments', 'date', i => `${subj(i.subjectId).name || ''} ${i.title} ${i.type || ''}`, 'sac exam test assessment'],
+  ['todo', 'todos', 'due', i => i.text, 'task todo']];
+const QA_FILL = new Set('a an the my all of and from please can could you i have on at for to with also just is are this that it them up off out back forward later earlier by'.split(' '));
+const QA_INTENT = [['remove', /^(?:(?:can|could) you |please |pls )*(remove|delete|cancel|clear|scrap|get rid of|take off|bin|drop|skip|wipe)\b/],
+  ['move', /^(?:(?:can|could) you |please |pls )*(move|reschedule|shift|push|postpone|bring forward|bring|change|swap)\b/],
+  ['done', /^(?:(?:can|could) you |please |pls )*(mark|tick off|tick|check off|finish|complete)\b/]];
+function qaItems() {
+  return QA_KINDS.flatMap(([kind, coll, dk, label, words]) => (D[coll] || []).map(i => ({ kind, coll, i, date: i[dk] || '', time: i.time || '', label: label(i).replace(/\s+/g, ' ').trim(), hay: label(i).toLowerCase(), kw: words })));
+}
+function qaTokens(phrase) { return phrase.toLowerCase().replace(/[^a-z0-9&' ]+/g, ' ').split(/\s+/).filter(w => w && !QA_FILL.has(w) && w !== '&'); }
+function qaMatch(phrase, pool) {
+  const s = inboxSubject(phrase), toks = qaTokens(phrase).filter(w => !(s && (new RegExp('^' + w).test(s.name.toLowerCase()) || SUBJ_ALIAS.some(([re]) => re.test(w)))));
+  if (!toks.length && !s) return [];
+  const re = w => new RegExp('\\b' + w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
+  // every word must appear in the title, except words that just name the kind ("study", "task", "sac")
+  return pool.filter(x => (!s || x.i.subjectId === s.id || x.hay.includes(s.name.toLowerCase())) && toks.every(w => re(w).test(x.hay) || re(w).test(x.kw)) && (s || toks.some(w => re(w).test(x.hay))));
+}
+function parseCommand(raw) {
+  const text = raw.trim(), low = text.toLowerCase().replace(/[.!?]+$/, '');
+  let intent = null, rest = low;
+  let verb = '';
+  for (const [k, re] of QA_INTENT) { const m = re.exec(low); if (m) { intent = k; verb = m[1]; rest = low.slice(m[0].length); break; } }
+  // clear commands always act; words like "push", "finish" or "drop" may just be part of something to add
+  const strong = /^(remove|delete|cancel|get rid of|scrap|wipe|move|reschedule|postpone|shift|mark|tick off|tick|check off)$/.test(verb);
+  if (!intent && /\b(as )?(done|complete|completed|finished)$/.test(low) && low.split(' ').length > 1) { intent = 'done'; verb = 'done'; rest = low; }
+  if (!intent) return null;
+  if (intent === 'done') rest = rest.replace(/\b(as )?(done|complete|completed|finished)$/, '');
+  // where it goes: "to Sunday 4pm", or "back a day", "forward 2 days"
+  let dest = null, shift = 0, src = rest;
+  if (intent === 'move') {
+    const rel = /\b(?:by\s+)?(an?|one|two|three|\d+)\s+(day|days|week|weeks)\s*(later|earlier|back|forward)?\b|\b(back|forward|later|earlier)\s+(?:by\s+)?(an?|one|two|three|\d+)\s+(day|days|week|weeks)\b/.exec(rest);
+    if (rel) {
+      const n = { a: 1, an: 1, one: 1, two: 2, three: 3 }[rel[1] || rel[5]] ?? +(rel[1] || rel[5]), unit = /week/.test(rel[2] || rel[6]) ? 7 : 1, dir = rel[3] || rel[4] || '';
+      shift = n * unit * (/forward|earlier/.test(dir) || /bring forward/.test(low) ? -1 : 1); src = rest.replace(rel[0], ' ');
+    } else {
+      const m = /\s(?:to|until|till|til|on|onto|for)\s+(?!do\b)(.+)$/.exec(' ' + rest);
+      if (m) { const d = qaDate(m[1]), tm = qaTime(m[1]); if (d.date || tm.time) { dest = { date: d.date, time: tm.time }; src = (' ' + rest).slice(0, m.index); } }
+      if (!dest && !shift) return { intent, text, strong, need: 'Say where to, e.g. "to Sunday", "to 4pm" or "back a day".', items: [] };
+    }
+  }
+  const sd = qaDate(src), st = qaTime(src);
+  let phrase = src; for (const sp of [sd.span, st.span]) if (sp) phrase = phrase.split(sp).join(' ');
+  phrase = phrase.replace(/\b(everything|anything|stuff)\b/g, ' ').trim();
+  const all = /\b(all|every|everything)\b/.test(src);
+  const t = today();
+  let pool = qaItems().filter(x => !(intent === 'done' && x.i.done));
+  pool = sd.date ? pool.filter(x => x.date === sd.date) : pool.filter(x => x.kind === 'todo' ? !x.i.done : x.date >= t);
+  if (st.time) pool = pool.filter(x => x.time === st.time);
+  let items = qaTokens(phrase).length || inboxSubject(phrase) ? qaMatch(phrase, pool) : (sd.date ? pool : []);
+  if (!items.length && /\s(and|&)\s|,/.test(phrase)) items = [...new Set(phrase.split(/\s*(?:,|\band\b|&)\s*/).filter(Boolean).flatMap(p => qaMatch(p, pool)))];
+  // with no date given, act on the next matching day only (unless you said "all")
+  if (items.some(x => x.date) && !sd.date) items = items.filter(x => x.date || !items.some(y => y.date && y.kind !== 'todo'));
+  if (!sd.date && !all && items.length > 1) { const first = items.filter(x => x.date).map(x => x.date).sort()[0]; if (first) items = items.filter(x => x.date === first || (!x.date && x.kind === 'todo')).slice(0, 8); }
+  items.sort((a, b) => (a.date + a.time).localeCompare(b.date + b.time));
+  return { intent, text, strong: strong || verb === 'done', dest, shift, items: items.slice(0, 20), srcDate: sd.date };
+}
+const qaNewDate = (c, x) => c.shift ? addDays(x.date || today(), c.shift) : c.dest.date || x.date || today();
+function commandPreview(c) {
+  if (c.need) return `<span class="qa-chip warn">${esc(c.need)}</span>`;
+  if (!c.items.length) return `<span class="qa-chip warn">${c.intent === 'remove' ? '🗑' : c.intent === 'move' ? '↪' : '✓'} Nothing in your planner matches that yet. Try a word from its title, a subject or a day</span>`;
+  const verb = c.intent === 'remove' ? '🗑 Remove' : c.intent === 'done' ? '✓ Mark done' : `↪ Move ${c.shift ? (c.shift > 0 ? `${Math.abs(c.shift)} day${Math.abs(c.shift) === 1 ? '' : 's'} later` : `${Math.abs(c.shift)} day${Math.abs(c.shift) === 1 ? '' : 's'} earlier`) : `to ${c.dest.date ? fmtDate(c.dest.date) : 'the same day'}${c.dest.time ? ' ' + fmtTime(c.dest.time) : ''}`}`;
+  return `<span class="qa-chip cmd">${esc(verb)}</span><span class="qa-chip">${c.items.length} match${c.items.length === 1 ? '' : 'es'}: ${esc(c.items.slice(0, 2).map(x => x.label).join(', '))}${c.items.length > 2 ? '…' : ''}</span><span class="qa-chip muted">Press Enter to check</span>`;
+}
+function commandConfirm(c) {
+  const prev = document.getElementById('qaPrev'); if (!prev) return;
+  const verb = c.intent === 'remove' ? 'Remove' : c.intent === 'done' ? 'Mark done' : 'Move';
+  const when = x => x.date ? `${fmtDate(x.date)}${x.time ? ' ' + fmtTime(x.time) : ''}` : 'no date';
+  prev.innerHTML = c.need || !c.items.length ? commandPreview(c) : `<div class="qa-confirm ${c.intent}"><div class="qac-head"><b>${verb} ${c.items.length === 1 ? 'this' : `these ${c.items.length}`}?</b><span class="muted small-text">Untick anything you want to keep as it is.</span></div>
+    <ul class="qac-list">${c.items.map((x, k) => `<li><label><input type="checkbox" checked data-k="${k}"><span class="qac-kind">${QA_LABEL[x.kind].split(' ')[0]}</span><span class="qac-t">${esc(x.label)}${x.i.repeat && x.i.repeat !== 'none' ? ' <span class="tag">repeats: all of them</span>' : ''}</span>
+      <span class="qac-when">${c.intent === 'move' ? `<s>${when(x)}</s> → <b>${fmtDate(qaNewDate(c, x))}${(c.dest?.time || x.time) ? ' ' + fmtTime(c.dest?.time || x.time) : ''}</b>` : when(x)}</span></label></li>`).join('')}</ul>
+    <div class="row"><button class="btn ${c.intent === 'remove' ? 'danger' : 'primary'}" id="qacGo">${verb}</button><button class="btn" id="qacNo">Cancel</button></div></div>`;
+  prev.querySelector('#qacNo').onclick = () => { prev.innerHTML = ''; };
+  prev.querySelector('#qacGo').onclick = () => {
+    const pick = c.items.filter((x, k) => prev.querySelector(`[data-k="${k}"]`).checked); if (!pick.length) { prev.innerHTML = ''; return; }
+    const snap = JSON.stringify(QA_KINDS.map(([, coll]) => D[coll]));
+    for (const x of pick) {
+      if (c.intent === 'remove') D[x.coll] = D[x.coll].filter(i => i.id !== x.i.id);
+      else if (c.intent === 'done') x.i.done = true;
+      else { const nd = qaNewDate(c, x); if (x.kind === 'todo') x.i.due = nd; else { x.i.date = nd; if (c.dest?.time) x.i.time = c.dest.time; } }
+    }
+    save(); const inp = document.getElementById('qaInput'); if (inp) inp.value = ''; render();
+    const n = pick.length, what = n === 1 ? pick[0].label : `${n} items`;
+    toast(c.intent === 'remove' ? `🗑 Removed ${what}` : c.intent === 'done' ? `✓ Marked ${what} done` : `↪ Moved ${what}`, '', { actions: [['Undo', () => { QA_KINDS.forEach(([, coll], k) => { D[coll] = JSON.parse(snap)[k]; }); save(); render(); toast('Undone', ''); }]] });
+  };
+}
+
 const QA_LABEL = { assessment: '📝 SAC / exam', session: '📚 Study block', workout: '🏃 Workout', event: '📅 Event', todo: '✅ Task' };
 function quickPreview(q) {
   const bits = [QA_LABEL[q.kind] + (q.type && q.type !== 'SAC' ? ` (${q.type})` : '') + (q.category && q.category !== 'Personal' ? ` · ${q.category}` : ''), q.subject && `📚 ${q.subject}`, q.date ? `📆 ${fmtDate(q.date)} (${relDays(diffDays(today(), q.date))})` : (q.kind === 'todo' ? 'no due date' : '📆 pick a date'), q.time && `🕒 ${fmtTime(q.time)}${q.end ? '–' + fmtTime(q.end) : ''}`].filter(Boolean);
@@ -76,7 +169,7 @@ function quickPreview(q) {
 }
 function quickAddHtml() {
   return `<div class="card quickadd"><form id="qaForm" class="qa-row" autocomplete="off"><span class="qa-ic">✨</span>
-      <input id="qaInput" placeholder='Quick add: "Biology SAC next Thursday 9am", "dentist 3 Nov 4pm", "run tomorrow 7am"' maxlength="200">
+      <input id="qaInput" placeholder='Add or change: "Biology SAC next Thu 9am", "move Bio study to Sunday", "remove gym tomorrow"' maxlength="200">
       <button class="btn primary">Add</button></form><div class="qa-prev" id="qaPrev"></div></div>`;
 }
 function quickAdd(text) {
@@ -104,13 +197,16 @@ function quickAdd(text) {
 document.addEventListener('input', e => {
   if (e.target.id !== 'qaInput') return;
   const v = e.target.value.trim(), prev = document.getElementById('qaPrev');
-  if (prev) prev.innerHTML = v.length > 2 ? quickPreview(parseQuick(v)) : '';
+  const c = v.length > 2 && parseCommand(v);
+  if (prev) prev.innerHTML = v.length > 2 ? (c && (c.items.length || c.strong) ? commandPreview(c) : quickPreview(parseQuick(v))) : '';
 });
 document.addEventListener('submit', e => {
   if (e.target.id !== 'qaForm') return;
   e.preventDefault();
   const v = document.getElementById('qaInput').value.trim();
-  if (v) quickAdd(v);
+  const c = v && parseCommand(v);
+  if (c && (c.items.length || c.strong)) commandConfirm(c);
+  else if (v) quickAdd(v);
 });
 // press "/" anywhere to jump to quick add
 document.addEventListener('keydown', e => {

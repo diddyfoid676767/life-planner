@@ -126,7 +126,7 @@ function buyUpgrade(id) {
   if (price == null || coins() < price) return;
   D.game.spent += price;
   D.game.upgrades[id] = [...(D.game.upgrades[id] || []), new Date().toISOString()];
-  save(); render();
+  ui.justBought = id; save(); render();
   toast(`${u.icon} ${u.name}${u.prices.length > 1 ? ` level ${lvl + 1}` : ''}`, u.desc);
 }
 
@@ -238,19 +238,28 @@ function crittersView() {
         ${has ? `<span class="muted small-text">Moved in ${fmtDate(D.game.critters[k.id].slice(0, 10))}</span>` : `<div class="ctrack"><i style="width:${pct}%"></i></div><span class="muted small-text">${Math.min(have, need)} / ${need}</span>`}</div>`;
     }).join('')}</div></div>`;
 }
+// one upgrade as a tile: icon, name, level pips, what it does, and the price
+function upgTile(u, lvl, have, cur, act, i, lockHtml) {
+  const max = lvl >= u.prices.length, price = u.prices[lvl], can = !max && !lockHtml && have >= price;
+  const pips = u.prices.length > 1 ? `<span class="upips">${u.prices.map((_, k) => `<i class="${k < lvl ? 'on' : ''}"></i>`).join('')}</span>` : '';
+  return `<div class="upg ${max ? 'max' : ''} ${lockHtml ? 'locked' : ''} ${can ? 'can' : ''} ${ui.justBought === u.id ? 'justbought' : ''}" style="--i:${i}"><div class="upgicon">${lockHtml ? '🔒' : u.icon}</div>
+    <div class="main"><b>${u.name}</b>${pips}<div class="muted small-text">${u.desc}</div></div>
+    <div class="upg-buy">${max ? '<span class="tag green">✓ Maxed</span>' : lockHtml || `<button class="btn small ${can ? 'primary' : ''}" data-act="${act}" data-id="${u.id}" ${can ? '' : 'disabled'}>${price} ${cur}</button>`}</div></div>`;
+}
 function shopView() {
-  const have = coins(), g = giftReady();
-  const ups = UPGRADES.map(u => {
-    const lvl = upg(u.id), max = lvl >= u.prices.length, price = u.prices[lvl];
-    return `<div class="upg ${max ? 'max' : ''}"><div class="upgicon">${u.icon}</div><div class="main"><b>${u.name}</b>${u.prices.length > 1 ? ` <span class="muted small-text">level ${lvl} / ${u.prices.length}</span>` : ''}<div class="muted small-text">${u.desc}</div></div>
-      ${max ? '<span class="tag green">✓ Owned</span>' : `<button class="btn small ${have >= price ? 'primary' : ''}" data-act="buyUpg" data-id="${u.id}" ${have >= price ? '' : 'disabled'}>${price} ${COIN}</button>`}</div>`;
-  }).join('');
-  return `<div class="forest-cols shop-top"><div class="stack">
-      <div class="card giftcard ${g ? 'ready' : ''}"><div class="gifticon">🎁</div><div class="main"><h2 style="margin:0">Daily gift</h2><p class="muted small-text" style="margin:4px 0 0">${g ? 'A free gift is waiting for you.' : 'Opened. A new one arrives tomorrow.'}</p></div>
-        ${g ? `<button class="btn primary" data-act="gift">Open gift</button>` : `<span class="tag green">+${D.game.ledger[giftKey()]} ${COIN}</span>`}</div>
-      ${earnCard()}</div>
-      <div class="stack">${leafShopView()}<div class="card"><h2>${COIN} Coin upgrades</h2><div class="upgs">${ups}</div></div></div></div>
-    ${boxesView()}${storeView()}`;
+  const tab = ui.shopTab || 'boxes', g = giftReady(), c = coins(), lv = leaves();
+  const tabs = [['boxes', '🎁 Lucky boxes'], ['store', '🛍️ Store'], ['upgrades', '⬆️ Upgrades'], ['earn', '💡 How to earn']];
+  const wallet = `<div class="shopwallet">
+      <div class="sw-card coin"><span class="sw-ic">${COIN}</span><div class="main"><b class="sw-n">${c}</b><span>coins</span></div><small>Boxes, trees, animals and the Arena</small></div>
+      <div class="sw-card leaf"><span class="sw-ic">${LEAF}</span><div class="main"><b class="sw-n">${fmtLeaf(lv)}</b><span>leaves</span></div><small>Garden upgrades, decorations and scenes</small></div>
+      <div class="sw-card gift ${g ? 'ready' : ''}"><span class="sw-ic gifticon">🎁</span><div class="main"><b>Daily gift</b><span>${g ? 'Ready to open!' : 'Opened. Back tomorrow'}</span></div>
+        ${g ? `<button class="btn primary" data-act="gift">Open</button>` : `<span class="tag green">+${D.game.ledger[giftKey()] || 0} ${COIN}</span>`}</div></div>`;
+  const nav = `<div class="seg shoptabs">${tabs.map(([k, l]) => `<button class="${tab === k ? 'on' : ''}" data-act="shopTab" data-v="${k}">${l}</button>`).join('')}</div>`;
+  const coinUps = `<div class="card"><div class="card-head"><h2>${COIN} Coin upgrades</h2><span class="muted small-text">paid with coins</span><span class="coins">${COIN} <b>${c}</b></span></div>
+    <div class="upgs">${UPGRADES.map((u, i) => upgTile(u, upg(u.id), c, COIN, 'buyUpg', i)).join('')}</div></div>`;
+  const body = tab === 'store' ? storeView() : tab === 'upgrades' ? `${leafShopView()}${coinUps}` : tab === 'earn' ? earnCard() : boxesView();
+  setTimeout(() => { ui.justBought = null; }, 0);
+  return `<div class="shoppage">${wallet}${nav}<div class="shopbody" key="${tab}">${body}</div></div>`;
 }
 function milestonesCard() {
   const ms = milestones();

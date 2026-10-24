@@ -233,7 +233,7 @@ function leafBurst(fromEl, n) {
 function buyLeafUpgrade(id) {
   const u = LEAF_UPGRADES.find(x => x.id === id); if (!u) return;
   const lvl = lupg(id), p = u.prices[lvl]; if (p == null || leaves() < p || gardenTrees() < (u.need || 0)) return;
-  const L = leafState(); collectLeaves(); L.spent += p; L.ups[id] = [...(L.ups[id] || []), new Date().toISOString()]; save(); render();
+  const L = leafState(); collectLeaves(); L.spent += p; L.ups[id] = [...(L.ups[id] || []), new Date().toISOString()]; ui.justBought = id; save(); render();
   toast(`${u.icon} ${u.name}${u.prices.length > 1 ? ` level ${lvl + 1}` : ''}`, u.desc);
 }
 const spendLeaves = p => { if (leaves() < p) return false; leafState().spent += p; return true; };
@@ -250,10 +250,9 @@ function leafBar() {
 function leafShopView() {
   const have = leaves();
   return `<div class="card"><div class="card-head"><h2>${LEAF} Garden upgrades</h2><span class="muted small-text">paid with leaves your trees grow</span><span class="coins">${LEAF} <b>${fmtLeaf(have)}</b></span></div>
-    <div class="upgs">${LEAF_UPGRADES.map(u => {
-      const lvl = lupg(u.id), max = lvl >= u.prices.length, price = u.prices[lvl], locked = !max && gardenTrees() < (u.need || 0);
-      return `<div class="upg ${max ? 'max' : ''} ${locked ? 'locked' : ''}"><div class="upgicon">${locked ? '🔒' : u.icon}</div><div class="main"><b>${u.name}</b>${u.prices.length > 1 ? ` <span class="muted small-text">level ${lvl} / ${u.prices.length}</span>` : ''}<div class="muted small-text">${u.desc}</div></div>
-        ${max ? '<span class="tag green">✓ Owned</span>' : locked ? `<span class="muted small-text">Grow ${u.need} trees (${gardenTrees()} now)</span>` : `<button class="btn small ${have >= price ? 'primary' : ''}" data-act="buyLeafUpg" data-id="${u.id}" ${have >= price ? '' : 'disabled'}>${price} ${LEAF}</button>`}</div>`;
+    <div class="upgs">${LEAF_UPGRADES.map((u, i) => {
+      const lvl = lupg(u.id), max = lvl >= u.prices.length, n = gardenTrees(), locked = !max && n < (u.need || 0);
+      return upgTile(u, lvl, have, LEAF, 'buyLeafUpg', i, locked ? `<div class="upg-lock"><div class="meter"><i style="width:${Math.round(n / u.need * 100)}%"></i></div><span>Grow ${u.need} trees · ${n} so far</span></div>` : '');
     }).join('')}</div>
     <details class="howgrow"><summary class="muted small-text">How leaves work</summary><p class="muted small-text">Every tree grows leaves each hour, even when the app is closed: saplings ${LEAF_STAGE[0]}, young trees ${LEAF_STAGE[1]}, full trees ${LEAF_STAGE[2]} and grand trees ${LEAF_STAGE[3]}. Rare trees grow ×1.5, epic ×2.5 and legendary ×4 (change a subject's tree to upgrade all of its trees). Watered trees grow ×1.5 for a day. Every study session drops an hour of leaves into the basket. The basket holds ${basketHours()} hours, so collect often.</p></details></div>`;
 }
