@@ -267,7 +267,7 @@ const g3root = o => { while (o && !o.userData.key && !o.userData.bubble) o = o.p
 function g3ground(ev) { const h = g3pick(ev, [G3.tiles]); if (h) return h.point; const p = new THREE.Vector3(); return G3.ray.ray.intersectPlane(new THREE.Plane(new THREE.Vector3(0, 1, 0), 0), p) ? p : null; }
 // slide the view across the ground (dx, dy in screen pixels)
 function g3pan(dx, dy) {
-  const right = new THREE.Vector3().setFromMatrixColumn(G3.camera.matrixWorld, 0).setY(0).normalize(), fwd = new THREE.Vector3(-right.z, 0, right.x);
+  const right = new THREE.Vector3().setFromMatrixColumn(G3.camera.matrixWorld, 0).setY(0).normalize(), fwd = new THREE.Vector3(right.z, 0, -right.x);
   const s = G3.dist * .0016, lim = G3.N * T3D * .65, p = G3.pan || (G3.pan = { x: 0, z: 0 });
   p.x = Math.max(-lim, Math.min(lim, p.x - right.x * dx * s + fwd.x * dy * s)); p.z = Math.max(-lim, Math.min(lim, p.z - right.z * dx * s + fwd.z * dy * s));
 }
