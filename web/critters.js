@@ -148,6 +148,7 @@ function waterTree(id) {
   const r = D.game.trees[id] = { ...treeRec(id) };
   if (r.lastWater === today()) return 'done';
   if (wateredToday() >= 10) return 'limit';
+  sfx('water');
   r.lastWater = today(); r.water = (r.water || 0) + 1; delete r.wilted;
   const k = 'w:' + today(); D.game.ledger[k] = (D.game.ledger[k] || 0) + waterCoins(l);
   save(); return 'ok';

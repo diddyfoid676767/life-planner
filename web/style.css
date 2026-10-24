@@ -643,7 +643,7 @@ details.overdue[open] summary { margin-bottom: 10px; }
 .settings-grid > .card[data-sec] { display: none; }
 .settings-grid[data-sec="general"] > .card[data-sec="general"], .settings-grid[data-sec="calendars"] > .card[data-sec="calendars"],
 .settings-grid[data-sec="reminders"] > .card[data-sec="reminders"], .settings-grid[data-sec="backup"] > .card[data-sec="backup"],
-.settings-grid[data-sec="app"] > .card[data-sec="app"], .settings-grid[data-sec="theme"] > .card[data-sec="theme"], .settings-grid[data-sec="account"] > .card[data-sec="account"] { display: block; }
+.settings-grid[data-sec="app"] > .card[data-sec="app"], .settings-grid[data-sec="sound"] > .card[data-sec="sound"], .settings-grid[data-sec="theme"] > .card[data-sec="theme"], .settings-grid[data-sec="account"] > .card[data-sec="account"] { display: block; }
 .settings-grid > .card[data-sec][style*="display:none"] { display: none !important; }
 .remtable { border-collapse: separate; border-spacing: 0; width: 100%; font-size: .82rem; }
 .remtable th { font-weight: 600; color: var(--muted); padding: 6px 8px; text-align: center; white-space: nowrap; }
@@ -1964,3 +1964,9 @@ main:has(> .calwrap), main:has(.calwrap) { max-width: 1680px; }
 .earnitem > span { font-size: 24px; width: 40px; height: 40px; display: grid; place-items: center; border-radius: 12px; background: var(--panel2); flex: none; }
 @media (max-width: 760px) { .shopwallet { grid-template-columns: 1fr 1fr; gap: 8px; } .sw-card { padding: 10px 12px; gap: 8px; } .sw-card small { display: none; } .sw-card.gift { grid-column: 1 / -1; } .sw-n { font-size: 1.25rem; } .sw-ic { font-size: 24px; } .shoptabs { display: flex; overflow-x: auto; } .shoptabs button { flex: none; } }
 @media (prefers-reduced-motion: reduce) { .upg, .storeitem, .boxcard, .earnitem, .shoppage, .shopbody { animation: none; } .sw-card.coin .sw-ic, .sw-card.gift.ready, .upg.can .btn.primary { animation: none; } }
+
+/* settings: sound (2.21) */
+.sndcard { grid-column: 1 / -1; }
+.sndrow { display: flex; gap: 10px; align-items: flex-start; padding: 8px 0; cursor: pointer; } .sndrow input { width: 18px; height: 18px; margin-top: 2px; } .sndrow > span { display: flex; flex-direction: column; }
+.sndvol { display: flex; align-items: center; gap: 10px; margin: 4px 0 10px 28px; max-width: 420px; } .sndvol input { flex: 1; accent-color: var(--accent); } .sndvol b { min-width: 40px; text-align: right; }
+.sndgroups { border-top: 1px solid var(--border); margin-top: 6px; padding-top: 4px; margin-bottom: 10px; } .sndgroups.off { opacity: .45; pointer-events: none; }

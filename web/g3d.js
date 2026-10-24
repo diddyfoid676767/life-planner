@@ -30,6 +30,9 @@ function g3init() {
 function g3resize() {
   const host = G3.canvas?.parentNode; if (!host || !host.clientWidth) return;
   const w = host.clientWidth, h = host.clientHeight;
+  // resizing clears the canvas, so only do it when the size really changed
+  if (G3.sz === w + 'x' + h + (G3.comp ? 'c' : '')) return;
+  G3.sz = w + 'x' + h + (G3.comp ? 'c' : '');
   fxResize(G3.renderer, G3.comp, w, h); G3.camera.aspect = w / h; G3.camera.updateProjectionMatrix();
 }
 // called after every page render
@@ -37,11 +40,21 @@ function mountGarden3D() {
   const host = document.getElementById('g3host');
   if (!host) { g3stop(); return; }
   g3init();
-  if (G3.canvas.parentNode !== host) host.prepend(G3.canvas);
-  g3resize();
-  const sig = g3signature();
-  if (sig !== G3.sig) { G3.sig = sig; g3build(); }
+  const moved = G3.canvas.parentNode !== host;
+  if (moved) host.prepend(G3.canvas);
+  const sz = G3.sz; g3resize();
+  const sig = g3signature(), rebuilt = sig !== G3.sig;
+  if (rebuilt) { G3.sig = sig; g3build(); g3resize(); }
+  // draw straight away so the page never shows an empty (black) canvas between frames
+  if ((moved || rebuilt || sz !== G3.sz) && G3.camera.aspect) try { G3.comp ? G3.comp.c.render() : G3.renderer.render(G3.scene, G3.camera); } catch (e) { console.error(e); }
   if (!G3.raf) { G3.clock.getDelta(); G3.raf = requestAnimationFrame(g3loop); }
+}
+// collecting leaves pops the bubbles in place instead of rebuilding the island
+function g3popBubbles() {
+  sfx('pop');
+  for (const b of G3.bubbles.splice(0)) { b.material.transparent = true; const s0 = b.scale.x, t0 = G3.clock.elapsedTime;
+    const f = t => { const p = Math.min(1, (t - t0) / .35); b.scale.setScalar(s0 * (1 + p * .8)); b.material.opacity = 1 - p; if (p >= 1) { b.parent?.remove(b); b.material.dispose(); G3.tickers.splice(G3.tickers.indexOf(f), 1); } };
+    G3.tickers.push(f); }
 }
 function g3stop() { if (G3.raf) cancelAnimationFrame(G3.raf); G3.raf = 0; }
 function g3signature() {
@@ -105,7 +118,7 @@ function g3build() {
   const glow = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTex(night ? '#dbe4ff' : '#fff3bf'), fog: false, transparent: true, depthWrite: false, opacity: gfx('rays') ? .7 : .35, toneMapped: false }));
   glow.scale.setScalar(night ? 90 : 170); glow.position.copy(orb.position); W.add(glow);
   // bloom for glowing things
-  if (hq && !G3.comp) G3.comp = fxComposer(G3.renderer, G3.scene, G3.camera, { strength: .35, radius: .55, threshold: .9 });
+  if (hq && !G3.comp) G3.sz = null, G3.comp = fxComposer(G3.renderer, G3.scene, G3.camera, { strength: .35, radius: .55, threshold: .9 });
   if (!hq && G3.comp) G3.comp = null;
   if (G3.comp) G3.comp.bloom.strength = night ? .7 : .3;
   g3resize();
@@ -289,7 +302,7 @@ function g3events() {
     if (touches.size === 2 && pinch) { const [a, b] = [...touches.values()], dd = Math.hypot(a.x - b.x, a.y - b.y); g3zoom(pinch / Math.max(1, dd)); pinch = dd; return; }
     if (drag) {
       const dx = ev.clientX - drag.x, dy = ev.clientY - drag.y; drag.x = ev.clientX; drag.y = ev.clientY;
-      if (!drag.moved && Math.hypot(ev.clientX - drag.sx, ev.clientY - drag.sy) > 5) drag.moved = true;
+      if (!drag.moved && Math.hypot(ev.clientX - drag.sx, ev.clientY - drag.sy) > 5) { drag.moved = true; if (drag.obj) sfx('pickup'); }
       if (!drag.moved) return;
       if (drag.obj) { const p = g3ground(ev); if (p) { drag.obj.position.set(p.x, .5, p.z); const N = G3.N, c = Math.round(p.x / T3D + (N - 1) / 2), r = Math.round(p.z / T3D + (N - 1) / 2); drag.cell = r >= 0 && c >= 0 && r < N && c < N ? [r, c] : null; G3.hl.visible = !!drag.cell; if (drag.cell) { const [x, z] = tileXZ(r, c, N); G3.hl.position.set(x, .02, z); } } }
       else if (drag.rotate) { G3.targetYaw = null; G3.targetPitch = null; G3.yaw -= dx * .008; G3.pitch = Math.max(.12, Math.min(1.35, G3.pitch + dy * .006)); cv.style.cursor = 'grabbing'; }
@@ -308,7 +321,7 @@ function g3events() {
           const d = Math.sqrt(ray.distanceSqToSegment(a, b2)); if (d > .9) continue;
           const k = (1 - d / .9) * .05, mx = (right.x * dx - fwd.x * dy) * k, mz = (right.z * dx - fwd.z * dy) * k;
           const bd = o.userData.bend, cs = Math.cos(-o.rotation.y), sn = Math.sin(-o.rotation.y);
-          bd.vx += Math.max(-2, Math.min(2, mx * cs - mz * sn)); bd.vz += Math.max(-2, Math.min(2, mx * sn + mz * cs)); }
+          bd.vx += Math.max(-2, Math.min(2, mx * cs - mz * sn)); bd.vz += Math.max(-2, Math.min(2, mx * sn + mz * cs)); if (Math.abs(mx) + Math.abs(mz) > .02) sfx('rustle', { gap: 160 }); }
       }
     }
     last = { x: ev.clientX, y: ev.clientY };
@@ -318,7 +331,7 @@ function g3events() {
     touches.delete(ev.pointerId); if (touches.size < 2) pinch = 0;
     if (!drag) return; const d = drag; drag = null; cv.style.cursor = 'grab'; G3.hl.visible = false;
     if (!d.moved && !d.rotate) {
-      if (d.bubble) { collectLeaves(cv); render(); return; }
+      if (d.bubble) { collectLeaves(cv); g3popBubbles(); G3.sig = g3signature(); render(); return; }
       if (d.obj?.userData.tree) { openTreeCard(d.obj.userData.tree.id); return; }
       return;
     }
@@ -329,7 +342,7 @@ function g3events() {
       if (d.cell && ev.type !== 'pointercancel') {
         const to = d.cell.join(','), from = pos[key], other = Object.keys(pos).find(k => pos[k] === to && k !== key);
         if (other) { pos[other] = from; const o2 = G3.objs.find(o => o.userData.key === other); if (o2 && home) glide(o2, home.x, home.z); }
-        pos[key] = to; save();
+        pos[key] = to; save(); setTimeout(() => sfx('plant'), 160);
         const [x, z] = tileXZ(d.cell[0], d.cell[1], G3.N); glide(d.obj, x, z);
       } else if (home) glide(d.obj, home.x, home.z);
       G3.sig = g3signature(); render();
@@ -355,5 +368,5 @@ function g3view(v) {
 }
 function garden3DHtml(logs) {
   G3.logs = logs;
-  return `<div class="g3host" id="g3host"><div class="g3ctl"><button data-act="g3view" data-v="left" title="Turn left (or right-drag to spin)">⟲</button><button data-act="g3view" data-v="right" title="Turn right">⟳</button><button data-act="g3view" data-v="in" title="Zoom in">＋</button><button data-act="g3view" data-v="out" title="Zoom out">−</button><button data-act="g3view" data-v="iso" title="Isometric view" class="${G3.iso ? 'on' : ''}">◇</button><button data-act="g3view" data-v="reset" title="Reset view">⌂</button></div></div>`;
+  return `<div class="g3host" id="g3host"><div class="g3ctl"><button data-act="g3view" data-v="left" title="Turn left (or right-drag to spin)">⟲</button><button data-act="g3view" data-v="right" title="Turn right">⟳</button><button data-act="g3view" data-v="in" title="Zoom in">＋</button><button data-act="g3view" data-v="out" title="Zoom out">−</button><button data-act="g3view" data-v="iso" title="Isometric view" class="${G3.iso ? 'on' : ''}">◇</button><button data-act="g3view" data-v="reset" title="Reset view">⌂</button><button data-snd-toggle="1" title="Sound on or off (more in Settings → Sound)">${typeof sndCfg === 'function' && !sndCfg().on ? '🔇' : '🔊'}</button></div></div>`;
 }

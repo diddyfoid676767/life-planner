@@ -409,6 +409,7 @@ let lastCoins = null, lastLevel = null;
 function gameFeedback() {
   if (!D || !D.game) return;
   if (typeof mountGarden3D === 'function') try { mountGarden3D(); } catch (e) { console.error(e); }
+  if (typeof soundFeedback === 'function') soundFeedback();
   checkCritters();
   checkMissedDays();
   gnomeCollect();

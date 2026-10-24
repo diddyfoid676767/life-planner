@@ -477,6 +477,7 @@ function say(text, ms) {
 // ---------- animation: 3D when it's on (b3d.js), simple 2D otherwise ----------
 let b3Anim = null;
 async function play(side, kind, data = {}) {
+  if (typeof battleSfx === 'function') try { battleSfx(side, kind, data); } catch (e) { }
   if (b3Anim) { try { const r = b3Anim(side, kind, data); if (r !== false) return await r; } catch (e) { console.error(e); } }
   const f = document.getElementById(side === 'me' ? 'fMe' : 'fThem'), stage = document.querySelector('#battlefx .bstage'); if (!f) return;
   const flash = async (cls, ms) => { f.classList.add(cls); await sleep(ms * (battle?.speed || 1)); f.classList.remove(cls); };

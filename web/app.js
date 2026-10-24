@@ -833,12 +833,13 @@ function viewSettings() {
   const r = D.settings.remind;
   const remindRow = (k, label) => `<tr><th>${label}</th>${REMIND_OPTS.map(([v, l]) => `<td><label class="rcheck" title="${l}"><input type="checkbox" data-remdef="${k}" value="${v}" ${r[k].includes(v) ? 'checked' : ''}></label></td>`).join('')}</tr>`;
   const sec = ui.setTab || 'general';
-  const tabs = [['general', '👤 You'], ...(acct.configured && !ONLINE ? [['account', '🔑 Account']] : []), ['theme', '🎨 Theme'], ['calendars', '📅 Calendars'], ['reminders', '🔔 Reminders'], ['backup', '💾 Backup'], ['app', '🖥 App']];
+  const tabs = [['general', '👤 You'], ...(acct.configured && !ONLINE ? [['account', '🔑 Account']] : []), ['theme', '🎨 Theme'], ['sound', '🔊 Sound'], ['calendars', '📅 Calendars'], ['reminders', '🔔 Reminders'], ['backup', '💾 Backup'], ['app', '🖥 App']];
   const perm = 'Notification' in window ? Notification.permission : 'unsupported';
   return `${pageHead('Settings', '', '')}
   <div class="seg settabs">${tabs.map(([k, l]) => `<button class="${sec === k ? 'on' : ''}" data-act="setTab" data-v="${k}">${l}</button>`).join('')}</div>
   <div class="grid g2 settings-grid" data-sec="${sec}">
     ${themeCard()}
+    ${soundCard()}
     ${navCard()}
     ${accountCard().replace('class="card acctcard"', 'class="card acctcard" data-sec="account"')}
     ${ONLINE ? `<div class="card" data-sec="calendars" style="grid-column:1/-1"><div class="card-head"><h2>Calendars</h2><button class="btn small" data-act="gcalRefresh">Refresh</button><button class="btn small primary" data-act="gcalChoose">Choose calendars</button></div>
