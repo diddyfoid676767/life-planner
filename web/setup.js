@@ -206,9 +206,9 @@ const TOUR_PAGES = {
   friends: ['👥 Friends', 'Race your friends at studying and training.', [
     ['.fme', 'Your week', 'Your numbers this week. Friends see these and your avatar, nothing else.'],
     ['.friends-main', 'Leaderboards and friends', 'Switch between study, training and health boards, search friends by username, and press <b>Compare</b> to go head to head.']]],
-  personal: ['✅ Events & Tasks', 'Everything outside school study.', [
-    ['.grid.g2 > .card:first-child', 'Events & deadlines', 'Birthdays, appointments and deadlines. Filter them by type, and give each one its own reminders.'],
-    ['.grid.g2 > .card:last-child', 'Tasks', 'Your whole to-do list grouped by when it\'s due. Add one at the top.']]],
+  todo: ['✅ To-do', 'Your tasks, events and deadlines in one place.', [
+    ['.todo-side', 'Pick what to show', 'All tasks, today, the next 7 days, each list, and your upcoming or past events.'],
+    ['.todo-main', 'Your list', 'Tasks grouped by when they\'re due. Add one at the top, or press <b>+ Event</b> for birthdays, appointments and deadlines.']]],
   inbox: ['📬 Missed info', 'School emails and notices you might have missed.', [
     ['.summarycard', 'The summary', 'A short catch-up of what came in. <b>Check email now</b> runs a fresh check.'],
     ['.catchips', 'Filter by type', 'Show just the action items, deadlines or events.'],

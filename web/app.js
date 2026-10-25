@@ -605,15 +605,12 @@ function trainingPlan() {
 
 const i18nWeek = s => { const d = parseYmd(s); return `Wk of ${d.getDate()} ${MON[d.getMonth()]}`; };
 
-function viewPersonal() {
+// Events and deadlines now live in the To-do tab
+function viewPersonal() { ui.todoFilter = ui.evFilter === 'past' ? 'ev:past' : 'ev:up'; view = 'todo'; return viewTodo(); }
+function eventsListHtml(mode) {
   const t = today();
-  let list;
-  if (ui.evFilter === 'upcoming') list = agenda(t, addDays(t, 365)).filter(e => e.kind === 'event');
-  else if (ui.evFilter === 'past') list = agenda(addDays(t, -365), addDays(t, -1)).filter(e => e.kind === 'event').reverse();
-  else list = D.events.map(e => ({ ...agenda(e.date, e.date).find(x => x.kind === 'event' && x.id === e.id) })).filter(x => x.id).sort((a, b) => a.date.localeCompare(b.date));
-  if (ui.evFilter === 'upcoming') {
-    const seen = new Set(); list = list.filter(e => { const ev = find('event', e.id); if (!ev.repeat || ev.repeat === 'none') return true; if (seen.has(e.id)) return false; seen.add(e.id); return true; });
-  }
+  let list = mode === 'past' ? agenda(addDays(t, -365), addDays(t, -1)).filter(e => e.kind === 'event').reverse() : agenda(t, addDays(t, 365)).filter(e => e.kind === 'event');
+  if (mode !== 'past') { const seen = new Set(); list = list.filter(e => { const ev = find('event', e.id); if (!ev.repeat || ev.repeat === 'none') return true; if (seen.has(e.id)) return false; seen.add(e.id); return true; }); }
   if (ui.evCat) list = list.filter(e => e.tag === ui.evCat);
   let month = '';
   const evHtml = list.map(e => {
@@ -624,15 +621,10 @@ function viewPersonal() {
       <div class="main"><div class="title">${esc(e.title)} ${urg}</div><div class="meta"><span class="tag ktag">${esc(e.tag)}</span>${esc([e.time && fmtTime(e.time) + (e.endTime ? '–' + fmtTime(e.endTime) : ''), e.sub].filter(Boolean).join(' · '))}</div></div>
       ${checkBox(e)}${editBtn(e)}</li>`;
   }).join('');
-  return `${pageHead('Events', `${list.length} ${ui.evFilter === 'past' ? 'past' : ui.evFilter === 'all' ? '' : 'upcoming'} event${list.length === 1 ? '' : 's'} · tasks are in <a href="#" data-act="goto" data-v="todo">To-do</a>`,
-      `<button class="btn" data-act="new" data-kind="deadline">+ Deadline</button><button class="btn primary" data-act="new" data-kind="event">+ Event</button>`)}
-  <div>
-    <div class="card"><div class="card-head"><h2>Events &amp; deadlines</h2></div>
-      <div class="toolbar"><div class="seg">${[['upcoming', 'Upcoming'], ['past', 'Past'], ['all', 'All']].map(([k, l]) => `<button class="${ui.evFilter === k ? 'on' : ''}" data-act="evFilter" data-v="${k}">${l}</button>`).join('')}</div>
-        <div class="catchips"><button class="cchip ${!ui.evCat ? 'on' : ''}" data-act="evCat" data-v="">All</button>${Object.entries(CATS).map(([c, col]) => `<button class="cchip ${ui.evCat === c ? 'on' : ''}" style="--c:${col}" data-act="evCat" data-v="${c}">${c}</button>`).join('')}</div></div>
-      ${evHtml ? `<ul class="evtiles">${evHtml}</ul>` : '<div class="empty">Nothing here yet.</div>'}</div>
-  </div>`;
+  return `<div class="catchips">${[['', 'All'], ...Object.entries(CATS).map(([c]) => [c, c])].map(([c, l]) => `<button class="cchip ${(ui.evCat || '') === c ? 'on' : ''}" ${c ? `style="--c:${CATS[c]}"` : ''} data-act="evCat" data-v="${c}">${l}</button>`).join('')}</div>
+    ${evHtml ? `<ul class="evtiles">${evHtml}</ul>` : `<div class="empty">${mode === 'past' ? 'No past events.' : 'Nothing coming up.'}</div>`}`;
 }
+const upcomingEventCount = () => { const t = today(), seen = new Set(); return agenda(t, addDays(t, 365)).filter(e => e.kind === 'event' && !seen.has(e.id) && seen.add(e.id)).length; };
 
 
 // ---------- missed info (email summary) ----------
@@ -1864,7 +1856,7 @@ document.addEventListener('submit', e => {
 });
 document.addEventListener('keydown', e => {
   if (modal.open || e.ctrlKey || e.metaKey || e.altKey || /INPUT|TEXTAREA|SELECT/.test(document.activeElement.tagName)) return;
-  const keys = { '1': 'today', '2': 'calendar', '3': 'study', '4': 'training', '5': 'arena', '6': 'friends', '7': 'personal', '8': 'todo', '9': 'settings' };
+  const keys = { '1': 'today', '2': 'calendar', '3': 'study', '4': 'training', '5': 'arena', '6': 'friends', '7': 'todo', '8': 'todo', '9': 'settings' };
   if (keys[e.key]) { view = keys[e.key]; render(); }
 });
 window.addEventListener('beforeunload', e => { if (dirty) { flush(); e.preventDefault(); } });

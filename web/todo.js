@@ -41,9 +41,9 @@ function todoRow(x) {
 }
 
 function viewTodo() {
-  const t = today(), f = ui.todoFilter || 'all', q = (ui.todoQ || '').toLowerCase();
+  const t = today(), f = ui.todoFilter || 'all', q = (ui.todoQ || '').toLowerCase(), ev = f.startsWith('ev:');
   const open = D.todos.filter(x => !x.done);
-  const count = k => D.todos.filter(x => todoMatches(x, k, t)).length;
+  const count = k => k === 'ev:up' ? upcomingEventCount() : k === 'ev:past' ? 0 : D.todos.filter(x => todoMatches(x, k, t)).length;
   let list = D.todos.filter(x => todoMatches(x, f, t) && (!q || (x.text + ' ' + (x.notes || '') + ' ' + (x.list || '')).toLowerCase().includes(q)));
   const byPri = (a, b) => (+b.pri || 0) - (+a.pri || 0);
   list.sort((a, b) => (a.due || '9999').localeCompare(b.due || '9999') || byPri(a, b));
@@ -57,19 +57,20 @@ function viewTodo() {
   }).join('');
   const side = (k, icon, label) => `<button class="todo-nav ${f === k ? 'on' : ''}" data-todo="filter" data-v="${esc(k)}"><span>${icon}</span><b>${esc(label)}</b><i>${count(k) || ''}</i></button>`;
   const overdue = open.filter(x => x.due && x.due < t).length, dueToday = open.filter(x => x.due === t).length;
-  const title = { all: 'All tasks', today: 'Today', week: 'Next 7 days', nodate: 'No due date', high: 'High priority', done: 'Completed' }[f] || f.slice(2);
+  const title = { 'ev:up': 'Upcoming events', 'ev:past': 'Past events', all: 'All tasks', today: 'Today', week: 'Next 7 days', nodate: 'No due date', high: 'High priority', done: 'Completed' }[f] || f.slice(2);
   const opts = (arr, v) => arr.map(o => { const [val, lab] = Array.isArray(o) ? o : [o, o]; return `<option value="${esc(val)}" ${String(val) === String(v) ? 'selected' : ''}>${esc(lab)}</option>`; }).join('');
   const defList = f.startsWith('l:') ? f.slice(2) : (ui.todoLastList || '');
   return `${pageHead('To-do', `${open.length} open task${open.length === 1 ? '' : 's'}${dueToday ? ` · ${dueToday} due today` : ''}${overdue ? ` · <b class="red-text">${overdue} overdue</b>` : ''}`,
-      `<button class="btn primary" data-act="new" data-kind="todo">+ Task</button>`)}
+      `<button class="btn" data-act="new" data-kind="event">+ Event</button><button class="btn" data-act="new" data-kind="deadline">+ Deadline</button><button class="btn primary" data-act="new" data-kind="todo">+ Task</button>`)}
   <div class="todo-page">
     <aside class="card todo-side">
       ${side('all', '📋', 'All')}${side('today', '☀', 'Today')}${side('week', '📅', 'Next 7 days')}${side('nodate', '∞', 'No due date')}${side('high', '❗', 'High priority')}
       <div class="todo-sidehead">Lists</div>
       ${todoLists().map(l => side('l:' + l, '•', l)).join('')}
       <div class="todo-sidehead"></div>${side('done', '✓', 'Completed')}
+      <div class="todo-sidehead">Events</div>${side('ev:up', '📆', 'Upcoming')}${side('ev:past', '🗓', 'Past')}
     </aside>
-    <section class="card todo-main">
+    <section class="card todo-main">${ev ? `<div class="card-head"><h2>${title}</h2></div>${eventsListHtml(f === 'ev:past' ? 'past' : 'up')}` : `
       <div class="card-head"><h2>${esc(title)}</h2><input type="text" id="todoQ" placeholder="Search tasks" value="${esc(ui.todoQ || '')}" data-todo-search style="max-width:220px"></div>
       <form class="todo-add" data-form="todoAdd">
         <input type="text" name="text" placeholder="＋ Add a task and press Enter" maxlength="300" autocomplete="off">
@@ -78,7 +79,7 @@ function viewTodo() {
         <select name="pri" title="Priority">${opts(TODO_PRI.map(([v, l]) => [v, l === 'None' ? 'Priority' : l]), f === 'high' ? '3' : '0')}</select>
         <button class="btn primary">Add</button></form>
       ${groups || `<div class="empty">${q ? 'No tasks match that search.' : f === 'done' ? 'Nothing completed yet.' : 'No open tasks here. 🎉'}</div>`}
-      ${f === 'done' && list.length ? '<button class="btn small" data-act="clearDone" style="margin-top:10px">Clear completed</button>' : ''}
+      ${f === 'done' && list.length ? '<button class="btn small" data-act="clearDone" style="margin-top:10px">Clear completed</button>' : ''}`}
     </section>
   </div>`;
 }
