@@ -2182,3 +2182,10 @@ main:has(> .calwrap), main:has(.calwrap) { max-width: 1680px; }
 .xb-acts .iconbtn { padding: 0 5px; font-size: .85rem; }
 .xadd { border: 1px dashed var(--border); background: none; color: var(--muted); border-radius: 8px; padding: 4px; cursor: pointer; }
 .xadd:hover { border-color: var(--accent); color: var(--accent); }
+/* posture check popup (only while a focus timer runs) */
+#posture { position: fixed; left: 50%; top: 64px; transform: translateX(-50%); z-index: 300; display: flex; gap: 12px; align-items: flex-start; max-width: min(420px, calc(100vw - 32px));
+  background: var(--panel); color: var(--text); border: 1px solid var(--border, rgba(127,127,127,.25)); border-radius: 14px; padding: 12px 14px; box-shadow: 0 10px 30px rgba(0,0,0,.25); animation: postureIn .35s ease; }
+#posture .pic { font-size: 30px; line-height: 1; }
+#posture .pmain { display: flex; flex-direction: column; gap: 4px; font-size: 14px; }
+#posture .row { margin-top: 6px; gap: 6px; }
+@keyframes postureIn { from { opacity: 0; transform: translate(-50%, -12px); } }

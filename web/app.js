@@ -836,6 +836,8 @@ function viewSettings() {
       <div class="field"><label>Your name (for the greeting)</label><input type="text" data-setting="name" value="${esc(D.settings.name)}" maxlength="40"></div>
       <label class="row"><input type="checkbox" data-setting="sound" ${D.settings.sound ? 'checked' : ''}> Play a sound with reminders</label>
       <label class="row"><input type="checkbox" data-setting="bootIntro" ${D.settings.bootIntro !== false ? 'checked' : ''}> Show the intro when the app opens</label>
+      <div class="row"><label class="row"><input type="checkbox" data-setting="posture" ${D.settings.posture !== false ? 'checked' : ''}> Posture check while studying, every</label>
+        <select data-setting="postureMins">${[10, 15, 20, 30, 45].map(m => `<option value="${m}" ${(+D.settings.postureMins || 20) === m ? 'selected' : ''}>${m} min</option>`).join('')}</select></div>
       <div class="frow" style="margin-top:10px"><div class="field"><label>Year level</label><input type="number" min="1" max="12" data-setting="yearLevel" value="${esc(D.settings.yearLevel || 11)}"></div>
         <div class="field"><label>House</label><input type="text" data-setting="house" value="${esc(D.settings.house || '')}" placeholder="Your house"></div>
         <div class="field"><label>Other houses (comma separated)</label><input type="text" data-setting="houses" value="${esc(D.settings.houses || '')}" placeholder="Hides notices meant for them"></div></div>
