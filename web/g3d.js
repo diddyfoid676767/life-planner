@@ -39,6 +39,8 @@ function g3resize() {
 function mountGarden3D() {
   const host = document.getElementById('g3host');
   if (!host) { g3stop(); return; }
+  // what shows behind the canvas before its first frame: the sky colour, not black
+  const hr = new Date().getHours(); host.style.background = hr >= 20 || hr < 6 ? '#0b1622' : 'linear-gradient(180deg,#a5d8ff,#d8f0dc)';
   g3init();
   const moved = G3.canvas.parentNode !== host;
   if (moved) host.prepend(G3.canvas);

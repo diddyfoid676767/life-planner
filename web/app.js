@@ -846,6 +846,7 @@ function viewSettings() {
     <div class="card" data-sec="general"><h2>You</h2>
       <div class="field"><label>Your name (for the greeting)</label><input type="text" data-setting="name" value="${esc(D.settings.name)}" maxlength="40"></div>
       <label class="row"><input type="checkbox" data-setting="sound" ${D.settings.sound ? 'checked' : ''}> Play a sound with reminders</label>
+      <label class="row"><input type="checkbox" data-setting="bootIntro" ${D.settings.bootIntro !== false ? 'checked' : ''}> Show the intro when the app opens</label>
       <div class="frow" style="margin-top:10px"><div class="field"><label>Year level</label><input type="number" min="1" max="12" data-setting="yearLevel" value="${esc(D.settings.yearLevel || 11)}"></div>
         <div class="field"><label>House</label><input type="text" data-setting="house" value="${esc(D.settings.house || '')}" placeholder="Your house"></div>
         <div class="field"><label>Other houses (comma separated)</label><input type="text" data-setting="houses" value="${esc(D.settings.houses || '')}" placeholder="Hides notices meant for them"></div></div>
@@ -1819,7 +1820,7 @@ document.addEventListener('change', e => {
     return;
   }
   if (el.dataset.toggle) { toggleDone(el.dataset.toggle, el.dataset.id, el.checked); return; }
-  if (el.dataset.setting) { D.settings[el.dataset.setting] = el.type === 'checkbox' ? el.checked : el.value.trim().replace(/^"|"$/g, ''); save(); if (el.dataset.setting === 'inboxAuto' && el.checked && inboxToPlanner()) { save(); render(); } if (el.dataset.setting === 'brainfmPath') checkBrainfm().then(render); return; }
+  if (el.dataset.setting) { D.settings[el.dataset.setting] = el.type === 'checkbox' ? el.checked : el.value.trim().replace(/^"|"$/g, ''); save(); if (el.dataset.setting === 'inboxAuto' && el.checked && inboxToPlanner()) { save(); render(); } if (el.dataset.setting === 'brainfmPath') checkBrainfm().then(render); if (el.dataset.setting === 'bootIntro') try { localStorage.setItem('lpNoIntro', el.checked ? '0' : '1'); } catch { } return; }
   if (el.dataset.remdef) { const k = el.dataset.remdef; D.settings.remind[k] = [...document.querySelectorAll(`[data-remdef="${k}"]`)].filter(x => x.checked).map(x => Number(x.value)).sort((a, b) => b - a); save(); return; }
   if (el.dataset.change === 'lookColor') { setLook(el.dataset.k, el.value); return; }
   if (el.dataset.change === 'evCat') { ui.evCat = el.value; render(); }
@@ -1892,8 +1893,25 @@ async function initOnline() {
   let day = today();
   setInterval(() => { if (today() !== day) { day = today(); if (!modal.open) render(); } }, 60000);
 }
+// the boot intro: a short logo animation over the app while it loads. Any
+// click or key skips it, and Settings can turn it off.
+const bootStart = performance.now();
+function bootDone(skip) {
+  const el = document.getElementById('boot'); if (!el || el.classList.contains('out')) return;
+  const go = () => { el.classList.add('out'); setTimeout(() => el.remove(), 450); };
+  if (skip) return go();
+  const hello = document.getElementById('bootHello'), hr = new Date().getHours();
+  if (hello && D?.settings?.name) hello.textContent = `Good ${hr < 12 ? 'morning' : hr < 18 ? 'afternoon' : 'evening'}, ${D.settings.name}`;
+  setTimeout(go, Math.max(0, (matchMedia('(prefers-reduced-motion: reduce)').matches ? 300 : 2100) - (performance.now() - bootStart)));
+}
+{
+  const skip = () => bootDone(true);
+  document.getElementById('boot')?.addEventListener('pointerdown', skip);
+  addEventListener('keydown', skip, { once: true });
+  setTimeout(skip, 6000); // never stuck behind it
+}
 (async function init() {
-  if (ONLINE) return initOnline();
+  if (ONLINE) { bootDone(true); return initOnline(); }
   try {
     bootId = (await (await fetch('/api/info', { cache: 'no-store' })).json()).boot || '';
     const r = await fetch('/api/data', { cache: 'no-store' });
@@ -1904,6 +1922,8 @@ async function initOnline() {
     D = defaultData(); setOffline(true);
   }
   render();
+  try { localStorage.setItem('lpNoIntro', D.settings.bootIntro === false ? '1' : '0'); } catch { }
+  bootDone(D.settings.bootIntro === false);
   // new or empty planner: run the setup (and the tour after it)
   if (!D.settings.setupDone && !D.assessments.length && !D.sessions.length && !D.workouts.length) {
     const seed = await fetch('/api/seed', { cache: 'no-store' }).then(r => r.json()).catch(() => null);

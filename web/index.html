@@ -8,6 +8,11 @@
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
+<div id="boot" aria-hidden="true"><div class="boot-in">
+  <div class="boot-logo"><i class="boot-ring"></i><i class="boot-ring r2"></i><img src="icon.svg" alt="" width="84" height="84"></div>
+  <div class="boot-title">Life Planner</div><div class="boot-hello" id="bootHello">&nbsp;</div>
+  <div class="boot-bar"><i></i></div></div><div class="boot-skip">Click or press any key to skip</div></div>
+<script>try { if (localStorage.getItem('lpNoIntro') === '1') document.getElementById('boot').remove(); } catch (e) { }</script>
 <aside class="sidebar">
   <div class="brand"><img src="icon.svg" alt="" width="28" height="28"><span>Life Planner</span></div>
   <nav id="tabs">
