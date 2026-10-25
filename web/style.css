@@ -2161,3 +2161,24 @@ main:has(> .calwrap), main:has(.calwrap) { max-width: 1680px; }
 .synlist li > span:nth-child(2) { flex: 1; }
 .synlist li.off { opacity: .6; }
 .seasoncard { background: linear-gradient(135deg, color-mix(in srgb, #f59f00 10%, var(--panel)), var(--panel) 60%); }
+
+/* ---------- 2.22 exam timetable ---------- */
+.xboard { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(190px, 1fr); gap: 10px; overflow-x: auto; padding-bottom: 12px; align-items: start; }
+.xcol { background: var(--panel); border: 1px solid var(--border); border-radius: 14px; padding: 8px; display: flex; flex-direction: column; gap: 6px; min-height: 160px; transition: border-color .15s, background .15s; }
+.xcol.wkend { background: color-mix(in srgb, var(--accent) 4%, var(--panel)); }
+.xcol.today { border-color: var(--accent); }
+.xcol.examday { border-color: #fa5252; }
+.xcol.over { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 10%, var(--panel)); }
+.xcol-head { display: flex; justify-content: space-between; align-items: baseline; font-size: .85rem; padding: 2px 4px 4px; }
+.xexam { font-size: .78rem; font-weight: 700; padding: 6px 8px; border-radius: 8px; background: color-mix(in srgb, var(--c) 18%, var(--panel)); border-left: 4px solid #fa5252; }
+.xb { border-radius: 10px; padding: 6px 8px; background: color-mix(in srgb, var(--c) 12%, var(--panel)); border-left: 4px solid var(--c); cursor: grab; font-size: .8rem; }
+.xb.paper { box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--c) 60%, transparent); }
+.xb.done { opacity: .55; }
+.xb.dragging { opacity: .4; }
+.xb-top { display: flex; justify-content: space-between; gap: 6px; }
+.xb-top span { color: var(--muted); }
+.xb-topic { color: var(--text); margin: 2px 0; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.xb-acts { display: flex; align-items: center; gap: 2px; color: var(--muted); }
+.xb-acts .iconbtn { padding: 0 5px; font-size: .85rem; }
+.xadd { border: 1px dashed var(--border); background: none; color: var(--muted); border-radius: 8px; padding: 4px; cursor: pointer; }
+.xadd:hover { border-color: var(--accent); color: var(--accent); }

@@ -41,11 +41,13 @@ function studyTabs() {
     const dd = ex ? diffDays(t, ex.date) : null;
     return `<button class="stab ${cur === s.id ? 'on' : ''}" style="--c:${s.color}" data-act="studyTab" data-v="${s.id}"><i></i>${esc(s.name)}${dd != null ? `<span class="stab-d ${dd <= 7 ? 'soon' : ''}">${dd === 0 ? 'today' : dd + 'd'}</span>` : ''}</button>`;
   }).join('');
-  return `<div class="stabs"><button class="stab plan ${cur === 'plan' ? 'on' : ''}" data-act="studyTab" data-v="plan">📅 Plan</button>${tabs}</div>`;
+  const board = upcomingExams().length ? `<button class="stab plan ${cur === 'board' ? 'on' : ''}" data-act="studyTab" data-v="board">🗓 Exam timetable</button>` : '';
+  return `<div class="stabs"><button class="stab plan ${cur === 'plan' ? 'on' : ''}" data-act="studyTab" data-v="plan">📅 Plan</button>${board}${tabs}</div>`;
 }
 function viewStudyHub() {
+  if (ui.studyTab === 'board') return examBoard();
   if (ui.studyTab && ui.studyTab !== 'plan' && !D.subjects.some(s => s.id === ui.studyTab)) ui.studyTab = 'plan';
-  return !ui.studyTab || ui.studyTab === 'plan' ? viewStudy() : revisePage(ui.studyTab);
+  return !ui.studyTab || ui.studyTab === 'plan' ? (examAutoBuild(), viewStudy()) : revisePage(ui.studyTab);
 }
 
 // ---------- one subject ----------
