@@ -6,7 +6,19 @@ timer, a forest that grows as you study, and an arena game that levels up with
 your workouts.
 
 Everything is saved on your computer in the `data` folder next to the app.
-Nothing is uploaded anywhere.
+Nothing leaves your PC unless you turn it on: signing in to share with
+friends and battle them, or adding your own Claude API key for **Ask Claude**
+and the direct email check (those send the page or your new emails to Claude
+to answer or sort them).
+
+## Ask Claude and the email check
+
+Add your Claude API key in **Settings, App**. Then the ✦ **Ask Claude** button
+(or Ctrl+J) opens a chat that can see the page you're on. To have the planner
+read Gmail itself, add your Gmail address and a Google
+[app password](https://myaccount.google.com/apppasswords) there too: while the
+planner is open it checks every 30 minutes from 7am to 10pm and puts what
+matters into **Missed info**.
 
 ## Download
 
