@@ -2138,3 +2138,26 @@ main:has(> .calwrap), main:has(.calwrap) { max-width: 1680px; }
 .aslim-chip { font-size: .88rem; color: var(--muted); white-space: nowrap; }
 .aslim-chip b { color: var(--text); }
 .arenatabs { margin-bottom: 14px; }
+
+/* ---------- 2.22 garden extras ---------- */
+.leafbar { flex-wrap: wrap; }
+.leafx { flex-basis: 100%; display: flex; flex-wrap: wrap; gap: 6px; padding-top: 10px; margin-top: 2px; border-top: 1px dashed var(--border); }
+.lchip { display: inline-flex; align-items: center; gap: 4px; font: inherit; font-size: .82rem; font-weight: 600; padding: 4px 10px; border-radius: 999px; background: var(--panel2); color: var(--muted); border: 1px solid transparent; white-space: nowrap; }
+.lchip.btnish { cursor: pointer; }
+.lchip.btnish:disabled { cursor: default; opacity: .75; }
+.lchip.ready { background: color-mix(in srgb, #40c057 16%, var(--panel)); border-color: color-mix(in srgb, #40c057 45%, var(--border)); color: var(--text); }
+.lchip.ready:hover { border-color: #40c057; }
+.lchip.hot { background: linear-gradient(90deg, #ffe066, #ffa94d); color: #5c3a00; animation: pulse 1.6s ease-in-out infinite; }
+#goldleaf { position: absolute; z-index: 50; font-size: 2.4rem; border: 0; background: radial-gradient(circle, rgba(255, 224, 102, .75), rgba(255, 224, 102, 0) 70%); border-radius: 50%; width: 72px; height: 72px; cursor: pointer; filter: drop-shadow(0 0 12px #ffd43b) saturate(1.6) hue-rotate(10deg); animation: goldfloat 2.4s ease-in-out infinite, goldin .5s cubic-bezier(.2, 1.6, .4, 1); transition: opacity .6s, transform .6s; }
+#goldleaf.gone { opacity: 0; transform: scale(.4); }
+@keyframes goldfloat { 0%, 100% { translate: 0 0; rotate: -10deg; } 50% { translate: 0 -14px; rotate: 12deg; } }
+@keyframes goldin { from { scale: 0; } to { scale: 1; } }
+.bestval { display: inline-block; font-size: .72rem; font-weight: 800; color: #b07800; background: #fff3bf; border-radius: 999px; padding: 2px 8px; margin: 0 6px 4px 0; }
+.msubs, .synlist { list-style: none; padding: 0; margin: 0; }
+.msubs li, .synlist li { display: flex; align-items: center; gap: 10px; padding: 6px 0; border-bottom: 1px solid var(--border); }
+.msubs li:last-child, .synlist li:last-child { border-bottom: 0; }
+.msubs li i { width: 10px; height: 10px; border-radius: 50%; flex: none; }
+.msubs li .muted { flex: 1; }
+.synlist li > span:nth-child(2) { flex: 1; }
+.synlist li.off { opacity: .6; }
+.seasoncard { background: linear-gradient(135deg, color-mix(in srgb, #f59f00 10%, var(--panel)), var(--panel) 60%); }

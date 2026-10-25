@@ -238,7 +238,12 @@ function buyLeafUpgrade(id) {
   toast(`${u.icon} ${u.name}${u.prices.length > 1 ? ` level ${lvl + 1}` : ''}`, u.desc);
 }
 const spendLeaves = p => { if (leaves() < p) return false; leafState().spent += p; return true; };
-const fmtLeaf = n => n >= 1e6 ? (n / 1e6).toFixed(n >= 1e7 ? 0 : 1) + 'M' : n >= 10000 ? (n / 1000).toFixed(n >= 1e5 ? 0 : 1) + 'k' : String(Math.round(n));
+function fmtLeaf(n) {
+  n = Math.round(+n || 0);
+  if (n < 10000) return String(n);
+  const u = [[1e15, 'Qa'], [1e12, 'T'], [1e9, 'B'], [1e6, 'M'], [1e3, 'k']].find(([v]) => n >= v * .9995);
+  const x = n / u[0]; return (x >= 100 ? x.toFixed(0) : x >= 10 ? x.toFixed(1).replace(/\.0$/, '') : x.toFixed(2).replace(/\.?0+$/, '')) + u[1];
+}
 
 function leafBar() {
   const p = pendingLeaves(), cap = basketCap(), rate = leafRate(), pct = cap ? Math.min(100, Math.round(p / cap * 100)) : 0;
