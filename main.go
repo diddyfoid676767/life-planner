@@ -103,6 +103,9 @@ func main() {
 	mux.HandleFunc("/api/browser/activities", handleBrowserActivities)
 	mux.HandleFunc("/api/browser/health", handleBrowserHealth)
 	mux.HandleFunc("/api/claudelink", handleClaudeLink)
+	mux.HandleFunc("/api/ai", handleAI)
+	mux.HandleFunc("/api/ai/chat", handleAIChat)
+	mux.HandleFunc("/api/mail", handleMail)
 	mux.HandleFunc("/api/account", handleAccount)
 	mux.HandleFunc("/api/account/profile", handleAccountProfile)
 	mux.HandleFunc("/api/account/people", handleAccountPeople)
@@ -169,6 +172,7 @@ func main() {
 	go watchIdle()
 	go cleanupOld()
 	go watchGitHub()
+	go mailLoop()
 	if !restarted {
 		go func() { time.Sleep(200 * time.Millisecond); openBrowser(url) }()
 	}

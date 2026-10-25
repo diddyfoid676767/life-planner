@@ -731,6 +731,10 @@ async function checkClaudeLink() {
 }
 async function inboxCheckNow() {
   if (claudeLinked === null) await checkClaudeLink();
+  // the planner's own check runs first; the hourly Claude task is still asked too when it's linked
+  const direct = await mailCheckDirect(false);
+  if (direct && claudeLinked) { fetch('/api/claudelink', { method: 'POST' }).catch(() => { }); return; }
+  if (direct) return;
   if (claudeLinked) {
     try {
       const r = await fetch('/api/claudelink', { method: 'POST' });
@@ -789,7 +793,8 @@ function viewInbox() {
     ${all.length ? `<div class="catchips" style="margin-bottom:12px"><button class="cchip ${!ui.inboxCat ? 'on' : ''}" data-act="inboxCat" data-v="">All <b>${all.length}</b></button>${cats.map(c => { const n = all.filter(x => (x.category || 'FYI') === c).length; return n ? `<button class="cchip ${ui.inboxCat === c ? 'on' : ''}" style="--c:${(INBOX_STYLE[c] || ['#868e96'])[0]}" data-act="inboxCat" data-v="${esc(c)}">${(INBOX_STYLE[c] || ['', '✉️'])[1]} ${esc(c)} <b>${n}</b></button>` : ''; }).join('')}</div>` : ''}
     ${items.length ? groups.map(([h, list]) => `${h}<ul class="mailcards">${list.map(card).join('')}</ul>`).join('') : `<div class="card emptystate"><svg viewBox="0 0 120 90" width="140" aria-hidden="true"><rect x="10" y="18" width="100" height="64" rx="10" fill="color-mix(in srgb, var(--accent) 14%, transparent)"/><path d="M14 26 L60 58 L106 26" stroke="var(--accent)" stroke-width="5" fill="none" stroke-linecap="round" stroke-linejoin="round"/><circle cx="98" cy="20" r="12" fill="#40c057"/><path d="M92 20 l4 4 l8 -8" stroke="#fff" stroke-width="3" fill="none" stroke-linecap="round"/></svg>
       <h2>${ib ? 'You\'re all caught up' : 'No summary yet'}</h2><p class="muted">${ib ? 'Nothing you missed. Nice.' : 'Claude checks your email every hour (7am to 10pm) while the Claude app is open on this PC, and puts a summary here.'}</p></div>`}
-    <p class="muted small-text">Claude checks your Gmail, school Outlook and Teams notifications every hour (7am to 10pm) while the Claude app is open on this PC. For an instant check, use <b>Check email now</b>.</p>`;
+    ${mailStatusLine()}
+    <p class="muted small-text">Claude checks your Gmail, school Outlook and Teams notifications every hour (7am to 10pm) while the Claude app is open on this PC${AI.mail?.configured ? ', and the planner checks Gmail itself every 30 minutes while it\'s open' : ''}. For an instant check, use <b>Check email now</b>.</p>`;
 }
 
 
@@ -875,6 +880,7 @@ function viewSettings() {
         <p class="small-text">To move this PC's planner online: click <b>Export backup</b> above, then in the online version go to Settings → <b>Import backup</b>.</p>
         <label class="row small-text"><input type="checkbox" data-setting="useOnline" ${D.settings.useOnline ? 'checked' : ''}> Open the online version when I start LifePlanner.exe (so PC and phone always match)</label>`}
     </div>
+    ${aiSettingsCard()}
     <div class="card" data-sec="app" style="${ONLINE ? 'display:none' : ''}"><h2>App</h2>
       <p class="small-text"><b id="verText">Version ${esc(appVersion)}</b> <button class="btn small" data-act="checkUpdateNow">Check for updates</button> · New versions download by themselves from GitHub. You can also put a LifePlanner zip in your Downloads folder.</p>
       <label class="row small-text"><input type="checkbox" data-setting="autoUpdate" ${D.settings.autoUpdate !== false ? 'checked' : ''}> Install updates automatically (never during a focus timer)</label>
@@ -1924,6 +1930,7 @@ function bootDone(skip) {
   checkBrainfm().then(() => { if (view === 'settings' && !modal.open) render(); });
   checkTempFolder();
   checkClaudeLink();
+  aiLoad().then(() => { aiFab(); if (view === 'inbox' || view === 'settings') render(); });
   loadAccount().then(a => { if (a.signedIn) { publishMe(true); refreshFriends(true); } if (view === 'settings' && !modal.open) render(); });
   checkUpdate();
   setInterval(checkUpdate, 60000); // cheap local check, so a downloaded update installs within a minute
