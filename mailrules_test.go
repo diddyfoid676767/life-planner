@@ -9,12 +9,12 @@ func TestFindDate(t *testing.T) {
 	now := time.Date(2026, 10, 26, 9, 0, 0, 0, time.Local) // a Monday
 	cases := map[string]string{
 		"The SAC is on Thursday 29 Oct at 9:15am": "2026-10-29",
-		"Due by Friday":                            "2026-10-30",
-		"Please return the form by 3/11":           "2026-11-03",
-		"Excursion on November 12th":               "2026-11-12",
-		"Hand in tomorrow":                         "2026-10-27",
-		"Camp starts 5 Jan":                        "2027-01-05",
-		"Last year's 12 March event":               "2027-03-12",
+		"Due by Friday":                  "2026-10-30",
+		"Please return the form by 3/11": "2026-11-03",
+		"Excursion on November 12th":     "2026-11-12",
+		"Hand in tomorrow":               "2026-10-27",
+		"Camp starts 5 Jan":              "2027-01-05",
+		"Last year's 12 March event":     "2027-03-12",
 	}
 	for in, want := range cases {
 		if got, _ := findDate(in, now); got != want {
