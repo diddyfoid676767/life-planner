@@ -186,7 +186,7 @@ function toggleDone(kind, id, val) {
   const x = find(kind, id); if (!x) return;
   x.done = val; save();
   if (val && x.fromEmail && D.inboxSeen[x.fromEmail] !== 'dismissed') inboxDismiss(x.fromEmail); // done with it, so the email is crossed off too
-  const row = document.querySelector(`[data-toggle="${kind}"][data-id="${id}"]`)?.closest('.item, tr');
+  const row = document.querySelector(`[data-toggle="${kind}"][data-id="${id}"]`)?.closest('.item, .todo-item, tr');
   if (val && row) { row.classList.add('ticked'); setTimeout(render, 380); } else render();
 }
 
@@ -281,7 +281,7 @@ function render() {
   const v = $('#view');
   const y = window.scrollY;
   if (v.dataset.view !== view) { v.classList.remove('enter'); void v.offsetWidth; v.classList.add('enter'); v.dataset.view = view; }
-  v.innerHTML = ({ today: viewToday, calendar: viewCalendar, study: viewStudyHub, forest: viewForest, training: viewTraining, arena: viewArena, friends: viewFriends, school: viewSchool, health: () => { view = 'training'; ui.bodyPage = 'health'; return viewTraining(); }, personal: viewPersonal, inbox: viewInbox, settings: viewSettings })[view]();
+  v.innerHTML = ({ today: viewToday, calendar: viewCalendar, study: viewStudyHub, forest: viewForest, training: viewTraining, arena: viewArena, friends: viewFriends, school: viewSchool, health: () => { view = 'training'; ui.bodyPage = 'health'; return viewTraining(); }, personal: viewPersonal, todo: viewTodo, inbox: viewInbox, settings: viewSettings })[view]();
   updateInboxBadge();
   gameFeedback();
   window.scrollTo(0, y);
@@ -313,7 +313,6 @@ function viewToday() {
 
   const todays = agenda(t, t), items = isToday ? todays : agenda(d, d);
   const overdue = agenda(addDays(t, -21), addDays(t, -1)).filter(e => e.checkable && !e.done);
-  const allTodos = D.todos.filter(x => !x.done).sort((a, b) => (a.due || '9999').localeCompare(b.due || '9999'));
   const checkable = todays.filter(e => e.checkable), doneN = checkable.filter(e => e.done).length;
   const dCheck = items.filter(e => e.checkable), dDone = dCheck.filter(e => e.done).length;
   const studied = D.focusLogs.filter(l => l.date === t).reduce((a, l) => a + l.mins, 0);
@@ -348,7 +347,6 @@ function viewToday() {
       <span class="dbar"><i style="width:${ck.length ? dn / ck.length * 100 : 0}%"></i></span></button>`;
   }).join('');
   const after = d < t ? t : d, soonDays = [1, 2, 3].map(k => addDays(after, k)), soon = agenda(soonDays[0], soonDays[2]);
-  const todoList = allTodos.slice(0, 12);
   return `<div class="tpage">${welcome}
   <div class="hero slim thero ${tod}">
     <div class="hero-text"><div class="hero-date">${fullDate(t)} ${now.getFullYear()}</div>
@@ -365,10 +363,7 @@ function viewToday() {
     <div class="card tday"><div class="card-head"><h2>${isToday ? 'Today' : esc(fullDate(d))}</h2><span class="muted small-text">${isToday ? '' : relDays(diffDays(t, d)) + ' · '}${dDone}/${dCheck.length} done${studyMins ? ` · 📚 ${fmtMins(studyMins)}` : ''}${trainMins ? ` · 🏃 ${fmtMins(trainMins)}` : ''}</span></div>
       <div class="tscroll">${timelineHtml(items, { now: isToday, notes: true, empty: isToday ? 'Nothing on today. Use Quick add or the buttons below.' : 'Nothing planned for this day yet.' })}</div>
       <div class="addrow">${addMenu(d)}</div></div>
-    <div class="card ttasks"><div class="card-head"><h2>Tasks</h2><span class="muted small-text">${allTodos.length} open</span>${allTodos.length > todoList.length ? `<button class="btn small" data-act="goto" data-v="personal">All →</button>` : ''}</div>
-      <form class="row" data-form="quickTodo" style="margin-bottom:8px"><input type="text" name="text" placeholder="＋ Add a task and press Enter" style="flex:1" maxlength="300"><input type="date" name="due" style="width:auto" title="Due date (optional)"></form>
-      <div class="tscroll">${todoList.length ? `<ul class="list tasks compact">${todoList.map(todoHtml).join('')}</ul>` : '<div class="empty">No open tasks. 🎉</div>'}
-      ${overdue.length ? `<details class="overdue"><summary><b>⚠ ${overdue.length} overdue or missed</b> <span class="muted small-text">last 3 weeks</span></summary>${listHtml(overdue, '', { showDate: true, move: true })}</details>` : ''}</div></div>
+    ${todoTodayCard(overdue.length ? `<details class="overdue"><summary><b>⚠ ${overdue.length} overdue or missed</b> <span class="muted small-text">last 3 weeks</span></summary>${listHtml(overdue, '', { showDate: true, move: true })}</details>` : '')}
     <div class="tside">${examEveCard()}
       <div class="card todaynext">${upItem('📝', 'Next SAC / exam', nextA, nextA ? `${subj(nextA.subjectId).name}: ${nextA.title}` : '', nextA ? subj(nextA.subjectId).color : 'var(--accent)')}${upItem('⏰', 'Next deadline', nextD, nextD?.title, CATS.Deadline)}${upItem('🏁', 'Next race / event', nextT, nextT?.name, TEVENT_COLOR)}</div>
       <div class="card tsoon"><div class="card-head"><h2>Coming up</h2><button class="btn small" data-act="goto" data-v="calendar">Calendar →</button></div>
@@ -629,26 +624,13 @@ function viewPersonal() {
       <div class="main"><div class="title">${esc(e.title)} ${urg}</div><div class="meta"><span class="tag ktag">${esc(e.tag)}</span>${esc([e.time && fmtTime(e.time) + (e.endTime ? '–' + fmtTime(e.endTime) : ''), e.sub].filter(Boolean).join(' · '))}</div></div>
       ${checkBox(e)}${editBtn(e)}</li>`;
   }).join('');
-  const open = D.todos.filter(x => !x.done);
-  const groupsDef = [
-    ['⚠ Overdue', x => x.due && x.due < t], ['Today', x => x.due === t], ['Tomorrow', x => x.due === addDays(t, 1)],
-    ['This week', x => x.due && x.due > addDays(t, 1) && x.due <= addDays(t, 7)], ['Later', x => x.due && x.due > addDays(t, 7)], ['No due date', x => !x.due],
-  ];
-  const sorted = open.slice().sort((a, b) => (a.due || '9999').localeCompare(b.due || '9999'));
-  const groups = groupsDef.map(([label, fn]) => { const xs = sorted.filter(fn); return xs.length ? `<div class="tgroup"><div class="tg-head">${label} <span>${xs.length}</span></div><ul class="list tasks">${xs.map(todoHtml).join('')}</ul></div>` : ''; }).join('');
-  const doneList = ui.showDoneTodos ? D.todos.filter(x => x.done) : [];
-  return `${pageHead('Events &amp; Tasks', `${list.length} ${ui.evFilter === 'past' ? 'past' : ui.evFilter === 'all' ? '' : 'upcoming'} event${list.length === 1 ? '' : 's'} · ${open.length} open task${open.length === 1 ? '' : 's'}`,
+  return `${pageHead('Events', `${list.length} ${ui.evFilter === 'past' ? 'past' : ui.evFilter === 'all' ? '' : 'upcoming'} event${list.length === 1 ? '' : 's'} · tasks are in <a href="#" data-act="goto" data-v="todo">To-do</a>`,
       `<button class="btn" data-act="new" data-kind="deadline">+ Deadline</button><button class="btn primary" data-act="new" data-kind="event">+ Event</button>`)}
-  <div class="grid g2">
+  <div>
     <div class="card"><div class="card-head"><h2>Events &amp; deadlines</h2></div>
       <div class="toolbar"><div class="seg">${[['upcoming', 'Upcoming'], ['past', 'Past'], ['all', 'All']].map(([k, l]) => `<button class="${ui.evFilter === k ? 'on' : ''}" data-act="evFilter" data-v="${k}">${l}</button>`).join('')}</div>
         <div class="catchips"><button class="cchip ${!ui.evCat ? 'on' : ''}" data-act="evCat" data-v="">All</button>${Object.entries(CATS).map(([c, col]) => `<button class="cchip ${ui.evCat === c ? 'on' : ''}" style="--c:${col}" data-act="evCat" data-v="${c}">${c}</button>`).join('')}</div></div>
       ${evHtml ? `<ul class="evtiles">${evHtml}</ul>` : '<div class="empty">Nothing here yet.</div>'}</div>
-    <div class="card"><div class="card-head"><h2>Tasks</h2><label class="small-text muted"><input type="checkbox" data-change="showDoneTodos" ${ui.showDoneTodos ? 'checked' : ''}> show completed</label></div>
-      <form class="row" data-form="quickTodo" style="margin-bottom:10px"><input type="text" name="text" placeholder="Add a task and press Enter" style="flex:1" maxlength="300"><input type="date" name="due" style="width:auto" title="Due date (optional)"><button class="btn primary">Add</button></form>
-      ${groups || '<div class="empty">No open tasks. 🎉</div>'}
-      ${doneList.length ? `<div class="tgroup"><div class="tg-head">Completed <span>${doneList.length}</span></div><ul class="list tasks">${doneList.map(todoHtml).join('')}</ul></div>` : ''}
-      ${D.todos.some(x => x.done) ? '<button class="btn small" data-act="clearDone" style="margin-top:10px">Clear completed</button>' : ''}</div>
   </div>`;
 }
 
@@ -1101,9 +1083,10 @@ const editors = {
     if (!id && pre.fill) Object.assign(t, pre.fill);
     showForm({
       title: id ? 'Edit task' : 'Add task',
-      fields: [{ key: 'text', label: 'Task', value: t.text, required: true }, { key: 'due', label: 'Due date (optional)', type: 'date', value: t.due },
+      fields: [{ key: 'text', label: 'Task', value: t.text, required: true }, { type: 'row', fields: [{ key: 'due', label: 'Due date (optional)', type: 'date', value: t.due },
+          { key: 'list', label: 'List', type: 'select', options: [['', 'No list'], ...todoLists()], value: t.list || '' }, { key: 'pri', label: 'Priority', type: 'select', options: TODO_PRI, value: String(t.pri || 0) }] },
         { key: 'remind', label: 'Remind me (needs a due date)', type: 'remind', value: t.remind }, notesF(t.notes), { key: 'done', label: 'Done', type: 'bool', value: t.done }],
-      onSave: v => upsert('todos', id, v),
+      onSave: v => upsert('todos', id, { ...v, pri: +v.pri || 0 }),
       onDelete: id && (() => { remove('todos', id); }),
     });
   },
@@ -1820,7 +1803,7 @@ document.addEventListener('click', e => {
     case 'inboxDismiss': inboxDismiss(id); break;
     case 'inboxCheck': inboxCheckNow(); break;
     case 'inboxRead': for (const x of D.inbox?.items || []) if (!D.inboxSeen[x.id]) D.inboxSeen[x.id] = 'read'; save(); render(); break;
-    case 'inboxTask': { const x = D.inbox.items.find(i => i.id === id); D.inboxAdded = D.inboxAdded || {}; D.inboxAdded[id] = 't'; D.todos.push({ id: uid(), text: x.subject + (x.from ? ' (' + x.from + ')' : ''), due: x.due, done: false, notes: x.summary || '', remind: D.settings.remind.todo }); D.inboxSeen[id] = D.inboxSeen[id] || 'read'; save(); render(); toast('Added to tasks', x.subject); break; }
+    case 'inboxTask': { const x = D.inbox.items.find(i => i.id === id); D.inboxAdded = D.inboxAdded || {}; D.inboxAdded[id] = 't'; D.todos.push({ id: uid(), text: x.subject + (x.from ? ' (' + x.from + ')' : ''), due: x.due, done: false, notes: x.summary || '', remind: D.settings.remind.todo }); D.inboxSeen[id] = D.inboxSeen[id] || 'read'; save(); render(); toast('Added to To-do', x.subject); break; }
     case 'quit': if (confirm('Quit the planner? Your data is saved.')) { flush().finally(() => fetch('/api/quit', { method: 'POST' }).catch(() => { }).finally(() => { document.body.innerHTML = '<main><h1>Planner closed</h1><p>You can close this tab. Double-click LifePlanner.exe to open it again.</p></main>'; })); } break;
     case 'reset': if (prompt('This deletes ALL your planner data. Type DELETE to confirm.') === 'DELETE') { D = migrate(freshData()); save(); render(); openSetup(true); } break;
   }
@@ -1878,7 +1861,7 @@ document.addEventListener('submit', e => {
 });
 document.addEventListener('keydown', e => {
   if (modal.open || e.ctrlKey || e.metaKey || e.altKey || /INPUT|TEXTAREA|SELECT/.test(document.activeElement.tagName)) return;
-  const keys = { '1': 'today', '2': 'calendar', '3': 'study', '4': 'training', '5': 'arena', '6': 'friends', '7': 'personal', '8': 'inbox', '9': 'settings' };
+  const keys = { '1': 'today', '2': 'calendar', '3': 'study', '4': 'training', '5': 'arena', '6': 'friends', '7': 'personal', '8': 'todo', '9': 'settings' };
   if (keys[e.key]) { view = keys[e.key]; render(); }
 });
 window.addEventListener('beforeunload', e => { if (dirty) { flush(); e.preventDefault(); } });

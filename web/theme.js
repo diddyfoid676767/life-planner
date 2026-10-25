@@ -107,7 +107,10 @@ function navOrder() {
     }
     D.settings.navHeads = 1;
   }
-  return [...saved, ...NAV_BASE.filter(v => !saved.includes(v))];
+  // tabs added in an update go next to the tab they follow in the default order
+  const def = navDefault();
+  for (const v of NAV_BASE) if (!saved.includes(v)) { const prev = def[def.indexOf(v) - 1], at = saved.indexOf(prev); saved.splice(at < 0 ? saved.length : at + 1, 0, v); }
+  return saved;
 }
 // the built-in order, with its Plan / Study / Life headings
 function navDefaultFull() {
