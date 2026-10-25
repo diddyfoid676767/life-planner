@@ -321,7 +321,7 @@ function arenaPvp() {
   <div class="grid g2">
     <div class="card"><div class="card-head"><h2>🏆 Ranked ladder</h2><span class="muted small-text">you and your friends</span></div>
       ${!acct.signedIn ? `<p class="muted small-text">Log in on the Friends page to see your friends' ranks and fight their saved teams.</p><button class="btn" data-act="goto" data-v="friends">👥 Friends</button>` : ''}
-      <ol class="ladder">${rows.map((r, k) => `<li class="${r.me ? 'me' : ''}"><span class="lpos">${k + 1}</span>${safeBadge(r.av, 34)}<div class="main"><b>${esc(r.me ? 'You' : r.name)}</b><span class="muted small-text">${r.r} · ${r.w}–${r.l}</span></div>${tierChip(r.r)}
+      <ol class="pvpladder">${rows.map((r, k) => `<li class="${r.me ? 'me' : ''}"><span class="lpos">${k + 1}</span>${safeBadge(r.av, 34)}<div class="main"><b>${esc(r.me ? 'You' : r.name)}</b><span class="muted small-text">${r.r} · ${r.w}–${r.l}</span></div>${tierChip(r.r)}
         ${r.me ? '' : `<span class="lbtns">${acct.rt && !busy ? `<button class="btn small primary" data-pvp="invite" data-u="${esc(r.user)}" title="Invite them to a live battle">⚔️ Live</button>` : ''}${r.team && r.ver === PVP_VER ? `<button class="btn small" data-pvp="ghost" data-u="${esc(r.user)}" title="Fight their saved team (the computer plays it)">👻 Saved team</button>` : ''}</span>`}</li>`).join('')}</ol>
       ${noPvp.length ? `<p class="muted small-text">${noPvp.map(f => esc(f.name)).join(', ')} ${noPvp.length === 1 ? "hasn't" : "haven't"} played PvP yet.</p>` : ''}
       <p class="muted small-text">Everyone starts at ${PVP_START}. A live win against someone rated higher moves you up more. Saved teams count half, once per friend a day.</p></div>

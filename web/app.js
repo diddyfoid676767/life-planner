@@ -222,13 +222,10 @@ function groupedByDay(items, opts = {}) {
   }
   return html + '</ul>';
 }
-const addMenu = date => `<div class="row">
-  <button class="btn small" data-act="new" data-kind="session" data-date="${date || ''}">+ Study</button>
-  <button class="btn small" data-act="new" data-kind="assessment" data-date="${date || ''}">+ SAC / Exam</button>
-  <button class="btn small" data-act="new" data-kind="workout" data-date="${date || ''}">+ Workout</button>
-  <button class="btn small" data-act="new" data-kind="event" data-date="${date || ''}">+ Event</button>
-  <button class="btn small" data-act="new" data-kind="deadline" data-date="${date || ''}">+ Deadline</button>
-  <button class="btn small" data-act="new" data-kind="todo" data-date="${date || ''}">+ Task</button></div>`;
+// one "+ Add" button that opens a small menu, instead of a row of six buttons
+const ADD_KINDS = [['session', '📚', 'Study'], ['assessment', '📝', 'SAC / Exam'], ['workout', '🏃', 'Workout'], ['event', '📆', 'Event'], ['deadline', '⏰', 'Deadline'], ['todo', '✅', 'Task']];
+const addMenu = date => `<details class="addmenu"><summary class="btn small primary">+ Add</summary><div class="addpop">${ADD_KINDS.map(([k, ic, l]) => `<button class="addopt" data-act="new" data-kind="${k}" data-date="${date || ''}"><span>${ic}</span>${l}</button>`).join('')}</div></details>`;
+document.addEventListener('click', e => { for (const m of document.querySelectorAll('details.addmenu[open]')) if (!m.contains(e.target) || e.target.closest('.addopt')) m.open = false; });
 
 // ---------- shared building blocks ----------
 const pageHead = (title, sub, actions = '') => `<div class="page-head"><div class="ph-text"><h1>${title}</h1>${sub ? `<div class="ph-sub">${sub}</div>` : ''}</div>${actions ? `<div class="ph-actions">${actions}</div>` : ''}</div>`;
@@ -346,16 +343,15 @@ function viewToday() {
       <span class="dots">${list.slice(0, 6).map(e => `<i style="background:${e.color}"></i>`).join('')}</span>
       <span class="dbar"><i style="width:${ck.length ? dn / ck.length * 100 : 0}%"></i></span></button>`;
   }).join('');
-  const after = d < t ? t : d, soonDays = [1, 2, 3].map(k => addDays(after, k)), soon = agenda(soonDays[0], soonDays[2]);
   return `<div class="tpage">${welcome}
   <div class="hero slim thero ${tod}">
     <div class="hero-text"><div class="hero-date">${fullDate(t)} ${now.getFullYear()}</div>
       <h1>${greet}${D.settings.name ? ', ' + esc(D.settings.name) : ''}</h1><p>${summary}</p>
       ${nowLine || unr ? `<button class="hnow" data-act="goto" data-v="school">🏫 ${nowLine}${nowLine && unr ? ' · ' : ''}${unr ? `${unr} period${unr === 1 ? '' : 's'} to rate` : ''} →</button>` : ''}</div>
     <button class="btn white thero-go" data-act="focusNew">▶ Start studying</button>
+    <div class="hero-qa">${quickAddHtml(true)}</div>
     <div class="hstats">${stat(`${doneN}/${checkable.length}`, 'ticked off', checkable.length ? doneN / checkable.length : 0)}${stat(fmtMins(studied) || '0m', `of ${fmtMins(goal)} study goal`, studied / goal)}${stat('🔥 ' + streak, 'day streak', streak / 7)}</div>
   </div>
-  ${quickAddHtml()}
   <div class="tweek"><div class="tweek-nav"><button class="btn small" data-act="dayNav" data-n="-7" title="Previous week">«</button><button class="btn small" data-act="dayNav" data-n="-1" title="Previous day">‹</button></div>
     <div class="daystrip">${strip}</div>
     <div class="tweek-nav"><button class="btn small" data-act="dayNav" data-n="1" title="Next day">›</button><button class="btn small" data-act="dayNav" data-n="7" title="Next week">»</button>${isToday ? '' : '<button class="btn small primary" data-act="dayNav" data-n="0">Today</button>'}<input type="date" value="${d}" data-change="dayPick" title="Jump to a date"></div></div>
@@ -366,8 +362,6 @@ function viewToday() {
     ${todoTodayCard(overdue.length ? `<details class="overdue"><summary><b>⚠ ${overdue.length} overdue or missed</b> <span class="muted small-text">last 3 weeks</span></summary>${listHtml(overdue, '', { showDate: true, move: true })}</details>` : '')}
     <div class="tside">${examEveCard()}
       <div class="card todaynext">${upItem('📝', 'Next SAC / exam', nextA, nextA ? `${subj(nextA.subjectId).name}: ${nextA.title}` : '', nextA ? subj(nextA.subjectId).color : 'var(--accent)')}${upItem('⏰', 'Next deadline', nextD, nextD?.title, CATS.Deadline)}${upItem('🏁', 'Next race / event', nextT, nextT?.name, TEVENT_COLOR)}</div>
-      <div class="card tsoon"><div class="card-head"><h2>Coming up</h2><button class="btn small" data-act="goto" data-v="calendar">Calendar →</button></div>
-        <div class="tscroll soon3">${soonDays.map(x => { const its = soon.filter(e => e.date === x); return `<div><button class="mini-day linkish" data-act="daySel" data-date="${x}"><b>${longDay(x)}</b> <span class="muted">${fmtDate(x)}</span></button>${its.length ? `<ul class="minis">${its.slice(0, 4).map(miniRow).join('')}</ul>${its.length > 4 ? `<button class="btn small" data-act="daySel" data-date="${x}">+${its.length - 4} more</button>` : ''}` : '<div class="muted small-text">Nothing planned</div>'}</div>`; }).join('')}</div></div>
     </div>
   </div>
   <div class="apps-row">${apps}<button class="appchip add" data-act="new" data-kind="link" data-date="Apps" title="Add a quick-open button">＋</button></div></div>`;
@@ -399,6 +393,8 @@ function legendHtml() {
   const L = [...D.subjects.map(s => [s.name, s.color]), ['Training', TRAIN_COLOR], ['Race / event', TEVENT_COLOR], ['Deadline', CATS.Deadline], ['Personal', CATS.Personal], ['Task', TODO_COLOR], ...D.feeds.filter(f => f.enabled !== false).map(f => [f.name, f.color])];
   return L.map(([n, c]) => `<span class="lg"><i style="background:${c}"></i>${esc(n)}</span>`).join('');
 }
+const CAL_WEEK = /^(term \d+\s*\|\s*)?week \d+$/i;
+const calRank = e => ({ assessment: 0, tevent: 1, event: 1, todo: 2, session: 3, workout: 3, feed: 4 })[e.kind] ?? 3;
 function viewCalendar() {
   if (!ui.calMonth) { const d = new Date(); ui.calMonth = new Date(d.getFullYear(), d.getMonth(), 1); }
   if (!ui.calSel) ui.calSel = today();
@@ -413,10 +409,11 @@ function viewCalendar() {
   const t = today();
   for (let i = 0; i < 42; i++) {
     const d = addDays(gridStart, i), dt = parseYmd(d);
-    const list = byDay[d] || [];
-    const chips = list.slice(0, 4).map(e => `<div class="chip ${e.done ? 'done' : ''}" style="--cc:${e.color}" title="${esc(e.title)}">${e.time ? fmtTime(e.time) + ' ' : ''}${esc(e.title)}</div>`).join('');
+    // school week labels sit next to the date; the important things come first
+    const all = byDay[d] || [], wkLabel = all.find(e => CAL_WEEK.test(e.title)), list = all.filter(e => !CAL_WEEK.test(e.title)).sort((a, b) => calRank(a) - calRank(b) || (a.time || '').localeCompare(b.time || ''));
+    const chips = list.slice(0, 3).map(e => `<div class="chip ${e.done ? 'done' : ''}" style="--cc:${e.color}" title="${esc((e.time ? fmtTime(e.time) + ' ' : '') + e.title)}">${esc(e.title)}</div>`).join('');
     cells += `<div class="day ${dt.getMonth() !== m.getMonth() ? 'other' : ''} ${d === t ? 'today' : ''} ${d === ui.calSel ? 'sel' : ''}" data-act="calSel" data-date="${d}">
-      <span class="num">${dt.getDate()}</span>${chips}${list.length > 4 ? `<div class="more">+${list.length - 4} more</div>` : ''}</div>`;
+      <span class="num">${dt.getDate()}${wkLabel ? `<small class="wklabel">${esc(wkLabel.title.replace(/^Term (\d+)\s*\|\s*Week (\d+)$/i, 'T$1 W$2').replace(/^Week /i, 'Wk '))}</small>` : ''}</span>${chips}${list.length > 3 ? `<div class="more">+${list.length - 3} more</div>` : ''}</div>`;
   }
   const f = ui.calFilter;
   const sel = agenda(ui.calSel, ui.calSel, ui.calFilter);
@@ -426,7 +423,7 @@ function viewCalendar() {
       <button class="btn small" data-act="new" data-kind="feed">+ Connect a calendar</button>
       <div class="seg">${['study', 'training', 'personal', 'calendars'].map(g => `<button class="${f[g] ? 'on' : ''}" data-act="calFilter" data-g="${g}">${g[0].toUpperCase() + g.slice(1)}</button>`).join('')}</div>
     </div>
-    <div class="legend">${legendHtml()}</div>
+    <details class="legendbox"><summary class="muted small-text">Colour key</summary><div class="legend">${legendHtml()}</div></details>
     <div class="calwrap">
       <div class="cal">${cells}</div>
       <div class="card calday" id="calDay"><div class="card-head"><h2>${fmtDate(ui.calSel)}</h2><span class="muted small-text">${relDays(diffDays(t, ui.calSel))} · ${sel.length} thing${sel.length === 1 ? '' : 's'}</span><span style="flex:1"></span><div class="caladd">${addMenu(ui.calSel)}</div></div>
