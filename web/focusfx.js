@@ -2,7 +2,7 @@
 /* Full-screen focus timer: a progress ring with your subject's tree growing in
    the middle. Opens when a study timer starts; "Minimise" drops back to the bar. */
 
-const FOCUS_STAGES = [[10, 'Sapling'], [25, 'Young tree'], [45, 'Full tree'], [90, 'Grand tree']];
+const FOCUS_STAGES = TREE_STAGES.slice(0, 5); // a session can grow a tree up to a grand tree
 let focusFullOpen = false, focusFullStage = null;
 
 function focusTarget(f, m) {
@@ -12,8 +12,7 @@ function focusTarget(f, m) {
 }
 function focusTreeMarkup(f, m) {
   const s = subj(f.subjectId), stage = m < 10 ? 0 : treeStage(m);
-  const lo = [0, 10, 25, 45, 90][m < 10 ? 0 : stage + 1] || 90, hi = [10, 25, 45, 90, 180][m < 10 ? 0 : stage + 1] || 180;
-  const within = Math.min(1, (m - lo) / (hi - lo));
+  const within = m < 10 ? 0 : stageProgress(m);
   const k = m < 10 ? .45 + .55 * (m / 10) : .82 + .18 * within;
   return `<svg viewBox="-48 -118 96 122" class="fftree" aria-hidden="true"><g transform="scale(${k.toFixed(3)})" style="transition:transform 1s ease">${treeG(speciesFor(f.subjectId), s.color, stage, f.startedAt)}</g></svg>`;
 }
@@ -60,7 +59,7 @@ function updateFocusFull() {
     focusFullStage = stageKey;
     const box = el.querySelector('.ff-tree');
     box.innerHTML = focusTreeMarkup(f, m);
-    if (grew) { box.classList.remove('levelup'); void box.offsetWidth; box.classList.add('levelup'); }
+    if (grew) { box.classList.remove('levelup'); void box.offsetWidth; box.classList.add('levelup'); stageSfx(m < 10 ? 0 : treeStage(m)); }
   }
   el.querySelector('.ff-actions').innerHTML = focusAskCancel
     ? `<span><b>Cancel without logging?</b> No time, coins or tree.</span><button class="btn danger" data-act="focusCancelYes">Yes, cancel it</button><button class="btn ghostlight" data-act="focusCancelNo">Keep going</button>`

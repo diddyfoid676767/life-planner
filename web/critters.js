@@ -96,7 +96,7 @@ function critterSprites() {
 
 // ---------- daily gift and milestones ----------
 const giftKey = () => 'gift:' + today();
-const giftAmount = () => Math.round((10 + Math.floor(seeded('gift' + today())() * 21) + (crit('possum') ? 10 : 0)) * (1 + .5 * upg('giftbig')));
+const giftAmount = () => Math.round((10 + Math.floor(seeded('gift' + today())() * 21) + (crit('possum') ? 10 : 0)) * (1 + .5 * upg('giftbig') + activeBuff('gift')));
 const giftReady = () => !(giftKey() in D.game.ledger);
 function claimGift() {
   if (!giftReady()) return;
@@ -140,7 +140,7 @@ function treeName(l) {
   const rnd = seeded('name' + l.id);
   return NAME_A[Math.floor(rnd() * NAME_A.length)] + ' ' + NAME_B[Math.floor(rnd() * NAME_B.length)];
 }
-const waterCoins = l => (2 + 2 * upg('can') + (crit('frog') ? 2 : 0)) * (treeBuff(l).water || 1);
+const waterCoins = l => Math.round((2 + 2 * upg('can') + (crit('frog') ? 2 : 0)) * (treeBuff(l).water || 1) * (treeSpeciesBuff(l).water || 1));
 const wateredToday = () => Object.values(D.game.trees).filter(r => r.lastWater === today()).length;
 function waterTree(id) {
   const l = D.focusLogs.find(x => x.id === id);
@@ -151,13 +151,14 @@ function waterTree(id) {
   sfx('water');
   r.lastWater = today(); r.water = (r.water || 0) + 1; delete r.wilted;
   const k = 'w:' + today(); D.game.ledger[k] = (D.game.ledger[k] || 0) + waterCoins(l);
+  if (treeSpeciesBuff(l).waterLeaf) { const L = leafState(); L.carry = (L.carry || 0) + Math.round(treeLeafRate(l)); }
   save(); return 'ok';
 }
 function treeHeight(l) {
   return ((0.6 + Math.min(l.mins, 180) / 28) * (1 + .03 * Math.min(treeRec(l.id).water || 0, 30))).toFixed(1);
 }
 function treeCardHtml(l) {
-  const s = subj(l.subjectId), r = treeRec(l.id), st = TREE_STAGES[treeStage(l.mins)][1];
+  const s = subj(l.subjectId), r = treeRec(l.id), g = treeGrowth(l), si = treeStage(g), st = TREE_STAGES[si][1], sp = speciesFor(l.subjectId);
   const start = new Date(l.start), end = new Date(start.getTime() + l.mins * 60000);
   const hm = d => fmtTime(d.toTimeString().slice(0, 5));
   const age = Math.max(0, Math.round((new Date(today()) - new Date(l.date)) / 864e5));
@@ -165,12 +166,14 @@ function treeCardHtml(l) {
   const ok = r.lastWater !== today(), left = 10 - wateredToday();
   const stat = (k, v) => `<div class="tstat"><span>${k}</span><b>${v}</b></div>`;
   return `<button class="iconbtn tc-close" data-tc="close" title="Close">✕</button>
-    <div class="tc-art" style="--c:${s.color}">${treeSvg(s.color, l.mins, 1, speciesFor(l.subjectId), 190)}${r.water ? `<span class="tc-drops">💧 ${r.water}</span>` : ''}</div>
+    <div class="tc-art" style="--c:${s.color}">${treeSvg(s.color, g, 1, sp, 190)}${r.water ? `<span class="tc-drops">💧 ${r.water}</span>` : ''}</div>
     <div class="tc-body">
       <div class="tc-name"><input type="text" id="tcName" maxlength="40" value="${esc(treeName(l))}" title="Rename this tree"><button class="tc-fav ${r.fav ? 'on' : ''}" data-tc="fav" title="${r.fav ? 'Unstar' : 'Star this tree'}">${r.fav ? '★' : '☆'}</button></div>
       <div class="tc-sub"><span class="tag" style="background:${s.color}22;color:${s.color}">${esc(s.name)}</span> ${st}</div>
       <div class="tstats">${stat("Studied", fullDate(l.date))}${stat('Time', `${hm(start)} to ${hm(end)}`)}${stat('Length', fmtMins(l.mins))}
         ${stat('Height', treeHeight(l) + ' m')}${stat('Age', age === 0 ? 'Planted today' : `${age} day${age === 1 ? '' : 's'}`)}${stat('Earned', `${sessionCoins(l)} ${COIN}`)}</div>
+      ${stageMeter(g, true)}
+      ${speciesBuffText(sp) ? `<div class="tbuff">✨ ${esc(speciesName(sp))}: <b>${esc(speciesBuffText(sp))}</b></div>` : ''}
       ${l.withered ? `<div class="tbuff bad">🥀 Withered: you left the timer ${DISTRACT_LIMIT}+ times, so it paid half coins.</div>` : r.wilted ? `<div class="tbuff bad">🥀 Wilted after a missed day (${fmtDate(r.wilted)}). Water it to bring it back.</div>` : ''}
       <div class="tbuff">${LEAF} Grows <b>${fmtLeaf(treeLeafRate(l))} leaves an hour</b>${speciesRarity(speciesFor(l.subjectId)) !== 'common' ? ` (${esc(speciesName(speciesFor(l.subjectId)))} ×${LEAF_RARITY[speciesRarity(speciesFor(l.subjectId))]})` : ''}${(new Date(today()) - new Date(r.lastWater || '2000-01-01')) / 864e5 <= 1 ? ', watered ×1.5' : '. Water it for ×1.5'}</div>
       ${sess ? `<p class="small-text muted" style="margin:8px 0 0">Study block: <b>${esc(sess.topic || '')}</b></p>` : ''}
@@ -211,22 +214,55 @@ function openTreeCard(id) {
 }
 
 // ---------- views ----------
+// stage name, a bar to the next stage, and how long until it gets there
+function stageMeter(g, big) {
+  const si = treeStage(g), last = si >= TREE_STAGES.length - 1, pct = Math.round(stageProgress(g) * 100);
+  const next = last ? '' : `${TREE_STAGES[si + 1][1]} in ${fmtGrow(TREE_STAGES[si + 1][0] - g)} of growth`;
+  return `<div class="stagemeter ${big ? 'big' : ''} s${si}"><div class="sm-top"><b>${STAGE_ICON[si]} ${TREE_STAGES[si][1]}</b><span>${big ? `${fmtGrow(g)} grown${next ? ' · ' + next : ' · fully grown'}` : last ? 'max' : pct + '%'}</span></div><div class="sm-bar"><i style="width:${pct}%"></i></div></div>`;
+}
+const fmtGrow = m => m >= 60 ? `${(m / 60).toFixed(m >= 600 ? 0 : 1)} h` : `${Math.max(1, Math.round(m))} min`;
+const RARITY_ORDER = ['legendary', 'epic', 'rare', 'common'];
 function treesView() {
-  const f = ui.treeSubj || 'all', sort = ui.treeSort || 'new';
-  let logs = D.focusLogs.filter(l => l.mins >= 10 && (f === 'all' || (f === 'fav' ? treeRec(l.id).fav : l.subjectId === f)));
-  logs = sort === 'long' ? logs.sort((a, b) => b.mins - a.mins) : sort === 'tall' ? logs.sort((a, b) => treeHeight(b) - treeHeight(a)) : logs.sort((a, b) => String(b.start).localeCompare(String(a.start)));
+  const f = ui.treeSubj || 'all', tf = ui.treeFilt || {}, sort = tf.sort || 'new';
+  const base = D.focusLogs.filter(l => l.mins >= 10 && (f === 'all' || (f === 'fav' ? treeRec(l.id).fav : l.subjectId === f)));
+  const info = new Map(base.map(l => { const sp = speciesFor(l.subjectId), g = treeGrowth(l); return [l.id, { sp, g, st: treeStage(g), rar: speciesRarity(sp) }]; }));
+  const I = l => info.get(l.id);
+  let logs = base.filter(l => {
+    const x = I(l), r = treeRec(l.id);
+    return (tf.stage == null || tf.stage === '' || x.st === +tf.stage) && (!tf.rar || x.rar === tf.rar) && (!tf.sp || x.sp === tf.sp)
+      && (!tf.water || (tf.water === 'needs' ? r.lastWater !== today() : r.lastWater === today()));
+  });
+  const by = {
+    new: (a, b) => String(b.start).localeCompare(String(a.start)), old: (a, b) => String(a.start).localeCompare(String(b.start)),
+    rarity: (a, b) => RARITY_ORDER.indexOf(I(a).rar) - RARITY_ORDER.indexOf(I(b).rar) || I(b).g - I(a).g,
+    stage: (a, b) => I(b).st - I(a).st || I(b).g - I(a).g, grown: (a, b) => I(b).g - I(a).g,
+    type: (a, b) => speciesName(I(a).sp).localeCompare(speciesName(I(b).sp)) || I(b).g - I(a).g,
+    long: (a, b) => b.mins - a.mins, tall: (a, b) => treeHeight(b) - treeHeight(a),
+  };
+  logs.sort(by[sort] || by.new);
   const chip = (v, label, color) => `<button class="cchip ${f === v ? 'on' : ''}" data-act="treeSubj" data-v="${v}" ${color ? `style="--c:${color}"` : ''}>${label}</button>`;
-  const sorts = [['new', 'Newest'], ['long', 'Longest'], ['tall', 'Tallest']].map(([v, n]) => `<button class="${sort === v ? 'on' : ''}" data-act="treeSort" data-v="${v}">${n}</button>`).join('');
+  const sel = (key, label, opts) => `<label class="tfilt"><span>${label}</span><select data-change="treeFilt" data-k="${key}">${opts.map(([v, n]) => `<option value="${esc(v)}" ${String(tf[key] ?? '') === String(v) ? 'selected' : ''}>${esc(n)}</option>`).join('')}</select></label>`;
+  const types = [...new Set(base.map(l => I(l).sp))].sort((a, b) => speciesName(a).localeCompare(speciesName(b)));
+  const sorts = [['new', 'Newest planted'], ['old', 'Oldest planted'], ['rarity', 'Rarity'], ['stage', 'Stage'], ['grown', 'Hours grown'], ['type', 'Tree type'], ['long', 'Longest session'], ['tall', 'Tallest']];
+  const nFilt = ['stage', 'rar', 'sp', 'water'].filter(k => tf[k] != null && tf[k] !== '').length;
   const left = 10 - wateredToday();
-  return `<div class="card"><div class="card-head"><h2>My trees</h2><span class="muted">${logs.length} tree${logs.length === 1 ? '' : 's'} · 💧 ${left > 0 ? `${left} waterings left today` : 'all watered for today'}</span><span style="flex:1"></span><div class="seg">${sorts}</div></div>
+  return `<div class="card"><div class="card-head"><h2>My trees</h2><span class="muted">${logs.length}${logs.length !== base.length ? ` of ${base.length}` : ''} tree${base.length === 1 ? '' : 's'} · 💧 ${left > 0 ? `${left} waterings left today` : 'all watered for today'}</span></div>
     <div class="catchips">${chip('all', 'All')}${chip('fav', '★ Starred')}${D.subjects.map(s => chip(s.id, esc(s.name), s.color)).join('')}</div>
-    ${logs.length ? `<div class="tgrid">${logs.slice(0, 120).map(l => {
-      const s = subj(l.subjectId), r = treeRec(l.id), wet = r.lastWater === today();
-      return `<button class="tcard" data-act="treeInfo" data-id="${l.id}" style="--c:${s.color}">
-        <div class="tcart">${treeSvg(s.color, l.mins, 1, speciesFor(l.subjectId), 96)}</div>
-        <b>${r.fav ? '★ ' : ''}${esc(treeName(l))}</b><span class="muted small-text">${esc(s.name)} · ${fmtMins(l.mins)}</span><span class="muted small-text">${fmtDate(l.date)}</span>
+    <div class="tfilters">${sel('sort', 'Sort by', sorts.map(([v, n]) => [v, n]))}
+      ${sel('stage', 'Stage', [['', 'Any stage'], ...TREE_STAGES.map(([, n], i) => [i, n])])}
+      ${sel('rar', 'Rarity', [['', 'Any rarity'], ...RARITY_ORDER.map(k => [k, RARITY[k].name])])}
+      ${sel('sp', 'Type', [['', 'Any type'], ...types.map(k => [k, speciesName(k)])])}
+      ${sel('water', 'Water', [['', 'Any'], ['needs', 'Needs water'], ['wet', 'Watered today']])}
+      ${nFilt ? `<button class="btn small" data-act="treeFiltClear">Clear filters</button>` : ''}</div>
+    ${logs.length ? `<div class="tgrid">${logs.slice(0, 160).map(l => {
+      const s = subj(l.subjectId), r = treeRec(l.id), wet = r.lastWater === today(), x = I(l);
+      return `<button class="tcard" data-act="treeInfo" data-id="${l.id}" style="--c:${s.color};--rc:${RARITY[x.rar].color}">
+        <div class="tcart">${treeSvg(s.color, x.g, 1, x.sp, 96)}</div>
+        <b>${r.fav ? '★ ' : ''}${esc(treeName(l))}</b><span class="muted small-text">${esc(speciesName(x.sp))}${x.rar !== 'common' ? ` · <span style="color:${RARITY[x.rar].color}">${RARITY[x.rar].name}</span>` : ''}</span>
+        ${stageMeter(x.g)}
+        <span class="muted small-text">${esc(s.name)} · ${fmtGrow(x.g)} grown · ${fmtDate(l.date)}</span>
         <span class="tcwater ${wet ? 'wet' : ''}">${wet ? '💧 watered' : '💧 needs water'}</span>${l.withered ? '<span class="tcwater bad">withered</span>' : r.wilted ? '<span class="tcwater bad">🥀 wilted</span>' : ''}</button>`;
-    }).join('')}</div>${logs.length > 120 ? '<p class="muted small-text">Showing the first 120.</p>' : ''}` : '<div class="empty">No trees here yet. Study for 10+ minutes to plant one.</div>'}</div>`;
+    }).join('')}</div>${logs.length > 160 ? '<p class="muted small-text">Showing the first 160. Use the filters to find the rest.</p>' : ''}` : `<div class="empty">${nFilt ? 'No trees match these filters.' : 'No trees here yet. Study for 10+ minutes to plant one.'}</div>`}</div>`;
 }
 function crittersView() {
   const s = forestStats(), got = CRITTERS.filter(k => crit(k.id)).length;
@@ -283,7 +319,7 @@ function openTreePicker(subjectId) {
     <h2 style="margin:0 0 4px">Choose a tree for ${esc(s.name)}</h2><p class="muted small-text" style="margin:0 0 12px">Each subject has its own tree, so trees another subject uses are greyed out. ★ trees come from boxes and the store. Rarer trees grow leaves faster, and switching changes every tree this subject has grown.</p>
     <div class="pickgrid">${all.map(x => { const rc = RARITY[x.r], tb = takenBy(x.k), ok = x.has && !tb; return `<button class="pick ${x.k === cur ? 'on' : ''} ${ok || x.k === cur ? '' : 'locked'}" ${ok ? `data-tp="${x.k}"` : 'disabled'} style="--rc:${rc.color}" ${tb ? `title="Already used by ${esc(tb.name)}"` : ''}>
       <div class="pickart">${x.has ? treeSvg(s.color, 45, 1, x.k, 70) : '<span class="pickq">?</span>'}</div><b>${x.has ? esc(x.n) : '???'}</b><span class="rar">${rc.name}</span>
-      <span class="pbuff">${x.has ? `${LEAF} ×${LEAF_RARITY[x.r]} leaves` : 'Find it in a box or the store'}</span>${x.k === cur ? '<span class="tag green">Current</span>' : tb && x.has ? `<span class="tag">Used by ${esc(tb.name)}</span>` : ''}</button>`; }).join('')}</div></div>`;
+      <span class="pbuff">${x.has ? `${LEAF} ×${LEAF_RARITY[x.r]} leaves${speciesBuffText(x.k) ? `<br>✨ ${esc(speciesBuffText(x.k))}` : ''}` : speciesBuffText(x.k) ? `✨ ${esc(speciesBuffText(x.k))}<br><span class="muted">Find it in a box or the store</span>` : 'Find it in a box or the store'}</span>${x.k === cur ? '<span class="tag green">Current</span>' : tb && x.has ? `<span class="tag">Used by ${esc(tb.name)}</span>` : ''}</button>`; }).join('')}</div></div>`;
   document.body.appendChild(ov);
   const close = () => { ov.remove(); document.removeEventListener('keydown', key); };
   const key = e => { if (e.key === 'Escape') close(); };

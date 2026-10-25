@@ -79,6 +79,18 @@ const TYPE_SND = {
   legend: c => { [262, 392, 523, 784].forEach((f, i) => tone(c, { f, dur: .5, vol: .05, type: 'sawtooth', filter: 'lowpass', q: 1800, at: i * .03 })); },
   normal: c => hiss(c, { f: 1000, dur: .08, vol: .05 }),
 };
+// a different sound for each tree stage, growing richer and deeper as the tree gets older
+const STAGE_SND = [
+  c => tone(c, { f: 880, f2: 1320, dur: .15, vol: .05, type: 'triangle' }),
+  c => [784, 1175].forEach((f, i) => tone(c, { f, dur: .22, vol: .05, type: 'triangle', at: i * .09 })),
+  c => [659, 784, 988].forEach((f, i) => tone(c, { f, dur: .28, vol: .055, type: 'triangle', at: i * .08 })),
+  c => { tone(c, { f: 220, f2: 180, dur: .18, vol: .08 }); [523, 659, 784, 1047].forEach((f, i) => tone(c, { f, dur: .32, vol: .05, type: 'triangle', at: .08 + i * .07 })); },
+  c => { [1047, 1319, 1568, 2093].forEach((f, i) => tone(c, { f, dur: .9, vol: .035, type: 'sine', at: i * .05 })); hiss(c, { f: 6000, dur: .5, vol: .02, type: 'highpass', at: .1 }); },
+  c => { tone(c, { f: 131, dur: 1.1, vol: .06, type: 'sawtooth', filter: 'lowpass', q: 700, attack: .12 }); [392, 523, 659].forEach((f, i) => tone(c, { f, dur: .7, vol: .04, type: 'triangle', at: .25 + i * .12 })); },
+  c => { hiss(c, { f: 500, f2: 1400, dur: 1.4, vol: .05, type: 'bandpass', q: .6, attack: .4 }); [196, 294, 392, 494].forEach((f, i) => tone(c, { f, dur: 1.4, vol: .03, type: 'sine', at: i * .15, attack: .3 })); },
+  c => { [98, 147, 196, 294, 392, 587, 784].forEach((f, i) => tone(c, { f, dur: 2.2, vol: .035, type: i < 3 ? 'sawtooth' : 'sine', filter: i < 3 ? 'lowpass' : undefined, q: 900, at: i * .12, attack: .35 })); [1568, 2093, 2637, 3136].forEach((f, i) => tone(c, { f, dur: .5, vol: .02, type: 'triangle', at: 1 + i * .1 })); },
+];
+function stageSfx(stage) { try { const c = sfxReady('garden'); if (c) STAGE_SND[Math.max(0, Math.min(7, stage))](c); } catch (e) { } }
 function battleSfx(side, kind, d = {}) {
   const c = sfxReady('arena'); if (!c) return;
   if (kind === 'send') { hiss(c, { f: 500, f2: 4000, dur: .3, vol: .05 }); tone(c, { f: 523, f2: 1047, dur: .2, vol: .06, type: 'triangle', at: .2 }); }

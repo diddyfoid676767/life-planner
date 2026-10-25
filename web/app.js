@@ -1741,6 +1741,7 @@ document.addEventListener('click', e => {
     case 'goSettingsApp': view = 'settings'; ui.setTab = 'app'; render(); break;
     case 'treeSubj': ui.treeSubj = el.dataset.v; render(); break;
     case 'treeSort': ui.treeSort = el.dataset.v; render(); break;
+    case 'treeFiltClear': ui.treeFilt = { sort: (ui.treeFilt || {}).sort }; render(); break;
     case 'buyUpg': buyUpgrade(id); break;
     case 'storeCat': ui.storeCat = el.dataset.v; render(); break;
     case 'shopTab': ui.shopTab = el.dataset.v; render(); break;
@@ -1822,6 +1823,7 @@ document.addEventListener('change', e => {
   if (el.dataset.remdef) { const k = el.dataset.remdef; D.settings.remind[k] = [...document.querySelectorAll(`[data-remdef="${k}"]`)].filter(x => x.checked).map(x => Number(x.value)).sort((a, b) => b - a); save(); return; }
   if (el.dataset.change === 'lookColor') { setLook(el.dataset.k, el.value); return; }
   if (el.dataset.change === 'evCat') { ui.evCat = el.value; render(); }
+  if (el.dataset.change === 'treeFilt') { ui.treeFilt = { ...(ui.treeFilt || {}), [el.dataset.k]: el.value }; render(); }
   if (el.dataset.change === 'showItem') { D.game.hidden[el.dataset.id] = !el.checked; save(); }
   if (el.dataset.change === 'gardenFx') { D.game.fx = { ...(D.game.fx || {}), [el.dataset.v]: el.checked }; ui.gfxOpen = true; save(); render(); }
   if (el.dataset.change === 'bedTime' && el.value) { D.settings.bedtime = { ...bedCfg(), time: el.value }; save(); }

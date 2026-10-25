@@ -201,8 +201,13 @@ const T3 = {
     const g = { parts, fruit: pts, glow: '#9775fa' }; g.tick = t => { ring.rotation.z = t * .4; }; return g;
   },
 };
+// Tree sizes by stage, sapling to ancient. Older trees also get more detail:
+// fruit (mature), blossom (grand), roots and moss (elder), hanging vines and
+// toadstools (old-growth), and a golden glow with drifting motes (ancient).
+const TREE3_SCALE = [1, .62, 1, 1.12, 1.24, 1.34, 1.44, 1.55];
 function tree3(species, color, stage, seed) {
   const rnd = seeded('t3' + seed), col = color || '#2f9e44', g = new THREE.Group(), body = new THREE.Group();
+  stage = Math.max(0, Math.min(7, stage | 0));
   g.add(body);
   if (stage === 0) {
     body.add(cyl(.025, .035, .45, shade(col, -.35), 0, 0, 0, 5), ball(.13, col, -.1, .38, 0, 1.3, .35, .7), ball(.12, shade(col, -.2), .1, .45, 0, 1.3, .35, .7), ball(.07, shade(col, .3), 0, .5, .02, 1, 1.4, 1));
@@ -210,12 +215,33 @@ function tree3(species, color, stage, seed) {
   }
   const t = (T3[species] || T3.oak)(col, rnd);
   t.parts.forEach(p => body.add(p));
-  if (stage === 3) {
+  const ticks = t.tick ? [t.tick] : [];
+  if (stage >= 3) {
     const bloom = species === 'cherry' ? '#ffd43b' : rnd() < .5 ? '#ffffff' : '#ffd43b';
-    t.fruit.forEach(([x, y, z]) => body.add(ball(.07, bloom, x * 1.15, y + .15, z * 1.15, 1, 1, 1, { detail: 0, emi: bloom, ei: .15 })));
+    t.fruit.filter((_, i) => stage >= 4 || i % 2 === 0).forEach(([x, y, z]) => body.add(ball(stage >= 4 ? .07 : .055, bloom, x * 1.15, y + .15, z * 1.15, 1, 1, 1, { detail: 0, emi: bloom, ei: .15 })));
   }
-  body.scale.setScalar([1, .62, 1, 1.22][stage]);
-  if (t.tick) g.userData.tick = t.tick;
+  if (stage >= 5) { // roots spreading over the ground, and moss
+    for (let i = 0; i < 6; i++) {
+      const a = i / 6 * Math.PI * 2 + rnd() * .5, root = limb(.075, .02, .5 + rnd() * .2, i % 2 ? BARK3 : BARK3D, Math.cos(a) * .08, .06, Math.sin(a) * .08, 0, 0, 5);
+      root.rotation.set(0, -a, 0); root.children[0].rotation.z = -1.42; body.add(root);
+    }
+    for (let i = 0; i < 4; i++) { const a = rnd() * Math.PI * 2; body.add(ball(.09 + rnd() * .05, i % 2 ? '#69a84f' : '#7bbf5a', Math.cos(a) * .2, .08 + rnd() * .25, Math.sin(a) * .2, 1.3, .5, 1.3, { detail: 0 })); }
+  }
+  if (stage >= 6) { // hanging vines and toadstools
+    t.fruit.slice(0, 6).forEach(([x, y, z], i) => body.add(cyl(.012, .008, .4 + (i % 3) * .15, shade(col, -.4), x * 1.05, y - .45 - (i % 3) * .15, z * 1.05, 4)));
+    for (let i = 0; i < 3; i++) {
+      const a = rnd() * Math.PI * 2, r = .35 + rnd() * .2, x = Math.cos(a) * r, z = Math.sin(a) * r, h = .08 + rnd() * .05;
+      body.add(cyl(.018, .022, h, '#f8f0e3', x, 0, z, 6), at(m3mesh(SphG(.06, 10, 5, 0, Math.PI * 2, 0, Math.PI / 2), i % 2 ? '#e8590c' : '#e03131'), x, h, z));
+    }
+  }
+  if (stage >= 7) { // ancient: a golden glow and motes drifting round the canopy
+    const ring = at(m3mesh(TorG(.75, .025, 6, 40), '#ffe066', { emi: '#ffd43b', ei: 1, op: .8, cast: false }), 0, .03, 0); ring.rotation.x = Math.PI / 2; body.add(ring);
+    const motes = Array.from({ length: 10 }, (_, i) => { const m = ball(.03, '#fff3bf', 0, 0, 0, 1, 1, 1, { detail: 0, emi: '#fff3bf', ei: 1, cast: false }); m.userData.p = [rnd() * 6.28, .5 + rnd() * .5, 1.2 + rnd() * 1.2, .3 + rnd() * .5]; body.add(m); return m; });
+    ticks.push(tt => motes.forEach(m => { const [ph, rad, y, sp] = m.userData.p; m.position.set(Math.cos(tt * sp + ph) * rad, y + Math.sin(tt * 1.3 + ph) * .12, Math.sin(tt * sp + ph) * rad); }));
+    if (!t.glow) t.glow = '#ffe066';
+  }
+  body.scale.setScalar(TREE3_SCALE[stage]);
+  if (ticks.length) g.userData.tick = tt => ticks.forEach(f => f(tt));
   if (t.glow) g.userData.glow = t.glow;
   return g;
 }

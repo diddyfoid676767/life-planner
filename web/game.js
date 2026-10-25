@@ -96,7 +96,7 @@ function dailyMins() { const m = {}; for (const l of D.focusLogs) m[l.date] = (m
 // coin multiplier for one focus session, from upgrades and critter buffs
 // (only buffs you had when the session started count, so new buffs don't pay out on old trees)
 function coinMult(l) {
-  let m = 1 + .05 * upg('magnet', l) + (crit('bee', l) ? .05 : 0) + (crit('platypus', l) ? .1 : 0) + (treeBuff(l).coin || 0);
+  let m = 1 + .05 * upg('magnet', l) + (crit('bee', l) ? .05 : 0) + (crit('platypus', l) ? .1 : 0) + (treeBuff(l).coin || 0) + sessionCoinBuff(l);
   const h = new Date(l.start).getHours();
   if (crit('kookaburra', l) && h < 12) m += .1;
   if (crit('fireflies', l) && h >= 19) m += .1;
@@ -104,7 +104,7 @@ function coinMult(l) {
 }
 function sessionCoins(l) {
   if (l.mins < 10) return 0;
-  const c = Math.min(l.mins, 120 + 30 * upg('longer', l)) * coinMult(l) + (l.mins >= 45 ? 10 : 0) + (l.mins >= 90 && crit('wombat', l) ? 20 : 0) + (treeBuff(l).flat ? treeBuff(l).flat(l) : 0);
+  const c = Math.min(l.mins, 120 + 30 * upg('longer', l)) * coinMult(l) + (l.mins >= 45 ? 10 : 0) + (l.mins >= 90 && crit('wombat', l) ? 20 : 0) + (treeBuff(l).flat ? treeBuff(l).flat(l) : 0) + sessionFlatBuff(l);
   const gold = l.mins >= 25 && upg('goldseed', l) && seeded('gold' + l.id)() < .15 ? 25 : 0;
   return Math.round((l.withered ? c / 2 : c) + gold); // a withered tree (too many distractions) pays half
 }
@@ -119,7 +119,7 @@ function coinsEarned() {
 }
 const coins = () => Math.max(0, coinsEarned() - (D.game.spent || 0));
 function xpTotal() {
-  return Math.round(D.focusLogs.reduce((a, l) => a + creditMins(l) * (1 + (crit('kangaroo', l) ? .1 : 0) + (treeBuff(l).xp || 0) + .1 * upg('wise', l)), 0) + D.sessions.filter(x => x.done).length * 10 + D.assessments.filter(x => x.done).length * 50 + D.workouts.filter(x => x.done).length * 5);
+  return Math.round(D.focusLogs.reduce((a, l) => a + creditMins(l) * (1 + (crit('kangaroo', l) ? .1 : 0) + (treeBuff(l).xp || 0) + sessionXpBuff(l) + .1 * upg('wise', l)), 0) + D.sessions.filter(x => x.done).length * 10 + D.assessments.filter(x => x.done).length * 50 + D.workouts.filter(x => x.done).length * 5);
 }
 // level n needs 30*n*(n-1) XP: 60 for level 2, 180 for 3, 360 for 4 ...
 function levelInfo(xp = xpTotal()) {
@@ -160,12 +160,12 @@ const claimable = () => challengeDefs().filter(c => c.have >= c.need && !(c.key 
 function claimChallenge(key) {
   const c = challengeDefs().find(x => x.key === key);
   if (!c || c.have < c.need || key in D.game.claimed) return;
-  D.game.claimed[key] = Math.round(c.reward * (crit('koala') ? 1.1 : 1)); save(); render();
+  D.game.claimed[key] = Math.round(c.reward * ((crit('koala') ? 1.1 : 1) + activeBuff('challenge'))); save(); render();
 }
 
 // ---------- lucky boxes ----------
 function rollItem(box) {
-  const odds = { ...box.odds }, luck = upg('luck') * 4; // lucky charm moves odds from common to rare/epic
+  const odds = { ...box.odds }, luck = upg('luck') * 4 + activeBuff('luck'); // lucky charm moves odds from common to rare/epic
   if (odds.common) { const mv = Math.min(odds.common, luck); odds.common -= mv; odds.rare = (odds.rare || 0) + mv * .6; odds.epic = (odds.epic || 0) + mv * .4; }
   let r = Math.random() * 100, rarity = 'common';
   for (const [k, p] of Object.entries(odds)) { if (r < p) { rarity = k; break; } r -= p; }
@@ -185,7 +185,7 @@ function openBox(boxId) {
   if (cur === 'leaf') spendLeaves(boxPrice(box)); else D.game.spent += boxPrice(box);
   D.game.items[item.id] = (D.game.items[item.id] || 0) + 1;
   D.game.opened = (D.game.opened || 0) + 1;
-  if (dupe) D.game.bonus = (D.game.bonus || 0) + RARITY[item.rarity].refund;
+  if (dupe) D.game.bonus = (D.game.bonus || 0) + Math.round(RARITY[item.rarity].refund * (1 + activeBuff('dupe')));
   save();
   boxAnimation(box, item, dupe, cur);
 }

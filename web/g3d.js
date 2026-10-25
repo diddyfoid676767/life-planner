@@ -188,11 +188,11 @@ function g3build() {
     if (t.g) obj = (DECO3[t.g.id] || DECO3.d_rock)();
     else {
       const l = t.l, s = subj(l.subjectId);
-      obj = tree3(speciesFor(l.subjectId), s.color, treeStage(l.mins), l.id);
+      obj = tree3(speciesFor(l.subjectId), s.color, treeStageOf(l), l.id);
       obj.rotation.y = seeded('rot' + l.id)() * Math.PI * 2;
       if (l.withered || treeRec(l.id).wilted) obj.traverse(o => { if (o.material && o.material.color) { o.material = o.material.clone(); o.material.color.offsetHSL(0, -.5, -.1); } });
       obj.userData.tree = l; obj.userData.h = new THREE.Box3().setFromObject(obj).max.y;
-      if (bubbles > 0 && i % 2 === 0) { bubbles--; const b = new THREE.Sprite(new THREE.SpriteMaterial({ map: bubbleTex(), depthTest: true })); b.scale.setScalar(.75); b.position.set(x, [1, 1.9, 3, 3.5][treeStage(l.mins)] + .3, z); b.userData.bubble = true; W.add(b); G3.bubbles.push(b); const ph = Math.random() * 6; G3.tickers.push(tt => { b.position.y += Math.sin(tt * 2 + ph) * .002; }); }
+      if (bubbles > 0 && i % 2 === 0) { bubbles--; const b = new THREE.Sprite(new THREE.SpriteMaterial({ map: bubbleTex(), depthTest: true })); b.scale.setScalar(.75); b.position.set(x, obj.userData.h + .3, z); b.userData.bubble = true; W.add(b); G3.bubbles.push(b); const ph = Math.random() * 6; G3.tickers.push(tt => { b.position.y += Math.sin(tt * 2 + ph) * .002; }); }
     }
     obj.position.set(x, 0, z); obj.userData.key = t.key; obj.userData.bend = { x: 0, z: 0, vx: 0, vz: 0 };
     obj.traverse(o => { if (o.isMesh) { o.castShadow = o.castShadow !== false; o.receiveShadow = true; } });
