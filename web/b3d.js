@@ -191,6 +191,7 @@ const LOOKS = {
 };
 const SKINS = ['#f1c9a5', '#e0ac69', '#c68642', '#8d5524', '#ffdbac', '#d1a07a'];
 function monLook(m) {
+  if (m.look) return m.look; // a PvP opponent brings their own look
   if (m.ath) {
     const spec = avatarSpec(), C = id => cos(id) || {}, Lk = Object.assign({}, LOOK_DEFAULT, spec.look || {});
     const dyed = spec.hairCol && (C(spec.hairCol).coins || C(spec.hairCol).grit);
@@ -546,7 +547,7 @@ function b3mount() {
   b3dispose();
   const B = battle, lg = leagueOf(B.e) || LEAGUES[B.mode === 'survival' ? 3 : 2];
   const R = fxRenderer(); R.domElement.className = 'b3canvas'; st.prepend(R.domElement); st.classList.add('b3');
-  Object.assign(B3, { on: true, R, st, scene: new THREE.Scene(), cam: new THREE.PerspectiveCamera(36, 2, .1, 600), clock: new THREE.Clock(), tick: [], fx: [], parts: [], shake: 0, lg, me: null, them: null, focus: null });
+  Object.assign(B3, { on: true, R, st, scene: new THREE.Scene(), cam: new THREE.PerspectiveCamera(36, 2, .1, 600), clock: new THREE.Clock(), tick: [], fx: [], parts: [], shake: 0, lg, me: null, them: null, focus: null, sz: null, drawn: false });
   b3stadium(lg);
   B3.plat = { me: b3platform('me'), them: b3platform('them') };
   B3.comp = fxHQ() ? fxComposer(R, B3.scene, B3.cam, { strength: ['state', 'national'].includes(lg.id) ? .65 : .4, radius: .5, threshold: .85 }) : null;
@@ -555,7 +556,10 @@ function b3mount() {
 }
 function b3resize() {
   if (!B3.on) return; const w = B3.st.clientWidth, h = B3.st.clientHeight; if (!w) return;
+  // resizing wipes the canvas, so only resize on a real change and redraw at once (no black frame)
+  if (B3.sz === w + 'x' + h) return; B3.sz = w + 'x' + h;
   fxResize(B3.R, B3.comp, w, h); B3.cam.aspect = w / h; B3.cam.fov = w / h < 1.2 ? 46 : 36; B3.cam.updateProjectionMatrix();
+  if (B3.drawn) try { B3.comp ? B3.comp.c.render() : B3.R.render(B3.scene, B3.cam); } catch (e) { console.error(e); }
 }
 function b3dispose() {
   if (!B3.on) return;
@@ -595,6 +599,7 @@ function b3loop() {
   B3.cam.position.copy(B3.camPos).add(V3(rnd(sh * .3), rnd(sh * .25), rnd(sh * .2)));
   B3.cam.lookAt(B3.camLook);
   if (B3.comp) B3.comp.c.render(); else B3.R.render(B3.scene, B3.cam);
+  B3.drawn = true;
 }
 
 // hook into the battle screen: 3D when WebGL works, the 2D stage otherwise

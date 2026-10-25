@@ -96,7 +96,7 @@ function dailyMins() { const m = {}; for (const l of D.focusLogs) m[l.date] = (m
 // coin multiplier for one focus session, from upgrades and critter buffs
 // (only buffs you had when the session started count, so new buffs don't pay out on old trees)
 function coinMult(l) {
-  let m = 1 + .05 * upg('magnet', l) + (crit('bee', l) ? .05 : 0) + (crit('platypus', l) ? .1 : 0) + (treeBuff(l).coin || 0);
+  let m = 1 + .05 * upg('magnet', l) + (crit('bee', l) ? .05 : 0) + (crit('platypus', l) ? .1 : 0) + (treeBuff(l).coin || 0) + sessionCoinBuff(l) + (l.mins >= 45 ? .05 * upg('lamp', l) : 0) + (crit('parrot', l) ? .05 : 0) + (crit('penguin', l) && l.mins >= 60 ? .1 : 0);
   const h = new Date(l.start).getHours();
   if (crit('kookaburra', l) && h < 12) m += .1;
   if (crit('fireflies', l) && h >= 19) m += .1;
@@ -104,7 +104,7 @@ function coinMult(l) {
 }
 function sessionCoins(l) {
   if (l.mins < 10) return 0;
-  const c = Math.min(l.mins, 120 + 30 * upg('longer', l)) * coinMult(l) + (l.mins >= 45 ? 10 : 0) + (l.mins >= 90 && crit('wombat', l) ? 20 : 0) + (treeBuff(l).flat ? treeBuff(l).flat(l) : 0);
+  const c = Math.min(l.mins, 120 + 30 * upg('longer', l)) * coinMult(l) + (l.mins >= 45 ? 10 : 0) + (l.mins >= 90 && crit('wombat', l) ? 20 : 0) + (treeBuff(l).flat ? treeBuff(l).flat(l) : 0) + sessionFlatBuff(l);
   const gold = l.mins >= 25 && upg('goldseed', l) && seeded('gold' + l.id)() < .15 ? 25 : 0;
   return Math.round((l.withered ? c / 2 : c) + gold); // a withered tree (too many distractions) pays half
 }
@@ -119,7 +119,7 @@ function coinsEarned() {
 }
 const coins = () => Math.max(0, coinsEarned() - (D.game.spent || 0));
 function xpTotal() {
-  return Math.round(D.focusLogs.reduce((a, l) => a + creditMins(l) * (1 + (crit('kangaroo', l) ? .1 : 0) + (treeBuff(l).xp || 0) + .1 * upg('wise', l)), 0) + D.sessions.filter(x => x.done).length * 10 + D.assessments.filter(x => x.done).length * 50 + D.workouts.filter(x => x.done).length * 5);
+  return Math.round(D.focusLogs.reduce((a, l) => a + creditMins(l) * (1 + (crit('kangaroo', l) ? .1 : 0) + (treeBuff(l).xp || 0) + sessionXpBuff(l) + .1 * upg('wise', l) + (l.mins >= 45 ? .05 * upg('lamp', l) : 0) + (crit('panda', l) ? .1 : 0) + (crit('bat', l) && new Date(l.start).getHours() >= 19 ? .1 : 0)), 0) + D.sessions.filter(x => x.done).length * 10 + D.assessments.filter(x => x.done).length * 50 + D.workouts.filter(x => x.done).length * 5);
 }
 // level n needs 30*n*(n-1) XP: 60 for level 2, 180 for 3, 360 for 4 ...
 function levelInfo(xp = xpTotal()) {
@@ -160,12 +160,12 @@ const claimable = () => challengeDefs().filter(c => c.have >= c.need && !(c.key 
 function claimChallenge(key) {
   const c = challengeDefs().find(x => x.key === key);
   if (!c || c.have < c.need || key in D.game.claimed) return;
-  D.game.claimed[key] = Math.round(c.reward * (crit('koala') ? 1.1 : 1)); save(); render();
+  D.game.claimed[key] = Math.round(c.reward * ((crit('koala') ? 1.1 : 1) + activeBuff('challenge'))); save(); render();
 }
 
 // ---------- lucky boxes ----------
 function rollItem(box) {
-  const odds = { ...box.odds }, luck = upg('luck') * 4; // lucky charm moves odds from common to rare/epic
+  const odds = { ...box.odds }, luck = upg('luck') * 4 + activeBuff('luck'); // lucky charm moves odds from common to rare/epic
   if (odds.common) { const mv = Math.min(odds.common, luck); odds.common -= mv; odds.rare = (odds.rare || 0) + mv * .6; odds.epic = (odds.epic || 0) + mv * .4; }
   let r = Math.random() * 100, rarity = 'common';
   for (const [k, p] of Object.entries(odds)) { if (r < p) { rarity = k; break; } r -= p; }
@@ -185,7 +185,7 @@ function openBox(boxId) {
   if (cur === 'leaf') spendLeaves(boxPrice(box)); else D.game.spent += boxPrice(box);
   D.game.items[item.id] = (D.game.items[item.id] || 0) + 1;
   D.game.opened = (D.game.opened || 0) + 1;
-  if (dupe) D.game.bonus = (D.game.bonus || 0) + RARITY[item.rarity].refund;
+  if (dupe) D.game.bonus = (D.game.bonus || 0) + Math.round(RARITY[item.rarity].refund * (1 + activeBuff('dupe') + .1 * upg('appraiser')));
   save();
   boxAnimation(box, item, dupe, cur);
 }
@@ -200,9 +200,11 @@ function boxSvg(box, size = 120) {
     <text x="0" y="24" text-anchor="middle" font-size="20" font-weight="800" fill="${c2}" opacity=".7">?</text>
     <defs><linearGradient id="bx${box.id}" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#fff" stop-opacity=".25"/><stop offset="1" stop-color="#000" stop-opacity=".12"/></linearGradient></defs></svg>`;
 }
-// Multi-stage unboxing: the box drops in, shakes harder while it glows in the
-// prize's rarity colour, bursts open with a flash and the prize rises out of it.
-// Shared by garden boxes and Arena boxes. Click during the build-up to skip.
+// Multi-stage unboxing that builds up by rarity: a common prize just wobbles
+// and pops; rare adds a shake and a glow; epic shakes longer, pulls in sparks
+// and bursts with a beam of light; legendary goes dark, surges with light,
+// quakes and rains gold. Shared by garden boxes and Arena boxes. Click during
+// the build-up to skip.
 function revealFx({ boxHtml, rarity, prizeHtml, title, text, buttons = '', onButton }) {
   const rc = RARITY[rarity] || RARITY.common, tier = ['common', 'rare', 'epic', 'legendary'].indexOf(rarity);
   const ov = document.createElement('div');
@@ -219,7 +221,11 @@ function revealFx({ boxHtml, rarity, prizeHtml, title, text, buttons = '', onBut
   const timers = [];
   const stage = (cls, ms) => timers.push(setTimeout(() => ov.classList.add(cls), ms));
   const open = () => { timers.forEach(clearTimeout); ov.classList.add('charge', 'burst', 'opened'); };
-  stage('charge', 450); stage('burst', 2100); stage('opened', 2350);
+  const T = [[350, 1050], [400, 1750], [450, 2450], [450, 3400]][Math.max(0, tier)];
+  ov.style.setProperty('--chg', ((T[1] - T[0]) / 1000) + 's');
+  stage('charge', T[0]); stage('burst', T[1]); stage('opened', T[1] + 250);
+  if (tier === 3) stage('surge', T[1] - 1100);
+  timers.push(setTimeout(() => boxBuildSfx(tier, (T[1] - T[0]) / 1000), T[0]), setTimeout(() => boxBurstSfx(tier), T[1]));
   const close = () => { ov.classList.add('out'); setTimeout(() => ov.remove(), 250); render(); };
   ov.addEventListener('click', e => {
     if (!ov.classList.contains('opened')) return open();
@@ -232,7 +238,7 @@ function revealFx({ boxHtml, rarity, prizeHtml, title, text, buttons = '', onBut
 function boxAnimation(box, item, dupe, cur = 'coin') {
   const p = boxPrice(box), canAgain = cur === 'leaf' ? leaves() >= p : coins() >= p, sym = cur === 'leaf' ? LEAF : COIN;
   revealFx({ boxHtml: boxSvg(box, 170), rarity: item.rarity, prizeHtml: itemIcon(item, 150), title: item.name,
-    text: dupe ? `You already had this, so you get ${RARITY[item.rarity].refund} ${COIN} back.` : itemBlurb(item),
+    text: dupe ? `You already had this, so you get ${Math.round(RARITY[item.rarity].refund * (1 + activeBuff('dupe') + .1 * upg('appraiser')))} ${COIN} back.` : itemBlurb(item),
     buttons: canAgain ? `<button class="btn" data-again="${box.id}">Open another (${p} ${sym})</button>` : '',
     onButton: id => openBox(id, cur) });
 }

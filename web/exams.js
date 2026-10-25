@@ -78,6 +78,7 @@ function buildExamPlan() {
       const before = D.sessions.slice();
       const made = makeExamPlan(v.start || today(), v.mode || 'add');
       if (!made) { alert('There was no free time to plan in. Try more hours or an earlier start.'); return false; }
+      ui.studyTab = 'board'; view = 'study';
       setTimeout(() => undoToast(`🎓 Exam prep added: ${made.blocks} blocks including ${made.papers} timed past papers${made.swapped ? `, reorganising ${made.swapped} of your existing blocks` : ''}.`, () => { D.sessions = before; }), 50);
     },
   });
@@ -293,4 +294,68 @@ document.addEventListener('change', e => {
   const el = e.target;
   if (el.dataset?.nudge) { D.settings.nudges = { ...nudgeCfg(), [el.dataset.nudge]: el.checked }; save(); }
   if (el.dataset?.nudget && el.value) { D.settings.nudges = { ...nudgeCfg(), [el.dataset.nudget]: el.value }; save(); }
+});
+
+// ---------- 2.22: the exam timetable builds itself, then you edit it ----------
+// The first time the Study page sees exams coming up with no exam plan, it
+// builds a full timetable (papers, SAC prep, topic revision, light days). The
+// Exam timetable tab shows it day by day: drag blocks between days, make them
+// longer or shorter, edit or delete them, or rebuild.
+function examAutoBuild() {
+  const P = examPrep(), exams = upcomingExams(addDays(today(), 1));
+  if (P.autoBuilt || !exams.length || D.sessions.some(s => s.examPlan)) return;
+  P.autoBuilt = today();
+  const before = D.sessions.slice(), start = new Date().getHours() >= 18 ? addDays(today(), 1) : today();
+  const made = makeExamPlan(start, 'fill'); if (!made) return;
+  save();
+  setTimeout(() => toast('🎓 Your exam timetable is ready', `${made.blocks} blocks, including ${made.papers} timed past papers, fitted around what you'd already planned.`, { timeout: 20000, actions: [['See it', () => { ui.studyTab = 'board'; view = 'study'; render(); }], ['Undo', () => { D.sessions = before; save(); render(); }]] }), 400);
+}
+function examBoard() {
+  const t = today(), exams = upcomingExams(), P = examPrep();
+  const last = exams.length ? exams[exams.length - 1].date : addDays(t, 14), n = Math.min(42, diffDays(t, last) + 1);
+  const days = Array.from({ length: n }, (_, i) => addDays(t, i)), examOn = d => exams.filter(a => a.date === d);
+  const weekend = d => [0, 6].includes(parseYmd(d).getDay()) || (typeof isHoliday === 'function' && isHoliday(d));
+  const block = s => { const sb = subj(s.subjectId);
+    return `<div class="xb ${s.done ? 'done' : ''} ${s.paper ? 'paper' : ''}" draggable="true" data-xb="${s.id}" style="--c:${sb.color}">
+      <div class="xb-top"><b>${esc(sb.name)}</b><span>${s.time ? fmtTime(s.time) : ''}</span></div>
+      <div class="xb-topic" title="${esc(s.topic || '')}">${esc(String(s.topic || 'Study').replace(/^Revise: /, ''))}</div>
+      <div class="xb-acts"><button class="iconbtn" data-xa="shorter" data-id="${s.id}" title="15 minutes shorter">−</button><span>${fmtMins(+s.duration || 30)}</span><button class="iconbtn" data-xa="longer" data-id="${s.id}" title="15 minutes longer">＋</button>
+        <span style="flex:1"></span><button class="iconbtn" data-act="edit" data-kind="session" data-id="${s.id}" title="Edit">✎</button><button class="iconbtn" data-xa="del" data-id="${s.id}" title="Delete">✕</button></div></div>`; };
+  const cols = days.map(d => {
+    const list = D.sessions.filter(s => s.date === d).sort((a, b) => (a.time || '99').localeCompare(b.time || '99'));
+    const mins = list.reduce((a, s) => a + (+s.duration || 0), 0), cap = Math.round((weekend(d) ? P.hoursWeekend : P.hoursSchool) * 60), ex = examOn(d), dt = parseYmd(d);
+    return `<div class="xcol ${d === t ? 'today' : ''} ${weekend(d) ? 'wkend' : ''} ${ex.length ? 'examday' : ''}" data-xday="${d}">
+      <div class="xcol-head"><b>${DOW[dt.getDay()]} ${dt.getDate()}</b><span class="${mins > cap ? 'red-text' : 'muted'}">${fmtMins(mins) || '0m'} / ${fmtMins(cap)}</span></div>
+      ${ex.map(a => `<div class="xexam" style="--c:${subj(a.subjectId).color}">🎓 ${esc(subj(a.subjectId).name)}: ${esc(a.title)}${a.time ? ' · ' + fmtTime(a.time) : ''}</div>`).join('')}
+      ${list.map(block).join('')}
+      <button class="xadd" data-act="new" data-kind="session" data-date="${d}">＋</button></div>`;
+  }).join('');
+  return `<div class="study2">${pageHead('Study', 'Your exam timetable', `<button class="btn" data-act="examPlan">Rebuild…</button><button class="btn primary" data-act="focusNew">▶ Start studying</button>`)}${studyTabs()}
+    <p class="muted small-text">Drag a block to another day to move it. Use − and ＋ to change how long it is. The numbers at the top of each day are planned time against your daily hours (${P.hoursSchool}h school days, ${P.hoursWeekend}h weekends).</p>
+    <div class="xboard">${cols}</div></div>`;
+}
+// re-time a day's blocks one after another, keeping the earliest start
+function retimeDay(d) {
+  const list = D.sessions.filter(s => s.date === d && s.time).sort((a, b) => a.time.localeCompare(b.time)); if (!list.length) return;
+  let m = hmToMin(list[0].time);
+  for (const s of list) { s.time = `${String(Math.floor(m / 60) % 24).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`; m += (+s.duration || 30) + 10; }
+}
+document.addEventListener('click', e => {
+  const b = e.target.closest('[data-xa]'); if (!b) return;
+  const s = D.sessions.find(x => x.id === b.dataset.id); if (!s) return;
+  if (b.dataset.xa === 'del') { const before = D.sessions.slice(); D.sessions = D.sessions.filter(x => x !== s); save(); render(); undoToast('Block deleted', () => { D.sessions = before; }); return; }
+  s.duration = Math.max(15, Math.min(240, (+s.duration || 30) + (b.dataset.xa === 'longer' ? 15 : -15))); retimeDay(s.date); save(); render();
+});
+document.addEventListener('dragstart', e => { const b = e.target.closest?.('[data-xb]'); if (b) { e.dataTransfer.setData('text/xb', b.dataset.xb); e.dataTransfer.effectAllowed = 'move'; b.classList.add('dragging'); } });
+document.addEventListener('dragend', e => e.target.closest?.('[data-xb]')?.classList.remove('dragging'));
+document.addEventListener('dragover', e => { const c = e.target.closest?.('[data-xday]'); if (c && e.dataTransfer.types.includes('text/xb')) { e.preventDefault(); document.querySelectorAll('.xcol.over').forEach(x => x !== c && x.classList.remove('over')); c.classList.add('over'); } });
+document.addEventListener('drop', e => {
+  const c = e.target.closest?.('[data-xday]'), id = e.dataTransfer.getData('text/xb'); if (!c || !id) return;
+  e.preventDefault(); c.classList.remove('over');
+  const s = D.sessions.find(x => x.id === id); if (!s || s.date === c.dataset.xday) return;
+  const from = s.date, d = c.dataset.xday, P = examPrep(), wk = [0, 6].includes(parseYmd(d).getDay());
+  const ends = D.sessions.filter(x => x.date === d && x.time && x !== s).map(x => hmToMin(x.time) + (+x.duration || 30) + 10);
+  const m = Math.max(hmToMin(wk ? P.weekendStart : P.schoolStart), ...ends);
+  s.date = d; s.time = `${String(Math.floor(m / 60) % 24).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`; retimeDay(from);
+  save(); render();
 });

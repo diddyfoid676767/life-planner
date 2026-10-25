@@ -17,6 +17,11 @@ function fxRenderer() {
   R.outputEncoding = THREE.sRGBEncoding;
   R.toneMapping = THREE.ACESFilmicToneMapping; R.toneMappingExposure = 1;
   R.shadowMap.enabled = true; R.shadowMap.type = THREE.PCFSoftShadowMap;
+  // a new canvas is black until its first frame (which can take a moment while
+  // shaders compile), so keep it invisible until something has been drawn
+  const cv = R.domElement, draw = R.render.bind(R);
+  cv.style.opacity = '0'; cv.style.transition = 'opacity .3s ease';
+  R.render = (scene, cam) => { draw(scene, cam); if (cv.style.opacity === '0') requestAnimationFrame(() => { cv.style.opacity = ''; }); };
   return R;
 }
 // a sky dome: a smooth three-colour gradient with a soft glow around the sun

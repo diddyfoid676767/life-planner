@@ -16,6 +16,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -24,8 +25,15 @@ import (
 //go:embed web
 var webFS embed.FS
 
+// port can be moved with LP_PORT, so two copies can run side by side for testing
+var port = func() int {
+	if p, err := strconv.Atoi(os.Getenv("LP_PORT")); err == nil && p > 0 {
+		return p
+	}
+	return 47823
+}()
+
 const (
-	port         = 47823
 	dataFileName = "planner-data.json"
 	idleTimeout  = 3 * time.Minute // quit when no browser tab has checked in for this long
 )
@@ -95,6 +103,9 @@ func main() {
 	mux.HandleFunc("/api/browser/activities", handleBrowserActivities)
 	mux.HandleFunc("/api/browser/health", handleBrowserHealth)
 	mux.HandleFunc("/api/claudelink", handleClaudeLink)
+	mux.HandleFunc("/api/ai", handleAI)
+	mux.HandleFunc("/api/ai/chat", handleAIChat)
+	mux.HandleFunc("/api/mail", handleMail)
 	mux.HandleFunc("/api/account", handleAccount)
 	mux.HandleFunc("/api/account/profile", handleAccountProfile)
 	mux.HandleFunc("/api/account/people", handleAccountPeople)
@@ -161,6 +172,7 @@ func main() {
 	go watchIdle()
 	go cleanupOld()
 	go watchGitHub()
+	go mailLoop()
 	if !restarted {
 		go func() { time.Sleep(200 * time.Millisecond); openBrowser(url) }()
 	}

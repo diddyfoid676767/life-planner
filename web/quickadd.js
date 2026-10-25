@@ -167,8 +167,8 @@ function quickPreview(q) {
   const bits = [QA_LABEL[q.kind] + (q.type && q.type !== 'SAC' ? ` (${q.type})` : '') + (q.category && q.category !== 'Personal' ? ` · ${q.category}` : ''), q.subject && `📚 ${q.subject}`, q.date ? `📆 ${fmtDate(q.date)} (${relDays(diffDays(today(), q.date))})` : (q.kind === 'todo' ? 'no due date' : '📆 pick a date'), q.time && `🕒 ${fmtTime(q.time)}${q.end ? '–' + fmtTime(q.end) : ''}`].filter(Boolean);
   return bits.map(b => `<span class="qa-chip">${esc(b)}</span>`).join('');
 }
-function quickAddHtml() {
-  return `<div class="card quickadd"><form id="qaForm" class="qa-row" autocomplete="off"><span class="qa-ic">✨</span>
+function quickAddHtml(bare) {
+  return `<div class="${bare ? '' : 'card '}quickadd"><form id="qaForm" class="qa-row" autocomplete="off"><span class="qa-ic">✨</span>
       <input id="qaInput" placeholder='Add or change: "Biology SAC next Thu 9am", "move Bio study to Sunday", "remove gym tomorrow"' maxlength="200">
       <button class="btn primary">Add</button></form><div class="qa-prev" id="qaPrev"></div></div>`;
 }

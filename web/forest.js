@@ -1,7 +1,9 @@
 'use strict';
 /* Forest: every focus session of 10+ minutes plants a tree. Each subject has its
-   own species (changeable) in its own colour, and longer sessions grow bigger
-   trees: sapling 10m, young 25m, full 45m, grand 90m (grand trees blossom). */
+   own species (changeable) in its own colour. A tree starts as big as its
+   session was long, then keeps growing in the garden: slowly on its own, much
+   faster on days it's watered. It passes 8 stages, each taking twice as long
+   as the one before, from Sapling up to Ancient. */
 
 const TREE_SPECIES = [
   ['oak', 'Oak'], ['pine', 'Pine'], ['cherry', 'Blossom'], ['birch', 'Birch'],
@@ -11,7 +13,12 @@ const TREE_SPECIES = [
 // extra species won from lucky boxes (see game.js)
 const BONUS_SPECIES = [['cactus', 'Cactus', 'sp_cactus'], ['mushroom', 'Giant mushroom', 'sp_mushroom'], ['baobab', 'Baobab', 'sp_baobab'], ['crystal', 'Crystal tree', 'sp_crystal'], ['rainbow', 'Rainbow tree', 'sp_rainbow'], ['candy', 'Candy tree', 'sp_candy'], ['golden', 'Golden tree', 'sp_golden']];
 const availableSpecies = () => [...TREE_SPECIES, ...BONUS_SPECIES.filter(b => D.game && (D.game.items[b[2]] || 0) > 0).map(b => [b[0], '★ ' + b[1]])];
-const TREE_STAGES = [[10, 'Sapling'], [25, 'Young tree'], [45, 'Full tree'], [90, 'Grand tree']];
+// [growth minutes needed, name]. Each stage needs twice the growth of the last.
+const TREE_STAGES = [[10, 'Sapling'], [22, 'Young tree'], [45, 'Full tree'], [90, 'Mature tree'], [180, 'Grand tree'], [360, 'Elder tree'], [720, 'Old-growth tree'], [1440, 'Ancient tree']];
+const STAGE_ICON = ['🌱', '🌿', '🌳', '🌳', '🌸', '🍂', '🌲', '✨'];
+// growth after planting, in minutes: a quarter of a minute an hour on its own,
+// and 18 more for every watering (each watering is a day of fast growth)
+const GROW_PER_HOUR = .25, GROW_PER_WATER = 18;
 
 function shade(hex, amt) {
   let h = String(hex || '#2f9e44').replace('#', '');
@@ -28,7 +35,41 @@ function seeded(str) {
   for (const c of String(str)) { h ^= c.charCodeAt(0); h = Math.imul(h, 16777619); }
   return () => { h ^= h << 13; h ^= h >>> 17; h ^= h << 5; return ((h >>> 0) % 10000) / 10000; };
 }
-function treeStage(mins) { return mins >= 90 ? 3 : mins >= 45 ? 2 : mins >= 25 ? 1 : 0; }
+function treeStage(mins) { let s = 0; for (let i = 1; i < TREE_STAGES.length; i++) if (mins >= TREE_STAGES[i][0]) s = i; return s; }
+// how much a planted tree has grown (minutes): its session plus time in the garden
+function treeGrowth(l) {
+  if (!l) return 0;
+  if (l.mins < 10 || l.withered) return l.mins;
+  const r = (D.game.trees || {})[l.id] || {}, hrs = Math.max(0, (Date.now() - new Date(l.start)) / 36e5);
+  const lv = id => (typeof lupg === 'function' ? lupg(id) : 0);
+  const extra = (hrs * GROW_PER_HOUR + (r.water || 0) * GROW_PER_WATER * (1 + .5 * Math.min(4, lv('rain')))) * (1 + .1 * lv('sundial')) * (treeSpeciesBuff(l).grow || 1) * (1 + activeBuff('growAll') + (crit('turtle') ? .05 : 0));
+  return l.mins + extra;
+}
+const treeStageOf = l => treeStage(treeGrowth(l));
+// 0..1 progress from this stage to the next (1 when Ancient)
+function stageProgress(g) {
+  const s = treeStage(g); if (s >= TREE_STAGES.length - 1) return 1;
+  const lo = s === 0 ? 0 : TREE_STAGES[s][0], hi = TREE_STAGES[s + 1][0];
+  return Math.max(0, Math.min(1, (g - lo) / (hi - lo)));
+}
+// trees that grew into a new stage since you last looked get a chime and a toast
+function checkTreeStages(quiet) {
+  if (!D || !D.game || !D.game.trees) return;
+  const grew = [];
+  for (const l of D.focusLogs) {
+    if (l.mins < 10) continue;
+    const st = treeStageOf(l), r = D.game.trees[l.id] || {};
+    if (r.stage === undefined) { D.game.trees[l.id] = { ...r, stage: st }; continue; }
+    if (st > r.stage) { D.game.trees[l.id] = { ...r, stage: st }; grew.push([l, st]); }
+  }
+  if (!grew.length) return;
+  save();
+  if (quiet) return;
+  const top = grew.reduce((a, b) => b[1] > a[1] ? b : a);
+  stageSfx(top[1]);
+  toast(`${STAGE_ICON[top[1]]} ${treeName(top[0])} grew into ${/^[AEIOU]/.test(TREE_STAGES[top[1]][1]) ? 'an' : 'a'} ${TREE_STAGES[top[1]][1].toLowerCase()}`, grew.length > 1 ? `${grew.length - 1} other tree${grew.length === 2 ? '' : 's'} grew too.` : 'Water your trees to help them grow faster.');
+}
+setInterval(() => { if (window.D && !document.hidden) checkTreeStages(); }, 60000);
 // Each subject gets its own tree type: picks first (in subject order, no two the
 // same), then the rest get the next unused standard tree.
 function speciesMap() {
@@ -202,26 +243,42 @@ Object.assign(SPECIES_DRAW, {
   },
 });
 
-// Inner <g> markup for one tree. stage 0 sapling, 1 young, 2 full, 3 grand.
+// Inner <g> markup for one tree, stage 0 (sapling) to 7 (ancient). Bigger
+// stages add fruit, blossom, roots, moss, hanging vines and finally a glow.
 function treeG(species, color, stage, seed = 'x') {
   const col = color || '#2f9e44', dk = shade(col, -.28), lt = shade(col, .38);
-  const shadow = `<ellipse cx="0" cy="1" rx="${[10, 20, 30, 36][stage]}" ry="${[2.5, 4, 5.5, 6.5][stage]}" fill="rgba(0,0,0,.16)"/>`;
+  stage = Math.max(0, Math.min(7, stage | 0));
+  const shadow = `<ellipse cx="0" cy="1" rx="${[10, 20, 30, 33, 36, 38, 40, 42][stage]}" ry="${[2.5, 4, 5.5, 6, 6.5, 7, 7.5, 8][stage]}" fill="rgba(0,0,0,.16)"/>`;
   if (stage === 0) {
     return `${shadow}<path d="M0 0 C1 -8 -1 -16 0 -24" stroke="${shade(col, -.35)}" stroke-width="2.6" fill="none" stroke-linecap="round"/>
       <path d="M0 -16 C-14 -24 -16 -10 -2 -12 Z" fill="${col}"/><path d="M0 -21 C12 -32 18 -18 2 -18 Z" fill="${dk}"/><path d="M0 -24 C-4 -34 4 -36 1 -24 Z" fill="${lt}"/>`;
   }
   const [body, fruit] = (SPECIES_DRAW[species] || SPECIES_DRAW.oak)(col, dk, lt);
-  const k = [0, .64, 1, 1.18][stage];
-  let extra = '';
-  if (stage === 3) {
-    const rnd = seeded(seed);
+  const k = [0, .64, 1, 1.08, 1.14, 1.18, 1.21, 1.24][stage];
+  const rnd = seeded(seed);
+  let extra = '', under = '', ground = '';
+  if (stage >= 3) {
     const bloom = species === 'cherry' ? '#ffd43b' : species === 'palm' ? '#7a4a1f' : rnd() < .5 ? '#ffffff' : '#ffd43b';
-    extra = fruit.map(([x, y]) => `<circle cx="${x + (rnd() - .5) * 4}" cy="${y + (rnd() - .5) * 4}" r="3.4" fill="${bloom}" stroke="rgba(0,0,0,.12)" stroke-width=".8"/>`).join('');
+    extra = fruit.filter((_, i) => stage >= 4 || i % 2 === 0).map(([x, y]) => `<circle cx="${x + (rnd() - .5) * 4}" cy="${y + (rnd() - .5) * 4}" r="${stage >= 4 ? 3.4 : 2.6}" fill="${bloom}" stroke="rgba(0,0,0,.12)" stroke-width=".8"/>`).join('');
   }
-  return `${shadow}<g transform="scale(${k})">${body}${extra}</g>`;
+  if (stage >= 5) { // elder: root flares and moss at the base
+    ground += [[-1, 14], [1, 13], [-1, 7], [1, 8]].map(([d, w], i) => `<path d="M${d * 3} -6 Q${d * w * .6} ${-1 - i % 2} ${d * w} 1 L${d * (w - 4)} 1 Q${d * 2} -1 ${d * 1} -4Z" fill="${i < 2 ? BARK : BARK_D}"/>`).join('')
+      + `<ellipse cx="-5" cy="-1" rx="6" ry="2.2" fill="#69a84f"/><ellipse cx="7" cy="0" rx="4" ry="1.6" fill="#7bbf5a"/>`;
+  }
+  if (stage >= 6) { // old-growth: hanging vines and toadstools
+    extra += fruit.slice(0, 4).map(([x, y], i) => `<path d="M${x} ${y + 4} q${i % 2 ? 2 : -2} 9 0 ${16 + i * 3}" stroke="${shade(col, -.45)}" stroke-width="1.6" fill="none" stroke-linecap="round" opacity=".85"/>`).join('');
+    ground += `<g transform="translate(16 0)"><rect x="-1" y="-5" width="2" height="5" fill="#f8f0e3"/><path d="M-4 -5 Q0 -10 4 -5Z" fill="#e03131"/></g><g transform="translate(-17 1)"><rect x="-.8" y="-4" width="1.6" height="4" fill="#f8f0e3"/><path d="M-3 -4 Q0 -8 3 -4Z" fill="#e8590c"/></g>`;
+  }
+  if (stage >= 7) { // ancient: a soft glow and floating motes
+    under = `<circle cx="0" cy="-66" r="54" fill="url(#ancientGlow)" class="ancient-glow"/>`;
+    extra += Array.from({ length: 7 }, () => `<circle cx="${(rnd() - .5) * 80}" cy="${-30 - rnd() * 80}" r="${1.2 + rnd() * 1.4}" fill="#fff3bf" class="ancient-mote" style="animation-delay:-${(rnd() * 4).toFixed(2)}s"/>`).join('');
+  }
+  const defs = stage >= 7 ? '<defs><radialGradient id="ancientGlow"><stop offset="0" stop-color="#ffe066" stop-opacity=".45"/><stop offset="1" stop-color="#ffe066" stop-opacity="0"/></radialGradient></defs>' : '';
+  return `${defs}${shadow}<g transform="scale(${k})">${under}${body}${extra}</g>${ground}`;
 }
 
 // Standalone small tree icon (focus bar, legend). grow 0..1 animates a growing tree.
+// mins is how much the tree has grown: a session's minutes, or treeGrowth(log)
 function treeSvg(color, mins, grow = 1, species = 'oak', h = 52) {
   const stage = grow < 1 ? (grow < .3 ? 0 : grow < .65 ? 1 : 2) : treeStage(mins);
   return `<svg class="tree" viewBox="-42 -128 84 134" width="${Math.round(h * 84 / 134)}" height="${h}" aria-hidden="true">${treeG(species, color, stage, mins)}</svg>`;
@@ -235,6 +292,7 @@ function bestStreak() {
 }
 
 function viewForest() {
+  checkTreeStages(); checkVisitors();
   const t = today(), wk = mondayOf(t);
   const range = ui.forestRange || 'week';
   const from = range === 'week' ? wk : range === 'month' ? t.slice(0, 8) + '01' : '0000';
@@ -251,7 +309,7 @@ function viewForest() {
     return `<div class="fleg" style="--c:${s.color}">${treeSvg(s.color, 45, 1, sp, 46)}<div class="main"><b>${esc(s.name)}</b><div class="muted small-text">${esc(speciesName(sp))} · <span style="color:${RARITY[speciesRarity(sp)].color};font-weight:700">${RARITY[speciesRarity(sp)].name}</span> · ${cnt} tree${cnt === 1 ? '' : 's'}</div><div class="tbuff sm">${LEAF} ×${LEAF_RARITY[speciesRarity(sp)]} leaves</div></div>
       <button class="btn small" data-act="treePick" data-id="${s.id}" title="Choose this subject's tree">Change tree</button></div>`;
   }).join('');
-  const stages = TREE_STAGES.map(([m, name], i) => `<div class="fstage">${`<svg class="tree" viewBox="-42 -128 84 134" width="40" height="64">${treeG('oak', '#40c057', i, 'stage')}</svg>`}<b>${name}</b><span class="muted small-text">${m}+ min</span></div>`).join('');
+  const stages = TREE_STAGES.map(([m, name], i) => `<div class="fstage">${`<svg class="tree" viewBox="-42 -128 84 134" width="40" height="64">${treeG('oak', '#40c057', i, 'stage')}</svg>`}<b>${name.replace(' tree', '')}</b><span class="muted small-text">${m < 60 ? m + ' min' : m / 60 + ' h'}</span></div>`).join('');
   const recent = D.focusLogs.slice(-5).reverse();
   let page = ui.forestPage || 'forest'; if (page === 'boxes') page = 'shop';
   const nClaim = claimable(), nReward = rewardsWaiting();
@@ -264,7 +322,7 @@ function viewForest() {
   if (page === 'critters') return `${head}${crittersView()}`;
   if (page === 'collection') return `${head}${collectionView()}`;
   return `${head}
-    ${leafBar()}
+    ${leafBar()}${visitorBanner()}
     <div class="scene-wrap ${webglOK() ? 'g3wrap' : 'isowrap'}">${webglOK() ? garden3DHtml(logs) : forestGrid(logs)}
       <div class="scene-stats">${stat(logs.length, logs.length === 1 ? 'tree' : 'trees')}${stat(fmtMins(mins) || '0m', 'studied')}${stat('🔥 ' + streak, 'day streak')}${stat(best, 'best streak')}</div>
       <div class="scene-ctl">${gardenFxPanel()}<div class="seg">${seg('week', 'This week')}${seg('month', 'This month')}${seg('all', 'All time')}</div></div>
@@ -277,8 +335,8 @@ function viewForest() {
       <div class="stack">
       ${milestonesCard()}
       <div class="card"><h2>Your trees</h2><p class="muted small-text" style="margin-top:0">Each subject grows its own tree. Pick a different one for any subject. ★ trees come from boxes and the store, and grow leaves faster: rare ×1.5, epic ×2.5, legendary ×4.</p><div class="flegs">${legend || '<div class="empty">Add subjects in the Study tab.</div>'}</div><details class="howgrow"><summary class="muted small-text">How trees grow</summary><div class="fstages">${stages}</div>
-        <p class="muted small-text">A day counts toward your streak when you study 30+ minutes. Grand trees blossom. Click any tree in the forest to name it, water it and see its stats.</p></details></div>
-      <div class="card"><h2>Recent sessions</h2>${recent.length ? `<ul class="list">${recent.map(l => `<li class="item tinted" style="--c:${subj(l.subjectId).color}">${treeSvg(subj(l.subjectId).color, l.mins, 1, speciesFor(l.subjectId), 34)}<div class="main"><div class="title">${esc(subj(l.subjectId).name)} · ${fmtMins(l.mins)}</div><div class="meta">${fmtDate(l.date)} ${fmtTime(new Date(l.start).toTimeString().slice(0, 5))}${l.mins < 10 ? ' · too short for a tree' : ''}</div></div><button class="iconbtn" data-act="delLog" data-id="${l.id}" title="Delete">✕</button></li>`).join('')}</ul>` : '<div class="empty">No sessions yet. Press ▶ Focus on a study block or Start studying.</div>'}</div>
+        <p class="muted small-text">A tree starts as big as your session was long, then keeps growing in the garden: a little every hour, and a lot on days you water it. Each stage takes twice as long as the last, so an Ancient tree is a long-term goal. A day counts toward your streak when you study 30+ minutes. Click any tree in the forest to name it, water it and see its stats.</p></details></div>
+      <div class="card"><h2>Recent sessions</h2>${recent.length ? `<ul class="list">${recent.map(l => `<li class="item tinted" style="--c:${subj(l.subjectId).color}">${treeSvg(subj(l.subjectId).color, treeGrowth(l), 1, speciesFor(l.subjectId), 34)}<div class="main"><div class="title">${esc(subj(l.subjectId).name)} · ${fmtMins(l.mins)}</div><div class="meta">${fmtDate(l.date)} ${fmtTime(new Date(l.start).toTimeString().slice(0, 5))}${l.mins < 10 ? ' · too short for a tree' : ''}</div></div><button class="iconbtn" data-act="delLog" data-id="${l.id}" title="Delete">✕</button></li>`).join('')}</ul>` : '<div class="empty">No sessions yet. Press ▶ Focus on a study block or Start studying.</div>'}</div>
       </div>
     </div>`;
 }

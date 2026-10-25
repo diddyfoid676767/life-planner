@@ -28,6 +28,7 @@ func openAppWindow(url string) bool {
 			continue
 		}
 		if exec.Command(c, "--app="+url, "--window-size=1320,880").Start() == nil {
+			claimTaskbarIdentity()
 			return true
 		}
 	}

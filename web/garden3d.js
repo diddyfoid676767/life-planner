@@ -105,8 +105,8 @@ function forestGrid(logs) {
     if (t.g) return `<g class="gpos" data-d="${d}" transform="translate(${x} ${y})"><g class="gtree deco" data-key="${esc(t.key)}"><g class="sway"><g transform="scale(1.25)">${t.g.svg}</g></g></g></g>`;
     const l = t.l, s = subj(l.subjectId), bub = bubbles > 0 && i % 2 === 0 ? (bubbles--, true) : false;
     return `<g class="gpos" data-d="${d}" data-x="${x}" data-y="${y + 6}" transform="translate(${x} ${y + 6})"><g class="gtree ${l.withered ? 'withered' : treeRec(l.id).wilted ? 'wilt' : ''}" data-key="${esc(t.key)}" data-act="treeInfo" data-id="${l.id}" style="animation-delay:${Math.min(i * 30, 1200)}ms">
-      <title>${esc(treeName(l))} · ${esc(s.name)} · ${fmtMins(l.mins)} · ${fmtDate(l.date)} (drag to move, click for details)</title><g class="sway"><g transform="scale(1.4)">${treeG(speciesFor(l.subjectId), s.color, treeStage(l.mins), l.id)}</g></g></g>
-      ${bub ? `<g class="leafbub" data-act="collectLeaves" transform="translate(0 ${-[54, 106, 160, 190][treeStage(l.mins)]})"><g class="bubin"><circle r="15" fill="#fff" opacity=".92" stroke="#40c057" stroke-width="2"/><text y="6" text-anchor="middle" font-size="17">🍃</text></g><title>Collect your leaves</title></g>` : ''}</g>`;
+      <title>${esc(treeName(l))} · ${esc(s.name)} · ${fmtMins(l.mins)} · ${fmtDate(l.date)} (drag to move, click for details)</title><g class="sway"><g transform="scale(1.4)">${treeG(speciesFor(l.subjectId), s.color, treeStageOf(l), l.id)}</g></g></g>
+      ${bub ? `<g class="leafbub" data-act="collectLeaves" transform="translate(0 ${-[54, 106, 160, 172, 180, 186, 190, 194][treeStageOf(l)]})"><g class="bubin"><circle r="15" fill="#fff" opacity=".92" stroke="#40c057" stroke-width="2"/><text y="6" text-anchor="middle" font-size="17">🍃</text></g><title>Collect your leaves</title></g>` : ''}</g>`;
   }).join('');
   const empty = logs.length ? '' : `<text x="${ox}" y="${oy - 60}" text-anchor="middle" font-size="24" font-weight="700" fill="${night ? '#e9f5e9' : '#2b5a2a'}">Study for 10+ minutes to plant your first tree.</text>`;
   // things that move

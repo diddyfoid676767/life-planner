@@ -156,7 +156,7 @@ func handleAccount(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 	case http.MethodGet:
 		a := loadAccount()
-		resp := map[string]any{"configured": true, "signedIn": a != nil}
+		resp := map[string]any{"configured": true, "signedIn": a != nil, "rt": realtimeConfig()}
 		if a != nil {
 			resp["username"] = a.Username
 		}
@@ -256,7 +256,7 @@ func handleAccountProfile(w http.ResponseWriter, r *http.Request) {
 		Avatar  json.RawMessage `json:"avatar"`
 		Stats   json.RawMessage `json:"stats"`
 	}
-	if json.NewDecoder(io.LimitReader(r.Body, 16<<10)).Decode(&in) != nil || len(in.Avatar) > 5500 || len(in.Stats) > 5500 {
+	if json.NewDecoder(io.LimitReader(r.Body, 24<<10)).Decode(&in) != nil || len(in.Avatar) > 5500 || len(in.Stats) > 14000 {
 		writeErr(w, http.StatusBadRequest, "bad request")
 		return
 	}
@@ -311,4 +311,16 @@ func handleAccountPeople(w http.ResponseWriter, r *http.Request) {
 		out = []map[string]any{}
 	}
 	json.NewEncoder(w).Encode(out)
+}
+
+// realtimeConfig is what the page needs for live PvP battles: the Supabase
+// Realtime socket and the public anon key (the same key every copy of the app
+// ships with). Battles use broadcast channels only, so nothing is stored.
+// LP_REALTIME_WS points it at another server, for testing.
+func realtimeConfig() map[string]string {
+	ws := os.Getenv("LP_REALTIME_WS")
+	if ws == "" {
+		ws = strings.Replace(supaURL, "https://", "wss://", 1) + "/realtime/v1/websocket"
+	}
+	return map[string]string{"ws": ws, "key": supaKey}
 }
