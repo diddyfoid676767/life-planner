@@ -2055,3 +2055,36 @@ main:has(> .calwrap), main:has(.calwrap) { max-width: 1680px; }
 .visitbar div { display: grid; }
 .critcard.here { outline: 2px solid #20c997; }
 .green-text { color: #2f9e44; }
+
+/* ---------- 2.22 PvP ---------- */
+.pvp-top { display: grid; grid-template-columns: minmax(260px, 1fr) 2fr; gap: 14px; margin-bottom: 14px; }
+@media (max-width: 900px) { .pvp-top { grid-template-columns: 1fr; } }
+.pvp-top > .card { margin: 0; }
+.pvprank { display: flex; gap: 16px; align-items: center; background: linear-gradient(135deg, color-mix(in srgb, var(--tc) 22%, var(--panel)), var(--panel) 70%); border-color: color-mix(in srgb, var(--tc) 45%, var(--border)); }
+.pvprank h2 { margin: 2px 0 8px; display: flex; align-items: baseline; gap: 8px; }
+.pvprank .meter { margin-bottom: 6px; }
+.pvp-emblem { font-size: 3.2rem; width: 84px; height: 84px; flex: none; display: grid; place-items: center; border-radius: 50%; background: radial-gradient(circle, color-mix(in srgb, var(--tc) 35%, transparent), transparent 70%); filter: drop-shadow(0 4px 10px color-mix(in srgb, var(--tc) 50%, transparent)); }
+.pvp-r { font-size: 1rem; color: var(--muted); font-weight: 700; }
+.tierchip { display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; border-radius: 999px; font-size: .78rem; font-weight: 700; color: var(--tc); background: color-mix(in srgb, var(--tc) 14%, transparent); white-space: nowrap; }
+.pvpbtns { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.pvpjoin { margin-top: 10px; gap: 8px; }
+.pvpjoin input { flex: 1; min-width: 0; text-transform: uppercase; letter-spacing: .3em; font-weight: 700; text-align: center; }
+.pvpwait { display: flex; align-items: center; gap: 16px; }
+.pvpwait .gbwait { flex: none; }
+.pvpcode { font-size: 2.4rem; font-weight: 800; letter-spacing: .25em; font-family: ui-monospace, Menlo, Consolas, monospace; color: var(--accent); user-select: all; }
+.ladder { list-style: none; padding: 0; margin: 0 0 10px; }
+.ladder li { display: flex; align-items: center; gap: 10px; padding: 8px 6px; border-bottom: 1px solid var(--border); }
+.ladder li:last-child { border-bottom: 0; }
+.ladder li.me { background: color-mix(in srgb, var(--accent) 8%, transparent); border-radius: 10px; }
+.ladder .main { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.ladder .lpos { width: 22px; text-align: center; font-weight: 800; color: var(--muted); }
+.ladder li:nth-child(1) .lpos { color: #f59f00; } .ladder li:nth-child(2) .lpos { color: #adb5bd; } .ladder li:nth-child(3) .lpos { color: #c08a52; }
+.ladder .lbtns { display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
+.pvpteam, .pvplog { list-style: none; padding: 0; margin: 0 0 8px; }
+.pvpteam li { display: flex; align-items: center; gap: 10px; padding: 6px 0; }
+.pvpteam .gbmic { font-size: 1.6rem; width: 36px; text-align: center; }
+.pvpteam .main { flex: 1; }
+.pvplog li { display: flex; align-items: center; gap: 10px; padding: 6px 0; border-bottom: 1px solid var(--border); }
+.pvplog li:last-child { border-bottom: 0; }
+.pvplog li > b { width: 40px; } .pvplog li.win > b { color: var(--ok); } .pvplog li.lose > b { color: var(--danger); }
+.pvplog .main { flex: 1; }

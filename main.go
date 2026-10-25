@@ -16,6 +16,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -24,8 +25,15 @@ import (
 //go:embed web
 var webFS embed.FS
 
+// port can be moved with LP_PORT, so two copies can run side by side for testing
+var port = func() int {
+	if p, err := strconv.Atoi(os.Getenv("LP_PORT")); err == nil && p > 0 {
+		return p
+	}
+	return 47823
+}()
+
 const (
-	port         = 47823
 	dataFileName = "planner-data.json"
 	idleTimeout  = 3 * time.Minute // quit when no browser tab has checked in for this long
 )

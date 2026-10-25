@@ -191,6 +191,7 @@ const LOOKS = {
 };
 const SKINS = ['#f1c9a5', '#e0ac69', '#c68642', '#8d5524', '#ffdbac', '#d1a07a'];
 function monLook(m) {
+  if (m.look) return m.look; // a PvP opponent brings their own look
   if (m.ath) {
     const spec = avatarSpec(), C = id => cos(id) || {}, Lk = Object.assign({}, LOOK_DEFAULT, spec.look || {});
     const dyed = spec.hairCol && (C(spec.hairCol).coins || C(spec.hairCol).grit);

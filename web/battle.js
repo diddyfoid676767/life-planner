@@ -250,7 +250,12 @@ function mkMon(o) {
 function myLevel() { const st = battleStats(); return lvOf(STAT_IDS.reduce((a, k) => a + st[k], 0) / STAT_IDS.length); }
 function myMon(hpMul = 1) {
   const st = battleStats(), ovr = STAT_IDS.reduce((a, k) => a + st[k], 0) / STAT_IDS.length;
-  return mkMon({ key: 'me', name: D.settings.name || 'You', icon: '🧍', ath: true, types: myTypes(st), lv: lvOf(ovr), base: baseFrom(st, ovr, 6), dv: 15, sx: 63, moves: moveSet(), hpMul });
+  const m = mkMon({ key: 'me', name: D.settings.name || 'You', icon: '🧍', ath: true, types: myTypes(st), lv: lvOf(ovr), base: baseFrom(st, ovr, 6), dv: 15, sx: 63, moves: moveSet(), hpMul });
+  // tree-type buffs and the training dummy upgrade lift your own stats
+  const dummy = typeof upg === 'function' ? .02 * upg('drills') : 0;
+  for (const k of ['hp', 'atk', 'def', 'spd', 'spc']) m.st[k] = Math.round(m.st[k] * (1 + dummy + (typeof activeBattleBuff === 'function' ? activeBattleBuff(k) : 0)));
+  m.hp = m.st.hp;
+  return m;
 }
 const tierOf = e => Math.max(0, LEAGUES.findIndex(l => l.id === e.league));
 function crewMon(e) {
@@ -288,6 +293,10 @@ const DAILY_MODS = [
   { id: 'wall', label: 'Iron guard: their team starts with a Reflect' }, { id: 'sneaky', label: 'Sneaky: their team starts with +1 evasion' },
   { id: 'tank', label: 'Tank: their ace has 40% more HP' },
 ];
+// the battle engine draws from brand(): Math.random normally, and a seed both
+// players share in live PvP so each side works out the same turn
+let bRand = Math.random;
+const brand = () => bRand();
 const rng = seed => () => { seed = (seed * 1664525 + 1013904223) % 4294967296; return seed / 4294967296; };
 const hashStr = str => [...str].reduce((a, c) => (a * 31 + c.charCodeAt(0)) >>> 0, 7);
 function dailyRival() {
@@ -325,7 +334,7 @@ function survivalRival(wave) {
 // ---------- starting a battle ----------
 const BAG = { water: ['🥤', 'Water bottle', 'Heals a third of max HP.'], physio: ['🩹', 'Physio tape', 'Cures any status (sleep, poison, burn, freeze, paralysis).'] };
 function startBattle(id, mode = 'ladder') {
-  let e, i = -1;
+  let e, i = -1; bRand = Math.random;
   if (mode === 'daily') { if (dailyWon()) { toast('Daily challenge done', 'A new challenger turns up tomorrow.'); return; } e = dailyRival(); }
   else if (mode === 'survival') e = null;
   else if (mode === 'wander') { if (wanderWon()) { toast('Already beaten', 'A new challenger turns up soon.'); return; } e = wanderRival(); }
@@ -349,21 +358,27 @@ function startBattle(id, mode = 'ladder') {
   B.sides = { me: { team: mine, cur: 0 }, them: { team: them, cur: 0 } };
   for (const m of mine) m.side = 'me'; for (const m of them) m.side = 'them';
   B.ai = BOSS_AI[e.id] || {};
+  openBattleFx();
+  intro();
+}
+// the battle overlay: built once per battle, clicks go to battleAct
+function openBattleFx() {
   let ov = document.getElementById('battlefx');
   if (!ov) { ov = document.createElement('div'); ov.id = 'battlefx'; ov.className = 'treefx'; document.body.appendChild(ov); }
   ov.onclick = ev => {
     if (ev.target.closest('#bText') && !ev.target.closest('[data-bm]')) { battle?.skip?.(); return; }
     const b = ev.target.closest('[data-bm]'); if (!b) return;
     if (b.dataset.bm === 'close') {
-      if (battle && !battle.over && battle.turn && !confirm('Leave this battle? It counts as a loss.')) return;
-      if (battle && !battle.over && battle.turn) finishBattle(false);
+      const started = battle && !battle.over && (battle.turn || battle.pvp);
+      if (started && !confirm('Leave this battle? It counts as a loss.')) return;
+      if (started) finishBattle(false);
+      bRand = Math.random;
       ov.remove(); battle = null; document.removeEventListener('keydown', battleKey); render(); return;
     }
     battleAct(b.dataset.bm);
   };
   document.addEventListener('keydown', battleKey);
   drawStage(); drawPanels(); drawControls();
-  intro();
 }
 async function intro() {
   const B = battle, e = B.e;
@@ -396,6 +411,7 @@ const usable = m => m.moves.filter(x => x.pp > 0);
 
 // ---------- drawing ----------
 function monSprite(m) {
+  if (m.ath && m.side === 'them') { try { return m.av ? avatarFull(m.av, { size: 170 }) : '<span class="esprite">🧍</span>'; } catch { return '<span class="esprite">🧍</span>'; } }
   return m.ath ? `${avatarFull(avatarSpec(), { size: 170 })}${petHtml(myAv().pet, 40)}` : `<span class="esprite">${m.icon}</span>`;
 }
 function drawStage() {
@@ -406,7 +422,7 @@ function drawStage() {
       <div class="fighter me" style="--dir:1" id="fMe"><div class="fbox"></div><div class="fshadow"></div><div class="callout" id="cMe"></div></div>
       <div class="fighter them ${e.boss ? 'boss' : ''}" style="--dir:-1" id="fThem"><div class="fbox"></div><div class="fshadow"></div><div class="callout" id="cThem"></div></div>
       <div class="gbpanel them" id="pThem"></div><div class="gbpanel me" id="pMe"></div>
-      <div class="bwhere">${B.mode === 'survival' ? '🌊 Survival' : B.mode === 'daily' ? '📅 Daily challenge' : B.mode === 'wander' ? '🆕 New challenger' : esc(lg.icon + ' ' + lg.name)}</div>
+      <div class="bwhere">${B.mode === 'pvp' ? '🌐 Live PvP' : B.mode === 'ghost' ? '👻 Saved team' : B.mode === 'survival' ? '🌊 Survival' : B.mode === 'daily' ? '📅 Daily challenge' : B.mode === 'wander' ? '🆕 New challenger' : esc(lg.icon + ' ' + lg.name)}</div>
       <div class="bfx" id="bfx"></div><div class="bbanner" id="bBanner"></div>
     </div>
     <div class="gbbottom"><div class="gbtext" id="bText" title="Click or press Space to skip"></div><div class="gbmenu" id="bControls"></div></div>
@@ -514,11 +530,13 @@ async function battleAct(code) {
   if (k === 'back') { B.menu = ''; drawControls(); return; }
   if (k === 'run') {
     if (!confirm(B.mode === 'survival' ? 'End your Survival run here?' : 'Give up this battle? It counts as a loss.')) return;
+    if (B.pvp) { B.pvp.send({ t: 'forfeit' }); B.over || (await endBattle(false)); return; }
     B.busy = true; drawControls(); await say(`${B.sides.me.team[0].name} called it a day.`, 900); await endBattle(false); return;
   }
   const me = cur('me');
   if (k === 'go') {
     const to = +v, m = B.sides.me.team[to]; if (!m || m.hp <= 0 || to === B.sides.me.cur) return;
+    if (B.prompt === 'faint' && B.pickRes) { const r = B.pickRes; B.pickRes = null; r(to); return; }
     if (B.prompt === 'faint') { B.prompt = ''; B.busy = true; drawControls(); await sendIn('me', to); B.busy = false; B.menu = ''; drawControls(); return; }
     return runTurn({ kind: 'switch', to });
   }
@@ -532,10 +550,13 @@ async function battleAct(code) {
 }
 async function runTurn(mine) {
   const B = battle; B.busy = true; B.menu = ''; B.turn++; B.moved = new Set(); drawControls();
-  const theirs = aiAct();
+  const theirs = B.pvp ? await B.pvp.exchange(mine) : aiAct();
+  if (battle !== B || B.over) return;
   const acts = [{ side: 'me', ...mine }, { side: 'them', ...theirs }];
-  const pri = a => a.kind !== 'move' ? 10 : (a.mv.pri || 0);
-  acts.sort((a, b) => pri(b) - pri(a) || speedOf(cur(b.side)) - speedOf(cur(a.side)) || Math.random() - .5);
+  const pri = a => a.kind !== 'move' ? 10 : (a.mv.pri || 0), coin = brand();
+  // speed ties: a coin flip, read the same way round by both players in PvP
+  const tie = (a, b) => B.pvp ? (B.pvp.rank(a.side) - B.pvp.rank(b.side)) * (coin < .5 ? 1 : -1) : coin - .5;
+  acts.sort((a, b) => pri(b) - pri(a) || speedOf(cur(b.side)) - speedOf(cur(a.side)) || tie(a, b));
   for (const a of acts) {
     if (B.over) break;
     const m = cur(a.side); if (m.hp <= 0) continue;
@@ -548,7 +569,7 @@ async function runTurn(mine) {
   if (!B.over && cur('me').hp > 0 && cur('them').hp > 0) await residuals();
   for (const s of ['me', 'them']) cur(s).vol.flinch = 0;
   if (!B.over) await checkFaints();
-  if (!B.over && B.turn >= 80) { await say('The ref calls time!'); const pct = s => B.sides[s].team.reduce((a, m) => a + Math.max(0, m.hp) / m.st.hp, 0); await endBattle(pct('me') >= pct('them')); return; }
+  if (!B.over && B.turn >= 80) { await say('The ref calls time!'); const pct = s => B.sides[s].team.reduce((a, m) => a + Math.max(0, m.hp) / m.st.hp, 0); await endBattle(pct('me') > pct('them') || (pct('me') === pct('them') && (!B.pvp || B.pvp.rank('me') === 0))); return; }
   if (!B.over && B.prompt !== 'faint') { B.busy = false; drawPanels(); drawControls(); }
 }
 async function doSwitch(side, to) {
@@ -562,7 +583,7 @@ async function sendIn(side, idx) {
   const B = battle; B.sides[side].cur = idx; const m = cur(side);
   drawPanels();
   const p = play(side, 'send', { mon: m });
-  await say(side === 'me' ? (m.ath ? `Let's go, ${m.name}!` : `Go! ${m.name}!`) : `${B.e.name} sends out ${m.name}!`);
+  await say(side === 'me' ? (m.ath ? `Let's go, ${m.name}!` : `Go! ${m.name}!`) : m.ath ? `${m.name} steps up!` : `${B.e.name} sends out ${m.name}!`);
   await p;
   if (side === 'them' && B.e.mod) {
     const id = B.e.mod.id;
@@ -571,7 +592,7 @@ async function sendIn(side, idx) {
   }
 }
 async function useItem(side, id) {
-  const B = battle, m = cur(side); if (side === 'me') B.bag[id]--;
+  const B = battle, m = cur(side); if (side === 'me') B.bag[id]--; else if (B.bagThem) B.bagThem[id]--;
   if (id === 'water') { const amt = Math.min(m.st.hp - m.hp, Math.ceil(m.st.hp / 3)); m.hp += amt; await say(`${nm(m)} drinks a 🥤 water bottle.`); await play(side, 'heal', { amt }); drawPanels(); await say(amt ? `${nm(m)} got back ${amt} HP.` : 'It had no effect.'); }
   else { const had = m.status; m.status = null; m.slp = 0; m.toxN = 0; await say(`${nm(m)} gets 🩹 physio tape.`); drawPanels(); await say(had ? `${nm(m)} is no longer ${COND[had][1].toLowerCase()}!` : 'It had no effect.'); }
 }
@@ -583,7 +604,7 @@ function calcDamage(a, d, m) {
   if (!eff) return { dmg: 0, eff: 0, crit: false };
   const special = SPECIAL_TYPES.has(m.type);
   let T = Math.floor(a.base.spd / 4); if (a.vol.focus) T *= 4; if (m.crit) T *= 8; T = Math.min(255, T);
-  const crit = Math.floor(Math.random() * 256) < T;
+  const crit = Math.floor(brand() * 256) < T;
   const ak = special ? 'spc' : 'atk', dk = special ? 'spc' : 'def';
   let A = a.st[ak], Dd = d.st[dk];
   if (!crit) { // critical hits ignore stat changes, burns and screens
@@ -598,13 +619,13 @@ function calcDamage(a, d, m) {
   let dmg = Math.floor(Math.floor(Math.floor(2 * L / 5 + 2) * m.pow * A / Dd) / 50) + 2;
   if (a.types.includes(m.type)) dmg = Math.floor(dmg * 1.5);
   for (const t of d.types) dmg = Math.floor(dmg * (CHART[m.type]?.[t] ?? 1));
-  dmg = Math.floor(dmg * (217 + Math.floor(Math.random() * 39)) / 255);
+  dmg = Math.floor(dmg * (217 + Math.floor(brand() * 39)) / 255);
   return { dmg: Math.max(1, dmg), eff, crit };
 }
 function hits(a, d, m) {
   if (m.acc == null) return true;
   const t = Math.floor(Math.floor(m.acc * 255 / 100) * stageMul(a.stg.acc) / stageMul(d.stg.eva));
-  return Math.floor(Math.random() * 256) < clamp(t, 1, 255); // even 100% moves miss 1 time in 256, like the original
+  return Math.floor(brand() * 256) < clamp(t, 1, 255); // even 100% moves miss 1 time in 256, like the original
 }
 async function doMove(side, m) {
   const B = battle, a = cur(side), d = cur(other(side)), os = other(side);
@@ -615,7 +636,7 @@ async function doMove(side, m) {
     a.status = null; drawPanels(); await say(`${nm(a)} woke up!`);
   }
   if (a.status === 'frz') {
-    if (Math.random() < .1) { a.status = null; drawPanels(); await say(`${nm(a)} thawed out!`); }
+    if (brand() < .1) { a.status = null; drawPanels(); await say(`${nm(a)} thawed out!`); }
     else { await play(side, 'status', { st: 'frz' }); await say(`${nm(a)} is frozen solid!`); a.vol.charging = 0; return; }
   }
   if (a.vol.flinch) { a.vol.flinch = 0; await say(`${nm(a)} flinched!`); a.vol.charging = 0; return; }
@@ -623,10 +644,10 @@ async function doMove(side, m) {
     if (--a.vol.conf <= 0) { a.vol.conf = 0; drawPanels(); await say(`${nm(a)} snapped out of it!`); }
     else {
       await play(side, 'status', { st: 'conf' }); await say(`${nm(a)} is confused!`);
-      if (Math.random() < .5) { const self = calcDamage(a, a, { type: 'none', pow: 40 }); a.hp = Math.max(0, a.hp - self.dmg); await play(side, 'hit', { type: 'normal', dmg: self.dmg }); drawPanels(); await say('It hurt itself in its confusion!'); a.vol.charging = 0; return; }
+      if (brand() < .5) { const self = calcDamage(a, a, { type: 'none', pow: 40 }); a.hp = Math.max(0, a.hp - self.dmg); await play(side, 'hit', { type: 'normal', dmg: self.dmg }); drawPanels(); await say('It hurt itself in its confusion!'); a.vol.charging = 0; return; }
     }
   }
-  if (a.status === 'par' && Math.random() < .25) { await play(side, 'status', { st: 'par' }); await say(`${nm(a)} is fully paralysed!`); a.vol.charging = 0; return; }
+  if (a.status === 'par' && brand() < .25) { await play(side, 'status', { st: 'par' }); await say(`${nm(a)} is fully paralysed!`); a.vol.charging = 0; return; }
   // two-turn moves: the first turn is the wind-up
   if (m.charge && a.vol.charging !== m.id) {
     usePP(a, m); a.vol.charging = m.id; drawPanels();
@@ -653,7 +674,7 @@ async function doMove(side, m) {
     if (!lt || lt.turn !== B.turn || !['normal', 'combat'].includes(lt.type) || !lt.dmg) { await say('But it failed!'); return; }
     res = { dmg: lt.dmg * 2, eff: 1, crit: false, fixed: true };
   }
-  if (m.hits) { const r = Math.random(); n = r < .375 ? 2 : r < .75 ? 3 : r < .875 ? 4 : 5; }
+  if (m.hits) { const r = brand(); n = r < .375 ? 2 : r < .75 ? 3 : r < .875 ? 4 : 5; }
   await play(side, 'move', { move: m, target: os, second });
   for (let k = 0; k < n; k++) {
     const r = res || calcDamage(a, d, m);
@@ -678,8 +699,8 @@ async function doMove(side, m) {
   if (m.recoil && total) { const rc = Math.max(1, Math.floor(total * m.recoil)); a.hp = Math.max(0, a.hp - rc); await play(side, 'hit', { type: 'normal', dmg: rc, recoil: true }); drawPanels(); await say(`${nm(a)} is hurt by the effort!`); }
   if (m.explode) { a.hp = 0; drawPanels(); }
   if (m.recharge && d.hp > 0) a.vol.recharge = 1;
-  if (m.wrap && d.hp > 0 && !d.vol.bound && !broke && !d.vol.sub) { d.vol.bound = 2 + Math.floor(Math.random() * 4); drawPanels(); await say(`${nm(d)} is caught in a headlock!`); }
-  if (m.sec && d.hp > 0 && !d.vol.sub && !broke && Math.random() * 100 < m.sec.ch) {
+  if (m.wrap && d.hp > 0 && !d.vol.bound && !broke && !d.vol.sub) { d.vol.bound = 2 + Math.floor(brand() * 4); drawPanels(); await say(`${nm(d)} is caught in a headlock!`); }
+  if (m.sec && d.hp > 0 && !d.vol.sub && !broke && brand() * 100 < m.sec.ch) {
     if (m.sec.st === 'flinch') { if (!B.moved.has(os)) d.vol.flinch = 1; }
     else if (m.sec.st) await inflict(d, m.sec.st, true);
     if (m.sec.foe) await statChange(d, m.sec.foe);
@@ -694,7 +715,7 @@ async function statusMove(side, a, d, m) {
   await play(side, 'move', { move: m, target: m.inflict || m.foe ? os : side });
   if (m.self) return statChange(a, m.self);
   if (m.foe) return statChange(d, m.foe);
-  if (m.inflict === 'conf') { if (d.vol.conf) { await say(`${nm(d)} is already confused!`); return; } d.vol.conf = 2 + Math.floor(Math.random() * 4); drawPanels(); await play(os, 'status', { st: 'conf' }); await say(`${nm(d)} became confused!`); return; }
+  if (m.inflict === 'conf') { if (d.vol.conf) { await say(`${nm(d)} is already confused!`); return; } d.vol.conf = 2 + Math.floor(brand() * 4); drawPanels(); await play(os, 'status', { st: 'conf' }); await say(`${nm(d)} became confused!`); return; }
   if (m.inflict === 'leech') { if (d.types.includes('nature') || d.vol.leech) { await say(`${nm(d)} can't be seeded!`); return; } d.vol.leech = 1; drawPanels(); await play(os, 'status', { st: 'leech' }); await say(`${nm(d)} was seeded!`); return; }
   if (m.inflict) { if (!(await inflict(d, m.inflict, false))) await say('But it failed!'); return; }
   if (m.heal) { if (a.hp >= a.st.hp) { await say('But it failed!'); return; } const h = Math.min(a.st.hp - a.hp, Math.floor(a.st.hp * m.heal)); a.hp += h; await play(side, 'heal', { amt: h }); drawPanels(); await say(`${nm(a)} got their second wind!`); return; }
@@ -708,7 +729,7 @@ async function inflict(d, st, secondary) {
   if (d.status) { if (!secondary) await say(`${nm(d)} is already ${COND[d.status][1].toLowerCase()}!`); return true; }
   const immune = (st === 'brn' && d.types.includes('fire')) || (st === 'frz' && d.types.includes('frost')) || ((st === 'psn' || st === 'tox') && d.types.includes('toxic'));
   if (immune) return false;
-  d.status = st; d.slp = st === 'slp' ? 1 + Math.ceil(Math.random() * 3) : 0; d.toxN = 0; d.vol.charging = 0;
+  d.status = st; d.slp = st === 'slp' ? 1 + Math.ceil(brand() * 3) : 0; d.toxN = 0; d.vol.charging = 0;
   drawPanels(); await play(d.side, 'status', { st });
   await say(`${nm(d)} ${{ par: 'is paralysed! It may not be able to move', brn: 'was burned', frz: 'was frozen solid', psn: 'was poisoned', tox: 'was badly poisoned', slp: 'fell asleep' }[st]}!`);
   return true;
@@ -761,6 +782,14 @@ async function checkFaints() {
     await endBattle(true); return;
   }
   if (!alive('me').length) { await endBattle(false); return; }
+  if (B.pvp) { // you pick first, then wait for theirs, so neither player waits on the other
+    if (cur('me').hp <= 0) {
+      const to = await new Promise(res => { B.pickRes = res; B.prompt = 'faint'; B.busy = false; drawControls(); });
+      B.prompt = ''; B.busy = true; drawControls(); B.pvp.send({ t: 'swap', turn: B.turn, v: to }); await sendIn('me', to);
+    }
+    if (cur('them').hp <= 0) { const to = await B.pvp.recv('swap', B.turn); if (battle !== B || B.over) return; await sendIn('them', to); }
+    return;
+  }
   if (cur('them').hp <= 0) await sendIn('them', aiSwap(true));
   if (cur('me').hp <= 0) { B.prompt = 'faint'; B.busy = false; drawControls(); }
 }
@@ -846,6 +875,7 @@ async function endBattle(win) {
 function finishBattle(win) {
   const B = battle; if (!B || B.over) return;
   B.over = true; B.win = win;
+  if (B.mode === 'pvp' || B.mode === 'ghost') { pvpFinish(B, win); save(); return; }
   const at = new Date().toISOString(), idx = Math.max(0, B.i);
   let reward, first = false;
   if (B.mode === 'survival') {
@@ -888,6 +918,7 @@ function rollLoot(B, at) {
 }
 function resultHtml() {
   const B = battle, sv = B.mode === 'survival';
+  if (B.mode === 'pvp' || B.mode === 'ghost') return pvpResultHtml(B);
   const head = sv ? `🌊 You lasted ${B.wave - 1} wave${B.wave === 2 ? '' : 's'}${B.record ? ' · new best!' : ''}` : B.win ? '🏆 You win!' : '😤 Not this time';
   const text = sv ? `Best ever: ${D.arena.survivalBest || 0} waves.` : B.win ? (B.mode === 'daily' ? 'Daily challenge done. A new challenger turns up tomorrow.' : B.mode === 'wander' ? `${esc(B.e.name)} is beaten. Another challenger will turn up in a few days.` : B.first ? `${esc(B.e.name)} is beaten${B.joined ? ' and joins your crew 🤝' : ''}.${B.i < ENEMIES.length - 1 ? ' The next rival is unlocked.' : ' You beat the whole ladder. Legend.'}` : 'Another win.') : 'Check the types: hit them with moves they\'re weak to, and swap in a crew member who resists their attacks.';
   return `<div class="bresult ${B.win || (sv && B.wave > 1) ? 'win' : 'lose'}"><h2>${head}</h2><p>${text} <b>+${B.reward} ${GRIT}</b></p>

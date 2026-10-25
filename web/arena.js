@@ -393,11 +393,12 @@ function viewArena() {
   const frCol = fr >= 75 ? '#40c057' : fr >= 50 ? '#fab005' : '#e03131';
   const nq = questDefs().filter(q => q.have >= q.need && !(q.key in D.arena.ledger)).length;
   const tab = (v, l) => `<button class="${page === v ? 'on' : ''}" data-act="arenaPage" data-v="${v}">${l}</button>`;
-  const tabs = `<div class="seg arenatabs">${tab('battle', '⚔️ Battle')}${tab('athlete', `🏠 Athlete${nq ? ` <span class="dotbadge">${nq}</span>` : ''}`)}${tab('moves', '🥋 Moves & crew')}${tab('locker', '🎒 Locker')}${tab('wardrobe', '👕 Wardrobe')}${tab('shop', '🎁 Boxes & shop')}</div>`;
+  const tabs = `<div class="seg arenatabs">${tab('battle', '⚔️ Battle')}${tab('athlete', `🏠 Athlete${nq ? ` <span class="dotbadge">${nq}</span>` : ''}`)}${tab('pvp', '🌐 PvP')}${tab('moves', '🥋 Moves & crew')}${tab('locker', '🎒 Locker')}${tab('wardrobe', '👕 Wardrobe')}${tab('shop', '🎁 Boxes & shop')}</div>`;
   const head = pageHead('⚔️ Arena', 'Your stats come from the workouts you tick off', `<button class="btn" data-act="goto" data-v="training">💪 Training &amp; Health</button>`) + arenaStrip(a) + tabs;
   let body;
   if (page === 'battle') body = arenaBattles(a);
   else if (page === 'moves') body = arenaMoves();
+  else if (page === 'pvp') body = arenaPvp();
   else if (page === 'locker') body = arenaLocker(g);
   else if (page === 'wardrobe') body = arenaWardrobe();
   else if (page === 'shop') body = arenaShop(g);

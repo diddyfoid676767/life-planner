@@ -22,7 +22,7 @@ async function acctPost(body) {
 
 function myStatsRow() {
   const r = myBoardRow();
-  return { display: (D.settings.name || '').slice(0, 30), avatar: r.av, stats: { week: r.week, study: r.study, work: r.work, health: r.health, ...chalPublish() } };
+  return { display: (D.settings.name || '').slice(0, 30), avatar: r.av, stats: { week: r.week, study: r.study, work: r.work, health: r.health, ...chalPublish(), pvp: typeof pvpPublish === 'function' ? pvpPublish() : undefined } };
 }
 async function publishMe(force) {
   if (!acct.signedIn || (!force && Date.now() - acctPublishedAt < 10 * 60000)) return;
