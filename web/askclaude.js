@@ -22,12 +22,12 @@ function aiSettingsCard() {
   if (ONLINE) return '';
   const st = AI.st || {}, m = AI.mail || {};
   return `<div class="card" data-sec="app" style="grid-column:1/-1"><h2>✦ Claude in the planner</h2>
-    <p class="small-text" style="margin-top:0">Your own Claude API key powers <b>Ask Claude</b> (the ✦ button, bottom right) and the <b>direct email check</b>. Get one at <a href="https://console.anthropic.com/settings/keys" target="_blank" rel="noopener noreferrer">console.anthropic.com</a>. It's saved only on this PC, and usage is billed to your API account.</p>
+    <p class="small-text" style="margin-top:0"><b>Ask Claude</b> (the ✦ button, bottom right) works for free: it opens your Claude app with the page copied in. Optional: add a Claude API key from <a href="https://console.anthropic.com/settings/keys" target="_blank" rel="noopener noreferrer">console.anthropic.com</a> to chat right inside the planner instead (billed to your API account, saved only on this PC).</p>
     <div class="row" style="margin-bottom:10px"><input type="password" id="aiKey" placeholder="${st.configured ? 'Key saved (paste a new one to replace it)' : 'Paste your API key (starts with sk-ant-)'}" autocomplete="off" style="flex:1;min-width:220px">
       <select id="aiModel" title="Which Claude answers">${AI_MODELS.map(([v, l]) => `<option value="${v}" ${(st.model || AI_MODELS[0][0]) === v ? 'selected' : ''}>${l}</option>`).join('')}</select>
       <button class="btn small primary" data-ai="saveKey">Save</button>${st.configured ? '<button class="btn small" data-ai="clearKey">Remove</button>' : ''}</div>
     <p class="small-text"><b>Direct email check:</b> ${m.configured ? `on for ${esc(m.user)}.` : 'off.'} ${m.checked ? `Last checked ${esc(ago(m.checked))}.` : ''} ${m.error ? `<span class="tag red">${esc(m.error)}</span>` : ''}</p>
-    <p class="muted small-text" style="margin-top:0">While the planner is open it reads your Gmail every 30 minutes (7am to 10pm), plus the school Outlook export, and Claude sorts what matters into Missed info. It only reads mail. Gmail needs an <b>app password</b>: turn on 2-Step Verification, then make one at <a href="https://myaccount.google.com/apppasswords" target="_blank" rel="noopener noreferrer">myaccount.google.com/apppasswords</a> and paste the 16 letters here.</p>
+    <p class="muted small-text" style="margin-top:0">Free, and automatic while the planner is open: every 30 minutes (7am to 10pm) it reads your Gmail and the school Outlook export, skips newsletters, ads and account emails, and puts the rest into Missed info with any due dates it finds. With an API key added above, Claude sorts and summarises them instead. It only reads mail. Gmail needs an <b>app password</b>: turn on 2-Step Verification, then make one at <a href="https://myaccount.google.com/apppasswords" target="_blank" rel="noopener noreferrer">myaccount.google.com/apppasswords</a> and paste the 16 letters here.</p>
     <div class="row"><input type="email" id="mailUser" placeholder="you@gmail.com" value="${esc(m.user || '')}" style="flex:1;min-width:180px"><input type="password" id="mailPass" placeholder="${m.configured ? 'App password saved' : 'App password'}" autocomplete="off" style="flex:1;min-width:160px">
       <button class="btn small primary" data-ai="saveMail">Save &amp; test</button>${m.configured ? '<button class="btn small" data-ai="clearMail">Turn off</button>' : ''}</div></div>`;
 }
@@ -41,7 +41,7 @@ function mailStatusLine() {
   return stale ? `<div class="card hintcard"><b>Emails not coming in?</b> The hourly Claude check can only save here while the Claude app is open and online on this PC. Turn on the <b>direct email check</b> in <a href="#" data-ai="goSettings">Settings, App</a> and the planner checks Gmail itself while it's open.</div>` : '';
 }
 async function mailCheckDirect(quiet) {
-  if (ONLINE || !(AI.mail?.configured || AI.mail?.checked) || !AI.st?.configured) return false;
+  if (ONLINE || !(AI.mail?.configured || AI.mail?.checked)) return false;
   if (!quiet) toast('📬 Checking your email…', 'Claude is sorting your new mail. This takes up to a minute.', { timeout: 6000 });
   try {
     const r = await fetch('/api/mail', { method: 'POST' }), j = await r.json().catch(() => ({}));
@@ -85,7 +85,9 @@ function aiDraw() {
   const where = document.querySelector('#tabs button.active span')?.textContent || '';
   document.getElementById('aiWhere').textContent = where ? `· sees ${where}` : '';
   if (!AI.st?.configured) {
-    log.innerHTML = `<div class="aiempty"><p><b>Add your Claude API key</b> to start chatting.</p><p class="muted small-text">It's in Settings, App, under ✦ Claude in the planner.</p><button class="btn primary small" data-ai="goSettings">Open Settings</button></div>`;
+    // free: the question and the page go to your own Claude app (your normal plan, no API key)
+    log.innerHTML = `<div class="aiempty"><p>Type a question and press <b>Send</b>.</p><p class="muted small-text">The Claude app opens with your question and the <b>${esc(where || 'page')}</b> page copied. Press <b>Ctrl+V</b>, then <b>Enter</b>.</p>
+      <div class="aisugs">${['Summarise this page', 'What should I do next?', 'Quiz me on something I’m studying'].map(s => `<button class="btn small" data-ai="sug">${esc(s)}</button>`).join('')}</div></div>`;
     return;
   }
   log.innerHTML = AI.msgs.length ? AI.msgs.map(m => `<div class="aimsg ${m.role}${m.err ? ' err' : ''}">${m.role === 'user' ? esc(m.content).replace(/\n/g, '<br>') : aiMd(m.content) || '<span class="aidots"><i></i><i></i><i></i></span>'}</div>`).join('')
@@ -101,7 +103,9 @@ function aiToggle(on) {
 async function aiSend(text) {
   const box = document.getElementById('aiIn');
   text = (text ?? box.value).trim(); if (!text || AI.busy) return;
-  box.value = ''; AI.busy = true;
+  box.value = '';
+  if (!AI.st?.configured) { aiHandoff(text); return; }
+  AI.busy = true;
   AI.msgs.push({ role: 'user', content: text });
   const reply = { role: 'assistant', content: '' }; AI.msgs.push(reply); aiDraw();
   const send = document.getElementById('aiSend'); send.disabled = true;
@@ -131,6 +135,16 @@ async function aiSend(text) {
   }
   AI.busy = false; AI.ctrl = null; send.disabled = false; aiDraw();
 }
+// No API key: copy the question with the page to the clipboard and open the Claude app (or claude.ai).
+async function aiHandoff(q) {
+  const where = document.querySelector('#tabs button.active span')?.textContent || 'my planner';
+  const prompt = `I'm using my Life Planner app (I'm a Year ${D.settings.yearLevel || 11} student in Melbourne). This is the ${where} page I'm looking at right now:\n\n<page>\n${aiPageText()}\n</page>\n\n${q}`;
+  let copied = true;
+  try { await navigator.clipboard.writeText(prompt); } catch { copied = false; }
+  const app = await openClaudeApp('/new');
+  aiToggle(false);
+  toast(copied ? `Copied, now paste it in ${app ? 'the Claude app' : 'Claude'}` : "Couldn't copy the page", copied ? 'Press Ctrl+V, then Enter.' : 'Type your question in Claude instead.', { timeout: 12000 });
+}
 function aiFab() {
   if (ONLINE || document.getElementById('aiFab')) return;
   const b = document.createElement('button'); b.id = 'aiFab'; b.title = 'Ask Claude about this page (Ctrl+J)'; b.innerHTML = '✦<span>Ask Claude</span>';
@@ -155,7 +169,7 @@ document.addEventListener('click', e => {
     case 'saveMail': case 'clearMail': {
       const body = a === 'clearMail' ? { user: '', pass: '' } : { user: $('#mailUser').value.trim(), pass: $('#mailPass').value };
       if (a === 'saveMail') toast('Testing Gmail…', '', { timeout: 3000 });
-      aiPut('/api/mail', body).then(j => { AI.mail = j; render(); if (j.configured) { toast('✓ Gmail connected', j.ai ? 'Running the first check now.' : 'Add your Claude API key too, so Claude can sort your mail.'); if (j.ai) mailCheckDirect(true); } else toast('Direct email check is off', ''); })
+      aiPut('/api/mail', body).then(j => { AI.mail = j; render(); if (j.configured) { toast('✓ Gmail connected', 'Running the first check now.'); mailCheckDirect(true); } else toast('Direct email check is off', ''); })
         .catch(err => toast("Couldn't connect Gmail", err.message, { cls: 'danger', timeout: 10000 }));
       break;
     }

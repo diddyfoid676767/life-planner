@@ -7,18 +7,21 @@ your workouts.
 
 Everything is saved on your computer in the `data` folder next to the app.
 Nothing leaves your PC unless you turn it on: signing in to share with
-friends and battle them, or adding your own Claude API key for **Ask Claude**
-and the direct email check (those send the page or your new emails to Claude
-to answer or sort them).
+friends and battle them, or adding your own Claude API key (then the in-planner
+chat and email sorting send the page or your new emails to Claude).
 
 ## Ask Claude and the email check
 
-Add your Claude API key in **Settings, App**. Then the ✦ **Ask Claude** button
-(or Ctrl+J) opens a chat that can see the page you're on. To have the planner
-read Gmail itself, add your Gmail address and a Google
-[app password](https://myaccount.google.com/apppasswords) there too: while the
-planner is open it checks every 30 minutes from 7am to 10pm and puts what
-matters into **Missed info**.
+The ✦ **Ask Claude** button (or Ctrl+J) opens your Claude app with your
+question and the page you're on copied, ready to paste. Adding your own Claude
+API key in **Settings, App** is optional: with one, the chat runs right inside
+the planner.
+
+To have the planner read Gmail itself, add your Gmail address and a Google
+[app password](https://myaccount.google.com/apppasswords) in **Settings, App**.
+While the planner is open it checks every 30 minutes from 7am to 10pm, skips
+newsletters and ads, and puts the rest into **Missed info** with any due dates
+it finds. This is free; with an API key, Claude sorts and summarises instead.
 
 ## Download
 

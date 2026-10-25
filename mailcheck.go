@@ -153,7 +153,7 @@ func mailLoop() {
 		c := loadMailConf()
 		st := getMailState()
 		last, _ := time.Parse(time.RFC3339, st.Checked)
-		if h >= 7 && h < 22 && (c.User != "" || fileExists(filepath.Join(dataDir, "school-mail.json"))) && loadAI().Key != "" && time.Since(last) > 30*time.Minute {
+		if h >= 7 && h < 22 && (c.User != "" || fileExists(filepath.Join(dataDir, "school-mail.json"))) && time.Since(last) > 30*time.Minute {
 			ctx, cancel := context.WithTimeout(context.Background(), 4*time.Minute)
 			runMailCheck(ctx)
 			cancel()
@@ -166,6 +166,7 @@ func fileExists(p string) bool { _, err := os.Stat(p); return err == nil }
 
 type rawMail struct {
 	ID, Source, From, Subject, Received, Link, Body string
+	Bulk                                            bool // a mailing list or newsletter
 }
 
 type inboxItem struct {
@@ -203,10 +204,7 @@ func runMailCheck(ctx context.Context) (int, error) {
 }
 
 func mailCheck(ctx context.Context) (int, error) {
-	ai := loadAI()
-	if ai.Key == "" {
-		return 0, errors.New("Add your Claude API key in Settings, App, so Claude can sort your email.")
-	}
+	ai := loadAI() // without a key, simple rules sort the mail (mailrules.go)
 	infoPath := filepath.Join(dataDir, "missed-info.json")
 	info := map[string]any{}
 	if b, err := os.ReadFile(infoPath); err == nil {
@@ -252,9 +250,15 @@ func mailCheck(ctx context.Context) (int, error) {
 	}
 	n := 0
 	if len(todo) > 0 {
-		kept, summary, err := mailSort(ctx, ai, todo)
-		if err != nil {
-			return 0, errors.New(aiErrText(err))
+		var kept []inboxItem
+		var summary string
+		if ai.Key != "" {
+			var err error
+			if kept, summary, err = mailSort(ctx, ai, todo); err != nil {
+				return 0, errors.New(aiErrText(err))
+			}
+		} else {
+			kept, summary = mailSortRules(todo, time.Now())
 		}
 		for _, m := range todo {
 			looked[m.ID] = time.Now().Format("2006-01-02")
@@ -695,6 +699,7 @@ func parseMail(raw []byte) rawMail {
 		return rm
 	}
 	rm.Subject = decodeHeader(msg.Header.Get("Subject"))
+	rm.Bulk = msg.Header.Get("List-Unsubscribe") != "" || strings.EqualFold(msg.Header.Get("Precedence"), "bulk") || strings.EqualFold(msg.Header.Get("Precedence"), "list")
 	if a, err := mail.ParseAddress(decodeHeader(msg.Header.Get("From"))); err == nil {
 		rm.From = strings.TrimSpace(a.Name + " <" + a.Address + ">")
 	} else {
