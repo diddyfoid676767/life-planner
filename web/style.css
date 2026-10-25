@@ -2050,9 +2050,9 @@ main:has(> .calwrap), main:has(.calwrap) { max-width: 1680px; }
 .unbox.r-legendary.burst .flash { animation-duration: 1.2s; }
 .unbox.r-legendary.burst .ring { animation: ubring .8s ease-out forwards, ubring 1s ease-out .2s forwards, ubring 1.2s ease-out .4s forwards; }
 @media (prefers-reduced-motion: reduce) { .unbox.r-legendary.surge .thebox svg, .unbox.r-legendary.surge .glow { animation: none !important; } }
-.visitbar { display: flex; align-items: center; gap: 12px; padding: 10px 14px; margin-bottom: 12px; border-radius: 12px; background: color-mix(in srgb, #20c997 12%, var(--panel)); border: 1px solid color-mix(in srgb, #20c997 35%, var(--border)); }
-.visitbar .visit-e { font-size: 1.8rem; animation: bob 1.8s ease-in-out infinite alternate; }
-.visitbar div { display: grid; }
+.visitbar { display: flex; align-items: center; gap: 8px; padding: 4px 14px 4px 8px; margin-bottom: 12px; border-radius: 999px; width: max-content; max-width: 100%; font-size: .88rem; background: color-mix(in srgb, #20c997 12%, var(--panel)); border: 1px solid color-mix(in srgb, #20c997 35%, var(--border)); }
+.visitbar .visit-e { font-size: 1.25rem; animation: bob 1.8s ease-in-out infinite alternate; }
+
 .critcard.here { outline: 2px solid #20c997; }
 .green-text { color: #2f9e44; }
 

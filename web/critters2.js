@@ -59,7 +59,7 @@ function checkVisitors() {
 function visitorBanner() {
   const vs = visitorsToday().map(visitorById).filter(Boolean);
   if (!vs.length) return '';
-  return `<div class="visitbar">${vs.map(k => `<span class="visit-e">${k.emoji}</span><div><b>${esc(k.name)} is visiting today</b><span class="muted small-text">${esc(k.buff)}</span></div>`).join('')}</div>`;
+  return `<div class="visitbar">${vs.map(k => `<span class="visit-e">${k.emoji}</span><span><b>${esc(k.name)} is visiting today.</b> <span class="muted">${esc(k.buff)}</span></span>`).join('')}</div>`;
 }
 function visitorsCard() {
   const seen = D.game.visitLog || {}, now = visitorsToday();
