@@ -90,6 +90,25 @@ const STAGE_SND = [
   c => { hiss(c, { f: 500, f2: 1400, dur: 1.4, vol: .05, type: 'bandpass', q: .6, attack: .4 }); [196, 294, 392, 494].forEach((f, i) => tone(c, { f, dur: 1.4, vol: .03, type: 'sine', at: i * .15, attack: .3 })); },
   c => { [98, 147, 196, 294, 392, 587, 784].forEach((f, i) => tone(c, { f, dur: 2.2, vol: .035, type: i < 3 ? 'sawtooth' : 'sine', filter: i < 3 ? 'lowpass' : undefined, q: 900, at: i * .12, attack: .35 })); [1568, 2093, 2637, 3136].forEach((f, i) => tone(c, { f, dur: .5, vol: .02, type: 'triangle', at: 1 + i * .1 })); },
 ];
+// unboxing: a rising build-up that gets longer and richer with rarity, then the burst
+function boxBuildSfx(tier, secs) {
+  try {
+    const c = sfxReady('ui'); if (!c) return;
+    const n = 4 + tier * 4;
+    for (let i = 0; i < n; i++) { const at = (i / n) * secs * .95; tone(c, { f: 300 + i * (40 + tier * 15), dur: .06, vol: .03 + i * .004, type: 'triangle', at }); if (tier >= 1) hiss(c, { f: 900 + i * 200, dur: .05, vol: .015, at }); }
+    if (tier >= 2) tone(c, { f: 110, f2: 220 + tier * 60, dur: secs, vol: .05, type: 'sawtooth', filter: 'lowpass', q: 600, attack: secs * .8 });
+    if (tier === 3) hiss(c, { f: 200, f2: 6000, dur: secs, vol: .05, attack: secs * .9 });
+  } catch (e) { }
+}
+function boxBurstSfx(tier) {
+  try {
+    const c = sfxReady('ui'); if (!c) return;
+    tone(c, { f: 160 - tier * 20, f2: 50, dur: .25 + tier * .1, vol: .1 + tier * .03 }); hiss(c, { f: 3000, f2: 500, dur: .3 + tier * .15, vol: .05 + tier * .02, type: 'lowpass' });
+    const chord = [[784, 988], [659, 784, 988], [523, 659, 784, 1047], [392, 523, 659, 784, 1047, 1319]][tier];
+    chord.forEach((f, i) => tone(c, { f, dur: .4 + tier * .25, vol: .05, type: 'triangle', at: .05 + i * .06 }));
+    if (tier === 3) [1568, 2093, 2637, 3136, 2637, 3136].forEach((f, i) => tone(c, { f, dur: .3, vol: .025, type: 'sine', at: .5 + i * .09 }));
+  } catch (e) { }
+}
 function stageSfx(stage) { try { const c = sfxReady('garden'); if (c) STAGE_SND[Math.max(0, Math.min(7, stage))](c); } catch (e) { } }
 function battleSfx(side, kind, d = {}) {
   const c = sfxReady('arena'); if (!c) return;
@@ -143,7 +162,8 @@ document.addEventListener('click', e => {
   if (el.matches('input[type=checkbox]')) { sfx(el.checked ? 'toggle' : 'untoggle'); return; }
   const act = el.dataset?.act || '';
   if (/^(buyUpg|buyLeafUpg|storeBuy)$/.test(act)) return; // these play "buy" when they go through
-  if (/^(openBox|gift)$/.test(act)) { sfx('box'); return; }
+  if (act === 'openBox') return; // the unboxing plays its own build-up
+  if (act === 'gift') { sfx('box'); return; }
   if (el.closest('.seg, .stabs, #tabs, .forest-tabs, .shoptabs, .revseg') || /Tab$|Page$|^goto$|^studyTab$/.test(act)) { sfx('tab'); return; }
   if (el.matches('summary')) { sfx(el.parentElement?.open ? 'close' : 'open'); return; }
   sfx('click', { gap: 30 });

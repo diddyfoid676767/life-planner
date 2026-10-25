@@ -42,7 +42,7 @@ function treeGrowth(l) {
   if (l.mins < 10 || l.withered) return l.mins;
   const r = (D.game.trees || {})[l.id] || {}, hrs = Math.max(0, (Date.now() - new Date(l.start)) / 36e5);
   const lv = id => (typeof lupg === 'function' ? lupg(id) : 0);
-  const extra = (hrs * GROW_PER_HOUR + (r.water || 0) * GROW_PER_WATER * (1 + .5 * lv('rain'))) * (1 + .1 * lv('sundial')) * (treeSpeciesBuff(l).grow || 1) * (1 + activeBuff('growAll'));
+  const extra = (hrs * GROW_PER_HOUR + (r.water || 0) * GROW_PER_WATER * (1 + .5 * Math.min(4, lv('rain')))) * (1 + .1 * lv('sundial')) * (treeSpeciesBuff(l).grow || 1) * (1 + activeBuff('growAll') + (crit('turtle') ? .05 : 0));
   return l.mins + extra;
 }
 const treeStageOf = l => treeStage(treeGrowth(l));
@@ -292,7 +292,7 @@ function bestStreak() {
 }
 
 function viewForest() {
-  checkTreeStages();
+  checkTreeStages(); checkVisitors();
   const t = today(), wk = mondayOf(t);
   const range = ui.forestRange || 'week';
   const from = range === 'week' ? wk : range === 'month' ? t.slice(0, 8) + '01' : '0000';
@@ -322,7 +322,7 @@ function viewForest() {
   if (page === 'critters') return `${head}${crittersView()}`;
   if (page === 'collection') return `${head}${collectionView()}`;
   return `${head}
-    ${leafBar()}
+    ${leafBar()}${visitorBanner()}
     <div class="scene-wrap ${webglOK() ? 'g3wrap' : 'isowrap'}">${webglOK() ? garden3DHtml(logs) : forestGrid(logs)}
       <div class="scene-stats">${stat(logs.length, logs.length === 1 ? 'tree' : 'trees')}${stat(fmtMins(mins) || '0m', 'studied')}${stat('🔥 ' + streak, 'day streak')}${stat(best, 'best streak')}</div>
       <div class="scene-ctl">${gardenFxPanel()}<div class="seg">${seg('week', 'This week')}${seg('month', 'This month')}${seg('all', 'All time')}</div></div>

@@ -59,7 +59,7 @@ function g3popBubbles() {
 function g3stop() { if (G3.raf) cancelAnimationFrame(G3.raf); G3.raf = 0; }
 function g3signature() {
   const hr = new Date().getHours(), night = hr >= 20 || hr < 6;
-  return JSON.stringify([G3.logs?.map(l => [l.id, l.mins, l.withered, speciesFor(l.subjectId), subj(l.subjectId).color, treeRec(l.id).wilted]), D.game.gridPos, D.game.scene, D.game.fx, night,
+  return JSON.stringify([G3.logs?.map(l => [l.id, treeStageOf(l), l.withered, speciesFor(l.subjectId), subj(l.subjectId).color, treeRec(l.id).wilted]), visitorsToday(), D.game.gridPos, D.game.scene, D.game.fx, night,
     ITEMS.filter(i => owned(i.id) && !D.game.hidden[i.id]).map(i => i.id), Object.keys(D.game.critters || {}), Math.min(6, Math.ceil(pendingLeaves() / Math.max(1, basketCap()) * 6))]);
 }
 
@@ -205,11 +205,13 @@ function g3build() {
   // animals and critters roam between tiles
   if (gfx('critters')) {
     const list = [...ITEMS.filter(i => i.type === 'animal' && ANIMAL3[i.id] && owned(i.id) && !D.game.hidden[i.id]).map(i => ANIMAL3[i.id]),
-      ...CRITTERS.filter(k => crit(k.id) && CRIT3[k.id]).map(k => CRIT3[k.id])];
+      ...CRITTERS.filter(k => crit(k.id) && CRIT3[k.id]).map(k => CRIT3[k.id]), ...visitorsToday().filter(id => VISIT3[id]).map(id => VISIT3[id])];
     const rr = seeded('roam' + today());
     for (const mk of list) { const a = mk(); const r = Math.floor(rr() * N), c = Math.floor(rr() * N), [x, z] = tileXZ(r, c, N); a.position.set(x + (rr() - .5), 0, z + (rr() - .5)); a.rotation.y = rr() * 6;
       a.scale.multiplyScalar(.8); a.traverse(o => { if (o.isMesh) o.castShadow = true; }); a.add(fxBlob(.45, .5)); W.add(a); G3.roam.push({ o: a, tx: a.position.x, tz: a.position.z, wait: rr() * 3, hop: rr() * 6 }); }
-    for (const k of CRITTERS.filter(k => crit(k.id) && k.fly)) G3.fliers.push(g3flier(k.id === 'bee' ? bird3('#fcc419', '#ffffff', .5) : k.id === 'fireflies' ? bird3('#ffe066', '#fff9db', .35) : bird3('#8a5a3b', '#d9a066', 1)));
+    const FLY = { bee: ['#fcc419', '#ffffff', .5], fireflies: ['#ffe066', '#fff9db', .35], parrot: ['#e03131', '#2f9e44', .9], bat: ['#343a40', '#495057', .8] };
+    for (const k of CRITTERS.filter(k => crit(k.id) && k.fly)) G3.fliers.push(g3flier(bird3(...(FLY[k.id] || ['#8a5a3b', '#d9a066', 1]))));
+    if (visitorsToday().includes('hummingbird')) G3.fliers.push(g3flier(bird3('#20c997', '#e64980', .45), 3, 1.5, 0, true));
   }
   if (owned('a_birds')) for (let i = 0; i < 4; i++) G3.fliers.push(g3flier(bird3('#343a40', '#495057', .9), 14 + i, 8 + i * 1.5, i));
   if (owned('a_butterfly')) for (const col of ['#f783ac', '#ffd43b', '#74c0fc']) G3.fliers.push(g3flier(bird3(col, col, .35), 3 + Math.random() * half, 1.2 + Math.random(), Math.random() * 6, true));

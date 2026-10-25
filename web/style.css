@@ -2027,3 +2027,31 @@ main:has(> .calwrap), main:has(.calwrap) { max-width: 1680px; }
 @keyframes ancientPulse { 0%, 100% { opacity: .8; } 50% { opacity: 1; } }
 @media (prefers-reduced-motion: reduce) { .ancient-mote, .ancient-glow { animation: none; } }
 .fstages { grid-template-columns: repeat(4, 1fr); row-gap: 10px; }
+.ulvl { font-size: .72rem; font-weight: 700; color: var(--muted); font-variant-numeric: tabular-nums; }
+.umeter { display: block; height: 5px; border-radius: 99px; background: var(--border); margin: 4px 0 2px; overflow: hidden; }
+.umeter i { display: block; height: 100%; background: linear-gradient(90deg, #69db7c, #2f9e44); border-radius: inherit; transition: width .3s; }
+/* ---------- 2.22 unboxing builds up by rarity ---------- */
+.unbox.charge .thebox svg { animation-duration: var(--chg, 1.65s); }
+.unbox.charge .glow { animation-duration: var(--chg, 1.65s); }
+.unbox.r-common.charge .thebox svg { animation-name: ubwobble; }
+@keyframes ubwobble { 0%, 100% { transform: none; } 25% { transform: rotate(-4deg); } 50% { transform: rotate(4deg) translateY(-3px); } 75% { transform: rotate(-3deg) scale(1.05); } }
+.unbox.r-common .glow, .unbox.r-common .sparks, .unbox.r-common .beam, .unbox.r-rare .sparks, .unbox.r-rare .beam { display: none; }
+.unbox.r-rare.charge .glow { animation-name: ubglowsoft; }
+@keyframes ubglowsoft { 0% { opacity: 0; transform: scale(.4); } 100% { opacity: .7; transform: scale(1.8); } }
+.unbox.r-epic.burst .ring { animation: ubring .8s ease-out forwards, ubring .9s ease-out .15s forwards; }
+.unbox.r-epic.burst .flash { animation-duration: .9s; }
+.unbox.r-legendary { transition: background .8s ease; }
+.unbox.r-legendary.charge { background: rgba(4,6,16,.88); }
+.unbox.r-legendary.surge .glow { animation: ubsurge .55s ease-in-out infinite alternate !important; opacity: 1; }
+@keyframes ubsurge { from { transform: scale(2.2); filter: brightness(1); } to { transform: scale(3.4); filter: brightness(1.6); } }
+.unbox.r-legendary.surge .thebox svg { animation: ubrattle .09s linear infinite !important; }
+@keyframes ubrattle { 0% { transform: scale(1.25) translate(-3px, -18px) rotate(-3deg); } 50% { transform: scale(1.27) translate(3px, -20px) rotate(3deg); } 100% { transform: scale(1.25) translate(-3px, -18px) rotate(-3deg); } }
+.unbox.r-legendary.surge .rays { opacity: .55; animation: spin 2.5s linear infinite; }
+.unbox.r-legendary.burst .flash { animation-duration: 1.2s; }
+.unbox.r-legendary.burst .ring { animation: ubring .8s ease-out forwards, ubring 1s ease-out .2s forwards, ubring 1.2s ease-out .4s forwards; }
+@media (prefers-reduced-motion: reduce) { .unbox.r-legendary.surge .thebox svg, .unbox.r-legendary.surge .glow { animation: none !important; } }
+.visitbar { display: flex; align-items: center; gap: 12px; padding: 10px 14px; margin-bottom: 12px; border-radius: 12px; background: color-mix(in srgb, #20c997 12%, var(--panel)); border: 1px solid color-mix(in srgb, #20c997 35%, var(--border)); }
+.visitbar .visit-e { font-size: 1.8rem; animation: bob 1.8s ease-in-out infinite alternate; }
+.visitbar div { display: grid; }
+.critcard.here { outline: 2px solid #20c997; }
+.green-text { color: #2f9e44; }

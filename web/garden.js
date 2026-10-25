@@ -196,12 +196,12 @@ const leaves = () => Math.max(0, Math.floor(leafState().bank - (leafState().spen
 function treeLeafRate(l) {
   const sp = speciesFor(l.subjectId), r = treeRec(l.id);
   const st = treeStageOf(l), rar = speciesRarity(sp);
-  let v = (LEAF_STAGE[lupg('mulch') && st < 2 ? st + 1 : st] + 2 * lupg('hive')) * LEAF_RARITY[rar];
+  let v = (LEAF_STAGE[lupg('mulch') && st < 2 ? st + 1 : st] + 2 * lupg('hive') + (st >= 3 ? 3 * lupg('trellis') : 0)) * LEAF_RARITY[rar];
   const d = (new Date(today()) - new Date(r.lastWater || '2000-01-01')) / 864e5;
-  if (d <= 1 + lupg('rain') || lupg('stream')) v *= 1.5;      // watered recently
+  if (d <= 1 + lupg('rain') || lupg('stream') || visiting('snail')) v *= 1.5;      // watered recently
   if (rar !== 'common') v *= 1 + .25 * lupg('greenhouse');
   v *= 1 + .1 * lupg('shears');
-  v *= (treeSpeciesBuff(l).leaf || 1) * (1 + activeBuff('leafAll'));
+  v *= (treeSpeciesBuff(l).leaf || 1) * (1 + activeBuff('leafAll') + (crit('ladybug') ? .05 : 0) + (visiting('hummingbird') ? .2 : 0));
   if (!lupg('compost')) v *= l.withered ? .25 : r.wilted ? .5 : 1;
   return v * (1 + .2 * lupg('sprinkler'));
 }
@@ -238,7 +238,7 @@ function buyLeafUpgrade(id) {
   toast(`${u.icon} ${u.name}${u.prices.length > 1 ? ` level ${lvl + 1}` : ''}`, u.desc);
 }
 const spendLeaves = p => { if (leaves() < p) return false; leafState().spent += p; return true; };
-const fmtLeaf = n => n >= 10000 ? (n / 1000).toFixed(1) + 'k' : String(Math.round(n));
+const fmtLeaf = n => n >= 1e6 ? (n / 1e6).toFixed(n >= 1e7 ? 0 : 1) + 'M' : n >= 10000 ? (n / 1000).toFixed(n >= 1e5 ? 0 : 1) + 'k' : String(Math.round(n));
 
 function leafBar() {
   const p = pendingLeaves(), cap = basketCap(), rate = leafRate(), pct = cap ? Math.min(100, Math.round(p / cap * 100)) : 0;

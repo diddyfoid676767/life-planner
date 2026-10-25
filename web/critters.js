@@ -91,7 +91,7 @@ function critterArrives(list) {
 }
 // critters living in the scene
 function critterSprites() {
-  return CRITTERS.filter(k => crit(k.id)).map((k, i) => `<g transform="translate(${k.at[0]} ${k.at[1]})"><text class="${k.fly ? 'critfly' : 'critbob'}" style="animation-delay:-${i * .7}s" font-size="${k.fly ? 24 : 30}" text-anchor="middle"><title>${esc(k.name)}: ${esc(k.buff)}</title>${k.emoji}</text></g>`).join('');
+  return visitorsToday().map(visitorById).filter(Boolean).map((k, i) => `<g transform="translate(${[300, 760, 520][i % 3]} ${[426, 410, 300][i % 3]})"><text class="${k.fly ? 'critfly' : 'critbob'}" font-size="28" text-anchor="middle"><title>${esc(k.name)} (visiting): ${esc(k.buff)}</title>${k.emoji}</text></g>`).join('') + CRITTERS.filter(k => crit(k.id)).map((k, i) => `<g transform="translate(${k.at[0]} ${k.at[1]})"><text class="${k.fly ? 'critfly' : 'critbob'}" style="animation-delay:-${i * .7}s" font-size="${k.fly ? 24 : 30}" text-anchor="middle"><title>${esc(k.name)}: ${esc(k.buff)}</title>${k.emoji}</text></g>`).join('');
 }
 
 // ---------- daily gift and milestones ----------
@@ -140,7 +140,7 @@ function treeName(l) {
   const rnd = seeded('name' + l.id);
   return NAME_A[Math.floor(rnd() * NAME_A.length)] + ' ' + NAME_B[Math.floor(rnd() * NAME_B.length)];
 }
-const waterCoins = l => Math.round((2 + 2 * upg('can') + (crit('frog') ? 2 : 0)) * (treeBuff(l).water || 1) * (treeSpeciesBuff(l).water || 1));
+const waterCoins = l => Math.round((2 + 2 * upg('can') + (crit('frog') ? 2 : 0)) * (treeBuff(l).water || 1) * (treeSpeciesBuff(l).water || 1) * (visiting('otter') ? 2 : 1));
 const wateredToday = () => Object.values(D.game.trees).filter(r => r.lastWater === today()).length;
 function waterTree(id) {
   const l = D.focusLogs.find(x => x.id === id);
@@ -273,15 +273,16 @@ function crittersView() {
       return `<div class="critcard ${has ? 'got' : ''}"><div class="critemoji">${has ? k.emoji : '❔'}</div><b>${has ? esc(k.name) : '???'}</b>
         <div class="critbuff">${has ? esc(k.buff) : esc(k.how)}</div>
         ${has ? `<span class="muted small-text">Moved in ${fmtDate(D.game.critters[k.id].slice(0, 10))}</span>` : `<div class="ctrack"><i style="width:${pct}%"></i></div><span class="muted small-text">${Math.min(have, need)} / ${need}</span>`}</div>`;
-    }).join('')}</div></div>`;
+    }).join('')}</div></div>${visitorsCard()}`;
 }
 // one upgrade as a tile: icon, name, level pips, what it does, and the price
 function upgTile(u, lvl, have, cur, act, i, lockHtml) {
   const max = lvl >= u.prices.length, price = u.prices[lvl], can = !max && !lockHtml && have >= price;
-  const pips = u.prices.length > 1 ? `<span class="upips">${u.prices.map((_, k) => `<i class="${k < lvl ? 'on' : ''}"></i>`).join('')}</span>` : '';
+  const pips = u.prices.length > 5 ? `<span class="ulvl">Level ${lvl} / ${u.prices.length}</span><span class="umeter"><i style="width:${lvl / u.prices.length * 100}%"></i></span>`
+    : u.prices.length > 1 ? `<span class="upips">${u.prices.map((_, k) => `<i class="${k < lvl ? 'on' : ''}"></i>`).join('')}</span>` : '';
   return `<div class="upg ${max ? 'max' : ''} ${lockHtml ? 'locked' : ''} ${can ? 'can' : ''} ${ui.justBought === u.id ? 'justbought' : ''}" style="--i:${i}"><div class="upgicon">${lockHtml ? '🔒' : u.icon}</div>
     <div class="main"><b>${u.name}</b>${pips}<div class="muted small-text">${u.desc}</div></div>
-    <div class="upg-buy">${max ? '<span class="tag green">✓ Maxed</span>' : lockHtml || `<button class="btn small ${can ? 'primary' : ''}" data-act="${act}" data-id="${u.id}" ${can ? '' : 'disabled'}>${price} ${cur}</button>`}</div></div>`;
+    <div class="upg-buy">${max ? '<span class="tag green">✓ Maxed</span>' : lockHtml || `<button class="btn small ${can ? 'primary' : ''}" data-act="${act}" data-id="${u.id}" ${can ? '' : 'disabled'}>${fmtLeaf(price)} ${cur}</button>`}</div></div>`;
 }
 function shopView() {
   const tab = ui.shopTab || 'boxes', g = giftReady(), c = coins(), lv = leaves();
