@@ -336,7 +336,7 @@ function g3events() {
     if (!drag) return; const d = drag; drag = null; cv.style.cursor = 'grab'; G3.hl.visible = false;
     if (!d.moved && !d.rotate) {
       if (d.bubble) { collectLeaves(cv); g3popBubbles(); G3.sig = g3signature(); render(); return; }
-      if (d.obj?.userData.tree) { openTreeCard(d.obj.userData.tree.id); return; }
+      if (d.obj?.userData.tree) { if (!(typeof g3water === 'function' && g3water(d.obj, ev))) openTreeCard(d.obj.userData.tree.id); return; }
       return;
     }
     if (d.obj) {

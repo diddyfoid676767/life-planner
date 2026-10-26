@@ -2217,3 +2217,30 @@ main:has(> .calwrap), main:has(.calwrap) { max-width: 1680px; }
 @media (max-width: 600px) { #aiFab span { display: none; } }
 #aiModel { width: auto; flex: 0 0 auto; }
 main#view { padding-bottom: 80px; }
+/* 2.22.4 leaf collecting and watering */
+.leafflight { position: fixed; inset: 0; pointer-events: none; z-index: 500; }
+.leafflight i { position: absolute; left: 0; top: 0; font-style: normal; font-size: 1.45rem; margin: -.7em 0 0 -.5em; filter: drop-shadow(0 3px 4px rgba(0,0,0,.25)); will-change: transform; }
+.leafbump { animation: leafbump .22s ease; }
+@keyframes leafbump { 0% { transform: scale(1); } 40% { transform: scale(1.22); color: #2f9e44; } 100% { transform: scale(1); } }
+.leafpill.leafbump { display: inline-flex; }
+.leafgain { position: fixed; z-index: 501; pointer-events: none; transform: translateX(-50%); font-weight: 900; font-size: 1.25rem; color: #2f9e44; text-shadow: 0 2px 10px rgba(255,255,255,.9), 0 2px 6px rgba(0,0,0,.15); animation: leafgain 1.5s ease forwards; white-space: nowrap; }
+@keyframes leafgain { 0% { opacity: 0; transform: translate(-50%, -6px) scale(.6); } 20% { opacity: 1; transform: translate(-50%, 4px) scale(1.15); } 35% { transform: translate(-50%, 4px) scale(1); } 80% { opacity: 1; } 100% { opacity: 0; transform: translate(-50%, 18px); } }
+.leafbar.emptying .basket i { animation: basketdrain .5s ease; }
+.leafbar.emptying .leafbig { animation: basketshake .5s ease; }
+@keyframes basketdrain { 0% { filter: brightness(1.4); } 100% { filter: none; } }
+@keyframes basketshake { 0%, 100% { transform: none; } 25% { transform: rotate(-14deg) scale(1.15); } 50% { transform: rotate(10deg) scale(1.2); } 75% { transform: rotate(-6deg); } }
+.waterpop { position: fixed; z-index: 500; pointer-events: none; }
+.waterpop .wcan { position: absolute; left: -10px; top: -62px; font-size: 1.9rem; transform-origin: 70% 70%; animation: wcan 1s ease forwards; }
+@keyframes wcan { 0% { opacity: 0; transform: translateY(-10px) rotate(0); } 20% { opacity: 1; transform: rotate(-35deg); } 75% { opacity: 1; transform: rotate(-40deg); } 100% { opacity: 0; transform: rotate(0) translateY(-6px); } }
+.waterpop i { position: absolute; left: var(--dx); top: -34px; width: 5px; height: 11px; border-radius: 50% 50% 50% 50% / 60% 60% 40% 40%; background: linear-gradient(#a5d8ff, #1c7ed6); opacity: 0; animation: wdrop .55s ease-in var(--d) 2 forwards; }
+@keyframes wdrop { 0% { opacity: 0; transform: translateY(0); } 20% { opacity: 1; } 100% { opacity: 0; transform: translateY(36px); } }
+.waterpop u { position: absolute; left: -18px; top: 0; width: 36px; height: 10px; border: 2px solid #4dabf7; border-radius: 50%; opacity: 0; animation: wring .6s ease-out .45s forwards; }
+@keyframes wring { 0% { opacity: .9; transform: scale(.3); } 100% { opacity: 0; transform: scale(2.4); } }
+.waterpop b { position: absolute; left: 0; top: -20px; transform: translateX(-50%); white-space: nowrap; font-size: 1.15rem; color: #1971c2; text-shadow: 0 2px 8px rgba(255,255,255,.9); opacity: 0; animation: wtext 1.2s ease .45s forwards; }
+@keyframes wtext { 0% { opacity: 0; transform: translate(-50%, 6px) scale(.7); } 25% { opacity: 1; transform: translate(-50%, -6px) scale(1.12); } 40% { transform: translate(-50%, -6px) scale(1); } 80% { opacity: 1; } 100% { opacity: 0; transform: translate(-50%, -26px); } }
+.tcwater:not(.wet):not(.bad) { cursor: pointer; padding: 2px 8px; border-radius: 999px; background: color-mix(in srgb, #339af0 16%, transparent); color: #1971c2; font-weight: 700; transition: transform .12s; }
+.tcard:hover .tcwater:not(.wet):not(.bad) { transform: scale(1.06); }
+.tcwater.justwet { animation: justwet .5s ease; }
+@keyframes justwet { 0% { transform: scale(1); } 40% { transform: scale(1.25); background: #d0ebff; } 100% { transform: scale(1); } }
+.tcard.watered .tcart { animation: treehappy .7s ease; }
+@keyframes treehappy { 0%, 100% { transform: none; } 25% { transform: scaleY(1.12) scaleX(.94); } 50% { transform: scaleY(.94) scaleX(1.05); } 75% { transform: scaleY(1.04); } }

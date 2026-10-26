@@ -261,7 +261,7 @@ function treesView() {
         <b>${r.fav ? '★ ' : ''}${esc(treeName(l))}</b><span class="muted small-text">${esc(speciesName(x.sp))}${x.rar !== 'common' ? ` · <span style="color:${RARITY[x.rar].color}">${RARITY[x.rar].name}</span>` : ''}</span>
         ${stageMeter(x.g)}
         <span class="muted small-text">${esc(s.name)} · ${fmtGrow(x.g)} grown · ${fmtDate(l.date)}</span>
-        <span class="tcwater ${wet ? 'wet' : ''}">${wet ? '💧 watered' : '💧 needs water'}</span>${l.withered ? '<span class="tcwater bad">withered</span>' : r.wilted ? '<span class="tcwater bad">🥀 wilted</span>' : ''}</button>`;
+        <span class="tcwater ${wet ? 'wet' : ''}">${wet ? '💧 watered' : '💧 Water me'}</span>${l.withered ? '<span class="tcwater bad">withered</span>' : r.wilted ? '<span class="tcwater bad">🥀 wilted</span>' : ''}</button>`;
     }).join('')}</div>${logs.length > 160 ? '<p class="muted small-text">Showing the first 160. Use the filters to find the rest.</p>' : ''}` : `<div class="empty">${nFilt ? 'No trees match these filters.' : 'No trees here yet. Study for 10+ minutes to plant one.'}</div>`}</div>`;
 }
 function crittersView() {
