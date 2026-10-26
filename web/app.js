@@ -1546,6 +1546,10 @@ let autoUpdateTimer = 0, autoUpdateSkip = false;
 async function checkUpdate() {
   try {
     const u = await (await fetch('/api/update', { cache: 'no-store' })).json();
+    if (appVersion !== u.version) { // just updated: say so once
+      let prev = ''; try { prev = localStorage.getItem('lpVer') || ''; localStorage.setItem('lpVer', u.version); } catch { }
+      if (prev && prev !== u.version) toast(`✨ Updated to ${u.version}`, 'Life Planner installed the new version by itself.');
+    }
     appVersion = u.version;
     const bar = $('#updateBar');
     bar.hidden = !u.available;

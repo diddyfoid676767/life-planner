@@ -124,14 +124,14 @@ func checkGitHub() error {
 // latestTag is the newest release GitHub reported, for Settings → App.
 var latestTag string
 
-// watchGitHub checks for a new release shortly after start, then every hour.
+// watchGitHub checks for a new release shortly after start, then every 10 minutes.
 func watchGitHub() {
 	time.Sleep(20 * time.Second)
 	for {
 		if err := checkGitHub(); err != nil {
 			log.Printf("github update check: %v", err)
 		}
-		time.Sleep(time.Hour)
+		time.Sleep(10 * time.Minute)
 	}
 }
 
