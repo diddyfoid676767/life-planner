@@ -2316,3 +2316,49 @@ main#view { padding-bottom: 80px; }
   .chatwrap:not(.open) .chatmain { display: none; }
   .chatback { display: inline-block; }
 }
+
+/* ---------- profile ---------- */
+.pfwrap { display: grid; grid-template-columns: minmax(320px, 420px) 1fr; gap: 16px; align-items: start; }
+.pfcard { padding: 0; overflow: hidden; }
+.pfstage { position: relative; height: 440px; border-radius: 14px 14px 0 0; overflow: hidden; }
+.pf3d { position: absolute; inset: 0; }
+.pf3d canvas { width: 100%; height: 100%; display: block; cursor: grab; touch-action: none; }
+.pf3d canvas:active { cursor: grabbing; }
+.pf2d { position: absolute; inset: 0; display: flex; align-items: flex-end; justify-content: center; padding-bottom: 30px; }
+.pfstage.has3d .pf2d { display: none; }
+.pfstage:not(.has3d) .pfhint { display: none; }
+.pfstage-btns { position: absolute; top: 10px; right: 10px; display: flex; gap: 6px; }
+.pfstage-btns .btn { background: rgba(255,255,255,.85); color: #1b2033; backdrop-filter: blur(6px); }
+.pfstage-btns .btn.on { background: var(--accent); color: #fff; }
+.pfhint { position: absolute; left: 12px; bottom: 10px; font-size: .75rem; color: rgba(0,0,0,.45); background: rgba(255,255,255,.6); padding: 2px 8px; border-radius: 99px; pointer-events: none; }
+.pftry { position: absolute; left: 10px; right: 10px; bottom: 10px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; background: rgba(255,255,255,.92); color: #1b2033; padding: 8px 10px; border-radius: 12px; box-shadow: var(--shadow); animation: bubIn .2s ease-out; }
+.pftry span:first-child { flex: 1; }
+.pfname { padding: 14px 16px 4px; }
+.pfname h2 { margin: 0; }
+.pfstats { display: flex; flex-wrap: wrap; gap: 6px; padding: 8px 16px 16px; }
+.pfstats span { background: var(--panel2); padding: 4px 10px; border-radius: 99px; font-size: .85rem; }
+.pfbadges { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 10px; }
+.pfbadge { display: flex; align-items: center; gap: 10px; padding: 10px 14px; border-radius: 12px; color: #fff; }
+.pfbadge > span { font-size: 1.6rem; }
+.pfbadge small { display: block; opacity: .9; }
+.pfbadge.dev { background: linear-gradient(135deg, #ff6b6b, #f59f00); box-shadow: 0 4px 18px rgba(255,120,60,.35); }
+.pfbadge.beta { background: linear-gradient(135deg, #7950f2, #4dabf7); }
+.pfcats { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px; }
+.pfcats button { border: 1px solid var(--border); background: var(--panel2); border-radius: 99px; padding: 6px 12px; cursor: pointer; font-weight: 600; font-size: .85rem; }
+.pfcats button.on { background: var(--accent); color: #fff; border-color: var(--accent); }
+.pfgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(118px, 1fr)); gap: 10px; }
+.pfitem { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 10px 8px; border-radius: 14px; background: var(--panel2); border: 2px solid transparent; text-align: center; cursor: pointer; transition: transform .12s, border-color .12s; }
+.pfitem:hover { transform: translateY(-2px); border-color: color-mix(in srgb, var(--accent) 40%, transparent); }
+.pfitem.on { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 10%, var(--panel)); }
+.pfitem.trying { border-color: #f59f00; border-style: dashed; }
+.pfitem.locked .wmini, .pfitem.locked .wbg { filter: saturate(.75); opacity: .85; }
+.pfitem b { font-size: .85rem; }
+.pfitem .tag { font-size: .7rem; }
+.pfitem .tag.price { background: color-mix(in srgb, #fcc419 25%, transparent); }
+@media (max-width: 900px) { .pfwrap { grid-template-columns: 1fr; } .pfstage { height: 380px; } }
+.dance-d_robot .fbox, .wardstage.dance-d_robot .avatar { animation: dRobot .6s steps(2) 4 !important; }
+@keyframes dRobot { 50% { transform: translateX(8px) rotate(6deg); } }
+.dance-d_floss .fbox, .wardstage.dance-d_floss .avatar { animation: dFloss .35s ease-in-out 6 !important; }
+@keyframes dFloss { 50% { transform: translateX(-10px) skewX(8deg); } }
+.jetflame { animation: jetF .12s linear infinite alternate; transform-origin: 62px 100px; }
+@keyframes jetF { to { transform: scaleY(.8); } }

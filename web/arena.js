@@ -399,7 +399,7 @@ function viewArena() {
   const frCol = fr >= 75 ? '#40c057' : fr >= 50 ? '#fab005' : '#e03131';
   const nq = questDefs().filter(q => q.have >= q.need && !(q.key in D.arena.ledger)).length;
   const tab = (v, l) => `<button class="${page === v ? 'on' : ''}" data-act="arenaPage" data-v="${v}">${l}</button>`;
-  const tabs = `<div class="seg arenatabs">${tab('battle', '⚔️ Battle')}${tab('athlete', `🏠 Athlete${nq ? ` <span class="dotbadge">${nq}</span>` : ''}`)}${tab('pvp', '🌐 PvP')}${tab('moves', '🥋 Moves & crew')}${tab('locker', '🎒 Locker')}${tab('wardrobe', '👕 Wardrobe')}${tab('shop', '🎁 Boxes & shop')}</div>`;
+  const tabs = `<div class="seg arenatabs">${tab('battle', '⚔️ Battle')}${tab('athlete', `🏠 Athlete${nq ? ` <span class="dotbadge">${nq}</span>` : ''}`)}${tab('pvp', '🌐 PvP')}${tab('moves', '🥋 Moves & crew')}${tab('locker', '🎒 Locker')}${tab('shop', '🎁 Boxes & shop')}</div>`;
   // the full athlete card lives on the Athlete tab; the others get one slim line
   const head = `<div class="arenahead"><h1>⚔️ Arena</h1>${page === 'athlete' ? '' : arenaSlim(a)}</div>` + tabs + (page === 'athlete' ? arenaStrip(a) : '');
   let body;
@@ -407,7 +407,7 @@ function viewArena() {
   else if (page === 'moves') body = arenaMoves();
   else if (page === 'pvp') body = arenaPvp();
   else if (page === 'locker') body = arenaLocker(g);
-  else if (page === 'wardrobe') body = arenaWardrobe();
+  else if (page === 'wardrobe') body = `<div class="card"><h2>👕 Your avatar moved</h2><p>The wardrobe now lives on your Profile, with a 3D avatar you can spin around.</p><button class="btn primary" data-act="goto" data-v="profile">Open Profile</button></div>`;
   else if (page === 'shop') body = arenaShop(g);
   else body = arenaHome(a, ci, fr, frCol);
   return head + body;

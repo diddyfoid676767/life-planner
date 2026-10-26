@@ -88,12 +88,42 @@ const COSMETICS = [
   { id: 'hat_goat', cat: 'hat', name: 'GOAT horns', drop: 'Beat The GOAT' },
   { id: 'p_eagle', cat: 'pet', name: 'Eagle', e: '🦅', drop: 'Win 3 daily challenges' },
   { id: 'bg_arena', cat: 'bg', name: 'Arena lights', drop: 'Reach wave 8 in Survival' },
+  // 2.22.8: more styles, some unlocked by what you do rather than bought
+  { id: 'h_braids', cat: 'hair', name: 'Box braids' }, { id: 'h_hightop', cat: 'hair', name: 'High top' },
+  { id: 'h_wolf', cat: 'hair', name: 'Wolf cut', coins: 120 }, { id: 'h_spacebuns', cat: 'hair', name: 'Space buns', coins: 120 },
+  { id: 'hc_purple', cat: 'hairCol', name: 'Purple haze', c: '#845ef7', coins: 120 }, { id: 'hc_flame', cat: 'hairCol', name: 'Flame red', c: '#f03e3e', grit: 150 },
+  { id: 'hat_cowboy', cat: 'hat', name: 'Cowboy hat', coins: 220 }, { id: 'hat_tophat', cat: 'hat', name: 'Top hat', coins: 260 },
+  { id: 'hat_wizard', cat: 'hat', name: 'Wizard hat', req: { level: 10 } }, { id: 'hat_beta', cat: 'hat', name: 'Beta tester cap', req: { badge: 'beta' } },
+  { id: 'eye_visor', cat: 'eyes', name: 'Cyber visor', coins: 300 }, { id: 'eye_vr', cat: 'eyes', name: 'VR headset', grit: 350 },
+  { id: 'kit_flames', cat: 'kit', name: 'Flame jumper', c: '#212529', pattern: 'flames', grit: 350 },
+  { id: 'kit_checker', cat: 'kit', name: 'Checkerboard', c: '#212529', pattern: 'checker', coins: 200 },
+  { id: 'kit_galaxy', cat: 'kit', name: 'Galaxy kit', c: '#2b1d5c', pattern: 'galaxy', req: { streak: 14 } },
+  { id: 'kit_beta', cat: 'kit', name: 'Beta jersey', c: '#7048e8', pattern: 'beta', req: { badge: 'beta' } },
+  { id: 'kit_dev', cat: 'kit', name: 'Dev hoodie', c: '#1b1f2a', pattern: 'dev', req: { badge: 'dev' } },
+  { id: 'sh_purple', cat: 'shoes', name: 'Purple', c: '#845ef7', coins: 90 }, { id: 'sh_glow', cat: 'shoes', name: 'Glow-in-the-dark', c: '#3bc9db', coins: 250 },
+  { id: 'x_backpack', cat: 'extra', name: 'School bag', coins: 120 }, { id: 'x_guitar', cat: 'extra', name: 'Guitar', coins: 300 },
+  { id: 'x_skate', cat: 'extra', name: 'Skateboard', coins: 220 }, { id: 'x_jetpack', cat: 'extra', name: 'Jetpack', req: { level: 20 } },
+  { id: 'x_laptop', cat: 'extra', name: 'Dev laptop', req: { badge: 'dev' } },
+  { id: 'bg_ocean', cat: 'bg', name: 'Under the sea', coins: 250 }, { id: 'bg_night', cat: 'bg', name: 'Stadium at night', grit: 250 },
+  { id: 'bg_volcano', cat: 'bg', name: 'Volcano', grit: 400 }, { id: 'bg_aurora', cat: 'bg', name: 'Aurora', req: { streak: 7 } },
+  { id: 'd_robot', cat: 'dance', name: 'The robot', coins: 200 }, { id: 'd_floss', cat: 'dance', name: 'Floss', coins: 180 },
+  { id: 'p_bunny', cat: 'pet', name: 'Bunny', e: '🐰', coins: 250 }, { id: 'p_frog', cat: 'pet', name: 'Frog', e: '🐸', grit: 200 },
+  { id: 'p_panda', cat: 'pet', name: 'Panda', e: '🐼', coins: 350 }, { id: 'p_lion', cat: 'pet', name: 'Lion', e: '🦁', grit: 600 },
+  { id: 'p_robot', cat: 'pet', name: 'Robo pal', e: '🤖', coins: 600 }, { id: 'p_turtle', cat: 'pet', name: 'Wise turtle', e: '🐢', req: { streak: 30 } },
 ];
+// unlocked by doing things: a level, a study streak, or a badge
+function cosReq(c) {
+  const r = c?.req; if (!r) return null;
+  if (r.level) { const n = typeof levelInfo === 'function' ? levelInfo().n : 0; return { ok: n >= r.level, label: `Reach level ${r.level}`, prog: `${Math.min(n, r.level)}/${r.level}` }; }
+  if (r.streak) { const n = typeof studyStreak === 'function' ? studyStreak() : 0; return { ok: n >= r.streak, label: `${r.streak}-day study streak`, prog: `${Math.min(n, r.streak)}/${r.streak}` }; }
+  if (r.badge) { const has = typeof myBadges !== 'undefined' && myBadges.includes(r.badge); return { ok: has, label: r.badge === 'beta' ? 'Beta testers only' : 'Developer only', prog: '' }; }
+  return null;
+}
 const COS_CATS = [['look', '🪞 Look like me'], ['skin', 'Skin'], ['hair', 'Hair'], ['hairCol', 'Hair colour'], ['face', 'Face'], ['hat', 'Headwear'], ['eyes', 'Eyewear'], ['kit', 'Kit colour'], ['shoes', 'Shoes'], ['extra', 'Extras'], ['bg', 'Background'], ['dance', 'Victory dance'], ['pet', 'Pet']];
 const AV_DEFAULT = { skin: 'sk2', hair: 'h_short', hairCol: 'hc_brown', face: 'f_smile', hat: 'hat_none', eyes: 'eye_none', kit: 'kit_gear', shoes: 'sh_white', extra: 'x_none', bg: 'bg_none', dance: 'd_jump', pet: 'p_none' };
 const cos = id => COSMETICS.find(c => c.id === id);
-const cosFree = c => !c.coins && !c.grit && !c.drop;
-const ownsCos = id => { const c = cos(id); return !!c && (cosFree(c) || !!(D.arena.owned || {})[id]); };
+const cosFree = c => !c.coins && !c.grit && !c.drop && !c.req;
+const ownsCos = id => { const c = cos(id); if (!c) return false; if (cosFree(c) || (D.arena.owned || {})[id]) return true; const r = cosReq(c); if (r?.ok && !c.req.badge) { D.arena.owned = { ...(D.arena.owned || {}), [id]: new Date().toISOString() }; return true; } return !!r?.ok; };
 const myAv = () => Object.assign({}, AV_DEFAULT, D.arena.av || {});
 
 function buyCos(id) {
@@ -162,7 +192,7 @@ function avatarFull(spec = avatarSpec(), { size = 140, cls = '', face = 'right' 
   const [hl, hr, ht, hcy] = G, hw = hr - hl, uidH = 'hc' + (++avatarN) + '_';
   let capK = 0;
   const hd = shade(hairC, .72), hh = shade(hairC, 1.25);
-  const covered = /^hat_(cap|backcap|beanie|bucket|viking|snap|durag|bandana|beret|helmet)$/.test(spec.hat || '');
+  const covered = /^hat_(cap|backcap|beanie|bucket|viking|snap|durag|bandana|beret|helmet|cowboy|tophat|wizard|beta)$/.test(spec.hat || '');
   const line = (fore, side, inset = 4) => `M-10 -40 H134 V${side} H${hr - inset} Q${hr - inset} ${fore} 62 ${fore} Q${hl + inset} ${fore} ${hl + inset} ${side} H-10Z`;
   const zig = (y, side, inset = 4, n = 7, d = 3) => { const x0 = hl + inset, x1 = hr - inset, st = (x1 - x0) / n; let p = `M-10 -40 H134 V${side} H${x1} L${x1} ${y}`; for (let k = n - 1; k >= 0; k--) p += ` L${(x0 + st * (k + .5)).toFixed(1)} ${y + d} L${(x0 + st * k).toFixed(1)} ${y}`; return p + ` L${x0} ${side} H-10Z`; };
   const capOf = (clip, extra = '', op = 1) => { const id = uidH + (++capK); return `<clipPath id="${id}"><path d="${clip}"/></clipPath><g clip-path="url(#${id})" opacity="${op}">${headShape.replace(/fill="[^"]+"/, `fill="${hairC}" stroke="${hairC}" stroke-width="3.6" stroke-linejoin="round"`)}${extra}</g>`; };
@@ -195,6 +225,10 @@ function avatarFull(spec = avatarSpec(), { size = 140, cls = '', face = 'right' 
     case 'h_pony': H.back = `<path d="M${hr - 3} ${hcy - 12} Q${hr + 13} ${hcy - 6} ${hr + 7} ${hcy + 16} Q${hr + 2} ${hcy + 3} ${hr - 4} ${hcy - 3}Z" fill="${hairC}"/>`; H.cap = capOf(line(27.5, 37)); break;
     case 'h_pigtails': H.back = `<circle cx="${hl - 5}" cy="${hcy - 4}" r="6.5" fill="${hairC}"/><circle cx="${hr + 5}" cy="${hcy - 4}" r="6.5" fill="${hairC}"/>`; H.cap = capOf(zig(29, 37, 3.5, 6, 2)) + `<circle cx="${hl}" cy="${hcy - 6}" r="1.8" fill="#e64980"/><circle cx="${hr}" cy="${hcy - 6}" r="1.8" fill="#e64980"/>`; break;
     case 'h_bun': H.cap = capOf(line(27, 36)); H.top = `<circle cx="62" cy="${ht - 4}" r="6.5" fill="${hairC}"/><path d="M57 ${ht - 1} Q62 ${ht + 1} 67 ${ht - 1}" stroke="${hd}" stroke-width="1.2" fill="none"/>`; break;
+    case 'h_braids': H.back = [-1, 0, 1, 2, 3, 4].flatMap(k => [hl - 2.5 + k * 2.2, hr + 2.5 - k * 2.2]).map(x => `<rect x="${(x - 1.3).toFixed(1)}" y="${hcy - 6}" width="2.6" height="${30 - Math.abs(x - 62) / 5}" rx="1.3" fill="${hairC}"/><circle cx="${x.toFixed(1)}" cy="${(hcy + 24 - Math.abs(x - 62) / 5).toFixed(1)}" r="1.5" fill="#fcc419"/>`).join(''); H.cap = capOf(line(27, 38), [-9, -3, 3, 9].map(dx => `<path d="M${62 + dx} 27 L${62 + dx * 1.2} ${ht + 1}" stroke="${hd}" stroke-width=".7"/>`).join('')); break;
+    case 'h_hightop': H.cap = capOf(line(27, 36)); H.top = `<path d="M${hl + 4} ${ht + 8} L${hl + 6} ${ht - 14} Q62 ${ht - 17} ${hr - 6} ${ht - 14} L${hr - 4} ${ht + 8}Z" fill="${hairC}"/><path d="M${hl + 7} ${ht - 12} Q62 ${ht - 15} ${hr - 7} ${ht - 12}" stroke="${hh}" stroke-width="1" fill="none" opacity=".6"/>`; break;
+    case 'h_wolf': H.back = `<path d="M${hl - 2} ${hcy - 6} L${hl - 4} ${hcy + 12} L${hl + 1} ${hcy + 8} L${hl} ${hcy + 15} L${hr} ${hcy + 15} L${hr - 1} ${hcy + 8} L${hr + 4} ${hcy + 12} L${hr + 2} ${hcy - 6}Z" fill="${hairC}"/>`; H.cap = capOf(zig(30, 40, 2.5, 6, 3.5)); H.top = arcPts(6, 160, 20, 1).map(([x, y]) => `<path d="M${(x - 3).toFixed(1)} ${(y + 3).toFixed(1)} L${x.toFixed(1)} ${(y - 4).toFixed(1)} L${(x + 3).toFixed(1)} ${(y + 3).toFixed(1)}Z" fill="${hairC}"/>`).join(''); break;
+    case 'h_spacebuns': H.cap = capOf(line(27.5, 37)); H.top = [hl + 7, hr - 7].map(x => `<circle cx="${x}" cy="${ht - 2}" r="7" fill="${hairC}"/><path d="M${x - 4} ${ht - 3} Q${x} ${ht - 7} ${x + 4} ${ht - 3}" stroke="${hd}" stroke-width="1" fill="none"/>`).join(''); break;
     default: H.cap = capOf(line(27.5, 36));
   }
   if (covered) H.top = '';
@@ -266,6 +300,10 @@ function avatarFull(spec = avatarSpec(), { size = 140, cls = '', face = 'right' 
     hat_beret: '<ellipse cx="58" cy="19" rx="21" ry="8" fill="#862e9c"/><path d="M42 24 Q60 30 80 22" stroke="#5f3dc4" stroke-width="2.4" fill="none"/><path d="M58 11 L59 7" stroke="#862e9c" stroke-width="2"/>',
     hat_flowers: '<path d="M42 26 Q62 18 82 26" stroke="#2f9e44" stroke-width="2" fill="none"/>' + [[44, 25, '#f06595'], [51, 21.5, '#fcc419'], [58, 19.8, '#ff8787'], [66, 19.8, '#cc5de8'], [73, 21.5, '#fcc419'], [80, 25, '#f06595']].map(([x, y, c]) => `<circle cx="${x}" cy="${y}" r="3.4" fill="${c}"/><circle cx="${x}" cy="${y}" r="1.2" fill="#fff3bf"/>`).join(''),
     hat_helmet: `<path d="M40 31 Q40 9 62 9 Q84 9 84 31 Z" fill="${kit}" stroke="#212529" stroke-width="1.2"/><path d="M48 13 L52 29 M58 10 L59 29 M66 10 L65 29 M76 13 L72 29" stroke="rgba(0,0,0,.35)" stroke-width="2"/><path d="M42 31 L46 44 M82 31 L78 44" stroke="#212529" stroke-width="1.2"/>`,
+    hat_cowboy: '<path d="M44 27 Q45 7 62 7 Q79 7 80 27Z" fill="#8b5a2b"/><path d="M57 8 Q62 14 67 8" stroke="#6b4423" stroke-width="2" fill="none"/><rect x="44" y="21" width="36" height="4" fill="#3b2416"/><path d="M26 25 Q30 34 44 30 L80 30 Q94 34 98 25 Q90 30 80 27 L44 27 Q34 30 26 25Z" fill="#8b5a2b" stroke="#6b4423"/>',
+    hat_tophat: '<rect x="48" y="-8" width="28" height="32" rx="2" fill="#212529"/><rect x="48" y="15" width="28" height="5" fill="#c92a2a"/><ellipse cx="62" cy="25" rx="22" ry="4" fill="#212529"/><path d="M51 -6 L51 13" stroke="#495057" stroke-width="2"/>',
+    hat_wizard: '<path d="M42 27 L56 18 Q60 0 76 -10 Q66 4 70 18 L82 27Z" fill="#5f3dc4"/><ellipse cx="62" cy="27" rx="22" ry="4.5" fill="#5f3dc4" stroke="#3b2a6b"/><g fill="#fcc419"><circle cx="62" cy="14" r="1.6"/><circle cx="68" cy="6" r="1.2"/><circle cx="57" cy="22" r="1.1"/><path d="M66 18 l1 2 l2 .3 l-1.5 1.4 l.4 2 l-1.9 -1 l-1.9 1 l.4 -2 l-1.5 -1.4 l2 -.3Z"/></g>',
+    hat_beta: '<path d="M43 30 Q44 13 62 13 Q80 13 81 30Z" fill="#7048e8"/><path d="M78 29 L96 31 L80 33Z" fill="#5f3dc4"/><circle cx="62" cy="21" r="5.5" fill="#4dabf7"/><text x="62" y="24.5" text-anchor="middle" font-size="9" font-weight="900" fill="#fff">β</text>',
     hat_crown: '<path d="M46 22 L48 8 L55 16 L62 4 L69 16 L76 8 L78 22Z" fill="#fcc419" stroke="#e67700" stroke-width="1.5"/><circle cx="62" cy="15" r="2.5" fill="#e03131"/>',
   }[spec.hat] || '';
   const eyes = {
@@ -279,20 +317,31 @@ function avatarFull(spec = avatarSpec(), { size = 140, cls = '', face = 'right' 
     eye_mono: '<circle cx="69" cy="38" r="5.5" fill="rgba(255,255,255,.2)" stroke="#e67700" stroke-width="1.8"/><path d="M73 42 Q76 52 72 62" stroke="#e67700" stroke-width=".9" fill="none"/>',
     eye_ski: '<path d="M41 37 L83 37" stroke="#212529" stroke-width="3"/><rect x="46" y="31" width="32" height="13" rx="6.5" fill="url(#skiG)" stroke="#f8f9fa" stroke-width="1.6"/>',
     eye_heart: '<g fill="#e64980" stroke="#fff" stroke-width=".8"><path d="M55 44 L49.5 38.5 Q48 34 51.5 33.5 Q54 33.3 55 36 Q56 33.3 58.5 33.5 Q62 34 60.5 38.5Z"/><path d="M69 44 L63.5 38.5 Q62 34 65.5 33.5 Q68 33.3 69 36 Q70 33.3 72.5 33.5 Q76 34 74.5 38.5Z"/></g><path d="M61 37 L63 37" stroke="#e64980" stroke-width="1.2"/>',
+    eye_visor: '<path d="M44 34 Q62 30 80 34 L80 41 Q62 45 44 41Z" fill="#3bc9db" opacity=".88" stroke="#0b7285"/><path d="M47 36 L77 36" stroke="#e3fafc" stroke-width="1"/>',
+    eye_vr: '<path d="M41 36 L83 36" stroke="#212529" stroke-width="3"/><rect x="44" y="30.5" width="36" height="14" rx="5" fill="#212529"/><rect x="46" y="32.5" width="32" height="10" rx="4" fill="#343a40"/><circle cx="74" cy="37.5" r="1.3" fill="#40c057"/>',
     eye_paint: '<rect x="50" y="42" width="9" height="3" rx="1.5" fill="#212529"/><rect x="65" y="42" width="9" height="3" rx="1.5" fill="#212529"/>',
   }[spec.eyes] || '';
   const back = {
     x_cape: `<path d="M44 62 Q30 110 38 132 L86 132 Q94 110 80 62Z" fill="#e03131" opacity=".95"/>`,
     x_wings: '<g fill="#fff" stroke="#adb5bd" stroke-width="1.5"><path d="M46 70 Q14 52 8 74 Q22 74 14 88 Q30 84 28 98 Q40 86 48 82Z"/><path d="M78 70 Q110 52 116 74 Q102 74 110 88 Q94 84 96 98 Q84 86 76 82Z"/></g>',
     x_sparkle: '<g class="sparkles" fill="#fcc419">' + [[20, 40], [100, 30], [14, 100], [108, 96], [30, 140], [96, 150]].map(([x, y]) => `<path d="M${x} ${y - 7} L${x + 2} ${y - 2} L${x + 7} ${y} L${x + 2} ${y + 2} L${x} ${y + 7} L${x - 2} ${y + 2} L${x - 7} ${y} L${x - 2} ${y - 2}Z"/>`).join('') + '</g>',
+    x_jetpack: '<rect x="33" y="64" width="13" height="36" rx="6" fill="#adb5bd" stroke="#495057"/><rect x="78" y="64" width="13" height="36" rx="6" fill="#adb5bd" stroke="#495057"/><g class="jetflame"><path d="M35 100 L39.5 118 L44 100Z M80 100 L84.5 118 L89 100Z" fill="#ff922b"/><path d="M37 100 L39.5 110 L42 100Z M82 100 L84.5 110 L87 100Z" fill="#ffd43b"/></g>',
+    x_backpack: '<rect x="36" y="64" width="52" height="42" rx="9" fill="#1c7ed6"/><rect x="40" y="94" width="44" height="10" rx="4" fill="#1864ab"/>',
     x_aura: '<g class="aura"><ellipse cx="62" cy="96" rx="44" ry="66" fill="url(#auraG)"/></g>',
   }[spec.extra] || '';
-  const front = { x_chain: '<path d="M50 64 Q62 80 74 64" fill="none" stroke="#fcc419" stroke-width="3"/><circle cx="62" cy="76" r="4" fill="#fcc419"/>', x_medal: '<path d="M56 62 L62 74 L68 62" fill="none" stroke="#1c7ed6" stroke-width="3"/><circle cx="62" cy="79" r="6" fill="#fcc419" stroke="#e67700" stroke-width="1.5"/>' }[spec.extra] || '';
+  const front = { x_chain: '<path d="M50 64 Q62 80 74 64" fill="none" stroke="#fcc419" stroke-width="3"/><circle cx="62" cy="76" r="4" fill="#fcc419"/>', x_medal: '<path d="M56 62 L62 74 L68 62" fill="none" stroke="#1c7ed6" stroke-width="3"/><circle cx="62" cy="79" r="6" fill="#fcc419" stroke="#e67700" stroke-width="1.5"/>',
+    x_backpack: '<path d="M49 64 L47 100 M75 64 L77 100" stroke="#1864ab" stroke-width="3.2" stroke-linecap="round"/>',
+    x_guitar: '<g transform="rotate(-38 62 92)"><rect x="60" y="50" width="4" height="40" fill="#6b4423"/><rect x="58.5" y="46" width="7" height="6" rx="1" fill="#3b2416"/><ellipse cx="62" cy="96" rx="10" ry="8.5" fill="#e8590c"/><ellipse cx="62" cy="106" rx="12.5" ry="10" fill="#e8590c"/><circle cx="62" cy="99" r="3.4" fill="#3b2416"/><path d="M61 52 L61 104 M63 52 L63 104" stroke="#f1f3f5" stroke-width=".4"/></g>' }[spec.extra] || '';
   const pat = (cos(spec.kit) || {}).pattern;
   const pattern = pat === 'stripes' ? [50, 58, 66, 74].map(x => `<rect x="${x}" y="58" width="4" height="60" fill="#fff" opacity=".85"/>`).join('')
     : pat === 'hoops' ? [72, 86, 100].map(y => `<rect x="40" y="${y}" width="44" height="7" fill="#fff" opacity=".9"/>`).join('')
     : pat === 'camo' ? '<g opacity=".7"><ellipse cx="52" cy="78" rx="7" ry="4" fill="#3d4a26"/><ellipse cx="70" cy="90" rx="8" ry="5" fill="#8a7a4a"/><ellipse cx="56" cy="104" rx="9" ry="4" fill="#2f3a1c"/><ellipse cx="74" cy="72" rx="5" ry="3" fill="#8a7a4a"/></g>'
-    : pat === 'rainbow' ? ['#fa5252', '#fd7e14', '#fcc419', '#40c057', '#228be6', '#7048e8'].map((c, k) => `<rect x="40" y="${60 + k * 9}" width="44" height="9" fill="${c}"/>`).join('') : '';
+    : pat === 'rainbow' ? ['#fa5252', '#fd7e14', '#fcc419', '#40c057', '#228be6', '#7048e8'].map((c, k) => `<rect x="40" y="${60 + k * 9}" width="44" height="9" fill="${c}"/>`).join('')
+    : pat === 'flames' ? '<path d="M40 118 L40 92 Q45 102 48 88 Q52 100 56 82 Q60 98 64 84 Q68 100 72 86 Q76 102 80 90 Q82 100 84 94 L84 118Z" fill="#ff6b00"/><path d="M40 118 L42 102 Q47 108 50 98 Q55 106 58 96 Q62 106 66 96 Q70 106 74 98 Q78 108 82 102 L84 118Z" fill="#ffd43b"/>'
+    : pat === 'checker' ? Array.from({ length: 48 }, (_, k) => (k + Math.floor(k / 6)) % 2 ? `<rect x="${40 + (k % 6) * 7.4}" y="${58 + Math.floor(k / 6) * 7.6}" width="7.4" height="7.6" fill="#f8f9fa"/>` : '').join('')
+    : pat === 'galaxy' ? '<ellipse cx="58" cy="84" rx="16" ry="7" fill="#7048e8" opacity=".55" transform="rotate(-20 58 84)"/><ellipse cx="68" cy="100" rx="12" ry="5" fill="#e64980" opacity=".4" transform="rotate(15 68 100)"/>' + [[48, 70], [72, 74], [56, 92], [76, 88], [52, 108], [66, 112], [62, 80], [46, 96]].map(([x, y], k) => `<circle cx="${x}" cy="${y}" r="${k % 3 ? .9 : 1.5}" fill="#fff"/>`).join('')
+    : pat === 'beta' ? '<rect x="40" y="66" width="44" height="7" fill="#4dabf7"/><rect x="40" y="73" width="44" height="2" fill="#fff" opacity=".8"/>'
+    : pat === 'dev' ? '<path d="M53 62 L56 74 M71 62 L68 74" stroke="#495057" stroke-width="1.6"/><text x="62" y="84" text-anchor="middle" font-size="8" font-family="monospace" font-weight="900" fill="#69db7c">&lt;/&gt;</text>' : '';
   const flip = face === 'left' ? ' transform="translate(124 0) scale(-1 1)"' : '';
   return `<svg class="avatar ${cls}" viewBox="0 0 124 170" width="${size * 124 / 170}" height="${size}" aria-hidden="true"><defs><clipPath id="bodyClip"><path d="M44 66 Q62 58 80 66 L82 116 L42 116Z"/></clipPath><linearGradient id="skiG" x1="0" x2="1"><stop offset="0" stop-color="#ff922b"/><stop offset=".5" stop-color="#f06595"/><stop offset="1" stop-color="#845ef7"/></linearGradient><radialGradient id="auraG"><stop offset="0" stop-color="#ffd43b" stop-opacity=".9"/><stop offset=".6" stop-color="#ff6b00" stop-opacity=".45"/><stop offset="1" stop-color="#ff6b00" stop-opacity="0"/></radialGradient></defs>
     <g${flip}><g class="av">${back}
@@ -301,7 +350,9 @@ function avatarFull(spec = avatarSpec(), { size = 140, cls = '', face = 'right' 
     <g class="body"><g transform="translate(62 0) scale(${bw} 1) translate(-62 0)"><path d="M44 66 Q62 58 80 66 L82 116 L42 116Z" fill="${kit}"/>${pattern ? `<g clip-path="url(#bodyClip)">${pattern}</g>` : ''}</g><text x="62" y="102" text-anchor="middle" font-size="20" font-weight="900" fill="${light}">${esc(spec.no)}</text>${front}</g>
     <g class="armL" transform="translate(${-armDx} 0)"><rect x="34" y="66" width="11" height="40" rx="5.5" fill="${skin}"/><rect x="33" y="64" width="13" height="14" rx="5" fill="${kit}"/></g>
     <g class="armR" transform="translate(${armDx} 0)"><rect x="79" y="66" width="11" height="40" rx="5.5" fill="${skin}"/><rect x="78" y="64" width="13" height="14" rx="5" fill="${kit}"/></g>
-    ${{ x_ball: '<ellipse cx="92" cy="100" rx="12" ry="8" fill="#c2410c" stroke="#7c2d12" stroke-width="1.5" transform="rotate(-25 92 100)"/><path d="M86 100 L98 100" stroke="#fff" stroke-width="1.4" transform="rotate(-25 92 100)"/>', x_trophy: '<g transform="translate(84 80)"><path d="M2 0 L22 0 L20 14 Q12 22 4 14Z" fill="#fcc419" stroke="#e67700"/><rect x="9" y="18" width="6" height="8" fill="#e67700"/><rect x="4" y="26" width="16" height="5" fill="#495057"/></g>', x_books: '<g transform="translate(80 92)"><rect width="22" height="6" fill="#e03131"/><rect y="6" x="2" width="20" height="6" fill="#1c7ed6"/><rect y="12" width="22" height="6" fill="#2f9e44"/></g>' }[spec.extra] || ''}
+    ${{ x_ball: '<ellipse cx="92" cy="100" rx="12" ry="8" fill="#c2410c" stroke="#7c2d12" stroke-width="1.5" transform="rotate(-25 92 100)"/><path d="M86 100 L98 100" stroke="#fff" stroke-width="1.4" transform="rotate(-25 92 100)"/>', x_trophy: '<g transform="translate(84 80)"><path d="M2 0 L22 0 L20 14 Q12 22 4 14Z" fill="#fcc419" stroke="#e67700"/><rect x="9" y="18" width="6" height="8" fill="#e67700"/><rect x="4" y="26" width="16" height="5" fill="#495057"/></g>', x_books: '<g transform="translate(80 92)"><rect width="22" height="6" fill="#e03131"/><rect y="6" x="2" width="20" height="6" fill="#1c7ed6"/><rect y="12" width="22" height="6" fill="#2f9e44"/></g>',
+      x_skate: '<g transform="rotate(-68 96 100)"><rect x="74" y="95" width="46" height="8" rx="4" fill="#e64980" stroke="#a61e4d"/><circle cx="82" cy="105" r="3" fill="#fcc419"/><circle cx="112" cy="105" r="3" fill="#fcc419"/></g>',
+      x_laptop: '<g transform="translate(76 90)"><rect width="26" height="17" rx="2" fill="#343a40"/><rect x="2" y="2" width="22" height="13" fill="#0b1a3a"/><text x="13" y="11.5" text-anchor="middle" font-size="7" font-family="monospace" font-weight="700" fill="#69db7c">&lt;/&gt;</text><rect x="-3" y="17" width="32" height="3" rx="1" fill="#868e96"/></g>' }[spec.extra] || ''}
     <g class="head">${H.back}<rect x="57" y="52" width="10" height="10" fill="${skin}"/>${ears}${earrings}${headShape}${faces}${H.cap}${H.top}${eyes}${hat ? `<g transform="${hatFit}">${hat}</g>` : ''}</g>
     </g></g></svg>`;
 }
@@ -313,6 +364,10 @@ const BG_CSS = {
   bg_everest: 'linear-gradient(180deg,#1c3d6e,#4a7ab8 45%,#fff 46%,#dbe4ff)', bg_neon: 'linear-gradient(180deg,#12002f,#3a0ca3 60%,#f72585)',
   bg_gold: 'radial-gradient(circle,#fff3bf,#fcc419 50%,#e67700)',
   bg_fire: 'radial-gradient(ellipse at 50% 120%,#ffd43b,#ff6b00 40%,#c92a2a 70%,#2b0505)',
+  bg_ocean: 'radial-gradient(circle at 25% 30%,rgba(255,255,255,.5) 0 2px,transparent 3px) 0 0/40px 50px, linear-gradient(180deg,#74c0fc,#1c7ed6 50%,#0b3d6e)',
+  bg_night: 'radial-gradient(ellipse at 20% 0,rgba(255,255,255,.7),transparent 25%), radial-gradient(ellipse at 80% 0,rgba(255,255,255,.7),transparent 25%), linear-gradient(180deg,#0b1026,#1b2a6b 60%,#2b8a3e 61%,#237032)',
+  bg_volcano: 'radial-gradient(ellipse at 50% 100%,#ffd43b,#ff6b00 25%,transparent 45%), linear-gradient(180deg,#2b0a0a,#5c1a0a 55%,#1a0505)',
+  bg_aurora: 'radial-gradient(ellipse at 30% 20%,rgba(105,219,124,.7),transparent 45%), radial-gradient(ellipse at 70% 30%,rgba(151,117,250,.6),transparent 45%), linear-gradient(180deg,#06141f,#0b2a3a 60%,#e7f5ff 61%,#d0ebff)',
 };
 const petHtml = (id, size = 30) => { const p = cos(id); return p && p.e ? `<span class="avpet" style="font-size:${size}px">${p.e}</span>` : ''; };
 const avatarBadge = (spec, size = 64) => `<span class="avbadge" style="background:${BG_CSS[spec.bg] || 'var(--panel2)'}">${avatarFull(spec, { size })}${petHtml(spec.pet, size / 4)}</span>`;

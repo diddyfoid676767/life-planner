@@ -76,7 +76,7 @@ function fighter3(L) {
   if (L.ghost) for (const k of ['skin', 'kit', 'kit2', 'shorts']) Object.assign(M[k], { transparent: true, opacity: .62, emissive: new THREE.Color('#7048e8'), emissiveIntensity: .35 });
   if (L.stone) Object.assign(M.skin, { roughness: .95, sheen: 0, color: new THREE.Color('#8f8a83') });
   const root = new THREE.Group(), body = new THREE.Group(); root.add(body);
-  const P = { root, body, L, mats: Object.values(M) };
+  const P = { root, body, L, mats: Object.values(M), M };
   const hips = b3at(new THREE.Group(), 0, .98, 0); body.add(hips); P.hips = hips;
   // shorts and torso
   const sh = b3mesh(new THREE.CapsuleGeometry(.21, .12, 8, 20), M.shorts); sh.scale.set(1.25 * bulk, 1, .95 * bulk); hips.add(b3at(sh, 0, -.02, 0));
