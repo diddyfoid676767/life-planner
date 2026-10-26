@@ -7,8 +7,8 @@
    can fight it while you're offline, with the computer playing it.
    Wins and losses move your rating on the ranked ladder. */
 
-const PVP_VER = 1; // bump when the battle rules change, so different versions don't play each other
-const PVP_TEAM = 3, PVP_START = 1000, PVP_WAIT = 120e3;
+const PVP_VER = 2; // bump when the battle rules change, so different versions don't play each other
+const PVP_TEAM = 4, PVP_START = 1000, PVP_WAIT = 120e3;
 const PVP_TIERS = [[0, 'Bronze', '🥉', '#c08a52'], [1100, 'Silver', '🥈', '#868e96'], [1250, 'Gold', '🥇', '#f59f00'], [1400, 'Platinum', '💠', '#15aabf'], [1550, 'Diamond', '💎', '#4dabf7'], [1700, 'Champion', '👑', '#e64980']];
 const pvpTier = r => PVP_TIERS.filter(t => r >= t[0]).pop();
 const pvpNext = r => PVP_TIERS.find(t => t[0] > r);
@@ -22,10 +22,10 @@ function pvpState() {
 const tierChip = r => { const t = pvpTier(r); return `<span class="tierchip" style="--tc:${t[3]}">${t[2]} ${t[1]}</span>`; };
 
 // ---------- teams ----------
-// your PvP team: your athlete and the first two of your crew, at full health
-function pvpTeamMons() { return [myMon(1), ...crewTeam().map(id => crewMon(ENEMIES.find(x => x.id === id)))].slice(0, PVP_TEAM); }
+// your PvP team: your creature team, at full health
+function pvpTeamMons() { return typeof crReady === 'function' && crReady() ? myTeamMons().slice(0, PVP_TEAM) : []; }
 function pvpTeamSnap() {
-  return pvpTeamMons().map(m => ({ e: m.enemy?.id || null, ath: !!m.ath, name: String(m.name).slice(0, 30), types: m.types, lv: m.lv, base: m.base, st: m.st, mv: m.moves.map(x => [x.id, x.max]), look: monLook(m) }));
+  return pvpTeamMons().map(m => ({ sp: m.sp, name: String(m.name).slice(0, 30), types: m.types, lv: m.lv, base: m.base, st: m.st, mv: m.moves.map(x => [x.id, x.max]), held: m.held || null, crowd: m.crowd ? 1 : 0, never: m.never ? 1 : 0, wind: m.wind ? 1 : 0 }));
 }
 // anything that came over the network is cleaned before it's drawn
 const okStr = v => typeof v === 'string' && /^[#\w-]{0,40}$/.test(v);
@@ -44,12 +44,13 @@ function cleanLook(L) {
   return out;
 }
 function monFromSnap(s, k, side) {
-  const e = s.e && ENEMIES.find(x => x.id === s.e), n = (v, lo, hi) => clamp(Math.round(+v || 0), lo, hi);
+  const e = s.e && ENEMIES.find(x => x.id === s.e), n = (v, lo, hi) => clamp(Math.round(+v || 0), lo, hi), spc = typeof s.sp === 'string' && specOf(s.sp);
   const types = (Array.isArray(s.types) ? s.types : []).filter(t => TYPES[t]).slice(0, 2); if (!types.length) types.push('normal');
   const st = {}, base = {};
   for (const x of ['hp', 'atk', 'def', 'spd', 'spc']) { st[x] = n(s.st?.[x], 1, 999); base[x] = n(s.base?.[x], 1, 255); }
   const moves = (Array.isArray(s.mv) ? s.mv : []).filter(x => Array.isArray(x) && moveById(x[0]) && x[0] !== 'struggle').slice(0, 4).map(([id, max]) => ({ id, pp: n(max, 1, 99), max: n(max, 1, 99) }));
-  return { key: side[0] + k, name: e ? e.name : String(s.name || 'Rival').replace(/[<>&"]/g, '').slice(0, 30), icon: e ? e.icon : '🧍', ath: !e && !!s.ath, enemy: e || undefined,
+  return { key: side[0] + k, name: e ? e.name : String(s.name || (spc && spc.name) || 'Rival').replace(/[<>&"]/g, '').slice(0, 30), icon: spc ? spc.icon : e ? e.icon : '🧍', ath: !spc && !e && !!s.ath, enemy: e || undefined,
+    sp: spc ? spc.id : undefined, held: typeof s.held === 'string' && heldOf(s.held) ? s.held : null, crowd: s.crowd ? 1 : 0, never: s.never ? 1 : 0, wind: s.wind ? 1 : 0,
     types, lv: n(s.lv, 1, 100), base, st, hp: st.hp, status: null, slp: 0, toxN: 0, stg: { atk: 0, def: 0, spd: 0, spc: 0, acc: 0, eva: 0 }, vol: {}, moves, look: cleanLook(s.look), side };
 }
 function pvpCard() {
@@ -312,6 +313,7 @@ function arenaPvp() {
       <div class="row pvpjoin"><input id="pvpCode" placeholder="CODE" maxlength="6" autocomplete="off" spellcheck="false"><button class="btn" data-pvp="join">Join</button></div>
       ${PV.msg ? `<p class="muted small-text">${esc(PV.msg)}</p>` : ''}`;
   const team = pvpTeamMons();
+  if (!team.length) return '<div class="card"><h2>🌐 PvP</h2><p>Pick your first creature on the Team tab, then come back to battle your friends.</p><button class="btn primary" data-act="arenaPage" data-v="team">🐾 Team</button></div>';
   return `<div class="pvp-top">
     <div class="card pvprank" style="--tc:${t[3]}"><div class="pvp-emblem">${t[2]}</div><div class="main"><div class="unlabel">Ranked</div><h2>${t[1]} <span class="pvp-r">${p.r}</span></h2>
       <div class="meter"><i style="width:${Math.min(100, (p.r - lo) / Math.max(1, hi - lo) * 100).toFixed(0)}%;background:${t[3]}"></i></div>
@@ -326,9 +328,9 @@ function arenaPvp() {
       ${noPvp.length ? `<p class="muted small-text">${noPvp.map(f => esc(f.name)).join(', ')} ${noPvp.length === 1 ? "hasn't" : "haven't"} played PvP yet.</p>` : ''}
       <p class="muted small-text">Everyone starts at ${PVP_START}. A live win against someone rated higher moves you up more. Saved teams count half, once per friend a day.</p></div>
     <div class="stack">
-      <div class="card"><div class="card-head"><h2>Your PvP team</h2><button class="btn small" data-act="arenaPage" data-v="moves">Change →</button></div>
+      <div class="card"><div class="card-head"><h2>Your PvP team</h2><button class="btn small" data-act="arenaPage" data-v="team">Change →</button></div>
         <ul class="pvpteam">${team.map(m => `<li><span class="gbmic">${m.ath ? '🧍' : m.icon}</span><div class="main"><b>${esc(m.name)} <small>Lv${m.lv}</small></b><div>${typeChips(m.types)}</div></div><span class="muted small-text">${m.moves.map(x => moveById(x.id).icon).join(' ')}</span></li>`).join('')}</ul>
-        <p class="muted small-text">Your athlete and the first ${PVP_TEAM - 1} of your crew, at full health. No boosts or readiness bonus, so it's fair. Tree and upgrade buffs still count.</p></div>
+        <p class="muted small-text">Your creature team (up to ${PVP_TEAM}), at full health. No boosts or readiness bonus, so it's fair. Trainer stats, held items and team buffs still count.</p></div>
       <div class="card"><div class="card-head"><h2>Recent matches</h2></div>${(p.log || []).length ? `<ul class="pvplog">${p.log.slice(0, 8).map(g => `<li class="${g.win ? 'win' : 'lose'}"><b>${g.win ? 'Won' : 'Lost'}</b><span class="main">${g.live ? '🌐' : '👻'} vs ${esc(g.name)}</span><span class="muted small-text">${esc(ago(g.at))}</span><span class="${g.d >= 0 ? 'green-text' : 'red-text'}">${g.d >= 0 ? '+' : ''}${g.d}</span></li>`).join('')}</ul>` : '<p class="muted small-text">No matches yet. Try a quick match.</p>'}</div>
     </div></div>`;
 }

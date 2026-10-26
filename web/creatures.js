@@ -189,7 +189,7 @@ function crStats(m, trainerInfo) {
 function myTeamMons() {
   const T = trainer();
   const out = teamMons().map(m => crStats(m, T));
-  out.forEach(m => { if (perkOn('crowd')) m.crowd = 1; if (perkOn('never')) m.never = 1; });
+  out.forEach(m => { m.side = 'me'; if (perkOn('crowd')) m.crowd = 1; if (perkOn('never')) m.never = 1; if (perkOn('wind')) m.wind = 1; });
   return out;
 }
 // a wild or rival creature
@@ -284,7 +284,9 @@ function crAfterBattle(B, win) {
   const foes = B.sides.them.team.filter(m => m.hp <= 0 || win);
   let xp = foes.reduce((a, f) => a + baseExp(specOf(f.sp) || { stage: 1 }) * f.lv / 7 * (B.mode === 'wild' ? 1 : 1.5), 0);
   if (!win) xp *= .25;
-  for (const bm of used) { const m = monById(bm.uid); if (m) giveXp(m, xp / Math.max(1, used.length * .7), notes); }
+  const each = Math.round(xp / Math.max(1, used.length * .7));
+  if (each) notes.push(`⭐ +${each} XP${used.length > 1 ? ' each' : ''}`);
+  for (const bm of used) { const m = monById(bm.uid); if (m) giveXp(m, each, notes); }
   if (win && B.mode === 'giant' && B.e.drop) {
     const [k, v] = B.e.drop, first = !(C.giants || {})[B.e.id];
     C.giants = { ...(C.giants || {}), [B.e.id]: today() };
@@ -309,7 +311,7 @@ async function throwBand(superBand) {
   const key = superBand ? 'sbands' : 'bands'; if (!(C[key] > 0)) return;
   C[key]--; save();
   await say(`You throw a ${superBand ? '💫 Super band' : '🎯 Catch band'} at ${foe.name}!`, 900);
-  await play('them', 'catch', { phase: 'throw' });
+  await play('them', 'catch', { phase: 'throw', super: !!superBand });
   const p = catchChance(foe, superBand), shakes = Math.random() < p ? 3 : Math.floor(Math.random() * 3);
   for (let k = 0; k < shakes; k++) { await play('them', 'catch', { phase: 'shake', k }); await say(['Wobble…', 'Wobble… wobble…', 'Wobble… wobble… wobble…'][k], 700); }
   if (shakes === 3) {
@@ -464,7 +466,7 @@ function monDetail(m) {
   const known = [...new Set([...knownAt(m.sp, m.lv), ...(m.extra || [])])];
   const next = learnset(m.sp).find(x => x.lv > m.lv);
   const evoTxt = s.evo ? (ce?.ok ? `<button class="btn primary" data-cr="evolve" data-id="${m.uid}">✨ Evolve into ${specOf(s.evo.to).name}${ce.stone ? ` (uses a ${STONES[ce.stone][1]})` : ''}</button>` : `<span class="muted small-text">Evolves into <b>${specOf(s.evo.to).name}</b> ${s.evo.lv ? `at Lv ${s.evo.lv}` : `with a ${STONES[s.evo.stone][0]} ${STONES[s.evo.stone][1]}`} · needs ${ce?.why}</span>${s.evo.lv && C.crystals > 0 && m.lv >= s.evo.lv - 5 && evoAllowed(s.stage) ? ` <button class="btn small" data-cr="crystal" data-id="${m.uid}">💎 Use a crystal</button>` : ''}`) : '<span class="muted small-text">Fully evolved.</span>';
-  return `<div class="card mondetail"><div class="mdhead"><div class="c3view" id="c3view" data-sp="${m.sp}">${crBadge(s, 120)}</div>
+  return `<div class="card mondetail"><div class="mdhead"><div class="c3view" id="c3view" data-c3="${m.sp}">${crBadge(s, 120)}</div>
       <div class="main"><h2>${esc(m.nick || s.name)} <small class="muted">Lv ${m.lv}</small></h2><div>${typeChips(s.types)}</div><p class="muted small-text">${esc(s.dex || '')}</p>
         <div class="xpbar big"><i style="width:${Math.round((m.xp - XP_AT(m.lv)) / Math.max(1, XP_AT(m.lv + 1) - XP_AT(m.lv)) * 100)}%"></i></div><small class="muted">${XP_AT(m.lv + 1) - m.xp} XP to Lv ${m.lv + 1} · from battles and your workouts${next ? ` · learns ${moveById(next.id).name} at Lv ${next.lv}` : ''}</small>
         <div class="row" style="margin-top:8px">${on ? `<button class="btn small" data-cr="bench" data-id="${m.uid}" ${C.team.length <= 1 ? 'disabled' : ''}>Move to box</button>${C.team.indexOf(m.uid) > 0 ? `<button class="btn small" data-cr="lead" data-id="${m.uid}">⭐ Make leader</button>` : ''}` : `<button class="btn small primary" data-cr="join" data-id="${m.uid}">+ Team</button>`}

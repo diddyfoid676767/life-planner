@@ -289,7 +289,7 @@ function clip(P, name, dur, pose, o = {}) {
   });
 }
 function b3place(m, side) {
-  const P = fighter3(monLook(m)); P.side = side; P.mon = m; P.key = m.key;
+  const P = m.sp && typeof creature3 === 'function' ? creature3(m.sp) : fighter3(monLook(m)); P.side = side; P.mon = m; P.key = m.key;
   const to = SPOT[other(side)], me = SPOT[side];
   P.face = Math.atan2(to.x - me.x, to.z - me.z); P.fwd = V3(to.x - me.x, 0, to.z - me.z).normalize(); P.right = V3(P.fwd.z, 0, -P.fwd.x); P.gap = me.distanceTo(to);
   P.root.position.copy(me); P.root.position.y = .16; P.root.rotation.y = P.face;
@@ -334,12 +334,7 @@ function b3fighter(P, t, dt) {
   R.position.set(base.x + off.x, .16 + pose.y, base.z + off.z);
   R.rotation.set(0, P.face + pose.yaw, 0);
   R.scale.setScalar((P.L.scale || 1) * pose.scale * (P.big || 1));
-  P.body.rotation.set(pose.lean, 0, pose.roll, 'YXZ');
-  P.hips.position.y = .98 - pose.crouch;
-  P.spine.rotation.set(pose.lean * .3, pose.twist, 0);
-  P.head.rotation.set(pose.headX, pose.headY, 0);
-  const [l, r] = P.arms; l.sh.rotation.set(pose.shL, 0, pose.shLz); l.el.rotation.x = pose.elL; r.sh.rotation.set(pose.shR, 0, pose.shRz); r.el.rotation.x = pose.elR;
-  P.legs[0].hp.rotation.x = pose.hipL; P.legs[0].kn.rotation.x = pose.knL; P.legs[1].hp.rotation.x = pose.hipR; P.legs[1].kn.rotation.x = pose.knR;
+  rigJoints(P, pose, t);
   if (P.tail) P.tail.rotation.y = Math.sin(t * 4) * .5;
   if (P.cape) { const g = P.cape.geometry.attributes.position, b = P.cape.userData.base; for (let i = 0; i < g.count; i++) { const y = b[i * 3 + 1], k = (.52 - y) / 1.05; g.setZ(i, b[i * 3 + 2] - k * k * (.25 + Math.sin(t * 3 + b[i * 3] * 3) * .08 + Math.max(0, pose.f) * .1)); } g.needsUpdate = true; }
   // hit flash and type-coloured glows
@@ -351,7 +346,7 @@ function b3fighter(P, t, dt) {
   P.ice.visible = st === 'frz' && !P.hidden; if (P.ice.visible) P.ice.rotation.y = t * .2;
   // lingering status effects
   if (!P.hidden && P.alpha > .5) {
-    const chest = R.position.clone().setY(R.position.y + 1.2 * R.scale.y), head = R.position.clone().setY(R.position.y + 1.9 * R.scale.y);
+    const chest = R.position.clone().setY(R.position.y + (P.chestH ?? 1.2) * R.scale.y), head = R.position.clone().setY(R.position.y + (P.headH ?? 1.9) * R.scale.y);
     if (st === 'brn' && Math.random() < dt * 16) spawn({ pos: chest.clone().add(rv(.35)), color: Math.random() < .5 ? '#ff6b00' : '#ffd43b', tex: 'glow', size: .32, vel: V3(0, 1.8, 0), life: .55, grow: -.8 });
     if ((st === 'psn' || st === 'tox') && Math.random() < dt * 7) spawn({ pos: chest.clone().add(rv(.3)), color: '#be4bdb', tex: 'drop', size: .14, vel: V3(rnd(.3), .9, rnd(.3)), life: .9, add: false, op: .85 });
     if (st === 'par' && Math.random() < dt * 5) for (let k = 0; k < 3; k++) spawn({ pos: chest.clone().add(rv(.4)), color: '#ffe066', tex: 'spark', size: .3, vel: rv(1.5), life: .2 });
@@ -360,9 +355,9 @@ function b3fighter(P, t, dt) {
     if (P.mon.vol?.leech && Math.random() < dt * 3) spawn({ pos: R.position.clone().add(rv(.4)).setY(.3), color: '#69db7c', tex: 'leaf', size: .2, vel: V3(0, .7, 0), life: .8, add: false, spin: 3 });
   }
   // keep the invisible HTML anchor over the fighter, so damage numbers land on them
-  if (P.el) { const v = R.position.clone().setY(R.position.y + 1.25 * R.scale.y).project(B3.cam); P.el.style.left = ((v.x + 1) / 2 * B3.st.clientWidth) + 'px'; P.el.style.top = ((1 - v.y) / 2 * B3.st.clientHeight) + 'px'; }
+  if (P.el) { const v = R.position.clone().setY(R.position.y + (P.chestH ?? 1.25) * R.scale.y).project(B3.cam); P.el.style.left = ((v.x + 1) / 2 * B3.st.clientWidth) + 'px'; P.el.style.top = ((1 - v.y) / 2 * B3.st.clientHeight) + 'px'; }
 }
-const chestOf = P => P.root.position.clone().setY(P.root.position.y + 1.2 * P.root.scale.y);
+const chestOf = P => P.root.position.clone().setY(P.root.position.y + (P.chestH ?? 1.2) * P.root.scale.y);
 const handOf = (P, k = 1) => P.arms[k].hand.getWorldPosition(V3());
 
 // ---------- type effects: what flies from attacker to target ----------
@@ -430,7 +425,7 @@ async function b3play(side, kind, d = {}) {
     if (P && P.key !== d.mon.key) { b3drop(P); }
     const N = (!P || P.key !== d.mon.key) ? b3place(d.mon, side) : P;
     if (side === 'me') B3.me = N; else B3.them = N;
-    N.hidden = false; N.root.visible = true; N.clip = null; setAlpha(N, 1); N.phase2 = false; N.big = 1;
+    N.hidden = false; N.root.visible = true; N.clip = null; setAlpha(N, 1); N.phase2 = false; N.big = d.mon.giant ? 1.8 : 1;
     B3.plat[side].rimMat.emissive.set(TCOL(d.mon.types[0])); B3.plat[side].rimMat.color.set(TCOL(d.mon.types[0])); B3.plat[side].inner.material.color.set(TCOL(d.mon.types[d.mon.types.length - 1]));
     const c = SPOT[side].clone().setY(1.1);
     spawn({ pos: c, color: '#ffffff', tex: 'glow', size: 3.5, life: .5, grow: 1 }); ringAt(SPOT[side].clone().setY(.2), TCOL(d.mon.types[0]), { grow: 5, dur: .7 }); flashLight(c, '#ffffff', 8, .5);
@@ -459,8 +454,10 @@ async function b3play(side, kind, d = {}) {
     P.hidden = true; P.root.visible = false; return;
   }
   if (kind === 'land') { P.hidden = false; P.root.visible = true; P.clip = null; return; }
-  if (kind === 'move') return moveClip(P, O, d.move, d);
+  if (kind === 'move') { if (B3.coach && side === 'me') B3.coach.shout = B3.clock.elapsedTime; return moveClip(P, O, d.move, d); }
+  if (kind === 'catch') return b3catch(P, d);
   if (kind === 'hit') {
+    const cheer = side === 'them' ? B3.coach : B3.rivalCoach; if (cheer && !d.dot) cheer.cheer = B3.clock.elapsedTime + (d.eff > 1 || d.crit ? 1.4 : .9);
     if (d.dot) { P.flash = .8; P.flashCol.set(TCOL(d.type)); burstAt(chestOf(P), TCOL(d.type), 8, { tex: 'glow', size: .3, speed: 1.5 }); return clip(P, 'dot', .5, p => ({ crouch: .15 * bump(p), lean: .2 * bump(p), headX: .3 * bump(p) })); }
     const big = d.eff > 1 || d.crit;
     if (d.recoil) { P.flash = .6; P.flashCol.set('#ffffff'); return clip(P, 'recoil', .45, p => ({ lean: -.3 * bump(p), f: -.2 * bump(p) })); }
@@ -495,9 +492,10 @@ async function b3play(side, kind, d = {}) {
     for (let k = 0; k < 4; k++) setTimeout(() => ringAt(P.root.position.clone().setY(.3), '#ff3b3b', { grow: 8, dur: .7 }), k * 180);
     flashLight(chestOf(P), '#ff3b3b', 14, 1.2);
     await clip(P, 'roar', 1.3, p => ({ shL: -1.2, shLz: 1.6 * bump(p), elL: -.5, shR: -1.2, shRz: -1.6 * bump(p), elR: -.5, lean: -.4 * bump(p), headX: -.6 * bump(p), crouch: .15 * bump(p), scale: 1 + .12 * easeOut(p) }), { blend: .1 });
-    P.big = 1.12; return;
+    P.big = (P.big || 1) * 1.12; return;
   }
   if (kind === 'win') {
+    const tr = side === 'me' ? B3.coach : B3.rivalCoach; if (tr) tr.cheer = 1e9;
     if (side === 'me') for (let k = 0; k < 60; k++) setTimeout(() => B3.on && spawn({ pos: V3(rnd(6), 7 + Math.random() * 2, rnd(4)), color: ['#fcc419', '#4dabf7', '#ff6b6b', '#51cf66'][k % 4], tex: 'shard', size: .25, vel: V3(rnd(1), -2.5, rnd(1)), life: 2.5, add: false, spin: 6 }), k * 25);
     camFocus(P.root.position, 3);
     P.clip = { name: 'win', t: 0, dur: 1e9, pose: (p, Q) => { const t = B3.clock.elapsedTime * 1.6, j = Math.abs(Math.sin(t * Math.PI)); return { y: j * .5, shL: -2.9, shLz: .4, elL: -.3 * j, shR: -1.2 + Math.sin(t * Math.PI) * .6, shRz: -.3, elR: -1.9, crouch: .15 * (1 - j), yaw: Math.sin(t) * .3 }; }, blend: .02 };
@@ -538,6 +536,65 @@ async function moveClip(P, O, m, d) {
   }, { hitAt: sty === 'leap' ? .5 : .52, onHit: () => { if (sty === 'stomp') { ringAt(O.root.position.clone().setY(.2), '#e8a76d', { grow: 7, dur: .6 }); B3.shake = Math.max(B3.shake, .5); } hitDone(); } });
   return hit;
 }
+// ---------- trainers: you stand beside your creature and cheer; rival trainers do the same ----------
+const COACH_AT = { me: V3(-4.0, 0, .88), them: V3(4.0, 0, -.88) };
+function b3coaches() {
+  const B = battle; B3.coach = B3.rivalCoach = null;
+  const make = (L, side) => {
+    const P = fighter3(L), at = COACH_AT[side], to = side === 'me' ? V3(-1.5, 0, 4.5) : SPOT[other(side)].clone().lerp(SPOT[side], .5);
+    P.at = at; P.face = Math.atan2(to.x - at.x, to.z - at.z); P.cheer = 0; P.shout = -9; P.side = side;
+    P.root.position.copy(at); P.root.rotation.y = P.face; P.root.scale.setScalar(.82 * (L.scale || 1));
+    const blob = fxBlob(.45, .5); blob.position.set(at.x, .02, at.z); B3.scene.add(blob, P.root);
+    return P;
+  };
+  try { B3.coach = make(monLook({ ath: true, types: [cur('me')?.types?.[0] || 'normal'] }), 'me'); } catch (e) { console.error(e); }
+  if (B.mode === 'wild' || B.mode === 'giant') return;
+  try {
+    const e = B.e || {}, L = B.mode === 'pvp' || B.mode === 'ghost' ? { hair: 'short', kit: '#495057', kit2: '#adb5bd', extras: ['cap'], capC: '#495057' } : monLook({ enemy: e, types: typesOf(e), boss: e.boss });
+    B3.rivalCoach = make({ ...L, scale: Math.min(1.15, L.scale || 1) }, 'them');
+  } catch (e) { console.error(e); }
+}
+function b3coach(P, t) {
+  if (!P) return;
+  const ph = P.side === 'me' ? 0 : 2, b = Math.sin(t * 3 + ph), now = t;
+  let p = { ...POSE0, crouch: .03 + b * .02, headY: Math.sin(t * .8 + ph) * .15, shL: -.1, shLz: .2, elL: -.3, shR: -.1, shRz: -.2, elR: -.3, hipL: -.05, hipR: .05, knL: .05, knR: .05 };
+  // hands on knees, shouting, when your creature moves; a jump with both arms up after a good hit
+  if (now - P.shout < 1) { const k = bump((now - P.shout) / 1); Object.assign(p, { shR: -.1 - 2.6 * k, shRz: -.2, elR: -.3 - .4 * k, lean: .12 * k, headX: -.25 * k }); }
+  if (now < P.cheer) { const j = Math.abs(Math.sin(t * 7 + ph)); Object.assign(p, { y: j * .4, crouch: (1 - j) * .12, shL: -2.8, shLz: .35, elL: -.2, shR: -2.8, shRz: -.35, elR: -.2, hipL: -j * .3, knL: j * .5, hipR: -j * .3, knR: j * .5, headX: -.2 }); }
+  if (P.throwT != null) { const q = Math.min(1, (now - P.throwT) / .6); Object.assign(p, { shR: -2.9 + 3.3 * easeOut(seg(q, .35, .7)), shRz: -.3, elR: -.6 * (1 - q), twist: -.5 * bump(q), lean: .25 * bump(seg(q, .3, 1)), hipL: -.5 * bump(q) }); if (q >= 1) P.throwT = null; }
+  P.root.position.set(P.at.x, .02 + p.y, P.at.z); P.root.rotation.y = P.face;
+  rigJoints(P, p, t);
+}
+// throwing a catch band: it flies from your hand, the creature is pulled in, the band wobbles, then it holds or breaks
+async function b3catch(P, d) {
+  const S = B3.scene;
+  if (d.phase === 'throw') {
+    const band = new THREE.Group(), ring = b3mesh(new THREE.TorusGeometry(.32, .07, 14, 40), b3mat(d.super ? '#9775fa' : '#e03131', { phys: true, cc: 1, rough: .25, emi: d.super ? '#7048e8' : '#c92a2a', ei: .35 }));
+    const core = b3mesh(new THREE.SphereGeometry(.12, 20, 14), b3mat('#f8f9fa', { phys: true, cc: 1, rough: .2, emi: '#ffffff', ei: .4 })); band.add(ring, core); S.add(band); B3.band = band;
+    if (B3.coach) B3.coach.throwT = B3.clock.elapsedTime;
+    await after(.25);
+    const from = B3.coach ? handOf(B3.coach).clone() : SPOT.me.clone().setY(1.5), to = chestOf(P);
+    await new Promise(res => fxRun(.7, p => { band.position.copy(from.clone().lerp(to, p)); band.position.y += Math.sin(p * Math.PI) * 1.6; band.rotation.x += .4; band.rotation.y += .25; }, res));
+    burstAt(to, '#ffffff', 22, { tex: 'spark', speed: 4 }); flashLight(to, '#ffffff', 12, .4); P.flash = 1; P.flashCol.set('#ffffff');
+    await clip(P, 'pulled', .5, p => ({ scale: Math.max(.01, 1 - easeIn(p)), y: p * .6 }), { blend: 0, hold: true });
+    P.hidden = true; P.root.visible = false;
+    const ground = SPOT.them.clone().setY(.48);
+    await new Promise(res => fxRun(.45, p => { band.position.lerpVectors(to, ground, easeIn(p)); band.rotation.set(Math.PI / 2 * p, 0, 0); }, res));
+    band.rotation.set(Math.PI / 2, 0, 0);
+    return;
+  }
+  const band = B3.band; if (!band) return;
+  if (d.phase === 'shake') { await new Promise(res => fxRun(.55, p => { band.rotation.z = Math.sin(p * Math.PI * 2) * .5; band.position.x = SPOT.them.x + Math.sin(p * Math.PI * 2) * .06; }, res)); return; }
+  if (d.phase === 'done') {
+    for (let k = 0; k < 3; k++) setTimeout(() => B3.on && burstAt(band.position.clone().setY(.9), ['#fcc419', '#ffffff', '#69db7c'][k], 18, { tex: 'star', speed: 3, up: 3, grav: 3 }), k * 150);
+    if (B3.coach) B3.coach.cheer = 1e9; return after(.8);
+  }
+  if (d.phase === 'break') {
+    burstAt(band.position.clone(), '#ffffff', 26, { tex: 'spark', speed: 5 }); flashLight(band.position, '#ffffff', 10, .4); kill(band); B3.band = null;
+    P.hidden = false; P.root.visible = true; P.clip = null;
+    return clip(P, 'out', .5, p => ({ scale: Math.max(.01, backOut(p)) }), { blend: 0 });
+  }
+}
 function camFocus(pos, dur) { B3.focus = { pos: pos.clone(), until: B3.clock.elapsedTime + dur * (battle?.speed || 1) }; }
 function slowmo(d) { B3.slow = B3.clock.elapsedTime + d; }
 
@@ -550,6 +607,7 @@ function b3mount() {
   Object.assign(B3, { on: true, R, st, scene: new THREE.Scene(), cam: new THREE.PerspectiveCamera(36, 2, .1, 600), clock: new THREE.Clock(), tick: [], fx: [], parts: [], shake: 0, lg, me: null, them: null, focus: null, sz: null, drawn: false });
   b3stadium(lg);
   B3.plat = { me: b3platform('me'), them: b3platform('them') };
+  b3coaches();
   B3.comp = fxHQ() ? fxComposer(R, B3.scene, B3.cam, { strength: ['state', 'national'].includes(lg.id) ? .65 : .4, radius: .5, threshold: .85 }) : null;
   b3resize(); B3.ro = new ResizeObserver(b3resize); B3.ro.observe(st);
   B3.raf = requestAnimationFrame(b3loop);
@@ -574,7 +632,7 @@ function b3loop() {
   B3.raf = requestAnimationFrame(b3loop);
   let dt = Math.min(.05, B3.clock.getDelta()); const t = B3.clock.elapsedTime;
   if (B3.slow && t < B3.slow) dt *= .35;
-  b3fighter(B3.me, t, dt); b3fighter(B3.them, t, dt);
+  b3fighter(B3.me, t, dt); b3fighter(B3.them, t, dt); b3coach(B3.coach, t); b3coach(B3.rivalCoach, t);
   // the crowd bounces, louder when something big happens
   const cr = B3.crowd, hype = 1 + B3.shake * 3;
   for (let i = 0; i < cr.seats.length; i++) { const [x, y, z, ph, sp] = cr.seats[i]; cr.mt.makeTranslation(x, y + Math.max(0, Math.sin(t * sp * 4 * hype + ph)) * .12 * hype, z); cr.mesh.setMatrixAt(i, cr.mt); }

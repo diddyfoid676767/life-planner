@@ -335,11 +335,13 @@ function survivalRival(wave) {
 const BAG = { water: ['🥤', 'Water bottle', 'Heals a third of max HP.'], physio: ['🩹', 'Physio tape', 'Cures any status (sleep, poison, burn, freeze, paralysis).'] };
 function startBattle(id, mode = 'ladder') {
   let e, i = -1; bRand = Math.random;
-  if (mode === 'daily') { if (dailyWon()) { toast('Daily challenge done', 'A new challenger turns up tomorrow.'); return; } e = dailyRival(); }
+  if (typeof crReady === 'function' && !crReady()) { toast('Pick a starter first', 'Choose your first creature on the Team tab.'); ui.arenaPage = 'team'; render(); return; }
+  if (mode === 'wild' || mode === 'giant') e = id;
+  else if (mode === 'daily') { if (dailyWon()) { toast('Daily challenge done', 'A new challenger turns up tomorrow.'); return; } e = dailyRival(); }
   else if (mode === 'survival') e = null;
   else if (mode === 'wander') { if (wanderWon()) { toast('Already beaten', 'A new challenger turns up soon.'); return; } e = wanderRival(); }
   else { i = ENEMIES.findIndex(x => x.id === id); if (i < 0 || i > unlockedUpTo()) return; e = ENEMIES[i]; }
-  if (!tokensLeft()) {
+  if (mode !== 'wild' && !tokensLeft()) {
     const price = SHOP_ITEMS.find(x => x.id === 'ticket').grit;
     if (grit() < price) { toast('No battles left today', `You get 2 a day plus 1 for each workout you tick off (up to 3). A 🎟️ Battle ticket costs ${price} ${GRIT} and you have ${grit()}.`, { timeout: 9000 }); return; }
     if (!confirm(`You've used today's battles. You get 2 a day, plus 1 for each workout you tick off.\n\nUse a Battle ticket for ${price} Grit to fight now? (You have ${grit()} Grit.)`)) return;
@@ -353,11 +355,12 @@ function startBattle(id, mode = 'ladder') {
   const B = battle;
   if (mode === 'survival') e = survivalRival(1);
   B.e = e;
-  const them = rivalTeam(e, mode), size = mode === 'survival' ? 3 : Math.max(1, them.length);
-  const mine = [myMon(1 + rd.hp / 100), ...crewTeam().map(id => crewMon(ENEMIES.find(x => x.id === id)))].slice(0, size);
+  const them = mode === 'wild' ? [wildMon(e.wild, e.lv)] : mode === 'giant' ? [wildMon(e.sp, e.lv, { boss: true, giant: true, hpMul: 3, name: e.name, seed: 'giant' })] : rivalCreatures(e, mode);
+  const mine = myTeamMons();
+  if (rd.hp) for (const m of mine) { m.st.hp = Math.max(1, Math.round(m.st.hp * (1 + rd.hp / 100))); m.hp = m.st.hp; }
   B.sides = { me: { team: mine, cur: 0 }, them: { team: them, cur: 0 } };
   for (const m of mine) m.side = 'me'; for (const m of them) m.side = 'them';
-  B.ai = BOSS_AI[e.id] || {};
+  B.ai = BOSS_AI[e.id] || (mode === 'giant' ? GIANT_AI : {});
   openBattleFx();
   intro();
 }
@@ -380,14 +383,28 @@ function openBattleFx() {
   document.addEventListener('keydown', battleKey);
   drawStage(); drawPanels(); drawControls();
 }
+// the giants' own rage phase
+const GIANT_AI = { taunts: ['*ROOOAR*'], phase: { line: 'The giant goes into a rage!', up: { atk: 1, spd: 1 } } };
+async function crIntroPerks() {
+  const me = cur('me');
+  if (typeof perkOn === 'function' && perkOn('pep') && me) await statChange(me, { spd: 1 }, '📣 Pep talk: ');
+}
 async function intro() {
   const B = battle, e = B.e;
+  if (B.mode === 'wild' || B.mode === 'giant') {
+    const w = B.sides.them.team[0];
+    banner(B.mode === 'giant' ? `🦖 ${e.name.toUpperCase()}` : `A WILD ${w.name.toUpperCase()}!`, 'boss');
+    await sendIn('them', 0);
+    await say(B.mode === 'giant' ? `The ground shakes… ${e.name} appeared! Giants can't be caught, but they drop something good.` : `A wild ${w.name} appeared! Weaken it, then throw a band from your bag.`);
+    await sendIn('me', 0); await crIntroPerks();
+    B.busy = false; drawControls(); return;
+  }
   banner(B.mode === 'survival' ? 'SURVIVAL: WAVE 1' : e.boss ? `👑 GYM LEADER: ${e.name}` : B.mode === 'daily' ? '📅 DAILY CHALLENGE' : B.mode === 'wander' ? `🆕 ${e.name.toUpperCase()} APPEARS!` : 'BATTLE!', e.boss || B.mode !== 'ladder' ? 'boss' : '');
   const them = B.sides.them.team, taunts = B.ai.taunts || RIVAL_TAUNTS;
-  await say(`${e.icon} ${e.name} wants to battle!${them.length > 1 ? ` They brought a team of ${them.length}.` : ''}`);
+  await say(`${e.icon} ${e.boss ? 'Gym leader ' : 'Trainer '}${e.name} wants to battle!${them.length > 1 ? ` They brought ${them.length} creatures.` : ''}`);
   if (B.ai.taunts || Math.random() < .5) await say(`${e.name}: "${taunts[Math.floor(Math.random() * taunts.length)]}"`);
   if (e.mod) await say(`Daily twist: ${e.mod.label}.`);
-  await sendIn('them', 0); await sendIn('me', 0);
+  await sendIn('them', 0); await sendIn('me', 0); await crIntroPerks();
   const me = cur('me');
   if (B.boosts.includes('drink')) await statChange(me, { atk: 1 }, '⚡ Energy drink: ');
   if (B.boosts.includes('charm')) { me.vol.focus = 1; drawPanels(); await say(`🍀 Lucky charm: ${nm(me)} is focused. Critical hits are more likely.`); }
@@ -403,7 +420,7 @@ function battleKey(ev) {
 // ---------- state helpers ----------
 const cur = side => battle.sides[side].team[battle.sides[side].cur];
 const other = side => side === 'me' ? 'them' : 'me';
-const nm = m => m.side === 'them' ? `Rival ${m.name}` : m.name;
+const nm = m => m.side !== 'them' ? m.name : battle?.mode === 'wild' ? `Wild ${m.name}` : battle?.mode === 'giant' ? m.name : `Foe ${m.name}`;
 const alive = side => battle.sides[side].team.filter(m => m.hp > 0);
 const speedOf = m => m.st.spd * stageMul(m.stg.spd) * (m.status === 'par' ? .25 : 1);
 const forcedMove = m => m.vol.recharge ? { id: 'recharge', icon: '😮‍💨', name: 'Catch breath' } : m.vol.charging ? moveById(m.vol.charging) : null;
@@ -411,6 +428,7 @@ const usable = m => m.moves.filter(x => x.pp > 0);
 
 // ---------- drawing ----------
 function monSprite(m) {
+  if (m.sp && typeof specOf === 'function' && specOf(m.sp)) return crBadge(specOf(m.sp), m.giant ? 220 : 150);
   if (m.ath && m.side === 'them') { try { return m.av ? avatarFull(m.av, { size: 170 }) : '<span class="esprite">🧍</span>'; } catch { return '<span class="esprite">🧍</span>'; } }
   return m.ath ? `${avatarFull(avatarSpec(), { size: 170 })}${petHtml(myAv().pet, 40)}` : `<span class="esprite">${m.icon}</span>`;
 }
@@ -456,7 +474,7 @@ function drawControls() {
     const forced = B.prompt === 'faint';
     if (box) box.innerHTML = forced ? 'Who goes in next?' : 'Who do you want to swap in? It uses your turn.';
     el.innerHTML = `<div class="gbcrew">${B.sides.me.team.map((m, k) => `<button class="gbmon" data-bm="go:${k}" ${m.hp <= 0 || k === B.sides.me.cur ? 'disabled' : ''}>
-      <span class="gbmic">${m.ath ? '🧍' : m.icon}</span><span class="main"><b>${esc(m.name)} <small>Lv${m.lv}</small></b><span class="gbmt">${typeChips(m.types)}</span><span class="hpbar sm"><i style="width:${Math.max(0, m.hp) / m.st.hp * 100}%"></i></span><small>${m.hp <= 0 ? 'Fainted' : `${m.hp}/${m.st.hp}${m.status ? ' · ' + COND[m.status][1] : ''}`}${k === B.sides.me.cur ? ' · out now' : ''}</small></span></button>`).join('')}</div>
+      <span class="gbmic">${m.ath ? '🧍' : esc(m.icon)}</span><span class="main"><b>${esc(m.name)} <small>Lv${m.lv}</small></b><span class="gbmt">${typeChips(m.types)}</span><span class="hpbar sm"><i style="width:${Math.max(0, m.hp) / m.st.hp * 100}%"></i></span><small>${m.hp <= 0 ? 'Fainted' : `${m.hp}/${m.st.hp}${m.status ? ' · ' + COND[m.status][1] : ''}`}${k === B.sides.me.cur ? ' · out now' : ''}</small></span></button>`).join('')}</div>
       ${forced ? '' : '<button class="btn small gbback" data-bm="back">← Back</button>'}`;
     return;
   }
@@ -473,11 +491,13 @@ function drawControls() {
     return;
   }
   if (B.menu === 'bag') {
-    el.innerHTML = `<div class="gbbag">${Object.entries(BAG).map(([k, [ic, n, t]]) => `<button class="gbitem" data-bm="item:${k}" ${B.bag[k] > 0 ? '' : 'disabled'}><span>${ic}</span><b>${n} ×${B.bag[k]}</b><small>${t}</small></button>`).join('')}</div><button class="btn small gbback" data-bm="back">← Back</button>`;
+    const C = B.mode === 'wild' && typeof CR === 'function' ? CR() : null;
+    const bands = C ? [['0', '🎯', 'Catch band', C.bands || 0, 'Catch the wild creature. Works best when it\'s weak.'], ['1', '💫', 'Super band', C.sbands || 0, 'Nearly twice as likely to catch.']].map(([v, ic, n, c, t]) => `<button class="gbitem band" data-bm="band:${v}" ${c > 0 ? '' : 'disabled'}><span>${ic}</span><b>${n} ×${c}</b><small>${t}${c > 0 ? ` (${Math.round(catchChance(cur('them'), v === '1') * 100)}% now)` : ''}</small></button>`).join('') : '';
+    el.innerHTML = `<div class="gbbag">${bands}${Object.entries(BAG).map(([k, [ic, n, t]]) => `<button class="gbitem" data-bm="item:${k}" ${B.bag[k] > 0 ? '' : 'disabled'}><span>${ic}</span><b>${n} ×${B.bag[k]}</b><small>${t}</small></button>`).join('')}</div><button class="btn small gbback" data-bm="back">← Back</button>`;
     return;
   }
-  el.innerHTML = `<div class="gbmain"><button class="gbbtn fight" data-bm="menu:fight">⚔️ FIGHT</button><button class="gbbtn crew" data-bm="menu:crew" ${alive('me').length > 1 && !me.vol.bound ? '' : 'disabled'}>🤝 CREW</button>
-    <button class="gbbtn bag" data-bm="menu:bag">🎒 BAG</button><button class="gbbtn run" data-bm="run">🏳️ GIVE UP</button></div>`;
+  el.innerHTML = `<div class="gbmain"><button class="gbbtn fight" data-bm="menu:fight">⚔️ FIGHT</button><button class="gbbtn crew" data-bm="menu:crew" ${alive('me').length > 1 && !me.vol.bound ? '' : 'disabled'}>🐾 TEAM</button>
+    <button class="gbbtn bag" data-bm="menu:bag">🎒 BAG</button><button class="gbbtn run" data-bm="run">${B.mode === 'wild' ? '🏃 RUN' : '🏳️ GIVE UP'}</button></div>`;
 }
 
 // ---------- the text box ----------
@@ -511,6 +531,7 @@ async function play(side, kind, data = {}) {
   if (kind === 'status') { fxAt(side, COND[data.st]?.[0] || '❗', 'stpop'); return sleep(350); }
   if (kind === 'stat') { fxAt(side, data.up ? '⬆️' : '⬇️', 'stpop'); return sleep(350); }
   if (kind === 'win') { f.classList.add('dance-d_jump'); return sleep(600); }
+  if (kind === 'catch') { if (data.phase === 'throw') { fxAt(side, data.super ? '💫' : '🎯', 'stpop'); await sleep(400); f.classList.add('gone'); return sleep(300); } if (data.phase === 'shake') return flash('wobble', 450); if (data.phase === 'break') { f.classList.remove('gone'); return flash('enter', 500); } return sleep(300); }
 }
 function projectile(from, m) {
   const st = document.querySelector('#battlefx .bstage'), a = document.getElementById(from === 'me' ? 'fMe' : 'fThem'), b = document.getElementById(from === 'me' ? 'fThem' : 'fMe');
@@ -529,9 +550,9 @@ async function battleAct(code) {
   if (k === 'menu') { B.menu = v; drawControls(); return; }
   if (k === 'back') { B.menu = ''; drawControls(); return; }
   if (k === 'run') {
-    if (!confirm(B.mode === 'survival' ? 'End your Survival run here?' : 'Give up this battle? It counts as a loss.')) return;
+    if (B.mode !== 'wild' && !confirm(B.mode === 'survival' ? 'End your Survival run here?' : 'Give up this battle? It counts as a loss.')) return;
     if (B.pvp) { B.pvp.send({ t: 'forfeit' }); B.over || (await endBattle(false)); return; }
-    B.busy = true; drawControls(); await say(`${B.sides.me.team[0].name} called it a day.`, 900); await endBattle(false); return;
+    B.busy = true; drawControls(); await say(B.mode === 'wild' ? 'You got away safely.' : 'You called it a day.', 900); await endBattle(false); return;
   }
   const me = cur('me');
   if (k === 'go') {
@@ -541,6 +562,7 @@ async function battleAct(code) {
     return runTurn({ kind: 'switch', to });
   }
   if (k === 'item') { if (!(B.bag[v] > 0)) return; return runTurn({ kind: 'item', id: v }); }
+  if (k === 'band') { if (B.mode !== 'wild') return; const C = CR(); if (!(C[v === '1' ? 'sbands' : 'bands'] > 0)) return; return runTurn({ kind: 'band', sup: v === '1' }); }
   if (k === 'cont') { const f = forcedMove(me); if (f) return runTurn({ kind: 'move', mv: f }); return; }
   if (k === 'm') {
     if (v === 'struggle') { if (usable(me).length) return; return runTurn({ kind: 'move', mv: moveById('struggle') }); }
@@ -562,6 +584,7 @@ async function runTurn(mine) {
     const m = cur(a.side); if (m.hp <= 0) continue;
     if (a.kind === 'switch') await doSwitch(a.side, a.to);
     else if (a.kind === 'item') await useItem(a.side, a.id);
+    else if (a.kind === 'band') { if (await throwBand(a.sup)) return; }
     else await doMove(a.side, a.mv);
     B.moved.add(a.side);
     if (cur('me').hp <= 0 || cur('them').hp <= 0) break;
@@ -581,10 +604,13 @@ async function doSwitch(side, to) {
 function clearVolatile(m) { m.vol = {}; m.stg = { atk: 0, def: 0, spd: 0, spc: 0, acc: 0, eva: 0 }; if (m.status === 'tox') m.status = 'psn'; m.toxN = 0; }
 async function sendIn(side, idx) {
   const B = battle; B.sides[side].cur = idx; const m = cur(side);
+  if (side === 'me') m.used = 1;
   drawPanels();
   const p = play(side, 'send', { mon: m });
+  if (side === 'them' && (B.mode === 'wild' || B.mode === 'giant')) { await p; return; }
   await say(side === 'me' ? (m.ath ? `Let's go, ${m.name}!` : `Go! ${m.name}!`) : m.ath ? `${m.name} steps up!` : `${B.e.name} sends out ${m.name}!`);
   await p;
+  if (m.wind && m.hp > 0 && m.hp < m.st.hp) { const h = Math.min(m.st.hp - m.hp, Math.ceil(m.st.hp * .08)); m.hp += h; await play(side, 'heal', { amt: h }); drawPanels(); await say(`🫁 Second wind: ${nm(m)} got back ${h} HP.`, 900); }
   if (side === 'them' && B.e.mod) {
     const id = B.e.mod.id;
     if (id === 'heavy') m.stg.atk = 1; else if (id === 'fast') m.stg.spd = 1; else if (id === 'sneaky') m.stg.eva = 1; else if (id === 'wall') m.vol.reflect = 1;
@@ -603,7 +629,7 @@ function calcDamage(a, d, m) {
   if (m.fixed) return { dmg: m.fixed === 'lv' ? a.lv : m.fixed, eff: 1, crit: false, fixed: true };
   if (!eff) return { dmg: 0, eff: 0, crit: false };
   const special = SPECIAL_TYPES.has(m.type);
-  let T = Math.floor(a.base.spd / 4); if (a.vol.focus) T *= 4; if (m.crit) T *= 8; T = Math.min(255, T);
+  let T = Math.floor(a.base.spd / 4); if (a.vol.focus) T *= 4; if (m.crit) T *= 8; if (a.crowd) T *= 1.5; if (a.held === 'h_lens') T *= 2; T = Math.min(255, Math.floor(T));
   const crit = Math.floor(brand() * 256) < T;
   const ak = special ? 'spc' : 'atk', dk = special ? 'spc' : 'def';
   let A = a.st[ak], Dd = d.st[dk];
@@ -618,6 +644,7 @@ function calcDamage(a, d, m) {
   const L = a.lv * (crit ? 2 : 1);
   let dmg = Math.floor(Math.floor(Math.floor(2 * L / 5 + 2) * m.pow * A / Dd) / 50) + 2;
   if (a.types.includes(m.type)) dmg = Math.floor(dmg * 1.5);
+  if (a.held === 'h_charm' && m.type === a.types[0]) dmg = Math.floor(dmg * 1.2);
   for (const t of d.types) dmg = Math.floor(dmg * (CHART[m.type]?.[t] ?? 1));
   dmg = Math.floor(dmg * (217 + Math.floor(brand() * 39)) / 255);
   return { dmg: Math.max(1, dmg), eff, crit };
@@ -681,13 +708,18 @@ async function doMove(side, m) {
     if (r.eff === 0) { await say(`It doesn't affect ${nm(d)}…`); return; }
     const dmg = Math.min(r.dmg, d.vol.sub ? d.vol.sub : d.hp);
     if (d.vol.sub) { d.vol.sub -= dmg; if (d.vol.sub <= 0) { d.vol.sub = 0; broke = true; } }
-    else { d.hp -= dmg; d.vol.lastTaken = { dmg, type: m.type, turn: B.turn }; }
+    else {
+      const full = d.hp === d.st.hp; d.hp -= dmg; d.vol.lastTaken = { dmg, type: m.type, turn: B.turn };
+      if (d.hp <= 0 && d.held === 'h_sash' && full && !d.sashUsed) { d.hp = 1; d.sashUsed = 1; B.hang = `🎽 ${nm(d)} hung on with its Never-quit headband!`; }
+      else if (d.hp <= 0 && d.never && !(B.neverUsed || {})[d.side]) { d.hp = 1; B.neverUsed = { ...(B.neverUsed || {}), [d.side]: 1 }; B.hang = `💥 Never give up! ${nm(d)} hung on with 1 HP!`; }
+    }
     total += dmg;
     await play(os, 'hit', { type: m.type, dmg, eff: r.eff, crit: r.crit, sub: !!d.vol.sub || broke, move: m, n: k });
     drawPanels();
     if (r.crit) await say('A critical hit!', 800);
     if (k === 0 && !r.fixed && r.eff > 1) await say('It\'s super effective!', 900);
     if (k === 0 && !r.fixed && r.eff < 1) await say('It\'s not very effective…', 900);
+    if (B.hang) { const h = B.hang; B.hang = null; await say(h); }
     if (broke) { await say(`${nm(d)}'s decoy fell apart!`); break; }
     if (d.hp <= 0) break;
     if (k < n - 1) await play(side, 'move', { move: m, target: os, again: true });
@@ -765,6 +797,10 @@ async function residuals() {
       const dmg = Math.min(m.hp, sixteenth); m.hp -= dmg; o.hp = Math.min(o.st.hp, o.hp + dmg); await play(side, 'hit', { type: 'nature', dmg, dot: true }); drawPanels();
       await say(`${nm(m)}'s energy is sapped!`, 900);
     }
+    if (m.hp > 0 && m.held === 'h_snack' && m.hp < m.st.hp) {
+      const h = Math.min(m.st.hp - m.hp, sixteenth); m.hp += h; await play(side, 'heal', { amt: h }); drawPanels();
+      await say(`🥪 ${nm(m)} had a snack and got back ${h} HP.`, 900);
+    }
     if (m.hp > 0 && m.vol.bound) {
       const dmg = Math.min(m.hp, sixteenth); m.hp -= dmg; m.vol.bound--; await play(side, 'hit', { type: 'normal', dmg, dot: true }); drawPanels();
       await say(m.vol.bound ? `${nm(m)} is stuck in the headlock!` : `${nm(m)} broke free!`, 900);
@@ -802,7 +838,7 @@ function aiAct() {
   // swap out of a bad match-up now and then
   const sw = aiSwap(false);
   if (sw != null && !a.vol.bound && Math.random() < (a.boss ? .5 : smart ? .3 : .1)) return { kind: 'switch', to: sw };
-  if (B.aiItems == null) B.aiItems = B.e.boss || tier >= 3 ? 1 : 0;
+  if (B.aiItems == null) B.aiItems = B.mode === 'wild' || B.mode === 'giant' ? 0 : B.e.boss || tier >= 3 ? 1 : 0;
   if (B.mode !== 'survival' && a.hp / a.st.hp < .25 && B.aiItems > 0 && Math.random() < .6) { B.aiItems--; return { kind: 'item', id: 'water' }; }
   const list = usable(a); if (!list.length) return { kind: 'move', mv: moveById('struggle') };
   const scored = list.map(s => { const m = moveById(s.id); return [m, aiScore(a, d, m) * (smart ? .85 + Math.random() * .3 : .6 + Math.random() * .8) + (smart ? 0 : Math.random() * 25)]; });
@@ -857,7 +893,7 @@ async function nextWave() {
   B.wave++;
   for (const m of B.sides.me.team) if (m.hp > 0) { m.hp = Math.min(m.st.hp, m.hp + Math.ceil(m.st.hp / 3)); m.moves.forEach(x => { x.pp = Math.min(x.max, x.pp + 3); }); }
   B.e = survivalRival(B.wave);
-  B.sides.them = { team: rivalTeam(B.e, 'survival'), cur: 0 }; B.sides.them.team.forEach(m => { m.side = 'them'; });
+  B.sides.them = { team: rivalCreatures(B.e, 'survival'), cur: 0 }; B.sides.them.team.forEach(m => { m.side = 'them'; });
   banner(`WAVE ${B.wave}`, 'boss');
   await sendIn('them', 0);
   B.busy = false; drawPanels(); drawControls();
@@ -868,7 +904,7 @@ async function endBattle(win) {
   const B = battle; if (!B || B.over) return;
   finishBattle(win);
   const sv = B.mode === 'survival';
-  if (win) { banner(B.e.boss ? `${(leagueOf(B.e) || {}).badge || '🏅'} BADGE WON!` : 'VICTORY!', 'win'); for (let k = 0; k < 3; k++) setTimeout(() => burst('me', ['#fcc419', '#40c057', '#4dabf7'][k]), k * 250); await play('me', 'win'); }
+  if (win) { banner(B.caught ? 'GOTCHA!' : B.e.boss && B.mode === 'ladder' ? `${(leagueOf(B.e) || {}).badge || '🏅'} BADGE WON!` : 'VICTORY!', 'win'); for (let k = 0; k < 3; k++) setTimeout(() => burst('me', ['#fcc419', '#40c057', '#4dabf7'][k]), k * 250); await play('me', 'win'); }
   else { banner(sv ? `GAME OVER · WAVE ${B.wave}` : 'DEFEAT', 'lose'); await play('them', 'win'); }
   B.busy = false; drawPanels(); drawControls();
 }
@@ -884,19 +920,21 @@ function finishBattle(win) {
     B.record = waves > (D.arena.survivalBest || 0); if (B.record) D.arena.survivalBest = waves;
   } else if (B.mode === 'daily') reward = win ? 60 : 5;
   else if (B.mode === 'wander') reward = win ? 90 : 5;
+  else if (B.mode === 'wild') reward = 0;
+  else if (B.mode === 'giant') { first = win && !(CR().giants || {})[B.e.id]; reward = win ? (first ? 120 : 25) : 5; }
   else { first = win && !beaten(B.e.id); reward = win ? (first ? 30 + 12 * idx + (B.e.boss ? 100 : 0) : 8 + 2 * idx) : 5; }
-  D.arena.battles = [...(D.arena.battles || []), { at, e: B.mode === 'survival' ? 'survival' : B.e.id, win, mode: B.mode }].slice(-300);
-  D.arena.ledger['b:' + at] = reward;
+  D.arena.battles = [...(D.arena.battles || []), { at, e: B.mode === 'survival' ? 'survival' : B.mode === 'wild' ? 'wild' : B.e.id, win, mode: B.mode }].slice(-300);
+  if (reward) D.arena.ledger['b:' + at] = reward;
   B.reward = reward; B.first = first;
-  // a newly beaten rival joins your crew
-  if (first && B.mode === 'ladder') { const t = crewTeam(); if (t.length < 5 && !t.includes(B.e.id)) D.arena.team = [...t, B.e.id]; B.joined = true; }
-  B.loot = win || (B.mode === 'survival' && B.wave > 3) ? rollLoot(B, at) : [];
+  B.notes = typeof crAfterBattle === 'function' ? crAfterBattle(B, win || (B.mode === 'survival' && B.wave > 1)) : [];
+  B.loot = B.mode !== 'wild' && B.mode !== 'giant' && (win || (B.mode === 'survival' && B.wave > 3)) ? rollLoot(B, at) : [];
   save();
 }
 function rollLoot(B, at) {
   const out = [], r = Math.random, give = (icon, name, fn) => { fn(); out.push(`${icon} ${name}`); };
   const cosDrop = id => { if (!ownsCos(id)) give('🎁', cos(id).name + ' (avatar)', () => { D.arena.owned = { ...(D.arena.owned || {}), [id]: at }; }); };
-  const gearDrop = () => { const pool = GEAR.filter(g => !ownsGear(g.id)); if (!pool.length) return false; const g = pool.sort((a, b) => a.price - b.price)[Math.min(pool.length - 1, Math.floor(r() * Math.min(pool.length, 3 + Math.max(0, B.i))))]; give(g.icon, g.name + ' (gear)', () => { D.arena.gear[g.id] = at; }); return true; };
+  // creature things instead of gear now: catch bands, rare candy, or a held item
+  const gearDrop = () => { const C = CR(), k = r(); if (k < .45) give('🎯', '2 Catch bands', () => { C.bands = (C.bands || 0) + 2; }); else if (k < .8) give('🍬', 'Rare candy', () => { C.candy = (C.candy || 0) + 1; }); else { const h = HELD.filter(x => x.tier <= upgTier())[Math.floor(r() * HELD.filter(x => x.tier <= upgTier()).length)]; give(h.icon, h.name, () => { C.held[h.id] = (C.held[h.id] || 0) + 1; }); } return true; };
   const boostDrop = () => { const ids = ['drink', 'charm', 'guard'], k = ids[Math.floor(r() * 3)], it = SHOP_ITEMS.find(x => x.id === k); give(it.icon, it.name, () => { D.arena.items = D.arena.items || {}; D.arena.items[k] = (D.arena.items[k] || 0) + 1; }); };
   if (B.mode === 'ladder' && B.e.boss) {
     const bossCos = { coach: 'x_belt', storm: 'kit_storm', titan: 'eye_titan', goat: 'hat_goat' }[B.e.id];
@@ -919,10 +957,17 @@ function rollLoot(B, at) {
 function resultHtml() {
   const B = battle, sv = B.mode === 'survival';
   if (B.mode === 'pvp' || B.mode === 'ghost') return pvpResultHtml(B);
+  const notes = B.notes?.length ? `<div class="loot"><b>Your team</b>${B.notes.map(l => `<span class="lootitem">${esc(l)}</span>`).join('')}</div>` : '';
+  if (B.mode === 'wild' || B.mode === 'giant') {
+    const w = B.sides.them.team[0], caught = B.caught;
+    const head = caught ? `🎯 ${esc(w.name)} caught!` : B.win ? (B.mode === 'giant' ? `🦖 ${esc(B.e.name)} is beaten!` : `🌿 The wild ${esc(w.name)} fainted`) : B.mode === 'wild' && alive('me').length ? '🏃 Got away safely' : '😤 Not this time';
+    const text = caught ? `${CR().team.includes(caught.uid) ? 'It joined your team.' : 'Your team is full, so it went to your box.'}` : B.win ? (B.mode === 'giant' ? `+${B.reward} ${GRIT}` : 'Weaken it and throw a band next time to catch one.') : 'Train your team up and try again.';
+    return `<div class="bresult ${B.win ? 'win' : 'lose'}"><h2>${head}</h2><p>${text}</p>${notes}<button class="btn primary" data-bm="close">Back to the Arena</button></div>`;
+  }
   const head = sv ? `🌊 You lasted ${B.wave - 1} wave${B.wave === 2 ? '' : 's'}${B.record ? ' · new best!' : ''}` : B.win ? '🏆 You win!' : '😤 Not this time';
-  const text = sv ? `Best ever: ${D.arena.survivalBest || 0} waves.` : B.win ? (B.mode === 'daily' ? 'Daily challenge done. A new challenger turns up tomorrow.' : B.mode === 'wander' ? `${esc(B.e.name)} is beaten. Another challenger will turn up in a few days.` : B.first ? `${esc(B.e.name)} is beaten${B.joined ? ' and joins your crew 🤝' : ''}.${B.i < ENEMIES.length - 1 ? ' The next rival is unlocked.' : ' You beat the whole ladder. Legend.'}` : 'Another win.') : 'Check the types: hit them with moves they\'re weak to, and swap in a crew member who resists their attacks.';
+  const text = sv ? `Best ever: ${D.arena.survivalBest || 0} waves.` : B.win ? (B.mode === 'daily' ? 'Daily challenge done. A new challenger turns up tomorrow.' : B.mode === 'wander' ? `${esc(B.e.name)} is beaten. Another challenger will turn up in a few days.` : B.first ? `${esc(B.e.name)} is beaten.${B.i < ENEMIES.length - 1 ? ' The next rival is unlocked.' : ' You beat the whole ladder. Legend.'}` : 'Another win.') : 'Check the types: hit them with moves they\'re weak to, and swap in a creature that resists their attacks.';
   return `<div class="bresult ${B.win || (sv && B.wave > 1) ? 'win' : 'lose'}"><h2>${head}</h2><p>${text} <b>+${B.reward} ${GRIT}</b></p>
-    ${B.loot?.length ? `<div class="loot"><b>Loot</b>${B.loot.map(l => `<span class="lootitem">${esc(l)}</span>`).join('')}</div>` : ''}
+    ${notes}${B.loot?.length ? `<div class="loot"><b>Loot</b>${B.loot.map(l => `<span class="lootitem">${esc(l)}</span>`).join('')}</div>` : ''}
     <button class="btn primary" data-bm="close">Back to the Arena</button></div>`;
 }
 
@@ -932,21 +977,22 @@ function battleModesHtml() {
   const wv = wanderRival(), wwon = wanderWon();
   return `<div class="grid g3 bmodes">
     <div class="card bmode wander"><div class="card-head"><h2>🆕 New challenger</h2>${wwon ? '<span class="tag green">✓ Beaten</span>' : `<span class="muted small-text">leaves in ${wv.left} day${wv.left === 1 ? '' : 's'}</span>`}</div>
-      <div class="row" style="align-items:center;gap:12px"><span class="bmicon">${wv.icon}</span><div class="main"><b>${esc(wv.name)}</b> <span class="muted small-text">Lv ${lvOf(wv.r)}</span><div>${typeChips(typesOf(wv))}</div><div class="muted small-text">${esc(wv.line)} +90 Grit and gear.</div></div>
+      <div class="row" style="align-items:center;gap:12px"><span class="bmicon">${wv.icon}</span><div class="main"><b>${esc(wv.name)}</b><div class="rmons">${rmonsHtml(wv, 'wander')}</div><div class="muted small-text">${esc(wv.line)} +90 Grit and loot.</div></div>
       ${wwon ? '' : `<button class="btn primary" data-act="fightMode" data-v="wander">⚔️ Fight</button>`}</div></div>
     <div class="card bmode daily"><div class="card-head"><h2>📅 Daily challenge</h2>${won ? '<span class="tag green">✓ Won today</span>' : '<span class="muted small-text">+60 Grit and loot</span>'}</div>
-      <div class="row" style="align-items:center;gap:12px"><span class="bmicon">${d.icon}</span><div class="main"><b>${esc(d.name)}</b> <span class="muted small-text">Lv ${lvOf(d.r)}</span><div>${typeChips(typesOf(d))}</div><div class="muted small-text">${esc(d.mod.label)}</div></div>
+      <div class="row" style="align-items:center;gap:12px"><span class="bmicon">${d.icon}</span><div class="main"><b>${esc(d.name)}</b><div class="rmons">${rmonsHtml(d, 'daily')}</div><div class="muted small-text">${esc(d.mod.label)}</div></div>
       ${won ? '' : `<button class="btn primary" data-act="fightMode" data-v="daily">⚔️ Fight</button>`}</div>
       <p class="muted small-text" style="margin-bottom:0">${dailyWins()} daily win${dailyWins() === 1 ? '' : 's'} so far.${ownsCos('p_eagle') ? '' : ' Win 3 for the Eagle pet.'}</p></div>
     <div class="card bmode survival"><div class="card-head"><h2>🌊 Survival</h2><span class="muted small-text">best: ${best} wave${best === 1 ? '' : 's'}</span></div>
-      <div class="row" style="align-items:center;gap:12px"><span class="bmicon">🔥</span><div class="main"><b>Wave after wave</b><div class="muted small-text">Bring 3. Each wave is tougher, and HP carries over (you heal a third between waves). 12 Grit a wave, loot from wave 4, Arena lights background at wave 8.</div></div>
+      <div class="row" style="align-items:center;gap:12px"><span class="bmicon">🔥</span><div class="main"><b>Wave after wave</b><div class="muted small-text">Bring your team. Each wave is tougher, and HP carries over (you heal a third between waves). 12 Grit a wave, loot from wave 4, Arena lights background at wave 8.</div></div>
       <button class="btn primary" data-act="fightMode" data-v="survival">Start</button></div></div>
   </div>
-  <div class="card"><div class="card-head"><h2>How battles work</h2><button class="btn small" data-act="arenaPage" data-v="moves">🥋 Moves &amp; crew →</button></div>
-    <p class="small-text">Battles follow the rules of the original Pokémon games. Each turn you pick <b>Fight</b> (one of 4 moves), swap in a <b>Crew</b> member, or use something from your <b>Bag</b>. The faster fighter moves first. Every move has a type and limited uses (PP).</p>
+  <div class="card"><div class="card-head"><h2>How battles work</h2><button class="btn small" data-act="arenaPage" data-v="team">🐾 Your team →</button></div>
+    <p class="small-text">Battles follow the rules of the original Pokémon games. Each turn you pick <b>Fight</b> (one of your creature's 4 moves), swap in another creature from your <b>Team</b>, or use something from your <b>Bag</b> (that's where catch bands are in a wild battle). The faster creature moves first. Every move has a type and limited uses (PP).</p>
     <p class="small-text"><b>Types</b> decide most fights: a super effective hit does 2× (or 4× against two weak types), a resisted one ½×, and some do nothing at all. Moves that match the user's own type do 1.5×. Critical hits come from Speed. Statuses stick around: 💤 sleep, ☠️ poison, 🔥 burn (halves physical damage), 🧊 freeze and ⚡ paralysis (slow, and sometimes can't move), plus 😵‍💫 confusion.</p>
     <details class="typechart"><summary class="small-text">Type chart</summary>${typeChartHtml()}</details></div>`;
 }
+const rmonsHtml = (e, mode) => { try { return rivalCreatures(e, mode).map(m => `<span class="rmon" title="${esc(m.name)} Lv ${m.lv}">${crBadge(specOf(m.sp), 30)}<small>${m.lv}</small></span>`).join(''); } catch (err) { return ''; } };
 function typeChartHtml() {
   const ts = Object.keys(TYPES);
   return `<div class="tchart"><table><tr><th class="muted small-text">attack ↓ · defend →</th>${ts.map(t => `<th title="${TYPES[t][1]}">${TYPES[t][0]}</th>`).join('')}</tr>${ts.map(a => `<tr><th>${typeBadge(a)}</th>${ts.map(d => { const v = CHART[a]?.[d] ?? 1; return `<td class="${v > 1 ? 'x2' : v === 0 ? 'x0' : v < 1 ? 'xh' : ''}">${v > 1 ? '2' : v === 0 ? '0' : v < 1 ? '½' : ''}</td>`; }).join('')}</tr>`).join('')}</table></div>`;

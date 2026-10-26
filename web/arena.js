@@ -135,7 +135,8 @@ function statPoints() {
 const rating = p => Math.min(99, Math.round(30 + 5.5 * Math.sqrt(p)));
 function athlete() {
   const pts = statPoints(), base = Object.fromEntries(STAT_IDS.map(k => [k, rating(pts[k])]));
-  const gear = equippedGear(), bonus = Object.fromEntries(STAT_IDS.map(k => [k, gear.reduce((a, g) => a + (g.bonus[k] || 0), 0)]));
+  // 2.23: gear was refunded, so it no longer adds to your stats
+  const gear = D.arena2 ? [] : equippedGear(), bonus = Object.fromEntries(STAT_IDS.map(k => [k, gear.reduce((a, g) => a + (g.bonus[k] || 0), 0)]));
   const total = Object.fromEntries(STAT_IDS.map(k => [k, Math.min(99, base[k] + bonus[k])]));
   const ovr = Math.round(STAT_IDS.reduce((a, k) => a + total[k], 0) / STAT_IDS.length);
   const top = [...STAT_IDS].sort((a, b) => total[b] - total[a])[0];
@@ -315,14 +316,10 @@ function arenaFeedback() {
 
 // ---------- shop: consumables and swaps ----------
 const SHOP_ITEMS = [
-  { id: 'drink', icon: '⚡', name: 'Energy drink', text: 'Your athlete starts the next battle with +1 Attack.', grit: 40, boost: true },
-  { id: 'charm', icon: '🍀', name: 'Lucky charm', text: 'Your athlete starts the next battle focused: 4× the critical hits.', grit: 45, boost: true },
-  { id: 'guard', icon: '🦷', name: 'Mouthguard', text: 'Your athlete starts the next battle with a Reflect: physical hits do half.', grit: 50, boost: true },
+  { id: 'drink', icon: '⚡', name: 'Energy drink', text: 'Your lead creature starts the next battle with +1 Attack.', grit: 40, boost: true },
+  { id: 'charm', icon: '🍀', name: 'Lucky charm', text: 'Your lead creature starts the next battle focused: 4× the critical hits.', grit: 45, boost: true },
+  { id: 'guard', icon: '🦷', name: 'Mouthguard', text: 'Your lead creature starts the next battle with a Reflect: physical hits do half.', grit: 50, boost: true },
   { id: 'ticket', icon: '🎟️', name: 'Battle ticket', text: 'One extra battle today.', grit: 60 },
-  { id: 'smoothie', icon: '🥤', name: 'Recovery smoothie', text: '+25% freshness for today.', grit: 50 },
-  { id: 'pt', icon: '🧑‍🏫', name: 'Personal trainer', text: '+6 training points on your weakest stat, for good.', grit: 150 },
-  { id: 'camp', icon: '⛺', name: 'Training camp', text: '+4 training points on every stat, for good.', grit: 500 },
-  { id: 'gearbox', icon: '📦', name: 'Gear crate', text: 'A random piece of gear you don\'t own yet.', grit: 280 },
   { id: 'stylebox', icon: '👚', name: 'Style box', text: 'A random cosmetic you don\'t own yet.', grit: 120 },
   { id: 'parcel', icon: '🎀', name: 'Fashion parcel', text: 'A random cosmetic you don\'t own yet, paid in coins.', coins: 200 },
   { id: 'shake', icon: '🥛', name: 'Study-to-gains shake', text: 'Swap 150 coins for 40 Grit. Once a day.', coins: 150 },
@@ -370,7 +367,7 @@ function arenaShop(g) {
       return `<div class="sitem"><div class="sicon">${it.icon}</div><b>${it.name}</b><span class="muted small-text">${it.text}</span>${it.boost && items[it.id] ? `<span class="tag">In your bag: ${items[it.id]}</span>` : ''}
         <button class="btn small ${can && !used ? 'primary' : ''}" data-act="buyItem" data-id="${it.id}" ${can && !used ? '' : 'disabled'}>${used ? 'Done today' : it.grit ? `${it.grit} ${GRIT}` : `${it.coins} ${COIN}`}</button></div>`;
     }).join('')}</div></div>
-    <p class="muted small-text">Gear (stat boosts) is in the Locker, and avatar cosmetics are in the Wardrobe.</p>`;
+    <p class="muted small-text">Avatar cosmetics are on your Profile.</p>`;
 }
 
 // ---------- the Arena page (training and health live in body.js) ----------
@@ -388,35 +385,39 @@ function arenaStrip(a = athlete()) {
 function arenaSlim(a) {
   const fr = freshness(), frCol = fr >= 75 ? '#40c057' : fr >= 50 ? '#fab005' : '#e03131';
   const chip = (ic, v, l) => `<span class="aslim-chip" title="${l}">${ic} <b>${v}</b></span>`;
-  return `<button class="aslim" data-act="arenaPage" data-v="athlete" title="Your athlete">${safeBadge(avatarSpec(), 30)}<b>${esc(D.settings.name || 'Athlete')}</b><span class="ahero-ovr">${a.ovr}</span>
+  const lead = typeof crReady === 'function' && crReady() ? teamMons() : [];
+  return `<button class="aslim" data-act="arenaPage" data-v="trainer" title="Your trainer">${safeBadge(avatarSpec(), 30)}<b>${esc(D.settings.name || 'Trainer')}</b><span class="ahero-ovr">Lv ${trainerLv()}</span>${lead.map(m => `<span class="aslim-mon" title="${esc(m.nick || specOf(m.sp).name)} Lv ${m.lv}">${specOf(m.sp).icon}</span>`).join('')}
     ${chip(GRIT, grit(), 'Grit')}${chip(COIN, coins(), 'Coins')}${chip('⚔️', tokensLeft(), 'Battles left today')}${chip(`<i style="color:${frCol}">●</i>`, fr + '%', 'Freshness')}</button>`;
 }
 function viewArena() {
   let page = ui.arenaPage || 'battle';
   if (page === 'plan') page = 'battle';
+  if (page === 'athlete') page = 'trainer';
+  if (page === 'moves' || page === 'locker') page = 'team';
+  CR(); try { crWorkoutXp(); } catch (e) { console.error(e); }
+  if (!crReady() && page !== 'pvp') page = 'team';
   if (page === 'bests') { ui.bodyPage = 'bests'; view = 'training'; return viewTraining(); }
   const a = athlete(), g = grit(), ci = comboInfo(), fr = freshness();
   const frCol = fr >= 75 ? '#40c057' : fr >= 50 ? '#fab005' : '#e03131';
   const nq = questDefs().filter(q => q.have >= q.need && !(q.key in D.arena.ledger)).length;
   const tab = (v, l) => `<button class="${page === v ? 'on' : ''}" data-act="arenaPage" data-v="${v}">${l}</button>`;
-  const tabs = `<div class="seg arenatabs">${tab('battle', '⚔️ Battle')}${tab('athlete', `🏠 Athlete${nq ? ` <span class="dotbadge">${nq}</span>` : ''}`)}${tab('pvp', '🌐 PvP')}${tab('moves', '🥋 Moves & crew')}${tab('locker', '🎒 Locker')}${tab('shop', '🎁 Boxes & shop')}</div>`;
-  // the full athlete card lives on the Athlete tab; the others get one slim line
-  const head = `<div class="arenahead"><h1>⚔️ Arena</h1>${page === 'athlete' ? '' : arenaSlim(a)}</div>` + tabs + (page === 'athlete' ? arenaStrip(a) : '');
+  const evo = crReady() && CR().mons.some(m => canEvolve(m)?.ok || m.newMoves?.length);
+  const tabs = `<div class="seg arenatabs">${tab('battle', '⚔️ Battle')}${tab('team', `🐾 Team${evo ? ' <span class="dotbadge">!</span>' : ''}`)}${tab('trainer', `🧢 Trainer${nq ? ` <span class="dotbadge">${nq}</span>` : ''}`)}${tab('pvp', '🌐 PvP')}${tab('shop', '🥚 Eggs & shop')}</div>`;
+  const head = `<div class="arenahead"><h1>⚔️ Arena</h1>${arenaSlim(a)}</div>` + tabs;
   let body;
+  ui.arenaPage = page;
   if (page === 'battle') body = arenaBattles(a);
-  else if (page === 'moves') body = arenaMoves();
+  else if (page === 'team') body = arenaTeam();
+  else if (page === 'trainer') body = arenaTrainer() + arenaHome(a, ci, fr, frCol);
   else if (page === 'pvp') body = arenaPvp();
-  else if (page === 'locker') body = arenaLocker(g);
   else if (page === 'wardrobe') body = `<div class="card"><h2>👕 Your avatar moved</h2><p>The wardrobe now lives on your Profile, with a 3D avatar you can spin around.</p><button class="btn primary" data-act="goto" data-v="profile">Open Profile</button></div>`;
-  else if (page === 'shop') body = arenaShop(g);
-  else body = arenaHome(a, ci, fr, frCol);
+  else body = arenaShop2();
   return head + body;
 }
 function arenaHome(a, ci, fr, frCol) {
   const recent = doneWorkouts().sort((x, y) => y.date.localeCompare(x.date)).slice(0, 6);
   const quests = questDefs();
-  return `<div class="arena-home">
-    <div>${athleteCard(a)}<p class="muted small-text" style="text-align:center">Stats grow with every workout you tick off. Gear adds the small <i>+</i> numbers.</p></div>
+  return `<div class="arena-home trainer-home">
     <div class="arena-side">
       <div class="grid g2 tight">
         <div class="card mini"><div class="unlabel">Combo</div><div class="bignum">🔥 ${ci.combo}<span>day${ci.combo === 1 ? '' : 's'}</span></div><div class="muted small-text">+10% ${GRIT} per combo day (up to +50%). After 3 days, one rest day keeps it going and pays +15 ${GRIT}. Best: ${ci.best}.</div></div>
@@ -428,26 +429,26 @@ function arenaHome(a, ci, fr, frCol) {
           ${done ? '<span class="tag green">✓ Claimed</span>' : ready ? `<button class="btn small primary" data-act="claimQuest" data-id="${q.key}">Claim ${q.reward} ${GRIT}</button>` : `<span class="reward">${q.reward} ${GRIT}</span>`}</li>`;
       }).join('')}</ul></div>
       <div class="card"><h2>Recent training</h2>${recent.length ? `<ul class="gains">${recent.map(w => `<li><div class="main"><b>${esc(w.title)}</b><span class="muted small-text">${fmtDate(w.date)} · ${fmtMins(+w.duration || 0)} · ${esc(w.intensity || '')}</span></div>
-        <span class="gchips">${Object.entries(workoutGains(w)).map(([k, v]) => `<i style="--sc:${statInfo(k)[3]}">${statInfo(k)[2]} +${v.toFixed(1)}</i>`).join('')}</span><span class="reward">+${workoutGrit(w)} ${GRIT}</span></li>`).join('')}</ul>` : '<div class="empty">Tick off a workout in the Plan tab to start building your athlete.</div>'}</div>
+        <span class="gchips">${Object.entries(workoutGains(w)).map(([k, v]) => `<i style="--sc:${statInfo(k)[3]}">${statInfo(k)[2]} +${v.toFixed(1)}</i>`).join('')}</span><span class="reward">+${workoutGrit(w)} ${GRIT}</span></li>`).join('')}</ul>` : '<div class="empty">Tick off a workout in the Plan tab to start training.</div>'}</div>
     </div></div>`;
 }
 function arenaBattles(a) {
-  const up = unlockedUpTo(), me = battleStats(), items = D.arena.items || {}, boost = ui.boost = ui.boost || {};
+  const up = unlockedUpTo(), items = D.arena.items || {}, boost = ui.boost = ui.boost || {};
   const cur = leagueOf(ENEMIES[up]), sel = LEAGUES.find(l => l.id === ui.arenaSel && ENEMIES.findIndex(e => e.league === l.id) <= up) || cur;
   const boosts = SHOP_ITEMS.filter(x => x.boost);
-  return `    <div class="card arenamap"><div class="card-head"><h2>🗺️ Arenas</h2><span class="muted small-text">beat each gym leader to earn its badge and travel on</span><span class="pill">⚔️ ${tokensLeft()} battle${tokensLeft() === 1 ? '' : 's'} left today</span></div>
+  return `    <div class="card arenamap"><div class="card-head"><h2>🗺️ Arenas</h2><span class="muted small-text">beat each gym leader and their team to earn a badge and travel on</span><span class="pill">⚔️ ${tokensLeft()} battle${tokensLeft() === 1 ? '' : 's'} left today</span></div>
       <div class="amap">${LEAGUES.map((lg, k) => { const open = ENEMIES.findIndex(e => e.league === lg.id) <= up, boss = ENEMIES.find(e => e.league === lg.id && e.boss), won = boss && beaten(boss.id);
         return `${k ? '<span class="apath"></span>' : ''}<button class="anode ${sel.id === lg.id ? 'on' : ''} ${open ? '' : 'locked'} ${won ? 'won' : ''}" data-act="arenaSel" data-v="${lg.id}" ${open ? '' : 'disabled'} style="--sky:${lg.sky}"><span class="anic">${open ? lg.icon : '🔒'}</span><b>${open ? lg.name : '???'}</b><small>${won ? lg.badge + ' ' + lg.badgeName : open ? `${ENEMIES.filter(e => e.league === lg.id && beaten(e.id)).length}/${ENEMIES.filter(e => e.league === lg.id).length} beaten` : 'Locked'}</small></button>`; }).join('')}</div></div>
     ${[sel].map(lg => `<div class="card league" style="--sky:${lg.sky}"><div class="card-head league-head"><h2>${lg.icon} ${lg.name}</h2><span class="muted small-text">${esc(lg.blurb)}</span></div>
     <div class="ladder">${ENEMIES.map((e, i) => [e, i]).filter(([e]) => e.league === lg.id).map(([e, i]) => {
-      const es = enemyStats(e), locked = i > up, won = beaten(e.id);
+      const locked = i > up, won = beaten(e.id), mons = locked ? [] : rivalCreatures(e, 'ladder');
       return `<div class="rung ${locked ? 'locked' : ''} ${won ? 'won' : ''} ${e.boss ? 'bossrung' : ''}"><div class="rpos">${e.boss ? '👑' : i + 1}</div><div class="renemy">${locked ? '🔒' : e.icon}</div>
-        <div class="main"><b>${locked ? (e.boss ? 'Gym leader' : '???') : esc(e.name)}</b> <span class="muted small-text">Lv ${lvOf(e.r)}${e.boss ? ' · gym leader' : ''}</span>${locked ? '' : ` ${typeChips(typesOf(e))}`}${locked ? '<div class="muted small-text">Beat the rival above to unlock.</div>' : `<div class="muted small-text">${esc(e.line)}</div>
-          <div class="bstats">${STATS.map(([k, , ab, col]) => `<span style="--sc:${col}" class="${me[k] > es[k] ? 'edge' : ''}">${ab} <b>${es[k]}</b></span>`).join('')}</div>`}</div>
+        <div class="main"><b>${locked ? '???' : esc(e.name)}</b> <span class="muted small-text">${e.boss ? 'Gym leader' : 'Trainer'} · creatures up to Lv ${trainerLevelOf(e)}</span>${locked ? '<div class="muted small-text">Beat the trainer above to unlock.</div>' : `<div class="muted small-text">${esc(e.line)}</div>
+          <div class="rmons">${mons.map(m => `<span class="rmon" title="${esc(m.name)} Lv ${m.lv} · ${m.types.map(t => TYPES[t][1]).join('/')}">${crBadge(specOf(m.sp), 30)}<small>${m.lv}</small></span>`).join('')}</div>`}</div>
         ${won ? `<span class="tag green">✓ ${e.boss ? lg.badge + ' Badge' : 'Beaten'}</span>` : ''}${locked ? '' : `<button class="btn ${won ? '' : 'primary'}" data-act="fight" data-id="${e.id}">⚔️ Fight</button>`}</div>`;
     }).join('')}</div></div>`).join('')}
-${battleModesHtml()}<div class="card"><div class="card-head"><h2>Boosts</h2><span class="muted small-text">switch on before a fight · buy more in the Shop</span></div><div class="row" style="gap:10px">${boosts.map(x => `<label class="boostchip ${items[x.id] ? '' : 'none'}"><input type="checkbox" data-act="boostToggle" data-id="${x.id}" ${boost[x.id] && items[x.id] ? 'checked' : ''} ${items[x.id] ? '' : 'disabled'}> ${x.icon} ${x.name} <b>×${items[x.id] || 0}</b></label>`).join('')}</div></div>
-    <p class="muted small-text">2 battles a day, +1 for each workout ticked off today. Highlighted stats are ones where you're already stronger. Freshness ${freshness()}% scales your stats, and rivals bring a bigger team the further you go.</p>`;
+${wildHtml()}${battleModesHtml()}<div class="card"><div class="card-head"><h2>Boosts</h2><span class="muted small-text">switch on before a fight · buy more in the Shop</span></div><div class="row" style="gap:10px">${boosts.map(x => `<label class="boostchip ${items[x.id] ? '' : 'none'}"><input type="checkbox" data-act="boostToggle" data-id="${x.id}" ${boost[x.id] && items[x.id] ? 'checked' : ''} ${items[x.id] ? '' : 'disabled'}> ${x.icon} ${x.name} <b>×${items[x.id] || 0}</b></label>`).join('')}</div></div>
+    <p class="muted small-text">2 trainer battles a day, +1 for each workout ticked off today. Wild creatures don't use up battles. Your creatures heal fully before every battle.</p>`;
 }
 // records worked out from everything you've logged
 function bestRecords() {
