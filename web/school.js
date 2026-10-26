@@ -238,7 +238,7 @@ function bellCard() {
     <div class="row" style="margin-top:8px"><button class="btn small" data-cls="badd">+ Period</button><button class="btn small" data-cls="breset">Reset</button><span style="flex:1"></span>
       <span class="catchips">${[1, 2, 3, 4, 5].map(k => `<button class="cchip ${cfg.days.includes(k) ? 'on' : ''}" data-cls="day" data-i="${k}">${names[k]}</button>`).join('')}</span>
       <label class="small-text"><input type="checkbox" data-clsch="on" ${cfg.on ? 'checked' : ''}> On</label></div>
-    <div class="row" style="margin-top:10px;gap:8px"><span class="small-text">Timetable</span><select data-clsch="clen" style="width:auto">${[[0, 'Same every week'], [5, '5-day cycle'], [10, '10-day cycle']].map(([v, l]) => `<option value="${v}" ${+cfg.cycle.len === v ? 'selected' : ''}>${l}</option>`).join('')}</select>
+    <div class="row" style="margin-top:10px;gap:8px"><button class="btn small primary" data-act="ttEdit">🗓️ Fill in my whole timetable</button><span class="small-text">Timetable</span><select data-clsch="clen" style="width:auto">${[[0, 'Same every week'], [10, '2-week (10-day) cycle'], [5, '5-day cycle'], [6, '6-day cycle'], [8, '8-day cycle']].map(([v, l]) => `<option value="${v}" ${+cfg.cycle.len === v ? 'selected' : ''}>${l}</option>`).join('')}</select>
       ${cfg.cycle.len && isSchoolDay(today()) ? `<span class="small-text">Today is</span><select data-clsch="cday" style="width:auto">${Array.from({ length: cfg.cycle.len }, (_, k) => `<option value="${k + 1}" ${cycleDay(today()) === k + 1 ? 'selected' : ''}>Day ${k + 1}</option>`).join('')}</select>` : ''}</div></details></div>`;
 }
 document.addEventListener('click', e => {

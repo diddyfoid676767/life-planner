@@ -3,7 +3,8 @@
    name, classes, bell times and training week. It also re-runs from Settings
    to change those things without touching anything else. */
 
-const WIZ_STEPS = ['You', 'Classes', 'School day', 'Training', 'Habits'];
+const WIZ_STEPS = ['You', 'Classes', 'School day', 'Timetable', 'Training', 'Habits'];
+const WZ_TRAIN = 4, WZ_HABITS = 5;
 const WIZ_SPORTS = ['Running', 'Strength / Gym', 'Speed / Agility', 'Team sport', 'Cycling', 'Swimming', 'Hiking', 'Other'];
 let wiz = null;
 
@@ -27,6 +28,14 @@ function openSetup(first) {
     bed: bedCfg().on, bedTime: bedCfg().time, daily: +s.dailyGoal || 60,
   };
   if (!wiz.subjects.length) wiz.subjects = [{ name: '' }, { name: '' }, { name: '' }, { name: '' }, { name: '' }];
+  // the saved timetable, as "day|bell index" -> subject (an index into wiz.subjects, or free / sport)
+  wiz.tt = {};
+  for (const [k, v] of Object.entries(sc.tt || {})) {
+    const m = /^(D?\d+)-(\d+)$/.exec(k); if (!m || !v) continue;
+    const si = wiz.subjects.findIndex(x => x.id === v);
+    wiz.tt[m[1] + '|' + m[2]] = si >= 0 ? 's' + si : v === 'free' || v === 'sport' ? v : '';
+  }
+  wiz.ttCycle = +wiz.cycle;
   drawSetup();
 }
 function wizRead() {
@@ -37,6 +46,7 @@ function wizRead() {
     if (i == null) wiz[k] = v;
     else wiz[k][+i][f] = el.type === 'number' ? +v : v;
   });
+  document.querySelectorAll('#wizfx [data-wt]').forEach(el => { wiz.tt[el.dataset.wt] = el.value; });
 }
 function drawSetup() {
   let ov = document.getElementById('wizfx');
@@ -75,17 +85,19 @@ function drawSetup() {
         <label class="small-text"><input type="checkbox" data-wf="bells.${i}.brk" ${b.brk ? 'checked' : ''}> break</label><button class="iconbtn" data-w="bellDel" data-i="${i}" title="Remove">✕</button></div>`).join('')}</div>
       <div class="row" style="margin-top:8px"><button class="btn small" data-w="bellAdd">+ Period</button><span style="flex:1"></span>
         <span class="catchips">${[1, 2, 3, 4, 5, 6].map(k => `<button class="cchip ${W.days.includes(k) ? 'on' : ''}" data-w="day" data-i="${k}">${names[k]}</button>`).join('')}</span></div>
-      <div class="frow" style="margin-top:12px"><div class="field"><label>Timetable</label><select data-wf="cycle">${[[0, 'Same every week'], [5, '5-day cycle'], [10, '10-day cycle'], [14, '2-week cycle (Day 1 to 14)']].map(([v, l]) => `<option value="${v}" ${+W.cycle === v ? 'selected' : ''}>${l}</option>`).join('')}</select></div>
+      <div class="frow" style="margin-top:12px"><div class="field"><label>Timetable</label><select data-wf="cycle">${[[0, 'Same every week'], [10, '2-week timetable (Week A and B, Day 1 to 10)'], [5, '5-day cycle'], [6, '6-day cycle'], [8, '8-day cycle']].map(([v, l]) => `<option value="${v}" ${+W.cycle === v ? 'selected' : ''}>${l}</option>`).join('')}</select></div>
         ${+W.cycle ? `<div class="field"><label>Which day is today${isSchoolDay(today()) ? '' : ' (or the next school day)'}?</label><select data-wf="cday">${Array.from({ length: +W.cycle }, (_, k) => `<option value="${k + 1}" ${+W.cday === k + 1 ? 'selected' : ''}>Day ${k + 1}</option>`).join('')}</select></div>` : ''}</div>
-      <p class="muted small-text">You'll pick the subject for each period in Class mode the first time it comes up. After that it's remembered.</p>`;
+      <p class="muted small-text">Next you can fill in which class is in each period. For a 2-week timetable, Day 1 is the Monday of Week A.</p>`;
   } else if (st === 3) {
+    body = wizTimetable();
+  } else if (st === WZ_TRAIN) {
     body = `<h2>Your training</h2>
       <div class="field"><label>Training goal</label><input type="text" data-wf="goal" value="${esc(W.goal)}" placeholder="e.g. Get faster for netball and run a 5k" maxlength="100"></div>
       <p class="muted" style="margin-bottom:6px">Your usual week. Pick a sport for each day you train and leave rest days empty.</p>
       <div class="wizweek">${W.week.map((w, i) => `<div class="row"><b class="wizday">${DOW[w.d]}</b><select data-wf="week.${i}.sport"><option value="">Rest</option>${WIZ_SPORTS.map(s => `<option ${w.sport === s ? 'selected' : ''}>${s}</option>`).join('')}</select>
         <input type="time" data-wf="week.${i}.time" value="${w.time}"><input type="number" min="10" max="240" step="5" data-wf="week.${i}.mins" value="${w.mins}"><span class="muted small-text">min</span></div>`).join('')}</div>
       <p class="muted small-text">${W.first ? '' : 'These are added on top of the workouts you already have. '}Workouts are added for the next ${W.weeks} weeks. Ticking them off grows your athlete card in the Arena.</p>`;
-  } else if (st === 4) {
+  } else if (st === WZ_HABITS) {
     body = `<h2>Good habits</h2>
       <div class="field"><label>Daily study goal (minutes)</label><input type="number" min="10" max="600" step="5" data-wf="daily" value="${W.daily}"></div>
       <div class="row" style="gap:10px"><label><input type="checkbox" data-wf="bed" ${W.bed ? 'checked' : ''} style="width:auto"> Bedtime on school nights at</label><input type="time" data-wf="bedTime" value="${W.bedTime}" style="width:auto"></div>
@@ -95,7 +107,7 @@ function drawSetup() {
   const nav = st < 0 ? '' : `<div class="row wizbtns">${st > 0 ? '<button class="btn" data-w="back">← Back</button>' : W.first ? '' : '<button class="btn" data-w="close">Cancel</button>'}<span style="flex:1"></span>
     ${st < WIZ_STEPS.length - 1 ? '<button class="btn primary" data-w="next">Next →</button>' : `<button class="btn primary" data-w="finish">${W.first ? 'Start planning 🎉' : 'Save changes'}</button>`}</div>`;
   const again = !!ov.firstChild;
-  ov.innerHTML = `<div class="treecard wizcard ${again ? 'again' : ''}">${W.first ? '' : '<button class="iconbtn tc-close" data-w="close" title="Close">✕</button>'}${dots}<div class="wizbody">${body}</div>${nav}</div>`;
+  ov.innerHTML = `<div class="treecard wizcard ${again ? 'again' : ''} ${st === 3 ? 'wide' : ''}">${W.first ? '' : '<button class="iconbtn tc-close" data-w="close" title="Close">✕</button>'}${dots}<div class="wizbody">${body}</div>${nav}</div>`;
   const f = ov.querySelector('input[type=text]'); if (f && !f.value) f.focus();
 }
 async function wizClick(e) {
@@ -118,6 +130,8 @@ async function wizClick(e) {
     case 'bellAdd': { const last = W.bells[W.bells.length - 1], s = last ? last.end : '09:00', m = Math.min(1439, hmToMin(s) + 50); W.bells.push({ n: `Period ${W.bells.filter(b => !b.brk).length + 1}`, start: s, end: `${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}` }); break; }
     case 'bellDel': W.bells.splice(i, 1); break;
     case 'day': W.days = W.days.includes(i) ? W.days.filter(x => x !== i) : [...W.days, i]; break;
+    case 'ttCopy': { const n = +W.cycle, half = n / 2; for (const k of Object.keys(W.tt)) { const [d, b] = k.split('|'), dn = +d.slice(1); if (d[0] === 'D' && dn <= half) W.tt['D' + (dn + half) + '|' + b] = W.tt[k]; } break; }
+    case 'ttClear': W.tt = {}; break;
     case 'finish': finishSetup(); return;
   }
   drawSetup();
@@ -144,6 +158,15 @@ function finishSetup() {
     sc.cycle = { len, date: d, day: Math.min(+W.cday || 1, len || 1) };
     if (len !== +W.cycleWas) { /* keep old picks; keys for other layouts just go unused */ }
   }
+  // timetable: bell indexes follow the saved (sorted) bells, subjects their new ids
+  const wb = W.bells, subjOf = v => { if (v === 'free' || v === 'sport') return v; const x = W.subjects[+String(v).slice(1)]; return x && x.name.trim() ? (D.subjects.find(y => y.name === x.name.trim()) || {}).id || '' : ''; };
+  const tt = {};
+  for (const [k, v] of Object.entries(W.tt || {})) {
+    const [d, b] = k.split('|'), bi = sc.bells.indexOf(wb[+b]); if (bi < 0 || !v) continue;
+    if ((d[0] === 'D') !== !!len) continue; // a layout from before the cycle changed
+    const id = subjOf(v); if (id) tt[d + '-' + bi] = id;
+  }
+  sc.tt = tt;
   // training
   s.trainingGoal = W.goal.trim();
   let added = 0;
@@ -283,3 +306,16 @@ function drawTour() {
 window.addEventListener('resize', () => { if (tourAt >= 0) drawTour(); });
 document.addEventListener('keydown', e => { if (tourAt >= 0 && (e.key === 'ArrowRight' || e.key === 'Enter')) { e.preventDefault(); tourGo(1); } else if (tourAt >= 0 && e.key === 'ArrowLeft') tourGo(-1); });
 document.addEventListener('keydown', e => { if (tourAt >= 0 && e.key === 'Escape') endTour(); });
+
+// the timetable grid: one column per timetable day, one row per class period
+function wizTimetable() {
+  const W = wiz, len = +W.cycle, days = [...W.days].sort((a, b) => a - b), per = W.bells.map((b, i) => [b, i]).filter(([b]) => !b.brk && b.start && b.end);
+  const cols = len ? Array.from({ length: len }, (_, k) => ['D' + (k + 1), `Day ${k + 1}`, len % days.length === 0 ? `${len === 10 ? (k < 5 ? 'Wk A ' : 'Wk B ') : ''}${DOW[days[k % days.length]]}` : '']) : days.map(d => [String(d), DOW[d], '']);
+  const opts = v => `<option value="">–</option>${W.subjects.map((x, i) => x.name.trim() ? `<option value="s${i}" ${v === 's' + i ? 'selected' : ''}>${esc(x.name.trim())}</option>` : '').join('')}<option value="free" ${v === 'free' ? 'selected' : ''}>Private study</option><option value="sport" ${v === 'sport' ? 'selected' : ''}>Sport</option>`;
+  if (!per.length) return `<h2>Your timetable</h2><p class="muted">Add some periods on the School day step first.</p>`;
+  return `<h2>Your timetable</h2><p class="muted">Pick the class for each period. ${len ? `Your timetable repeats every ${len} school days.` : 'It\'s the same every week.'} You can skip this and fill it in later, period by period, in Class mode.</p>
+    <div class="wiztt"><table><tr><th></th>${cols.map(([, l, sub]) => `<th>${l}${sub ? `<small>${sub}</small>` : ''}</th>`).join('')}</tr>
+    ${per.map(([b, i]) => `<tr><th>${esc(b.n)}<small>${b.start}</small></th>${cols.map(([d]) => { const k = d + '|' + i, v = W.tt[k] || ''; return `<td><select data-wt="${k}" class="${v ? 'set' : ''}">${opts(v)}</select></td>`; }).join('')}</tr>`).join('')}</table></div>
+    <div class="row" style="gap:8px;margin-top:8px">${len === 10 || (len && len % 2 === 0) ? `<button class="btn small" data-w="ttCopy">Copy Week A to Week B</button>` : ''}<button class="btn small" data-w="ttClear">Clear</button></div>`;
+}
+document.addEventListener('change', e => { if (e.target.matches?.('#wizfx [data-wt]')) e.target.classList.toggle('set', !!e.target.value); });

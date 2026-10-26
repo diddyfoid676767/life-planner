@@ -2246,3 +2246,12 @@ main#view { padding-bottom: 80px; }
 @keyframes treehappy { 0%, 100% { transform: none; } 25% { transform: scaleY(1.12) scaleX(.94); } 50% { transform: scaleY(.94) scaleX(1.05); } 75% { transform: scaleY(1.04); } }
 .tourcard { max-height: calc(100vh - 24px); overflow-y: auto; }
 #tourfx .tourcard { z-index: 2; }
+.wizcard.wide { width: min(1060px, calc(100vw - 32px)); }
+.wiztt { overflow: auto; max-height: 52vh; border: 1px solid var(--border, rgba(0,0,0,.08)); border-radius: 12px; }
+.wiztt table { border-collapse: collapse; font-size: .8rem; }
+.wiztt th { position: sticky; top: 0; background: var(--panel); padding: 6px 6px; text-align: left; white-space: nowrap; font-weight: 700; z-index: 1; }
+.wiztt tr th:first-child { left: 0; position: sticky; z-index: 2; }
+.wiztt th small { display: block; font-weight: 500; color: var(--muted); font-size: .7rem; }
+.wiztt td { padding: 3px; }
+.wiztt select { width: 104px; font-size: .78rem; padding: 5px 6px; }
+.wiztt select.set { background: color-mix(in srgb, var(--accent) 12%, var(--panel)); font-weight: 600; }

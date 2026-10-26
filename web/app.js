@@ -1713,6 +1713,7 @@ document.addEventListener('click', e => {
     case 'wearCos': wearCos(id); break;
     case 'buyCos': buyCos(id); break;
     case 'avDance': { const st = document.querySelector('#wardStage .avatar'); if (st) { const d = myAv().dance; st.parentNode.classList.remove('dance-' + d); void st.parentNode.offsetWidth; st.parentNode.classList.add('dance-' + d); setTimeout(() => st.parentNode.classList.remove('dance-' + d), 2200); } break; }
+    case 'ttEdit': openSetup(false); wiz.step = 3; drawSetup(); break;
     case 'arenaPage': ui.arenaPage = el.dataset.v; render(); break;
     case 'bodyPage': view = 'training'; ui.bodyPage = el.dataset.v; render(); break;
     case 'friendCompare': compareFriend(el.dataset.id); break;
