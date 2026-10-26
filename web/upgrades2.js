@@ -21,6 +21,7 @@ UPGRADES.push(
   { id: 'drills', icon: '🥊', name: 'Training dummy', desc: '+2% to every Arena stat, per level', prices: [300] },
   { id: 'appraiser', icon: '🔍', name: 'Appraiser', desc: 'Duplicates from lucky boxes refund 10% more, per level', prices: [250] },
   { id: 'lamp', icon: '📚', name: 'Study lamp', desc: '+5% coins and XP for sessions of 45+ minutes, per level', prices: [400] },
+  { id: 'land', icon: '🗺️', name: 'Bigger forest', desc: 'Your forest grid grows by 2 rows and 2 columns, per level', prices: [300, 700, 1500, 3000, 6000, 12000], max: 6 },
 );
 // one-off upgrades stay one-off; the extra challenge stops at 3
 for (const id of ['compost', 'mulch', 'gnome', 'stream']) { const u = LEAF_UPGRADES.find(x => x.id === id); if (u) u.once = true; }
