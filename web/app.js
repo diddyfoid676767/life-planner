@@ -267,7 +267,7 @@ function miniByDay(items, empty) {
 
 // ---------- views ----------
 let view = 'today';
-const ui = { daySel: null, calMonth: null, calSel: null, calFilter: { study: true, training: true, personal: true, calendars: true }, studyAll: false, assessPast: false, evFilter: 'upcoming', evCat: '', showDoneTodos: false, studyWeek: 0, forestRange: 'week', trainWeek: 0, inboxCat: '', setTab: 'general' };
+const ui = { daySel: null, calMonth: null, calSel: null, calFilter: { study: true, training: true, personal: true, calendars: true }, studyAll: false, assessPast: false, evFilter: 'upcoming', evCat: '', showDoneTodos: false, studyWeek: 0, forestRange: 'all', trainWeek: 0, inboxCat: '', setTab: 'general' };
 
 function render() {
   applyTheme();

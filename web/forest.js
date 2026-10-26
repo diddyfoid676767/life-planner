@@ -294,7 +294,7 @@ function bestStreak() {
 function viewForest() {
   checkTreeStages(); checkVisitors();
   const t = today(), wk = mondayOf(t);
-  const range = ui.forestRange || 'week';
+  const range = ui.forestRange || 'all';
   const from = range === 'week' ? wk : range === 'month' ? t.slice(0, 8) + '01' : '0000';
   const logs = D.focusLogs.filter(l => l.mins >= 10 && l.date >= from).sort((a, b) => a.start - b.start || a.date.localeCompare(b.date));
   const allTrees = D.focusLogs.filter(l => l.mins >= 10);

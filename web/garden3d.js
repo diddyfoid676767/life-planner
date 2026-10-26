@@ -17,9 +17,17 @@ function gardenLayout(logs) {
   for (const k of Object.keys(pos)) if (!valid.has(k)) delete pos[k];
   const seen = new Set();
   const things = [...logs.map(l => ({ key: l.id, l })), ...decos.map(g => ({ key: 'g:' + g.id, g }))].filter(t => !seen.has(t.key) && seen.add(t.key));
-  let N = Math.max(8, Math.ceil(Math.sqrt(things.length * 2.2)));
+  // Bigger forest (coin upgrade) adds 2 rows and 2 columns per level; existing
+  // trees shift by one tile per level so the forest stays in the middle
+  const land = upg('land');
+  if (land > (D.game.landDone || 0)) {
+    const d = land - (D.game.landDone || 0);
+    for (const k of Object.keys(pos)) { const [r, c] = pos[k].split(',').map(Number); pos[k] = `${r + d},${c + d}`; }
+    D.game.landDone = land; if (typeof G3 === 'object') G3.dist = 0;
+  }
+  let N = Math.max(8 + 2 * land, Math.ceil(Math.sqrt(things.length * 2.2)));
   for (const t of things) { const p = pos[t.key]; if (p) { const [r, c] = p.split(',').map(Number); N = Math.max(N, r + 1, c + 1); } }
-  N = Math.min(N, 24);
+  N = Math.min(N, 24 + 2 * land);
   // the 3D island is bigger: once, move the old corner layout to the middle
   if (!D.game.grid3 && typeof webglOK === 'function' && webglOK()) {
     const ps = Object.values(pos).map(p => p.split(',').map(Number));
