@@ -32,7 +32,7 @@ async function publishMe(force) {
 const friendNames = () => (D.friendsU = D.friendsU || []);
 function toBoardRow(p) {
   const s = p.stats || {};
-  return { id: 'u:' + p.username, user: p.username, name: p.display || p.username, week: s.week || '', study: s.study || {}, work: s.work || {}, health: s.health || {}, raw: s, av: p.avatar || null, updated: Date.parse(p.updated_at) || 0 };
+  return { id: 'u:' + p.username, user: p.username, name: p.display || p.username, week: s.week || '', study: s.study || {}, work: s.work || {}, health: s.health || {}, raw: s, av: p.avatar || null, badges: p.badges || [], jersey: p.jersey ?? null, updated: Date.parse(p.updated_at) || 0 };
 }
 async function refreshFriends(force) {
   const names = friendNames();
@@ -60,7 +60,7 @@ function accountCard() {
         <p class="muted small-text">There's no email on the account, so write your password down somewhere safe.</p>
       </form></div></div>`;
   return `<div class="card acctcard"><div class="card-head"><h2>Your account</h2></div>
-    <div class="row"><span class="acct-chip">${safeBadge(avatarSpec(), 36)}<b>@${esc(acct.username)}</b></span><span style="flex:1"></span>
+    <div class="row"><span class="acct-chip">${safeBadge(avatarSpec(), 36)}<b>@${esc(acct.username)}</b>${typeof badgeTags === 'function' ? badgeTags(myBadges) : ''}</span><span style="flex:1"></span>
       <button class="btn small" data-acct="logout">Log out</button><button class="btn small danger" data-acct="delete">Delete account</button></div>
     <p class="muted small-text">Friends can find you by searching <b>${esc(acct.username)}</b> on the leaderboard.</p></div>`;
 }
@@ -73,11 +73,11 @@ function friendSearchHtml() {
   return `<div class="friendbox"><h3>👥 Friends <span class="muted small-text">you're @${esc(acct.username)}</span></h3>
     <div class="row"><input id="friendSearch" placeholder="Search usernames…" autocomplete="off" style="flex:1;min-width:200px"></div>
     <ul class="friendlist" id="friendResults">${searchRowsHtml()}</ul>
-    ${names.length ? `<div class="daygroup">Your friends</div><ul class="friendlist">${names.map(n => { const f = friendRows.find(x => x.user === n); return `<li>${safeBadge(f?.av, 28)}<b>${esc(f?.name || n)}</b><span class="muted small-text">@${esc(n)}${f ? ` · updated ${esc(ago(new Date(f.updated).toISOString()))}` : ' · not found'}</span><span style="flex:1"></span><button class="iconbtn" data-acct="unfriend" data-u="${esc(n)}" title="Remove">✕</button></li>`; }).join('')}</ul>` : ''}</div>`;
+    ${names.length ? `<div class="daygroup">Your friends</div><ul class="friendlist">${names.map(n => { const f = friendRows.find(x => x.user === n); return `<li>${safeBadge(f?.av, 28)}<b>${esc(f?.name || n)}</b>${badgeTags(f?.badges, true)}<span class="muted small-text">@${esc(n)}${f ? ` · updated ${esc(ago(new Date(f.updated).toISOString()))}` : ' · not found'}</span><span style="flex:1"></span><button class="iconbtn" data-acct="unfriend" data-u="${esc(n)}" title="Remove">✕</button></li>`; }).join('')}</ul>` : ''}</div>`;
 }
 function searchRowsHtml() {
   const names = friendNames();
-  return acctSearch.filter(p => p.username !== acct.username).map(p => `<li>${safeBadge(p.avatar, 28)}<b>${esc(p.display || p.username)}</b><span class="muted small-text">@${esc(p.username)}</span><span style="flex:1"></span>${names.includes(p.username) ? '<span class="tag green">Friend</span>' : `<button class="btn small primary" data-acct="friend" data-u="${esc(p.username)}">Add</button>`}</li>`).join('');
+  return acctSearch.filter(p => p.username !== acct.username).map(p => `<li>${safeBadge(p.avatar, 28)}<b>${esc(p.display || p.username)}</b>${badgeTags(p.badges, true)}<span class="muted small-text">@${esc(p.username)}</span><span style="flex:1"></span>${names.includes(p.username) ? '<span class="tag green">Friend</span>' : `<button class="btn small primary" data-acct="friend" data-u="${esc(p.username)}">Add</button>`}</li>`).join('');
 }
 let searchTimer = 0;
 document.addEventListener('input', e => {

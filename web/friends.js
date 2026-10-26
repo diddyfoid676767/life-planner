@@ -9,7 +9,7 @@ function myWeekCard() {
   const r = myBoardRow(), lv = levelInfo();
   const stat = (icon, v, label) => `<div class="fwstat"><span>${icon}</span><b>${v}</b><small>${label}</small></div>`;
   return `<div class="card fme"><div class="fme-top">${safeBadge(r.av, 96)}<div class="fme-name">
-      <h2>${esc(D.settings.name || 'You')}</h2>
+      <h2>${esc(D.settings.name || 'You')}${badgeTags(myBadges)}</h2>
       <div class="muted">${acct.signedIn ? `@${esc(acct.username)}` : acct.configured && !ONLINE ? '<a href="#" data-act="friendsLogin">Log in to race friends</a>' : 'Just you for now'} · Level ${lv.n} ${esc(lv.title)}</div></div></div>
     <div class="fwstats">${stat('📚', fmtMins(r.study.mins) || '0m', 'studied')}${stat('🏃', fmtMins(r.work.mins) || '0m', 'trained')}${stat('🔥', r.study.streak, 'day streak')}${stat('🌳', r.study.trees, 'trees')}${stat(GRIT, r.work.grit, 'Grit')}${stat('⭐', r.work.ovr, 'rating')}</div></div>`;
 }
@@ -56,9 +56,9 @@ function friendCards() {
   const wk = mondayOf(today());
   return `<div class="fcards">${list.map(f => {
     const stale = f.week && f.week !== wk;
-    return `<div class="fcard"><div class="fcard-av">${safeBadge(f.av, 64)}</div><div class="main"><b>${esc(f.name)}</b><div class="muted small-text">${f.user ? '@' + esc(f.user) : 'friend code'}${f.updated ? ' · ' + esc(ago(new Date(f.updated).toISOString())) : ''}</div>
+    return `<div class="fcard"><div class="fcard-av">${safeBadge(f.av, 64)}</div><div class="main"><b>${esc(f.name)}</b>${badgeTags(f.badges, true)}<div class="muted small-text">${f.user ? '@' + esc(f.user) : 'friend code'}${f.updated ? ' · ' + esc(ago(new Date(f.updated).toISOString())) : ''}</div>
       <div class="fcard-stats"><span>📚 ${fmtMins(stale ? 0 : f.study?.mins) || '0m'}</span><span>🏃 ${fmtMins(stale ? 0 : f.work?.mins) || '0m'}</span><span>🔥 ${f.study?.streak || 0}</span><span>⭐ ${f.work?.ovr || '–'}</span></div></div>
-      <div class="fcard-btns"><button class="btn small primary" data-act="friendCompare" data-id="${esc(f.id)}">Compare</button>${f.user ? `<button class="iconbtn" data-acct="unfriend" data-u="${esc(f.user)}" title="Remove">✕</button>` : `<button class="iconbtn" data-fact="remove" data-id="${esc(f.id)}" title="Remove">✕</button>`}</div></div>`;
+      <div class="fcard-btns"><button class="btn small primary" data-act="friendCompare" data-id="${esc(f.id)}">Compare</button>${f.user && acct.signedIn ? `<button class="btn small" data-chat="dm" data-u="${esc(f.user)}" title="Message">💬</button>` : ''}${f.user ? `<button class="iconbtn" data-acct="unfriend" data-u="${esc(f.user)}" title="Remove">✕</button>` : `<button class="iconbtn" data-fact="remove" data-id="${esc(f.id)}" title="Remove">✕</button>`}</div></div>`;
   }).join('')}</div>`;
 }
 function compareFriend(id) {

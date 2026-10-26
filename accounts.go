@@ -26,6 +26,13 @@ var (
 	supaKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZ0anZuZXVzdW1qdmhkY3R2aWp6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTI3MTYwODcsImV4cCI6MjEwODI5MjA4N30.TzQqwPjHrB4NAAYzciQYP75zE8JTPAZOXcV-pHJuMDc" // public anon key; row-level security limits each user to their own profile
 )
 
+// LP_SUPA_URL and LP_SUPA_KEY point the app at another server, for testing.
+func init() {
+	if u, k := os.Getenv("LP_SUPA_URL"), os.Getenv("LP_SUPA_KEY"); u != "" && k != "" {
+		supaURL, supaKey = u, k
+	}
+}
+
 const (
 	// Supabase Auth wants an email address; usernames get a made-up one that
 	// is never written to (email confirmation is off).
@@ -281,7 +288,7 @@ func handleAccountPeople(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte("[]"))
 		return
 	}
-	sel := "select=username,display,avatar,stats,updated_at"
+	sel := "select=username,display,avatar,stats,updated_at,badges,jersey"
 	var path string
 	if q := strings.ToLower(strings.TrimSpace(r.URL.Query().Get("q"))); q != "" {
 		if !regexp.MustCompile(`^[a-z0-9_]{1,20}$`).MatchString(q) {
@@ -303,9 +310,16 @@ func handleAccountPeople(w http.ResponseWriter, r *http.Request) {
 		path = "/rest/v1/profiles?" + sel + "&username=in.(" + url.QueryEscape(strings.Join(names, ",")) + ")"
 	}
 	var out []map[string]any
-	if _, err := supa("GET", path, "", nil, &out); err != nil {
-		writeErr(w, http.StatusBadGateway, err.Error())
-		return
+	if code, err := supa("GET", path, "", nil, &out); err != nil {
+		// badges and jersey numbers need the 2.22.7 database update
+		if code != 400 {
+			writeErr(w, http.StatusBadGateway, err.Error())
+			return
+		}
+		if _, err := supa("GET", strings.Replace(path, ",badges,jersey", "", 1), "", nil, &out); err != nil {
+			writeErr(w, http.StatusBadGateway, err.Error())
+			return
+		}
 	}
 	if out == nil {
 		out = []map[string]any{}

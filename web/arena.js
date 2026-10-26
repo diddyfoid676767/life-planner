@@ -520,5 +520,5 @@ function arenaLocker(g) {
       return `<div class="gear ${own ? 'own' : ''} ${on ? 'on' : ''}"><div class="gicon">${x.icon}</div><b>${esc(x.name)}</b><span class="gbonus">${bonusText(x.bonus)}</span>
         ${on ? '<span class="tag green">Equipped</span>' : own ? `<button class="btn small" data-act="equip" data-id="${x.id}">Equip</button>` : `<button class="btn small ${g >= x.price ? 'primary' : ''}" data-act="buyGear" data-id="${x.id}" ${g >= x.price ? '' : 'disabled'}>${x.price} ${GRIT}</button>`}</div>`;
     }).join('')}</div></div>`).join('')}
-    <div class="card"><h2>Card</h2><div class="row"><label class="small-text">Jersey number <input type="number" min="0" max="99" data-setting="jerseyNo" value="${esc(D.settings.jerseyNo ?? 11)}" style="width:80px"></label></div></div>`;
+    <div class="card"><h2>Card</h2><div class="row"><label class="small-text">Jersey number <input type="number" min="0" max="99" data-setting="jerseyNo" value="${esc(D.settings.jerseyNo ?? 11)}" style="width:80px"></label></div>${acct.signedIn ? '<p class="muted small-text">Every number can only be worn by one player. First come, first served.</p>' : ''}</div>`;
 }
