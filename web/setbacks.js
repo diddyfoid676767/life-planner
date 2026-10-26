@@ -148,7 +148,7 @@ function checkBedtime() {
       D.fired['bed:w:' + night] = Date.now(); save();
       notify('🌙 Wind down', `Bed at ${fmtTime(bt)} tonight. Finish what you're doing and put the screens away soon.`, 'bed');
     }
-    if (past >= 0 && past < 240 && document.visibilityState === 'visible' && bedShown !== night && !D.fired['bed:s:' + night]) { bedShown = night; D.fired['bed:s:' + night] = Date.now(); save(); bedtimeScreen(past, night); }
+    if (past >= 0 && past < 240 && document.visibilityState === 'visible' && !(typeof tourAt !== 'undefined' && tourAt >= 0) && !document.getElementById('wizfx') && bedShown !== night && !D.fired['bed:s:' + night]) { bedShown = night; D.fired['bed:s:' + night] = Date.now(); save(); bedtimeScreen(past, night); }
     if (past >= 15 && past < 360 && document.visibilityState === 'visible' && !g.late[night]) { g.late[night] = now.toISOString(); save(); }
   }
   // settle nights that are fully over (after 4am the next morning)

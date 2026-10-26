@@ -276,6 +276,9 @@ function drawTour() {
     <div class="tourcard" style="top:${cy}px;left:${cx}px;width:${W}px">
     <div class="unlabel">${esc(st.page)} · ${k} of ${inPage.length} <span class="muted">· page ${pi} of ${pages.length}</span></div><h3>${st.title}</h3><p>${st.text}</p>
     <div class="row"><button class="btn small" data-t="skip">End tour</button>${pi < pages.length ? '<button class="btn small ghost" data-t="page">Next page ⇥</button>' : ''}<span style="flex:1"></span>${tourAt ? '<button class="btn small" data-t="back">←</button>' : ''}<button class="btn small primary" data-t="next">${tourAt === TOUR.length - 1 ? 'Finish' : 'Next →'}</button></div></div>`;
+  // keep the whole card (and its buttons) on screen, however long the text is
+  const card = ov.querySelector('.tourcard'), ch = card.offsetHeight;
+  if (innerWidth > 760 && cy + ch > innerHeight - 12) card.style.top = Math.max(12, innerHeight - ch - 12) + 'px';
 }
 window.addEventListener('resize', () => { if (tourAt >= 0) drawTour(); });
 document.addEventListener('keydown', e => { if (tourAt >= 0 && (e.key === 'ArrowRight' || e.key === 'Enter')) { e.preventDefault(); tourGo(1); } else if (tourAt >= 0 && e.key === 'ArrowLeft') tourGo(-1); });

@@ -2244,3 +2244,5 @@ main#view { padding-bottom: 80px; }
 @keyframes justwet { 0% { transform: scale(1); } 40% { transform: scale(1.25); background: #d0ebff; } 100% { transform: scale(1); } }
 .tcard.watered .tcart { animation: treehappy .7s ease; }
 @keyframes treehappy { 0%, 100% { transform: none; } 25% { transform: scaleY(1.12) scaleX(.94); } 50% { transform: scaleY(.94) scaleX(1.05); } 75% { transform: scaleY(1.04); } }
+.tourcard { max-height: calc(100vh - 24px); overflow-y: auto; }
+#tourfx .tourcard { z-index: 2; }
