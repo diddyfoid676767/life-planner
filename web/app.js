@@ -75,13 +75,22 @@ async function flush() {
   const body = JSON.stringify(D);
   stash(body); // kept in the browser until the PC app has it, so a closed or restarted app can't lose it
   try {
-    let r = await fetch('/api/data', { method: 'PUT', headers: { 'Content-Type': 'application/json', 'X-Planner-Boot': bootId, 'X-Planner-Rev': String(dataRev) }, body });
+    const hdrs = () => ({ 'Content-Type': 'application/json', 'X-Planner-Boot': bootId, 'X-Planner-Rev': String(dataRev), 'X-Planner-Base': baseHash });
+    let r = await fetch('/api/data', { method: 'PUT', headers: hdrs(), body });
     if (r.status === 409) {
-      if (/phone/.test(await r.text())) { await pullData(); return; }
+      const why = await r.text();
+      if (/phone/.test(why)) { await pullData(); return; }
+      if (/another window/.test(why)) {
+        // another window saved since this one loaded. If you're editing here,
+        // your edit wins; a window in the background takes the newer copy instead
+        if (!(userEdited && document.visibilityState === 'visible')) { const mine = userEdited; if (mine) setAside(); unstash(); userEdited = false; await pullData(true); if (mine) showAside(); return; }
+        r = await fetch('/api/data', { method: 'PUT', headers: { ...hdrs(), 'X-Planner-Force': '1' }, body });
+      } else {
       // the app restarted (an update, or it was closed and opened again): this
       // tab has changes it hasn't saved, so keep them instead of reloading
       if (!(await adoptBoot())) { setAside(); location.reload(); return; }
-      r = await fetch('/api/data', { method: 'PUT', headers: { 'Content-Type': 'application/json', 'X-Planner-Boot': bootId, 'X-Planner-Rev': String(dataRev) }, body });
+      r = await fetch('/api/data', { method: 'PUT', headers: { ...hdrs(), 'X-Planner-Force': '1' }, body });
+      }
     }
     if (!r.ok) throw new Error(await r.text());
     baseHash = r.headers.get('X-Planner-Hash') || baseHash;
@@ -103,10 +112,10 @@ function stashed(hash = baseHash) { try { const x = JSON.parse(localStorage.getI
 // another window saved newer changes: keep this tab's unsaved ones aside, so they can be brought back
 function setAside() { try { if (userEdited) localStorage.setItem('lpAside', JSON.stringify({ at: Date.now(), d: JSON.stringify(D) })); } catch { } unstash(); dirty = false; }
 // take on the restarted app's boot id so this tab's changes can be saved:
-// when nothing else saved in the meantime, or when this is the window you're
-// using (a window in the background sets its changes aside instead)
+// when nothing else saved in the meantime, or when you edited in this window
+// and it's the one in front (otherwise it sets its changes aside instead)
 async function adoptBoot(inf) {
-  try { inf = inf || await (await fetch('/api/info', { cache: 'no-store' })).json(); if (!inf.boot || ((inf.hash || '') !== baseHash && document.visibilityState !== 'visible')) return false; bootId = inf.boot; dataRev = inf.rev || 0; return true; }
+  try { inf = inf || await (await fetch('/api/info', { cache: 'no-store' })).json(); if (!inf.boot || ((inf.hash || '') !== baseHash && !(userEdited && document.visibilityState === 'visible'))) return false; bootId = inf.boot; dataRev = inf.rev || 0; return true; }
   catch { return false; }
 }
 function showAside() {
@@ -139,18 +148,20 @@ async function ping() {
       return;
     }
     if ((inf.rev || 0) !== dataRev && !dirty && !saving) { await pullData(); return; }
+    // another window saved: this one takes the newer copy, so it never saves an old one
+    if (inf.hash && inf.hash !== baseHash && !dirty && !saving) { await pullData(true); return; }
     if (dirty) { await flush(); if (wasOff && !dirty) toast('✅ Saved', 'Your changes are saved.'); }
   }
   catch { setOffline(true); }
 }
 // the PC app took a newer copy from the phone: load it in place
-async function pullData() {
+async function pullData(quiet) {
   try {
     const r = await fetch('/api/data', { cache: 'no-store' }), d = await r.json();
     if (!d) return;
     const keepFired = D.fired; D = migrate(d); D.fired = keepFired; dataRev = +r.headers.get('X-Planner-Rev') || 0; baseHash = r.headers.get('X-Planner-Hash') || ''; dirty = false;
     if (!modal.open) render(); renderFocusBar();
-    toast('Updated from your phone', 'Your planner now has the changes you made on your phone.');
+    if (!quiet) toast('Updated from your phone', 'Your planner now has the changes you made on your phone.');
   } catch { }
 }
 

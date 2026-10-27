@@ -24,7 +24,7 @@ import (
 	"time"
 )
 
-const version = "2.32.1"
+const version = "2.32.2"
 
 var (
 	selfHashOnce sync.Once

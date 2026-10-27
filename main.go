@@ -289,6 +289,14 @@ func handleData(w http.ResponseWriter, r *http.Request) {
 		}
 		mu.Lock()
 		defer mu.Unlock()
+		// a window that has fallen behind (another window saved since it last
+		// loaded) mustn't put its old copy back over the newer one
+		if base := r.Header.Get("X-Planner-Base"); base != "" && r.Header.Get("X-Planner-Force") == "" {
+			if cur, err := os.ReadFile(path); err == nil && hashOf(cur) != base {
+				http.Error(w, "changed in another window", http.StatusConflict)
+				return
+			}
+		}
 		if err := saveAtomic(path, b); err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
