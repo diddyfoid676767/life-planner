@@ -2616,3 +2616,66 @@ main#view { padding-bottom: 80px; }
 .treetip .tt-st { font-weight: 700; margin-top: 2px; } .treetip .tt-st span { color: var(--muted); font-weight: 600; font-size: .72rem; margin-left: 4px; }
 .treetip .tt-bar { height: 4px; border-radius: 3px; background: var(--panel2); margin: 5px 0; overflow: hidden; } .treetip .tt-bar i { display: block; height: 100%; background: var(--rc); border-radius: 3px; }
 .treetip .tt-meta { color: var(--muted); font-size: .74rem; }
+
+/* ---------- 2.31: phone layout ---------- */
+#mnavMore, #mnavShade, #mnavSheet { display: none; }
+@media (max-width: 640px) {
+  /* nothing wider than the screen, so iPhone never zooms the page out */
+  html, body { overflow-x: hidden; max-width: 100%; }
+  #view { overflow-x: clip; }
+  main, main#view { padding: 14px 14px calc(86px + env(safe-area-inset-bottom)); }
+  .grid, .g2, .g3, .tgrid, .today-grid, .day-grid, .train-top, .study-grid, .study-grid2, .friends-top, .friends-main, .arena-home { grid-template-columns: minmax(0, 1fr) !important; }
+  .grid > *, .tgrid > *, .tside > *, .today-grid > *, .day-grid > *, .card { min-width: 0; }
+  .card { padding: 16px; }
+  .page-head { margin-bottom: 14px; }
+  .page-head h1 { font-size: 1.55rem; }
+  .ph-actions .btn { flex: 1 1 auto; }
+  /* the week strip fits seven days across */
+  .daystrip, .tweek .daystrip { gap: 4px; grid-template-columns: repeat(7, minmax(0, 1fr)); }
+  .tweek { flex-wrap: wrap; }
+  .tweek .daystrip { flex-basis: 100%; }
+  .tweek-nav { width: 100%; justify-content: center; }
+  .dpill, .tweek .dpill { min-width: 0; padding: 6px 1px; border-radius: 10px; flex-direction: column; gap: 2px; }
+  .dpill .dn { font-size: .6rem; letter-spacing: 0; }
+  .tweek .dpill .dn b { display: block; margin: 0; }
+  .dpill b { font-size: 1rem; }
+  .dpill .dots { display: none; }
+  .dpill .dbar, .tweek .dpill .dbar { flex-basis: auto; width: 70%; height: 3px; }
+  .bstat .row .muted { display: none; }
+  .aslim { max-width: 100%; flex-wrap: wrap; border-radius: 20px; }
+  img, svg, canvas, video, table { max-width: 100%; }
+  .seg { flex-wrap: wrap; }
+  #toasts { bottom: calc(76px + env(safe-area-inset-bottom)); }
+  .miniplayer { bottom: calc(76px + env(safe-area-inset-bottom)); right: 10px; }
+  #focusBar { top: 0 !important; }
+
+  /* the tab bar along the bottom */
+  body.mnav .sidebar { position: fixed; inset: auto 0 0 0; width: auto; z-index: 60; flex-direction: row; align-items: stretch; gap: 2px;
+    padding: 5px max(6px, env(safe-area-inset-left)) calc(5px + env(safe-area-inset-bottom)) max(6px, env(safe-area-inset-right));
+    border: 0; border-top: 1px solid var(--border); background: color-mix(in srgb, var(--panel) 92%, transparent); backdrop-filter: blur(16px); }
+  body.mnav .sidebar .brand, body.mnav .sidefoot { display: none; }
+  body.mnav .content { margin-left: 0; }
+  body.mnav #tabs { flex: 4; flex-direction: row; gap: 2px; overflow: visible; }
+  body.mnav #tabs > :not(.mprim) { display: none !important; }
+  body.mnav #tabs button, body.mnav #mnavMore { flex: 1 1 0; min-width: 0; width: auto; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px;
+    padding: 6px 2px; border-radius: 14px; font-size: .68rem; font-weight: 600; text-align: center; color: var(--muted); background: none; border: 0; box-shadow: none; transform: none; position: relative; }
+  body.mnav #tabs button span, body.mnav #mnavMore span { flex: none; max-width: 100%; font-size: .68rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  body.mnav #tabs button svg, body.mnav #mnavMore svg { width: 23px; height: 23px; }
+  body.mnav #tabs button span[data-short] { font-size: 0; }
+  body.mnav #tabs button span[data-short]::before { content: attr(data-short); font-size: .68rem; }
+  body.mnav #mnavMore svg { fill: currentColor; stroke: none; }
+  body.mnav #tabs button.active, body.mnav #mnavMore.active { color: var(--accent); background: color-mix(in srgb, var(--accent) 14%, transparent); box-shadow: none; transform: none; }
+  body.mnav #tabs button[data-badge]:not([data-badge=""])::after { position: absolute; top: 2px; left: calc(50% + 6px); margin: 0; }
+  body.mnav #mnavMore.mbadge::after { content: ""; position: absolute; top: 6px; left: calc(50% + 8px); width: 8px; height: 8px; border-radius: 50%; background: #e03131; }
+
+  /* More: every other tab in a grid above the bar */
+  body.mnav-open #mnavShade { display: block; position: fixed; inset: 0; z-index: 58; background: rgba(0,0,0,.4); animation: fadein .2s ease; }
+  body.mnav-open #mnavSheet { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; position: fixed; left: 10px; right: 10px; z-index: 59;
+    bottom: calc(74px + env(safe-area-inset-bottom)); padding: 12px; max-height: 70vh; overflow-y: auto; border-radius: 22px; border: 1px solid var(--border);
+    background: var(--panel); box-shadow: 0 -12px 40px rgba(0,0,0,.3); animation: sheetup .25s cubic-bezier(.2,.8,.2,1); }
+  #mnavSheet button { display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 14px 4px; border-radius: 16px; border: 0; background: var(--panel2); color: var(--text); font: inherit; font-size: .8rem; font-weight: 600; position: relative; }
+  #mnavSheet button svg { width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+  #mnavSheet button.active { background: color-mix(in srgb, var(--accent) 18%, var(--panel2)); color: var(--accent); }
+  #mnavSheet button[data-badge]::after { content: attr(data-badge); position: absolute; top: 6px; right: 8px; min-width: 16px; height: 16px; padding: 0 4px; border-radius: 99px; background: #e03131; color: #fff; font-size: .66rem; display: grid; place-items: center; }
+}
+@keyframes sheetup { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: none; } }
