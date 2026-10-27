@@ -23,6 +23,19 @@ While the planner is open it checks every 30 minutes from 7am to 10pm, skips
 newsletters and ads, and puts the rest into **Missed info** with any due dates
 it finds. This is free; with an API key, Claude sorts and summarises instead.
 
+## Phone app
+
+The same planner runs on your phone at
+<https://diddyfoid676767.github.io/life-planner/>. Log in with your Life
+Planner account (make one in the PC app under **Settings, Account**), then add
+it to your home screen: in Safari tap **Share, Add to Home Screen**, or in
+Chrome tap **⋮, Add to Home screen**.
+
+While the PC app is logged in to the same account, it keeps your planner in
+your own row on the friends server, so the phone and PC show the same thing.
+The email check, Strava and calendar syncing still run on the PC. The server
+needs `supabase-2.29-phone-sync.sql` run once in the Supabase SQL Editor.
+
 ## Download
 
 1. Go to [Releases](../../releases/latest) and download **LifePlanner.zip**.

@@ -160,7 +160,7 @@ func main() {
 	})
 	mux.HandleFunc("/api/info", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(map[string]string{"dataDir": dataDir, "version": version, "boot": bootID})
+		json.NewEncoder(w).Encode(map[string]any{"dataDir": dataDir, "version": version, "boot": bootID, "rev": currentRev()})
 	})
 	mux.HandleFunc("/api/quit", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
@@ -171,6 +171,7 @@ func main() {
 		go func() { time.Sleep(300 * time.Millisecond); os.Exit(0) }()
 	})
 
+	loadSyncState()
 	go watchIdle()
 	go cleanupOld()
 	go watchGitHub()
@@ -210,6 +211,7 @@ func handlePing(w http.ResponseWriter, r *http.Request) {
 	pingMu.Lock()
 	lastPing = time.Now()
 	pingMu.Unlock()
+	cloudCheck()
 	w.Header().Set("Content-Type", "application/json")
 	w.Write([]byte(`{"ok":true,"app":"life-planner"}`))
 }
@@ -230,9 +232,20 @@ func handleData(w http.ResponseWriter, r *http.Request) {
 	path := filepath.Join(dataDir, dataFileName)
 	switch r.Method {
 	case http.MethodGet:
+		// a page opening gets the phone's latest changes first (waiting at
+		// most a few seconds when the internet is slow)
+		if loadAccount() != nil {
+			done := make(chan struct{})
+			go func() { cloudSync(false); close(done) }()
+			select {
+			case <-done:
+			case <-time.After(4 * time.Second):
+			}
+		}
 		mu.Lock()
 		b, err := os.ReadFile(path)
 		mu.Unlock()
+		w.Header().Set("X-Planner-Rev", jsonInt(currentRev()))
 		w.Header().Set("Content-Type", "application/json")
 		w.Header().Set("Cache-Control", "no-store")
 		if os.IsNotExist(err) {
@@ -249,6 +262,10 @@ func handleData(w http.ResponseWriter, r *http.Request) {
 		// overwrite the data with what it has in memory
 		if r.Header.Get("X-Planner-Boot") != bootID {
 			http.Error(w, "stale page, reload", http.StatusConflict)
+			return
+		}
+		if staleRev(r) {
+			http.Error(w, "newer copy from your phone, reload", http.StatusConflict)
 			return
 		}
 		if r.Header.Get("Content-Type") != "application/json" {
@@ -271,6 +288,7 @@ func handleData(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		dailyBackup(b)
+		dataSaved()
 		w.WriteHeader(http.StatusNoContent)
 	default:
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)

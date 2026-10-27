@@ -1,6 +1,7 @@
 'use strict';
 const ONLINE = !!window.OL;
-const ONLINE_URL = 'https://claude.ai/artifact/PENDING';
+const CLOUD = ONLINE && !!window.OL.cloud; // the phone app (cloud.js)
+const PHONE_URL = 'https://diddyfoid676767.github.io/life-planner/';
 /* Life Planner front end. All data lives in one object (D) that is saved to
    data/planner-data.json next to the exe through the local server. */
 
@@ -50,7 +51,7 @@ function defaultData() {
 
 // ---------- persistence ----------
 let D = null;
-let saveTimer = null, saving = false, dirty = false, bootId = '';
+let saveTimer = null, saving = false, dirty = false, bootId = '', dataRev = 0;
 function save() {
   dirty = true;
   $('#saveState').textContent = 'Saving…';
@@ -67,8 +68,8 @@ async function flush() {
     return;
   }
   try {
-    const r = await fetch('/api/data', { method: 'PUT', headers: { 'Content-Type': 'application/json', 'X-Planner-Boot': bootId }, body: JSON.stringify(D) });
-    if (r.status === 409) { location.reload(); return; }
+    const r = await fetch('/api/data', { method: 'PUT', headers: { 'Content-Type': 'application/json', 'X-Planner-Boot': bootId, 'X-Planner-Rev': String(dataRev) }, body: JSON.stringify(D) });
+    if (r.status === 409) { if (/phone/.test(await r.text())) { await pullData(); return; } location.reload(); return; }
     if (!r.ok) throw new Error(await r.text());
     $('#saveState').textContent = 'All changes saved';
     setOffline(false);
@@ -81,8 +82,18 @@ async function flush() {
 function setOffline(off) { $('#offline').hidden = !off; }
 async function ping() {
   if (ONLINE) return;
-  try { const r = await fetch('/api/ping', { cache: 'no-store' }); if (!r.ok) throw 0; setOffline(false); const b = (await (await fetch('/api/info', { cache: 'no-store' })).json()).boot; if (bootId && b !== bootId) { location.reload(); return; } if (dirty) flush(); }
+  try { const r = await fetch('/api/ping', { cache: 'no-store' }); if (!r.ok) throw 0; setOffline(false); const inf = await (await fetch('/api/info', { cache: 'no-store' })).json(); if (bootId && inf.boot !== bootId) { location.reload(); return; } if ((inf.rev || 0) !== dataRev && !dirty && !saving) { await pullData(); return; } if (dirty) flush(); }
   catch { setOffline(true); }
+}
+// the PC app took a newer copy from the phone: load it in place
+async function pullData() {
+  try {
+    const r = await fetch('/api/data', { cache: 'no-store' }), d = await r.json();
+    if (!d) return;
+    const keepFired = D.fired; D = migrate(d); D.fired = keepFired; dataRev = +r.headers.get('X-Planner-Rev') || 0; dirty = false;
+    if (!modal.open) render(); renderFocusBar();
+    toast('Updated from your phone', 'Your planner now has the changes you made on your phone.');
+  } catch { }
 }
 
 function migrate(d) {
@@ -818,10 +829,10 @@ function viewSettings() {
     ${soundCard()}
     ${navCard()}
     ${accountCard().replace('class="card acctcard"', 'class="card acctcard" data-sec="account"')}
-    ${ONLINE ? `<div class="card" data-sec="calendars" style="grid-column:1/-1"><div class="card-head"><h2>Calendars</h2><button class="btn small" data-act="gcalRefresh">Refresh</button><button class="btn small primary" data-act="gcalChoose">Choose calendars</button></div>
+    ${ONLINE && !CLOUD ? `<div class="card" data-sec="calendars" style="grid-column:1/-1"><div class="card-head"><h2>Calendars</h2><button class="btn small" data-act="gcalRefresh">Refresh</button><button class="btn small primary" data-act="gcalChoose">Choose calendars</button></div>
       <p class="muted small-text" style="margin-top:0">Shows your Google Calendar (${(D.settings.gcal?.ids || ['primary']).length} calendar(s) selected). The first time, claude.ai asks you to allow access to Google Calendar. To include your school Outlook or Garmin calendar, subscribe to its iCal link inside Google Calendar (Other calendars → + → From URL).</p>
       ${GCAL.map(c => `<div class="row small-text"><span class="dot" style="background:${c.color};width:10px;height:10px;border-radius:50%;display:inline-block"></span>${esc(c.name)}: ${c.items.length} events${c.smart ? ` (${c.items.filter(x => !feedKeeps(c, x)).length} hidden by school filter)` : ''}</div>`).join('')}</div>` : ''}
-    <div class="card" data-sec="calendars" style="grid-column:1/-1;${ONLINE ? 'display:none' : ''}"><div class="card-head"><h2>Calendar sync (Google, Outlook, school portal)</h2>
+    <div class="card" data-sec="calendars" style="grid-column:1/-1;${ONLINE && !CLOUD ? 'display:none' : ''}"><div class="card-head"><h2>Calendar sync (Google, Outlook, school portal)</h2>
       <button class="btn small" data-act="refreshFeeds">Refresh now</button><label class="btn small">Import .ics file<input type="file" accept=".ics,text/calendar" data-change="importIcs" hidden></label><button class="btn small primary" data-act="new" data-kind="feed">+ Add calendar link</button></div>
       ${D.feeds.length ? `<ul class="list">${D.feeds.map(f => { const c = D.feedCache[f.id] || {}; return `<li class="item"><span class="dot" style="background:${f.color}"></span><div class="main"><div class="title">${esc(f.name)}${f.enabled === false ? ' <span class="tag">hidden</span>' : ''}</div>
         <div class="meta">${f.url ? '' : 'Imported file · '}${(c.items || []).length} events${f.smart || f.hide ? ` (${(c.items || []).filter(x => !feedKeeps(f, x)).length} hidden by filter)` : ''}${c.fetched ? ' · updated ' + new Date(c.fetched).toLocaleString() : ''}${c.error ? ` · <span style="color:var(--danger)">${esc(c.error)}</span>` : ''}</div></div>
@@ -873,13 +884,7 @@ function viewSettings() {
         <label><input type="checkbox" data-shortcut="startup"> Open Life Planner when Windows starts (so reminders always work)</label>
       </div>
       <p class="muted small-text">If you move the LifePlanner folder, untick and tick these again.</p></div>
-    <div class="card" data-sec="app" style="${ONLINE ? '' : 'display:none'}"><h2>Phone &amp; online</h2>
-      ${ONLINE ? `<p class="small-text" style="margin-top:0">This is the online version: it saves to your claude.ai account, so your phone and PC always show the same planner.</p>
-        <p class="small-text"><b>On your phone:</b> open this page in your browser (signed in to claude.ai), then <i>Share → Add to Home Screen</i> (iPhone) or <i>⋮ → Add to Home screen</i> (Android).</p>`
-      : `<p class="small-text" style="margin-top:0">Your planner can also live online so it's on your phone. <a href="${ONLINE_URL}" target="_blank" rel="noopener noreferrer">Open the online version ↗</a></p>
-        <p class="small-text">To move this PC's planner online: click <b>Export backup</b> above, then in the online version go to Settings → <b>Import backup</b>.</p>
-        <label class="row small-text"><input type="checkbox" data-setting="useOnline" ${D.settings.useOnline ? 'checked' : ''}> Open the online version when I start LifePlanner.exe (so PC and phone always match)</label>`}
-    </div>
+    ${phoneCard()}
     ${aiSettingsCard()}
     <div class="card" data-sec="app" style="${ONLINE ? 'display:none' : ''}"><h2>App</h2>
       <p class="small-text"><b id="verText">Version ${esc(appVersion)}</b> <button class="btn small" data-act="checkUpdateNow">Check for updates</button> · New versions download by themselves from GitHub. You can also put a LifePlanner zip in your Downloads folder.</p>
@@ -1372,8 +1377,25 @@ function gEventItem(ev) {
   const hm = d => `${pad(d.getHours())}:${pad(d.getMinutes())}`;
   return { t: ev.summary || '(no title)', d: ymd(a), s: hm(a), e: b && ymd(b) === ymd(a) ? hm(b) : '', l: ev.location || '' };
 }
+// Settings, App: the phone app. On the PC it says how to get it and whether
+// the sync is working; on the phone it says who's logged in.
+function phoneCard() {
+  if (CLOUD) return `<div class="card" data-sec="app"><h2>Phone app</h2>
+      <p class="small-text" style="margin-top:0">Logged in as <b>@${esc(OL.user())}</b>. Your planner syncs with the PC app whenever it's open and logged in to the same account.</p>
+      <p class="muted small-text">The email check, Strava and calendar syncing run on the PC, and what they find shows up here after the PC app has been open. Friends, chats and battles are in the PC app for now.</p>
+      <button class="btn small" data-act="cloudLogout">Log out on this phone</button></div>`;
+  if (ONLINE) return '';
+  const s = acct.sync || {};
+  const status = !acct.signedIn ? 'Log in under <b>Account</b> first. The phone uses the same account, and your planner syncs while you\'re logged in.'
+    : s.error ? `Sync isn't working yet: ${esc(s.error)}`
+    : s.at ? `Syncing as <b>@${esc(acct.username)}</b>. Last synced ${esc(new Date(s.at).toLocaleString())}.` : `Syncing as <b>@${esc(acct.username)}</b>. Your first sync happens in a moment.`;
+  return `<div class="card" data-sec="app"><h2>Phone app</h2>
+      <p class="small-text" style="margin-top:0">${status}</p>
+      <p class="small-text">On your phone, open <a href="${PHONE_URL}" target="_blank" rel="noopener noreferrer">${PHONE_URL.replace('https://', '')}</a> and log in.<br>
+        <b>iPhone:</b> open it in Safari, tap Share, then <i>Add to Home Screen</i>.<br><b>Android:</b> open it in Chrome, tap ⋮, then <i>Add to Home screen</i> (or <i>Install app</i>).</p></div>`;
+}
 async function loadGoogle(fresh) {
-  if (!ONLINE) return;
+  if (!ONLINE || CLOUD) return;
   const g = D.settings.gcal = D.settings.gcal || { ids: ['primary'], names: { primary: 'Google Calendar' }, smart: {} };
   const from = parseYmd(addDays(today(), -7)), to = parseYmd(addDays(today(), 60));
   const res = [];
@@ -1778,6 +1800,7 @@ document.addEventListener('click', e => {
     case 'exportIcs': exportIcs(); break;
     case 'refreshFeeds': refreshFeeds(true); break;
     case 'gcalChoose': chooseCalendars(); break;
+    case 'cloudLogout': if (confirm('Log out on this phone? Your planner stays saved in your account.')) OL.logout(); break;
     case 'gcalRefresh': loadGoogle(true); break;
     case 'focus': startFocus(el.dataset.subject, el.dataset.id); break;
     case 'focusPause': pauseFocus(); break;
@@ -1884,7 +1907,7 @@ async function initOnline() {
     $('#saveState').textContent = 'Saved online';
   } catch (e) {
     D = defaultData();
-    $('#view').innerHTML = `<div class="card"><h2>Can't open your planner</h2><p>${esc(e.message || 'Sign in to claude.ai and reload this page.')}</p></div>`;
+    $('#view').innerHTML = `<div class="card"><h2>Can't open your planner</h2><p>${esc(e.message || 'Sign in to claude.ai and reload this page.')}</p>${CLOUD ? '<button class="btn" onclick="location.reload()">Try again</button>' : ''}</div>`;
     return;
   }
   render();
@@ -1918,8 +1941,10 @@ function bootDone(skip) {
 (async function init() {
   if (ONLINE) { bootDone(true); return initOnline(); }
   try {
-    bootId = (await (await fetch('/api/info', { cache: 'no-store' })).json()).boot || '';
+    const inf = await (await fetch('/api/info', { cache: 'no-store' })).json();
+    bootId = inf.boot || '';
     const r = await fetch('/api/data', { cache: 'no-store' });
+    dataRev = +r.headers.get('X-Planner-Rev') || 0;
     const d = await r.json();
     D = migrate(d || freshData());
     if (!d) save();

@@ -2577,3 +2577,23 @@ main#view { padding-bottom: 80px; }
 .clsdone.absent { color: var(--muted); }
 .pbunk { background: none; border: 0; padding: 2px 0; color: var(--accent); font-size: .78rem; cursor: pointer; text-align: left; }
 .pbunk:hover { text-decoration: underline; }
+
+/* ---------- 2.29: phone app ---------- */
+.cloud-login { position: fixed; inset: 0; z-index: 400; display: grid; place-items: center; padding: 16px; background: var(--bg); }
+.cloud-login form { width: min(380px, 100%); display: flex; flex-direction: column; gap: 12px; text-align: center; }
+.cloud-login img { margin: 0 auto; }
+.cloud-login h2 { margin: 0; }
+.cloud-login label { display: flex; flex-direction: column; gap: 4px; text-align: left; font-weight: 600; }
+.cloud-login input { font-size: 16px; } /* 16px stops iPhone zooming in */
+.cloud-err { color: var(--danger, #e03131); margin: 0; }
+@media (max-width: 860px) {
+  .sidebar { padding-top: max(8px, env(safe-area-inset-top)); padding-left: max(10px, env(safe-area-inset-left)); padding-right: max(10px, env(safe-area-inset-right)); }
+  main { padding-bottom: max(16px, env(safe-area-inset-bottom)); }
+  #tabs .navgroup, #tabs .navh-add { display: none !important; }
+}
+@media (max-width: 640px) {
+  #toasts { left: 8px; right: 8px; bottom: max(8px, env(safe-area-inset-bottom)); max-width: none; }
+  #toasts .toast:nth-last-child(n+3) { display: none; } /* two at a time on a phone */
+  .toast { padding: 9px 12px; }
+  .twelcome { flex-wrap: wrap; } .twelcome .muted { flex-basis: 100%; order: 2; }
+}

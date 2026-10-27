@@ -166,6 +166,7 @@ func handleAccount(w http.ResponseWriter, r *http.Request) {
 		resp := map[string]any{"configured": true, "signedIn": a != nil, "rt": realtimeConfig()}
 		if a != nil {
 			resp["username"] = a.Username
+			resp["sync"] = syncInfo()
 		}
 		json.NewEncoder(w).Encode(resp)
 	case http.MethodPost:
@@ -224,12 +225,14 @@ func handleAccount(w http.ResponseWriter, r *http.Request) {
 				writeErr(w, http.StatusInternalServerError, "Couldn't save your login.")
 				return
 			}
+			go cloudSync(false)
 			json.NewEncoder(w).Encode(map[string]any{"ok": true, "username": user})
 		case "logout":
 			if a := loadAccount(); a != nil {
 				supa("POST", "/auth/v1/logout", a.Access, nil, nil)
 			}
 			os.Remove(accountPath())
+			forgetSync()
 			json.NewEncoder(w).Encode(map[string]any{"ok": true})
 		case "delete":
 			a, err := session()
@@ -237,11 +240,13 @@ func handleAccount(w http.ResponseWriter, r *http.Request) {
 				writeErr(w, http.StatusUnauthorized, err.Error())
 				return
 			}
+			supa("DELETE", "/rest/v1/planner_data?user_id=eq."+url.QueryEscape(a.UserID), a.Access, nil, nil)
 			if _, err := supa("DELETE", "/rest/v1/profiles?id=eq."+url.QueryEscape(a.UserID), a.Access, nil, nil); err != nil {
 				writeErr(w, http.StatusBadGateway, err.Error())
 				return
 			}
 			os.Remove(accountPath())
+			forgetSync()
 			json.NewEncoder(w).Encode(map[string]any{"ok": true})
 		default:
 			writeErr(w, http.StatusBadRequest, "unknown action")
