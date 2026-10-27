@@ -946,8 +946,9 @@ function viewSettings() {
       ${remindRow('assessment', 'SACs &amp; exams')}${remindRow('session', 'Study sessions')}${remindRow('tevent', 'Training events')}${remindRow('workout', 'Workouts')}${remindRow('event', 'Personal events')}${remindRow('todo', 'Tasks with a due date')}</tbody></table></div>
       <p class="muted small-text">Columns are how long before each item you get reminded.</p></div>
     <div class="card" data-sec="backup"><h2>Backup &amp; sync</h2>
-      <p class="muted small-text" style="margin-top:0">Your data is in <code>data\\planner-data.json</code> next to LifePlanner.exe. A daily backup is kept in <code>data\\backups</code> (last 14 days).</p>
+      <p class="muted small-text" style="margin-top:0">${ONLINE ? 'Your planner is saved to your account and to this device. Backups are kept by the PC app.' : 'Your data is in <code>data\\planner-data.json</code> next to LifePlanner.exe. Backups are kept in <code>data\\backups</code>: every hour for two days, every day for two weeks, and a copy of your planner whenever something replaces it.'}</p>
       <div class="row"><button class="btn" data-act="exportJson">Export backup (.json)</button><label class="btn">Import backup<input type="file" accept=".json,application/json" data-change="importJson" hidden></label></div>
+      ${ONLINE ? '' : backupList()}
       <div class="row" style="margin-top:8px"><button class="btn" data-act="exportIcs">Export to calendar (.ics)</button></div>
       <p class="muted small-text">The .ics file can be imported into Google Calendar, Outlook or your phone's calendar. It includes your reminders.</p></div>
     <div class="card" data-sec="app" style="${ONLINE ? 'display:none' : ''}"><h2>Use it like a normal app</h2>
@@ -1719,12 +1720,56 @@ async function loadStarter(quiet) {
     return added > 0;
   } catch { if (!quiet) alert('Could not load the starter plan.'); return false; }
 }
+// ---------- the backups list (Settings, Backup & sync) ----------
+const BK_KIND = { daily: 'Start of the day', hourly: 'Hourly', 'before-cloud': "Before the phone's changes came in", 'before-sync': 'Before phone sync was first set up', 'before-restore': 'Before you restored a backup', 'before-import': 'Before you imported a file', replaced: 'Before a much smaller save', 'cloud-smaller': "A much emptier copy from the phone (not used)", damaged: "A damaged file (can't be restored)" };
+function bkContents(c) {
+  if (!c) return '';
+  const parts = [[c.sacs, 'SAC', 'SACs'], [c.study, 'study block', 'study blocks'], [c.workouts, 'workout', 'workouts'], [c.gym, 'gym session', 'gym sessions'], [c.focus, 'focus session', 'focus sessions'], [c.todos, 'task', 'tasks'], [c.events, 'event', 'events']];
+  return parts.filter(p => p[0]).map(p => `${p[0]} ${p[0] === 1 ? p[1] : p[2]}`).join(' · ') || 'Empty planner';
+}
+function bkWhen(iso) {
+  const d = new Date(iso), t = `${d.getHours() % 12 || 12}:${pad(d.getMinutes())}${d.getHours() >= 12 ? 'pm' : 'am'}`;
+  return d.getHours() + d.getMinutes() + d.getSeconds() ? `${fmtDate(ymd(d))}, ${t}` : fmtDate(ymd(d));
+}
+function backupList() {
+  const B = ui.backups;
+  if (!B) return `<div class="row" style="margin-top:8px"><button class="btn" data-act="showBackups">Restore a backup…</button></div>`;
+  if (B.error) return `<p class="muted small-text">Couldn't load the backups: ${esc(B.error)}</p>`;
+  const list = B.all ? B.list : B.list.slice(0, 15);
+  return `<div class="bklist"><h3>Backups</h3><p class="muted small-text">Pick one to put it back. Your planner as it is right now is kept as a backup first, so restoring can always be undone.</p>
+    ${list.length ? '' : '<p class="muted small-text">No backups yet. One is made the first time your planner saves each hour.</p>'}
+    ${list.map(b => `<div class="bkrow"><div><b>${esc(bkWhen(b.at))}</b> <span class="muted small-text">${esc(BK_KIND[b.kind] || b.kind)}</span><div class="muted small-text">${b.damaged ? "Damaged, can't be read" : esc(bkContents(b.counts))}</div></div>
+      ${b.damaged ? '' : `<button class="btn small" data-act="restoreBackup" data-v="${esc(b.name)}">Restore</button>`}</div>`).join('')}
+    ${!B.all && B.list.length > 15 ? `<button class="btn small" data-act="allBackups">Show all ${B.list.length}</button>` : ''}</div>`;
+}
+async function showBackups() {
+  try {
+    const r = await fetch('/api/backups', { cache: 'no-store' }); if (!r.ok) throw new Error(await r.text());
+    const j = await r.json(); ui.backups = { list: j.backups || [] };
+  } catch (e) { ui.backups = { error: e.message || 'the app is not running' }; }
+  render();
+}
+async function restoreBackup(name) {
+  const b = ui.backups?.list.find(x => x.name === name); if (!b) return;
+  if (!confirm(`Put back your planner from ${bkWhen(b.at)}?\n\n${bkContents(b.counts)}\n\nYour planner as it is now is kept as a backup first, so you can undo this.`)) return;
+  await saveNow();
+  try {
+    const r = await fetch('/api/backups', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name }) });
+    if (!r.ok) throw new Error((await r.text()).trim());
+  } catch (e) { toast("Couldn't restore", e.message || 'Is Life Planner still running?'); return; }
+  try { localStorage.removeItem('lpUnsaved'); } catch { }
+  await pullData(true);
+  ui.backups = null; await showBackups();
+  toast('✅ Restored', `Your planner is back to how it was on ${bkWhen(b.at)}.`, { timeout: 10000 });
+}
+
 async function checkTempFolder() {
   try {
     const inf = await (await fetch('/api/info')).json();
     const b = $('#tempWarn');
     if (inf.temp && b) { b.hidden = false; b.innerHTML = "You opened Life Planner from inside the zip. Your planner is still saved, but updates can't install like this. Close it, right-click the zip, choose <b>Extract All</b>, then open LifePlanner.exe from the extracted folder."; }
     let seen = ''; try { seen = localStorage.getItem('lpCarried') || ''; localStorage.setItem('lpCarried', inf.carried || ''); } catch { }
+    if (inf.recovered) { let said = ''; try { said = sessionStorage.getItem('lpRecovered') || ''; sessionStorage.setItem('lpRecovered', inf.recovered); } catch { } if (said !== inf.recovered) toast('🛟 Your planner was put back', `The planner file couldn't be read, so Life Planner opened your newest backup instead. Settings, Backup & sync lists every backup.`, { timeout: 15000 }); }
     if (inf.carried && seen !== inf.carried) toast('📦 Your planner came with you', `This copy of Life Planner started empty, so it brought over your planner from ${inf.carried}.`, { timeout: 15000 });
   } catch { }
 }
@@ -1890,6 +1935,9 @@ document.addEventListener('click', e => {
     case 'clearDone': if (confirm('Remove all completed tasks?')) { D.todos = D.todos.filter(x => !x.done); save(); render(); } break;
     case 'askNotify': askNotify(); break;
     case 'testNotify': notify('Test reminder', 'This is what a reminder looks like.', 'test'); break;
+    case 'showBackups': showBackups(); break;
+    case 'allBackups': ui.backups.all = true; render(); break;
+    case 'restoreBackup': restoreBackup(el.dataset.v); break;
     case 'exportJson': download(`life-planner-backup-${today()}.json`, JSON.stringify(D, null, 2), 'application/json'); break;
     case 'exportIcs': exportIcs(); break;
     case 'refreshFeeds': refreshFeeds(true); break;
@@ -1973,8 +2021,10 @@ document.addEventListener('change', e => {
     el.files[0].text().then(txt => {
       let d; try { d = JSON.parse(txt); } catch { alert('That file is not valid JSON.'); return; }
       if (!d || !Array.isArray(d.subjects)) { alert("That doesn't look like a Life Planner backup."); return; }
-      if (!confirm('Replace ALL current planner data with this backup?')) return;
-      D = migrate(d); save(); render(); toast('Backup imported', '');
+      if (!confirm('Replace ALL current planner data with this backup?' + (ONLINE ? '' : ' Your planner as it is now is kept in Settings, Restore a backup, so you can undo this.'))) return;
+      const done = () => { D = migrate(d); save(); render(); toast('Backup imported', ''); };
+      if (ONLINE) return done();
+      saveNow().then(() => fetch('/api/backups', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ snapshot: 'before-import' }) })).catch(() => { }).then(done);
     });
   }
 });

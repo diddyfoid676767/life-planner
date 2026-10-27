@@ -100,6 +100,7 @@ func main() {
 	}))
 	mux.HandleFunc("/api/ping", handlePing)
 	mux.HandleFunc("/api/data", handleData)
+	mux.HandleFunc("/api/backups", handleBackups)
 	mux.HandleFunc("/api/feed", handleFeed)
 	mux.HandleFunc("/api/inbox", handleInbox)
 	mux.HandleFunc("/api/inbox/dismissed", handleInboxDismissed)
@@ -165,7 +166,7 @@ func main() {
 	})
 	mux.HandleFunc("/api/info", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(map[string]any{"dataDir": dataDir, "version": version, "boot": bootID, "rev": currentRev(), "hash": dataHash(), "carried": carriedFrom, "temp": inTempFolder(filepath.Dir(exePath()))})
+		json.NewEncoder(w).Encode(map[string]any{"dataDir": dataDir, "version": version, "boot": bootID, "rev": currentRev(), "hash": dataHash(), "carried": carriedFrom, "recovered": plannerRecovered, "temp": inTempFolder(filepath.Dir(exePath()))})
 	})
 	mux.HandleFunc("/api/quit", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
@@ -249,6 +250,11 @@ func handleData(w http.ResponseWriter, r *http.Request) {
 		}
 		mu.Lock()
 		b, err := os.ReadFile(path)
+		if _, ok := summarise(b); (err == nil && !ok) || os.IsNotExist(err) {
+			if got := recoverPlanner(path, b); got != nil {
+				b, err = got, nil
+			}
+		}
 		mu.Unlock()
 		w.Header().Set("X-Planner-Rev", jsonInt(currentRev()))
 		w.Header().Set("X-Planner-Hash", hashOf(b))
@@ -302,8 +308,7 @@ func handleData(w http.ResponseWriter, r *http.Request) {
 		}
 		// a much smaller planner replacing a big one is kept aside, just in case
 		if len(cur) > 20<<10 && len(b) < len(cur)/3 {
-			os.MkdirAll(filepath.Join(dataDir, "backups"), 0o755)
-			os.WriteFile(filepath.Join(dataDir, "backups", "replaced-"+time.Now().Format("2006-01-02-150405")+".json"), cur, 0o644)
+			keepBackup("replaced", cur)
 			log.Printf("planner shrank from %d to %d bytes; the old one is in backups", len(cur), len(b))
 		}
 		if err := saveAtomic(path, b); err != nil {
@@ -337,15 +342,32 @@ func dataHash() string {
 	return hashOf(b)
 }
 
+// saveAtomic writes the whole file to disk before it takes the old one's
+// place, so a crash or power cut mid-save leaves the old planner, never half
+// a new one. The copy before this save stays as planner-data.json.prev.
 func saveAtomic(path string, b []byte) error {
 	tmp := path + ".tmp"
-	if err := os.WriteFile(tmp, b, 0o644); err != nil {
+	f, err := os.OpenFile(tmp, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0o644)
+	if err != nil {
 		return err
+	}
+	_, err = f.Write(b)
+	if err == nil {
+		err = f.Sync()
+	}
+	if cerr := f.Close(); err == nil {
+		err = cerr
+	}
+	if err != nil {
+		os.Remove(tmp)
+		return err
+	}
+	if old, err := os.ReadFile(path); err == nil && len(old) > 0 && json.Valid(old) {
+		os.WriteFile(path+".prev", old, 0o644)
 	}
 	return os.Rename(tmp, path)
 }
 
-// dailyBackup keeps one snapshot per day for the last 14 days in data/backups.
 // dailyBackup keeps the first copy of each day for 14 days, and the first
 // copy of each hour for two days.
 func dailyBackup(b []byte) {
@@ -353,10 +375,7 @@ func dailyBackup(b []byte) {
 		name := filepath.Join(dir, "planner-"+time.Now().Format("2006-01-02-15")+".json")
 		if _, err := os.Stat(name); err != nil {
 			os.WriteFile(name, b, 0o644)
-			entries, _ := os.ReadDir(dir)
-			for i := 0; i < len(entries)-48; i++ {
-				os.Remove(filepath.Join(dir, entries[i].Name()))
-			}
+			pruneBackups(dir, "planner-", 48)
 		}
 	}
 	dir := filepath.Join(dataDir, "backups")
@@ -368,10 +387,7 @@ func dailyBackup(b []byte) {
 		return
 	}
 	os.WriteFile(name, b, 0o644)
-	entries, _ := os.ReadDir(dir)
-	for i := 0; i < len(entries)-14; i++ {
-		os.Remove(filepath.Join(dir, entries[i].Name()))
-	}
+	pruneBackups(dir, "planner-", 14)
 }
 
 func openBrowser(url string) {

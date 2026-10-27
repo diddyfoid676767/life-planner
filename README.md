@@ -55,6 +55,18 @@ Changes are also kept in the browser until the app has saved them, so closing
 the app, a restart or an update can't lose them: they save as soon as the app
 is open again.
 
+## Backups
+
+Your planner is `data/planner-data.json` next to LifePlanner.exe. Copies are
+kept in `data/backups`: the first save of every hour for two days, the first
+save of every day for two weeks, and a copy of the planner whenever something
+replaces it (the phone's changes coming in, a restore, an import, or a much
+smaller save). Settings, Backup, **Restore a backup…** lists them all with
+what's in each one, and puts any of them back with one click (the planner it
+replaces is kept too, so a restore can be undone). Saves are written fully to
+disk before they replace the old file, and if the planner file is ever damaged
+or missing, the app opens the newest good backup instead of an empty planner.
+
 ## Feedback
 
 **Send feedback** (sidebar, or Settings, App) sends a bug report or idea to the

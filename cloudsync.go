@@ -134,8 +134,7 @@ func cloudSync(push bool) {
 				if takeCloud {
 					keep, _ = os.ReadFile(path)
 				}
-				os.MkdirAll(filepath.Join(dataDir, "backups"), 0o755)
-				os.WriteFile(filepath.Join(dataDir, "backups", "before-sync-"+time.Now().Format("2006-01-02-150405")+".json"), keep, 0o644)
+				keepBackup("before-sync", keep)
 			}
 		}
 		// the first time, this PC's planner goes up unless it has none yet
@@ -148,8 +147,7 @@ func cloudSync(push bool) {
 			// a much emptier cloud copy never replaces a full planner here: it's
 			// kept in backups and this PC's planner goes up instead
 			if local != nil && local.Size() > 20<<10 && int64(len(rows[0].Data)) < local.Size()/3 {
-				os.MkdirAll(filepath.Join(dataDir, "backups"), 0o755)
-				os.WriteFile(filepath.Join(dataDir, "backups", "cloud-smaller-"+time.Now().Format("2006-01-02-150405")+".json"), rows[0].Data, 0o644)
+				keepBackup("cloud-smaller", rows[0].Data)
 				log.Printf("phone sync: cloud copy (%d bytes) much smaller than this PC's (%d), keeping this PC's", len(rows[0].Data), local.Size())
 				syncMu.Lock()
 				syncSt.Pending = true
@@ -158,8 +156,7 @@ func cloudSync(push bool) {
 			}
 			mu.Lock()
 			if old, err := os.ReadFile(path); err == nil && len(old) > 0 { // the copy it replaces, just in case
-				os.MkdirAll(filepath.Join(dataDir, "backups"), 0o755)
-				os.WriteFile(filepath.Join(dataDir, "backups", "before-cloud-"+time.Now().Format("2006-01-02-150405")+".json"), old, 0o644)
+				keepBackup("before-cloud", old)
 			}
 			err := saveAtomic(path, rows[0].Data)
 			if err == nil {
