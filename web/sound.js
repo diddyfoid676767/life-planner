@@ -11,7 +11,8 @@ function sndCtx() {
   if (SND.ctx) { if (SND.ctx.state === 'suspended') SND.ctx.resume(); return SND.ctx; }
   const AC = window.AudioContext || window.webkitAudioContext; if (!AC) return null;
   const c = SND.ctx = new AC();
-  const comp = c.createDynamicsCompressor(); comp.threshold.value = -18; comp.ratio.value = 4; comp.connect(c.destination);
+  // the volume sits after the compressor: before it, the compressor's makeup gain undid the slider
+  const comp = c.createDynamicsCompressor(); comp.threshold.value = -18; comp.ratio.value = 4; SND.master = c.createGain(); comp.connect(SND.master); SND.master.connect(c.destination);
   SND.out = c.createGain(); SND.out.connect(comp);
   // a short soft echo shared by everything, so sounds feel less dry
   const dl = c.createDelay(); dl.delayTime.value = .09; const fb = c.createGain(); fb.gain.value = .22; const wet = c.createGain(); wet.gain.value = .18; const lp = c.createBiquadFilter(); lp.frequency.value = 2400;
@@ -135,7 +136,7 @@ function battleSfx(side, kind, d = {}) {
 function sfxReady(group) {
   const cfg = sndCfg(); if (!cfg.on || !cfg.vol || (group && cfg[group] === false)) return null;
   const c = sndCtx(); if (!c || c.state !== 'running') return null;
-  SND.out.gain.value = cfg.vol * cfg.vol;
+  SND.master.gain.value = Math.pow(cfg.vol, 2.2) * .8;
   return c;
 }
 function sfx(name, { gap = 0 } = {}) {
@@ -194,14 +195,14 @@ function soundCard() {
   const c = sndCfg(), row = (k, l, d) => `<label class="sndrow"><input type="checkbox" data-snd="${k}" ${c[k] !== false ? 'checked' : ''}><span><b>${l}</b><span class="muted small-text">${d}</span></span></label>`;
   return `<div class="card sndcard" data-sec="sound"><div class="card-head"><h2>🔊 Sound effects</h2></div>
     ${row('on', 'Sound on', 'Every sound in the app')}
-    <div class="sndvol"><span>🔈</span><input type="range" min="0" max="1" step="0.05" value="${c.vol}" data-snd="vol" ${c.on ? '' : 'disabled'}><span>🔊</span><b>${Math.round(c.vol * 100)}%</b></div>
+    <div class="sndvol"><span>🔈</span><input type="range" min="0" max="1" step="0.01" value="${c.vol}" data-snd="vol" ${c.on ? '' : 'disabled'}><span>🔊</span><b>${Math.round(c.vol * 100)}%</b></div>
     <div class="sndgroups ${c.on ? '' : 'off'}">${row('ui', 'Buttons and menus', 'Clicks, tabs, coins and purchases')}${row('hover', 'Hover ticks', 'A tiny tick when your mouse moves over a button')}${row('garden', 'Garden', 'Rustling trees, popping bubbles, watering and planting')}${row('ambience', 'Garden ambience', 'Birds by day, crickets at night, while the garden is open')}${row('arena', 'Arena battles', 'Hits, misses, crits, healing and a sound for each kind of move')}</div>
     <button class="btn small" data-snd-test="1">▶ Play a test sound</button></div>`;
 }
 document.addEventListener('input', e => {
   const k = e.target.dataset?.snd; if (!k) return;
   D.settings.sound = { ...sndCfg(), [k]: k === 'vol' ? +e.target.value : e.target.checked };
-  if (k === 'vol') { const b = e.target.parentNode.querySelector('b'); if (b) b.textContent = Math.round(+e.target.value * 100) + '%'; sfx('coin', { gap: 90 }); save(); return; }
+  if (k === 'vol') { const b = e.target.parentNode.querySelector('b'); if (b) b.textContent = Math.round(+e.target.value * 100) + '%'; if (SND.master) SND.master.gain.value = Math.pow(+e.target.value, 2.2) * .8; sfx('coin', { gap: 90 }); save(); return; }
   save(); render();
 });
 document.addEventListener('click', e => { if (e.target.closest?.('[data-snd-test]')) { sndCtx(); setTimeout(() => sfx('buy'), 30); } });

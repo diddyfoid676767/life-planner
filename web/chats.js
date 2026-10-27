@@ -7,6 +7,7 @@
 let myBadges = [], myJersey;
 let chatList = [], chatBlocks = [], chatSetup = false, chatLoadedAt = 0, chatOpen = null, chatMsgs = [], chatBusy = false, chatErr = '';
 const chatDrafts = {};
+const chatMuted = id => !!((window.D && D.settings.chatMute) || {})[id];
 
 // ---------- badges ----------
 const BADGES = { dev: ['🛠️', 'DEV', 'Made Life Planner'], beta: ['🧪', 'BETA', 'Signed up during the beta'] };
@@ -65,20 +66,20 @@ async function refreshChats(force) {
     // a toast for new messages in chats you're not looking at
     for (const c of chatList) {
       const was = before.get(c.id);
-      if (before.size && c.last && c.last.u !== acct.username && c.unread && (was === undefined || c.last.id > was) && !(view === 'chats' && chatOpen === c.id) && !chatBlocks.includes(c.last.u))
-        toast(`💬 ${chatTitle(c)}`, (c.is_group ? '@' + c.last.u + ': ' : '') + c.last.body, { actions: [['Open', () => { view = 'chats'; openChat(c.id); }]] });
+      if (before.size && c.last && c.last.u !== acct.username && c.unread && !chatMuted(c.id) && (was === undefined || c.last.id > was) && !(view === 'friends' && chatOpen === c.id) && !chatBlocks.includes(c.last.u))
+        toast(`💬 ${chatTitle(c)}`, (c.is_group ? '@' + c.last.u + ': ' : '') + c.last.body, { actions: [['Open', () => { view = 'friends'; openChat(c.id); }]] });
     }
   } catch (e) { chatErr = e.message; }
   updateChatBadge();
-  if (view === 'chats' && !modal.open) drawChatList();
+  if (view === 'friends' && !modal.open) drawChatList();
 }
 function updateChatBadge() {
-  const b = document.querySelector('#tabs button[data-view=chats]'); if (!b) return;
-  const n = chatList.reduce((s, c) => s + (+c.unread || 0), 0);
+  const b = document.querySelector('#tabs button[data-view=friends]'); if (!b) return;
+  const n = chatList.reduce((s, c) => s + (chatMuted(c.id) ? 0 : +c.unread || 0), 0);
   b.dataset.badge = n ? (n > 99 ? '99+' : n) : '';
 }
 setInterval(() => refreshChats(), 30000);
-setInterval(() => { if (view === 'chats' && chatOpen && document.visibilityState === 'visible') pollChat(); }, 3500);
+setInterval(() => { if (view === 'friends' && chatOpen && document.visibilityState === 'visible') pollChat(); }, 3500);
 
 const others = c => (c.members || []).filter(m => m.u !== acct.username);
 function chatTitle(c) {
@@ -94,7 +95,7 @@ function chatAvatar(c, size) {
 }
 
 async function openChat(id) {
-  chatOpen = id; chatMsgs = []; view = 'chats'; render();
+  chatOpen = id; chatMsgs = []; view = 'friends'; render();
   await pollChat(true);
 }
 async function pollChat(first) {
@@ -115,14 +116,12 @@ async function pollChat(first) {
 }
 
 // ---------- the page ----------
-function viewChats() {
-  if (ONLINE) return `${pageHead('💬 Chats', '')}<div class="card"><p>Chats live in the PC app.</p></div>`;
-  if (!acctLoaded) { loadAccount().then(() => { if (view === 'chats') render(); }); return `${pageHead('💬 Chats', '')}<div class="card"><p class="muted">Loading…</p></div>`; }
-  if (!acct.signedIn) return `${pageHead('💬 Chats', 'Message your friends and make group chats')}${accountCard()}`;
+function viewChats(embedded) {
+  if (ONLINE || !acctLoaded || !acct.signedIn) return '';
   if (!chatLoadedAt) refreshChats(true);
   const c = chatList.find(x => x.id === chatOpen);
   if (c) setTimeout(() => { const b = document.getElementById('chatMsgs'); if (b) b.scrollTop = b.scrollHeight; document.getElementById('chatInput')?.focus(); });
-  return `${pageHead('💬 Chats', 'Message your friends and make group chats', `<button class="btn primary" data-chat="new">✏️ New chat</button>`)}
+  return `<div class="row chatbar"><h2 style="margin:0">💬 Chats</h2><span style="flex:1"></span><button class="btn small primary" data-chat="new">✏️ New chat</button></div>
     <div class="chatwrap ${c ? 'open' : ''}"><div class="card chatside"><ul class="chatlist" id="chatList">${chatListHtml()}</ul></div>
       <div class="card chatmain">${c ? chatPaneHtml(c) : `<div class="chatempty"><div class="acct-hero">💬</div><p class="muted">${chatList.length ? 'Pick a chat on the left.' : 'Start a chat with a friend, or make a group.'}</p><button class="btn primary" data-chat="new">✏️ New chat</button></div>`}</div></div>`;
 }
@@ -134,7 +133,7 @@ function chatListHtml() {
     const l = c.last, blocked = l && chatBlocks.includes(l.u);
     return `<li class="${c.id === chatOpen ? 'on' : ''} ${c.unread ? 'unread' : ''}" data-chat="open" data-id="${esc(c.id)}">${chatAvatar(c, 40)}
       <div class="main"><b>${esc(chatTitle(c))}${!c.is_group ? badgeTags(others(c)[0]?.b, true) : ''}</b><small>${l ? (blocked ? 'Hidden message' : esc((l.u === acct.username ? 'You: ' : c.is_group ? l.u + ': ' : '') + l.body)) : c.is_group ? `${(c.members || []).length} people` : 'Say hi 👋'}</small></div>
-      <div class="chatmeta">${l ? `<small>${esc(chatWhen(l.at))}</small>` : ''}${c.unread ? `<span class="chatunread">${c.unread}</span>` : ''}</div></li>`;
+      <div class="chatmeta">${l ? `<small>${esc(chatWhen(l.at))}</small>` : ''}${chatMuted(c.id) ? '<span title="Muted">🔕</span>' : ''}${c.unread ? `<span class="chatunread ${chatMuted(c.id) ? 'muted' : ''}">${c.unread}</span>` : ''}</div></li>`;
   }).join('');
 }
 function drawChatList() { const ul = document.getElementById('chatList'); if (ul) ul.innerHTML = chatListHtml(); }
@@ -150,6 +149,7 @@ function chatPaneHtml(c) {
   return `<div class="chathead"><button class="iconbtn chatback" data-chat="back" title="Back">‹</button>${chatAvatar(c, 40)}<div class="main"><b>${esc(chatTitle(c))}${!c.is_group ? badgeTags(o[0]?.b) : ''}</b><small>${esc(sub)}</small></div>
       <details class="chatmenu"><summary class="iconbtn" title="More">⋯</summary><div class="chatmenu-pop">
         ${c.is_group ? `<button data-chat="rename">✏️ Rename group</button><button data-chat="add">➕ Add people</button><button data-chat="members">👥 People</button>` : o[0] ? `<button data-chat="block" data-u="${esc(o[0].u)}">${chatBlocks.includes(o[0].u) ? '✅ Unblock' : '🚫 Block'} @${esc(o[0].u)}</button><button data-chat="report" data-u="${esc(o[0].u)}">🚩 Report @${esc(o[0].u)}</button>` : ''}
+        <button data-chat="mute">${chatMuted(c.id) ? '🔔 Unmute' : '🔕 Mute'} ${c.is_group ? 'group' : 'chat'}</button>
         <button data-chat="leave" class="danger">🚪 ${c.is_group ? 'Leave group' : 'Delete chat'}</button></div></details></div>
     <div class="chatmsgs" id="chatMsgs">${chatMsgsHtml(c)}</div>
     ${!c.is_group && o[0] && chatBlocks.includes(o[0].u) ? `<p class="muted small-text chatnote">You blocked @${esc(o[0].u)}. Unblock them to send messages.</p>` :
@@ -222,6 +222,7 @@ async function chatAction(el) {
   const run = async (fn, args, ok) => { try { const r = await chatCall(fn, args); if (ok) toast(ok, ''); return r ?? true; } catch (e) { toast('Hmm, that didn\'t work', e.message, { cls: 'danger' }); return null; } };
   if (a === 'open') return openChat(el.dataset.id);
   if (a === 'back') { chatOpen = null; render(); return; }
+  if (a === 'mute') { const m = D.settings.chatMute = D.settings.chatMute || {}; if (m[chatOpen]) delete m[chatOpen]; else m[chatOpen] = true; save(); updateChatBadge(); render(); toast(m[chatOpen] ? '🔕 Muted' : '🔔 Unmuted', m[chatOpen] ? 'No pop-ups or badge for this chat. New messages still show in the list.' : ''); return; }
   if (a === 'new') return chatPicker('new');
   if (a === 'add') { el.closest('details')?.removeAttribute('open'); return chatPicker('add'); }
   if (a === 'toFriends') { modal.close(); view = 'friends'; render(); return; }

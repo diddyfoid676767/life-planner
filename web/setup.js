@@ -3,8 +3,12 @@
    name, classes, bell times and training week. It also re-runs from Settings
    to change those things without touching anything else. */
 
-const WIZ_STEPS = ['You', 'Classes', 'School day', 'Timetable', 'Training', 'Habits'];
-const WZ_TRAIN = 4, WZ_HABITS = 5;
+const WIZ_ALL = [['you', 'You'], ['account', 'Account'], ['classes', 'Classes'], ['calendar', 'Calendar'], ['school', 'School day'], ['tt', 'Timetable'], ['train', 'Training'], ['habits', 'Habits']];
+// the account step is only there when accounts are switched on
+const wizKeys = () => WIZ_ALL.filter(([k]) => k !== 'account' || !ONLINE).map(([k]) => k);
+const wizStepOf = k => Math.max(0, wizKeys().indexOf(k));
+// for a 2-week timetable we ask which week it is, and anchor Day 1 to a Monday so the days can't slip
+const wizWeekStart = () => { let d = mondayOf(today()); if (parseYmd(today()).getDay() === 6 || parseYmd(today()).getDay() === 0) d = addDays(d, 7); const sd = schoolCfg().days; while (!sd.includes(parseYmd(d).getDay())) d = addDays(d, 1); return d; };
 const WIZ_SPORTS = ['Running', 'Strength / Gym', 'Speed / Agility', 'Team sport', 'Cycling', 'Swimming', 'Hiking', 'Other'];
 let wiz = null;
 
@@ -26,7 +30,9 @@ function openSetup(first) {
     bells: sc.bells.map(b => ({ ...b })), cycle: sc.cycle.len || 0, cday: sc.cycle.len ? cycleDay(today()) || 1 : 1, days: [...sc.days],
     goal: s.trainingGoal || '', week: [1, 2, 3, 4, 5, 6, 0].map(d => ({ d, sport: '', time: '16:30', mins: 45 })), weeks: 6,
     bed: bedCfg().on, bedTime: bedCfg().time, daily: +s.dailyGoal || 60,
+    feeds: D.feeds.map(f => ({ id: f.id, name: f.name, url: f.url })),
   };
+  wiz.wk = sc.cycle.len && cycleDay(wizWeekStart()) > sc.cycle.len / 2 ? 'B' : 'A';
   if (!wiz.subjects.length) wiz.subjects = [{ name: '' }, { name: '' }, { name: '' }, { name: '' }, { name: '' }];
   // the saved timetable, as "day|bell index" -> subject (an index into wiz.subjects, or free / sport)
   wiz.tt = {};
@@ -54,8 +60,8 @@ function drawSetup() {
     ov = document.createElement('div'); ov.id = 'wizfx'; ov.className = 'treefx wizfx'; document.body.appendChild(ov);
     ov.addEventListener('click', wizClick);
   }
-  const W = wiz, st = W.step;
-  const dots = st < 0 ? '' : `<div class="wizdots">${WIZ_STEPS.map((n, i) => `<span class="${i === st ? 'on' : i < st ? 'done' : ''}">${i < st ? '✓' : i + 1} ${n}</span>`).join('')}</div>`;
+  const W = wiz, st = W.step, keys = wizKeys(), key = keys[st];
+  const dots = st < 0 ? '' : `<div class="wizdots">${keys.map((k, i) => `<span class="${i === st ? 'on' : i < st ? 'done' : ''}">${i < st ? '✓' : i + 1} ${WIZ_ALL.find(x => x[0] === k)[1]}</span>`).join('')}</div>`;
   let body = '';
   if (st === -1) {
     body = `<div class="wizhero">📅</div><h2>Welcome to Life Planner</h2>
@@ -63,14 +69,23 @@ function drawSetup() {
       <p class="muted">A few quick questions set it up for you. You can change everything later in Settings.</p>
       <div class="row wizbtns"><button class="btn primary big" data-w="next">Set up my planner →</button></div>
       ${W.seed ? `<p class="muted small-text" style="text-align:center;margin-top:14px">Moving your own planner to a new PC? <a href="#" data-w="starter">Load the built-in plan instead</a></p>` : ''}`;
-  } else if (st === 0) {
+  } else if (key === 'you') {
     body = `<h2>About you</h2>
       <div class="field"><label>Your first name</label><input type="text" data-wf="name" value="${esc(W.name)}" placeholder="e.g. Sam" maxlength="40"></div>
       <div class="frow"><div class="field"><label>School (optional)</label><input type="text" data-wf="school" value="${esc(W.school)}" maxlength="60"></div>
         <div class="field"><label>Year level</label><input type="number" min="1" max="12" data-wf="year" value="${esc(W.year)}" placeholder="11"></div>
         <div class="field"><label>House (optional)</label><input type="text" data-wf="house" value="${esc(W.house)}" maxlength="30"></div></div>
       <p class="muted small-text">Year level and house are used to hide school calendar events meant for other years and houses.</p>`;
-  } else if (st === 1) {
+  } else if (key === 'account') {
+    if (!acctLoaded) loadAccount().then(() => { if (wiz) drawSetup(); });
+    body = !acctLoaded ? '<h2>Your account</h2><p class="muted">Loading…</p>' : !acct.configured ? '<h2>Your account</h2><p class="muted">Accounts aren\'t switched on for this copy of Life Planner, so friends and chats are off. Press Next to carry on.</p>' : acct.signedIn ? `<h2>You're signed in</h2><p class="muted">You're <b>@${esc(acct.username)}</b>. Add some friends so you can race them on the leaderboards. You can always add more on the Friends page.</p>${friendSuggestHtml(true)}`
+      : `<h2>Make your account</h2><p class="muted">Life Planner is better with friends: race them on the leaderboards, battle them in the Arena and chat. Pick a username (no email needed) or log in if you already have one.</p>${accountCard().replace('<h2>Log in to Life Planner</h2>', '').replace('<div class="acct-hero">👥</div>', '')}`;
+  } else if (key === 'calendar') {
+    body = `<h2>Your calendars</h2><p class="muted">Paste a private iCal (.ics) link from Google Calendar, Outlook or your school portal and its events show up in Today and Calendar. You can skip this and add them later in Settings.</p>
+      <div class="wizlist">${W.feeds.map((f, i) => `<div class="row"><span>📅</span><input type="text" data-wf="feeds.${i}.name" value="${esc(f.name)}" placeholder="Name, e.g. School" style="max-width:180px"><input type="text" data-wf="feeds.${i}.url" value="${esc(f.url || '')}" placeholder="https://…/basic.ics" ${f.id && !f.url ? 'disabled' : ''}><button class="iconbtn" data-w="feedDel" data-i="${i}" title="Remove">✕</button></div>`).join('') || '<p class="muted small-text">No calendars yet.</p>'}</div>
+      <button class="btn small" data-w="feedAdd">+ Add a calendar link</button>
+      <p class="muted small-text">In Google Calendar: Settings, your calendar, "Secret address in iCal format". In Outlook: Settings, Calendar, Shared calendars, Publish.</p>`;
+  } else if (key === 'classes') {
     body = `<h2>Your classes</h2><p class="muted">Add the subjects you study. Each gets its own colour and tree in the forest.</p>
       <div class="wizlist">${W.subjects.map((x, i) => {
         const used = x.id && (D.assessments.some(a => a.subjectId === x.id) || D.sessions.some(a => a.subjectId === x.id));
@@ -78,7 +93,7 @@ function drawSetup() {
           <button class="iconbtn" data-w="subDel" data-i="${i}" ${used ? 'disabled title="This subject has SACs or study blocks. Delete it from the Study page instead."' : 'title="Remove"'}>✕</button></div>`;
       }).join('')}</div>
       <button class="btn small" data-w="subAdd">+ Add a class</button>`;
-  } else if (st === 2) {
+  } else if (key === 'school') {
     const names = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
     body = `<h2>Your school day</h2><p class="muted">Bell times power Class mode: a focus timer for each period and an effort rating when the bell goes. Tick "break" for recess, lunch and roll call.</p>
       <div class="wizbells">${W.bells.map((b, i) => `<div class="row bellrow"><input type="text" data-wf="bells.${i}.n" value="${esc(b.n)}"><input type="time" data-wf="bells.${i}.start" value="${b.start}"><input type="time" data-wf="bells.${i}.end" value="${b.end}">
@@ -86,18 +101,18 @@ function drawSetup() {
       <div class="row" style="margin-top:8px"><button class="btn small" data-w="bellAdd">+ Period</button><span style="flex:1"></span>
         <span class="catchips">${[1, 2, 3, 4, 5, 6].map(k => `<button class="cchip ${W.days.includes(k) ? 'on' : ''}" data-w="day" data-i="${k}">${names[k]}</button>`).join('')}</span></div>
       <div class="frow" style="margin-top:12px"><div class="field"><label>Timetable</label><select data-wf="cycle">${[[0, 'Same every week'], [10, '2-week timetable (Week A and B, Day 1 to 10)'], [5, '5-day cycle'], [6, '6-day cycle'], [8, '8-day cycle']].map(([v, l]) => `<option value="${v}" ${+W.cycle === v ? 'selected' : ''}>${l}</option>`).join('')}</select></div>
-        ${+W.cycle ? `<div class="field"><label>Which day is today${isSchoolDay(today()) ? '' : ' (or the next school day)'}?</label><select data-wf="cday">${Array.from({ length: +W.cycle }, (_, k) => `<option value="${k + 1}" ${+W.cday === k + 1 ? 'selected' : ''}>Day ${k + 1}</option>`).join('')}</select></div>` : ''}</div>
+        ${+W.cycle && +W.cycle === 2 * W.days.length ? `<div class="field"><label>${parseYmd(today()).getDay() % 6 === 0 ? 'Is next week' : 'Is this week'} Week A or Week B?</label><select data-wf="wk"><option value="A" ${W.wk !== 'B' ? 'selected' : ''}>Week A (Days 1 to ${W.days.length})</option><option value="B" ${W.wk === 'B' ? 'selected' : ''}>Week B (Days ${W.days.length + 1} to ${+W.cycle})</option></select></div>` : +W.cycle ? `<div class="field"><label>Which day is today${isSchoolDay(today()) ? '' : ' (or the next school day)'}?</label><select data-wf="cday">${Array.from({ length: +W.cycle }, (_, k) => `<option value="${k + 1}" ${+W.cday === k + 1 ? 'selected' : ''}>Day ${k + 1}</option>`).join('')}</select></div>` : ''}</div>
       <p class="muted small-text">Next you can fill in which class is in each period. For a 2-week timetable, Day 1 is the Monday of Week A.</p>`;
-  } else if (st === 3) {
+  } else if (key === 'tt') {
     body = wizTimetable();
-  } else if (st === WZ_TRAIN) {
+  } else if (key === 'train') {
     body = `<h2>Your training</h2>
       <div class="field"><label>Training goal</label><input type="text" data-wf="goal" value="${esc(W.goal)}" placeholder="e.g. Get faster for netball and run a 5k" maxlength="100"></div>
       <p class="muted" style="margin-bottom:6px">Your usual week. Pick a sport for each day you train and leave rest days empty.</p>
       <div class="wizweek">${W.week.map((w, i) => `<div class="row"><b class="wizday">${DOW[w.d]}</b><select data-wf="week.${i}.sport"><option value="">Rest</option>${WIZ_SPORTS.map(s => `<option ${w.sport === s ? 'selected' : ''}>${s}</option>`).join('')}</select>
         <input type="time" data-wf="week.${i}.time" value="${w.time}"><input type="number" min="10" max="240" step="5" data-wf="week.${i}.mins" value="${w.mins}"><span class="muted small-text">min</span></div>`).join('')}</div>
       <p class="muted small-text">${W.first ? '' : 'These are added on top of the workouts you already have. '}Workouts are added for the next ${W.weeks} weeks. Ticking them off grows your athlete card in the Arena.</p>`;
-  } else if (st === WZ_HABITS) {
+  } else if (key === 'habits') {
     body = `<h2>Good habits</h2>
       <div class="field"><label>Daily study goal (minutes)</label><input type="number" min="10" max="600" step="5" data-wf="daily" value="${W.daily}"></div>
       <div class="row" style="gap:10px"><label><input type="checkbox" data-wf="bed" ${W.bed ? 'checked' : ''} style="width:auto"> Bedtime on school nights at</label><input type="time" data-wf="bedTime" value="${W.bedTime}" style="width:auto"></div>
@@ -105,9 +120,9 @@ function drawSetup() {
       ${W.first ? `<div class="wiznote">💡 <b>Reminders:</b> after this, click <b>Turn on reminders</b> at the top right so pop-ups can reach you.</div>` : ''}`;
   }
   const nav = st < 0 ? '' : `<div class="row wizbtns">${st > 0 ? '<button class="btn" data-w="back">← Back</button>' : W.first ? '' : '<button class="btn" data-w="close">Cancel</button>'}<span style="flex:1"></span>
-    ${st < WIZ_STEPS.length - 1 ? '<button class="btn primary" data-w="next">Next →</button>' : `<button class="btn primary" data-w="finish">${W.first ? 'Start planning 🎉' : 'Save changes'}</button>`}</div>`;
+    ${st < keys.length - 1 ? '<button class="btn primary" data-w="next">Next →</button>' : `<button class="btn primary" data-w="finish">${W.first ? 'Start planning 🎉' : 'Save changes'}</button>`}</div>`;
   const again = !!ov.firstChild;
-  ov.innerHTML = `<div class="treecard wizcard ${again ? 'again' : ''} ${st === 3 ? 'wide' : ''}">${W.first ? '' : '<button class="iconbtn tc-close" data-w="close" title="Close">✕</button>'}${dots}<div class="wizbody">${body}</div>${nav}</div>`;
+  ov.innerHTML = `<div class="treecard wizcard ${again ? 'again' : ''} ${key === 'tt' ? 'wide' : ''}">${W.first ? '' : '<button class="iconbtn tc-close" data-w="close" title="Close">✕</button>'}${dots}<div class="wizbody">${body}</div>${nav}</div>`;
   const f = ov.querySelector('input[type=text]'); if (f && !f.value) f.focus();
 }
 async function wizClick(e) {
@@ -117,8 +132,10 @@ async function wizClick(e) {
   const W = wiz, i = +el.dataset.i;
   switch (el.dataset.w) {
     case 'next':
-      if (W.step === 0 && !W.name.trim()) { toast('Add your name first', ''); return; }
-      if (W.step === 1 && !W.subjects.some(x => x.name.trim())) { toast('Add at least one class', ''); return; }
+      { const k = wizKeys()[W.step];
+        if (k === 'you' && !W.name.trim()) { toast('Add your name first', ''); return; }
+        if (k === 'account' && W.first && acct.configured && !acct.signedIn) { toast('Make an account first', 'Pick a username and password, then press Create account. Already have one? Log in.'); return; }
+        if (k === 'classes' && !W.subjects.some(x => x.name.trim())) { toast('Add at least one class', ''); return; } }
       W.step++; break;
     case 'back': W.step--; break;
     case 'close': document.getElementById('wizfx')?.remove(); wiz = null; return;
@@ -127,6 +144,8 @@ async function wizClick(e) {
       return;
     case 'subAdd': W.subjects.push({ name: '' }); break;
     case 'subDel': W.subjects.splice(i, 1); break;
+    case 'feedAdd': W.feeds.push({ name: '', url: '' }); break;
+    case 'feedDel': W.feeds.splice(i, 1); break;
     case 'bellAdd': { const last = W.bells[W.bells.length - 1], s = last ? last.end : '09:00', m = Math.min(1439, hmToMin(s) + 50); W.bells.push({ n: `Period ${W.bells.filter(b => !b.brk).length + 1}`, start: s, end: `${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}` }); break; }
     case 'bellDel': W.bells.splice(i, 1); break;
     case 'day': W.days = W.days.includes(i) ? W.days.filter(x => x !== i) : [...W.days, i]; break;
@@ -148,12 +167,21 @@ function finishSetup() {
     if (have) have.name = x.name.trim();
     else { const used = new Set(D.subjects.map(y => y.color)); D.subjects.push({ id: uid() + i, name: x.name.trim(), color: SUBJ_COLORS.find(c => !used.has(c)) || SUBJ_COLORS[i % SUBJ_COLORS.length], notes: '' }); }
   });
+  // calendars: keep the ones still listed, add new links
+  const keepF = W.feeds.filter(f => f.id || (f.name.trim() && /^(https?|webcal):\/\//i.test(f.url.trim())));
+  D.feeds = D.feeds.filter(f => keepF.some(k => k.id === f.id));
+  for (const f of keepF) {
+    const have = f.id && D.feeds.find(x => x.id === f.id);
+    if (have) { have.name = f.name.trim() || have.name; if (have.url && f.url.trim()) have.url = f.url.trim().replace(/^webcal:/i, 'https:'); }
+    else { const nf = { id: uid(), name: f.name.trim(), url: f.url.trim().replace(/^webcal:/i, 'https:'), color: ['#5f3dc4', '#0b7285', '#a61e4d', '#495057'][D.feeds.length % 4], enabled: true, smart: /school|schoolbox|office365|outlook/i.test(f.name + f.url), hide: '', show: '' }; D.feeds.push(nf); setTimeout(() => refreshFeed(nf), 300); }
+  }
   // school day
   const sc = schoolCfg();
   sc.bells = W.bells.filter(b => b.start && b.end && b.start < b.end).sort((a, b) => a.start.localeCompare(b.start));
   sc.days = W.days.length ? W.days : [1, 2, 3, 4, 5];
   const len = +W.cycle;
-  if (len !== +sc.cycle.len || (len && +W.cday !== cycleDay(today()))) {
+  if (len && len === 2 * sc.days.length) { const d = wizWeekStart(), day = W.wk === 'B' ? sc.days.length + 1 : 1; if (len !== +sc.cycle.len || cycleDay(d) !== day) sc.cycle = { len, date: d, day }; }
+  else if (len !== +sc.cycle.len || (len && +W.cday !== cycleDay(today()))) {
     let d = today(); while (!sc.days.includes(parseYmd(d).getDay())) d = addDays(d, 1);
     sc.cycle = { len, date: d, day: Math.min(+W.cday || 1, len || 1) };
     if (len !== +W.cycleWas) { /* keep old picks; keys for other layouts just go unused */ }
@@ -318,4 +346,5 @@ function wizTimetable() {
     ${per.map(([b, i]) => `<tr><th>${esc(b.n)}<small>${b.start}</small></th>${cols.map(([d]) => { const k = d + '|' + i, v = W.tt[k] || ''; return `<td><select data-wt="${k}" class="${v ? 'set' : ''}">${opts(v)}</select></td>`; }).join('')}</tr>`).join('')}</table></div>
     <div class="row" style="gap:8px;margin-top:8px">${len === 10 || (len && len % 2 === 0) ? `<button class="btn small" data-w="ttCopy">Copy Week A to Week B</button>` : ''}<button class="btn small" data-w="ttClear">Clear</button></div>`;
 }
+document.addEventListener('change', e => { if (e.target.matches?.('#wizfx [data-wf=cycle]')) { wizRead(); drawSetup(); } });
 document.addEventListener('change', e => { if (e.target.matches?.('#wizfx [data-wt]')) e.target.classList.toggle('set', !!e.target.value); });

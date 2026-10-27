@@ -90,19 +90,50 @@ function compareFriend(id) {
   modal.showModal();
 }
 
+// Leaderboard tab: everything competitive with friends in one place
+function viewLeaderboard() {
+  if (ONLINE) return `${pageHead('🏆 Leaderboard', '')}<div class="card"><p>Leaderboards live in the PC app.</p></div>`;
+  if (!acctLoaded) loadAccount().then(() => { if (view === 'board') render(); });
+  const n = friendsCount();
+  return `${pageHead('🏆 Leaderboard', n ? `You vs ${n} friend${n === 1 ? '' : 's'} · resets every Monday` : 'Add friends to race them', `<button class="btn small" data-act="goto" data-v="friends">👥 Friends &amp; chats</button>`)}
+    <div class="friends-top">${myWeekCard()}${highlightsCard()}</div>
+    ${acct.configured && !acct.signedIn ? accountCard() : ''}
+    <div class="friends-main">
+      <div class="stack">${viewBoard()}${athleticsBoardCard()}</div>
+      <div class="stack">${racesCard()}${challengesFriendsCard()}${!n ? `<div class="card">${friendSuggestHtml(true) || '<p class="muted">Add friends on the Friends &amp; chats page to see them here.</p>'}</div>` : ''}</div>
+    </div>`;
+}
+// fastest / strongest among your friends for one event
+function athleticsBoardCard() {
+  const rows = [{ me: true, name: 'You', av: avatarSpec(), b: myBests() }, ...allFriendRows().map(f => ({ name: f.name, av: f.av, b: f.raw?.fit?.b || {} }))];
+  const evs = TESTS.filter(T => rows.some(r => r.b[T.id] != null));
+  if (!evs.length) return `<div class="card"><div class="card-head"><h2>🏅 Athletics</h2></div><p class="muted small-text">Log results on Training, Athletics and they race your friends' here.</p></div>`;
+  const T = evs.find(x => x.id === ui.lbEvent) || evs[0];
+  const list = rows.filter(r => r.b[T.id] != null).sort((a, b) => T.lower ? a.b[T.id] - b.b[T.id] : b.b[T.id] - a.b[T.id]);
+  return `<div class="card"><div class="card-head"><h2>🏅 Athletics</h2><select data-change="lbEvent">${evs.map(x => `<option value="${x.id}" ${x === T ? 'selected' : ''}>${esc(x.name)}</option>`).join('')}</select></div>
+    <ol class="lbath">${list.map((r, i) => { const rk = rankOf(testLevel(T, r.b[T.id]) ?? 0); return `<li class="${r.me ? 'me' : ''}"><span class="lbpos">${['🥇', '🥈', '🥉'][i] || i + 1}</span>${safeBadge(r.av, 32)}<b>${esc(r.name)}</b><span style="flex:1"></span>${rankTag(rk)}<b class="lbv">${fmtTest(T, r.b[T.id])}</b></li>`; }).join('')}</ol></div>`;
+}
+// a line on Today: where you stand against your friends this week
+function todayRivals() {
+  const quick = `<div class="todayquick"><button class="btn small ghost" data-act="editClasses" title="Change your classes, calendars and timetable">✏️ Classes &amp; calendars</button></div>`;
+  if (ONLINE || !friendsCount()) return quick;
+  const sc = overallScores(thisWeekRows()), i = sc.findIndex(r => r.me); if (i < 0) return '';
+  const ahead = sc[i - 1];
+  return `<a href="#" class="rivalbar" data-act="goto" data-v="board"><span class="rvpos">${['🥇', '🥈', '🥉'][i] || '#' + (i + 1)}</span><span><b>You're ${i === 0 ? '1st' : `#${i + 1}`} of ${sc.length}</b> on this week's leaderboard${ahead ? ` · ${ahead.v - sc[i].v} pts behind ${esc(ahead.name)}` : sc[1] ? ` · ${sc[0].v - sc[1].v} pts clear of ${esc(sc[1].name)}` : ''}</span><span class="rvgo">Leaderboard →</span></a>${quick}`;
+}
+
 function viewFriends() {
-  if (ONLINE) return `${pageHead('Friends & Leaderboard', '')}<div class="card"><p>Friends live in the PC app. Open Life Planner on your computer to see them.</p></div>`;
+  if (ONLINE) return `${pageHead('Friends & chats', '')}<div class="card"><p>Friends live in the PC app. Open Life Planner on your computer to see them.</p></div>`;
   if (!acctLoaded) loadAccount().then(() => { if (view === 'friends') render(); });
   const n = friendsCount();
-  const loginCard = acct.configured && !acct.signedIn ? accountCard() : '';
-  return `${pageHead('👥 Friends & Leaderboard', n ? `${n} friend${n === 1 ? '' : 's'} · resets every Monday` : 'Race your friends at studying and training', acct.signedIn ? `<span class="acct-chip">@${esc(acct.username)}</span><button class="btn small" data-act="goto" data-v="settings">Account</button>` : '')}
-    <div class="friends-top">${myWeekCard()}${highlightsCard()}</div>
-    ${loginCard}
-    <div class="friends-main">
-      <div class="stack">${viewBoard()}</div>
-      <div class="stack">${challengesFriendsCard()}${racesCard()}
+  if (acct.configured && !acct.signedIn) return `${pageHead('👥 Friends & chats', 'Log in to add friends and message them')}${accountCard()}`;
+  return `${pageHead('👥 Friends &amp; chats', n ? `${n} friend${n === 1 ? '' : 's'}` : 'Find your friends and message them', `${acct.signedIn ? `<span class="acct-chip">@${esc(acct.username)}</span>` : ''}<button class="btn small" data-act="goto" data-v="board">🏆 Leaderboard</button>`)}
+    <div class="social-grid">
+      <div class="social-chats">${typeof viewChats === 'function' ? viewChats(true) : ''}</div>
+      <div class="stack">
         <div class="card"><div class="card-head"><h2>Friends</h2>${n ? `<span class="muted small-text">${n}</span>` : ''}</div>
           ${acct.signedIn ? friendSearchHtml().replace('<h3>👥 Friends', '<h3 hidden>').replace('class="friendbox"', 'class="friendbox flat"') : ''}
+          ${friendSuggestHtml()}
           ${friendCards() || (friendNames().length ? '' : '<p class="muted small-text">No friends yet. Search for a username above, or swap friend codes below.</p>')}
           <details class="codes"><summary>${acct.signedIn ? 'Friends without an account? Swap friend codes' : 'Swap friend codes (no account needed)'}</summary>${boardSetupHtml().replace('<h3>👥 Friends</h3>', '')}</details>
         </div>

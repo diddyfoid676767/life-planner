@@ -22,7 +22,7 @@ async function acctPost(body) {
 
 function myStatsRow() {
   const r = myBoardRow();
-  return { display: (D.settings.name || '').slice(0, 30), avatar: r.av, stats: { week: r.week, study: r.study, work: r.work, health: r.health, ...chalPublish(), pvp: typeof pvpPublish === 'function' ? pvpPublish() : undefined, fit: typeof fitPublish === 'function' ? fitPublish() : undefined } };
+  return { display: (D.settings.name || '').slice(0, 30), avatar: r.av, stats: { week: r.week, study: r.study, work: r.work, health: r.health, ...chalPublish(), pvp: typeof pvpPublish === 'function' ? pvpPublish() : undefined, fit: typeof fitPublish === 'function' ? fitPublish() : undefined, fr: friendNames().slice(0, 60) } };
 }
 async function publishMe(force) {
   if (!acct.signedIn || (!force && Date.now() - acctPublishedAt < 10 * 60000)) return;
@@ -63,6 +63,28 @@ function accountCard() {
     <div class="row"><span class="acct-chip">${safeBadge(avatarSpec(), 36)}<b>@${esc(acct.username)}</b>${typeof badgeTags === 'function' ? badgeTags(myBadges) : ''}</span><span style="flex:1"></span>
       <button class="btn small" data-acct="logout">Log out</button><button class="btn small danger" data-acct="delete">Delete account</button></div>
     <p class="muted small-text">Friends can find you by searching <b>${esc(acct.username)}</b> on the leaderboard.</p></div>`;
+}
+
+// friend suggestions: friends of your friends first, then people who were on recently
+let acctSuggest = null, acctSuggestAt = 0;
+async function loadSuggest() {
+  if (!acct.signedIn || Date.now() - acctSuggestAt < 120000) return;
+  acctSuggestAt = Date.now();
+  try { const r = await (await fetch('/api/account/people?suggest=1', { cache: 'no-store' })).json(); acctSuggest = Array.isArray(r) ? r : []; } catch { acctSuggest = []; }
+  if (typeof wiz !== 'undefined' && wiz) drawSetup(); else if (view === 'friends' || view === 'board') render();
+}
+function friendSuggestions() {
+  const mine = new Set([...friendNames(), acct.username]), score = {}, info = {};
+  for (const f of friendRows) for (const u of (f.raw?.fr || [])) if (!mine.has(u)) { score[u] = (score[u] || 0) + 10; info[u] = info[u] || { username: u, via: f.name }; }
+  for (const p of acctSuggest || []) if (!mine.has(p.username)) { score[p.username] = (score[p.username] || 0) + 1; info[p.username] = { ...p, via: info[p.username]?.via }; }
+  return Object.keys(score).sort((a, b) => score[b] - score[a]).slice(0, 8).map(u => info[u]);
+}
+function friendSuggestHtml(big) {
+  if (!acct.signedIn) return '';
+  if (acctSuggest === null) { loadSuggest(); return '<p class="muted small-text">Finding people you might know…</p>'; }
+  const list = friendSuggestions();
+  if (!list.length) return big ? '<p class="muted small-text">No suggestions yet. Search for a friend\'s username on the Friends page.</p>' : '';
+  return `<div class="suggest ${big ? 'big' : ''}"><div class="daygroup">✨ People you might know</div><ul class="friendlist">${list.map(p => `<li>${safeBadge(p.avatar, 28)}<b>${esc(p.display || p.username)}</b>${badgeTags(p.badges, true)}<span class="muted small-text">@${esc(p.username)}${p.via ? ` · friends with ${esc(p.via)}` : ''}</span><span style="flex:1"></span><button class="btn small primary" data-acct="friend" data-u="${esc(p.username)}">+ Add</button></li>`).join('')}</ul></div>`;
 }
 
 // friend search on the leaderboard
@@ -106,7 +128,7 @@ document.addEventListener('click', async e => {
       await publishMe(true); await refreshFriends(true);
       toast(a === 'login' ? `👋 Welcome back, @${username}` : `🎉 You're @${username}`, 'Find friends on the Friends page.');
     } catch (err) { acctBusy = false; toast(a === 'login' ? "Couldn't log in" : "Couldn't create the account", err.message, { cls: 'danger' }); }
-    render();
+    render(); if (typeof wiz !== 'undefined' && wiz) drawSetup();
   } else if (a === 'logout') {
     if (!confirm('Log out of your Life Planner account?')) return;
     await acctPost({ action: 'logout' }).catch(() => { }); await loadAccount(); friendRows = []; render(); toast('Logged out', '');
@@ -116,7 +138,7 @@ document.addEventListener('click', async e => {
     catch (err) { toast("Couldn't delete the account", err.message, { cls: 'danger' }); }
   } else if (a === 'friend') {
     const u = el.dataset.u; if (!friendNames().includes(u)) friendNames().push(u);
-    save(); await refreshFriends(true); render(); toast(`👥 @${u} is on your leaderboard`, 'Their numbers update by themselves.');
+    save(); await refreshFriends(true); publishMe(true); render(); if (typeof wiz !== 'undefined' && wiz) drawSetup(); toast(`👥 @${u} is on your leaderboard`, 'Their numbers update by themselves.');
   } else if (a === 'unfriend') {
     if (!confirm(`Take @${el.dataset.u} off your leaderboard?`)) return;
     D.friendsU = friendNames().filter(n => n !== el.dataset.u); friendRows = friendRows.filter(r => r.user !== el.dataset.u); save(); render();

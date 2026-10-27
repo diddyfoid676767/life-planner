@@ -278,7 +278,7 @@ function render() {
   const v = $('#view');
   const y = window.scrollY;
   if (v.dataset.view !== view) { v.classList.remove('enter'); void v.offsetWidth; v.classList.add('enter'); v.dataset.view = view; }
-  v.innerHTML = ({ today: viewToday, calendar: viewCalendar, study: viewStudyHub, forest: viewForest, training: viewTraining, arena: viewArena, friends: viewFriends, chats: viewChats, profile: viewProfile, school: viewSchool, health: () => { view = 'training'; ui.bodyPage = 'health'; return viewTraining(); }, personal: viewPersonal, todo: viewTodo, inbox: viewInbox, settings: viewSettings })[view]();
+  v.innerHTML = ({ today: viewToday, calendar: viewCalendar, study: viewStudyHub, forest: viewForest, training: viewTraining, arena: viewArena, friends: viewFriends, board: viewLeaderboard, chats: () => { view = 'friends'; return viewFriends(); }, profile: viewProfile, school: viewSchool, health: () => { view = 'training'; ui.bodyPage = 'health'; return viewTraining(); }, personal: viewPersonal, todo: viewTodo, inbox: viewInbox, settings: viewSettings })[view]();
   updateInboxBadge();
   gameFeedback();
   window.scrollTo(0, y);
@@ -343,7 +343,7 @@ function viewToday() {
       <span class="dots">${list.slice(0, 6).map(e => `<i style="background:${e.color}"></i>`).join('')}</span>
       <span class="dbar"><i style="width:${ck.length ? dn / ck.length * 100 : 0}%"></i></span></button>`;
   }).join('');
-  return `<div class="tpage">${welcome}
+  return `<div class="tpage">${welcome}${typeof todayRivals === 'function' ? todayRivals() : ''}
   <div class="hero slim thero ${tod}">
     <div class="hero-text"><div class="hero-date">${fullDate(t)} ${now.getFullYear()}</div>
       <h1>${greet}${D.settings.name ? ', ' + esc(D.settings.name) : ''}</h1><p>${summary}</p>
@@ -420,7 +420,7 @@ function viewCalendar() {
   return `<div class="toolbar calbar">
       <h1 style="margin:0 8px 0 0">${MONTHS[m.getMonth()]} <span class="muted" style="font-weight:500">${m.getFullYear()}</span></h1>
       <button class="btn" data-act="calNav" data-n="-1">‹</button><button class="btn" data-act="calNav" data-n="0">Today</button><button class="btn" data-act="calNav" data-n="1">›</button><span class="spacer"></span>
-      <button class="btn small" data-act="new" data-kind="feed">+ Connect a calendar</button>
+      <button class="btn small" data-act="new" data-kind="feed">+ Connect a calendar</button><button class="btn small" data-act="editClasses">✏️ Classes &amp; calendars</button>
       <div class="seg">${['study', 'training', 'personal', 'calendars'].map(g => `<button class="${f[g] ? 'on' : ''}" data-act="calFilter" data-g="${g}">${g[0].toUpperCase() + g.slice(1)}</button>`).join('')}</div>
     </div>
     <details class="legendbox"><summary class="muted small-text">Colour key</summary><div class="legend">${legendHtml()}</div></details>
@@ -1713,7 +1713,8 @@ document.addEventListener('click', e => {
     case 'wearCos': wearCos(id); break;
     case 'buyCos': buyCos(id); break;
     case 'avDance': { const st = document.querySelector('#wardStage .avatar'); if (st) { const d = myAv().dance; st.parentNode.classList.remove('dance-' + d); void st.parentNode.offsetWidth; st.parentNode.classList.add('dance-' + d); setTimeout(() => st.parentNode.classList.remove('dance-' + d), 2200); } break; }
-    case 'ttEdit': openSetup(false); wiz.step = 3; drawSetup(); break;
+    case 'ttEdit': openSetup(false); wiz.step = wizStepOf('tt'); drawSetup(); break;
+    case 'editClasses': openSetup(false); wiz.step = wizStepOf('classes'); drawSetup(); break;
     case 'arenaPage': ui.arenaPage = el.dataset.v; render(); break;
     case 'bodyPage': view = 'training'; ui.bodyPage = el.dataset.v; render(); break;
     case 'friendCompare': compareFriend(el.dataset.id); break;
@@ -1825,6 +1826,7 @@ document.addEventListener('change', e => {
   if (el.dataset.setting) { D.settings[el.dataset.setting] = el.type === 'checkbox' ? el.checked : el.value.trim().replace(/^"|"$/g, ''); save(); if (el.dataset.setting === 'inboxAuto' && el.checked && inboxToPlanner()) { save(); render(); } if (el.dataset.setting === 'brainfmPath') checkBrainfm().then(render); if (el.dataset.setting === 'bootIntro') try { localStorage.setItem('lpNoIntro', el.checked ? '0' : '1'); } catch { } return; }
   if (el.dataset.remdef) { const k = el.dataset.remdef; D.settings.remind[k] = [...document.querySelectorAll(`[data-remdef="${k}"]`)].filter(x => x.checked).map(x => Number(x.value)).sort((a, b) => b - a); save(); return; }
   if (el.dataset.change === 'lookColor') { setLook(el.dataset.k, el.value); return; }
+  if (el.dataset.change === 'lbEvent') { ui.lbEvent = el.value; render(); return; }
   if (el.dataset.change === 'evCat') { ui.evCat = el.value; render(); }
   if (el.dataset.change === 'treeFilt') { ui.treeFilt = { ...(ui.treeFilt || {}), [el.dataset.k]: el.value }; render(); }
   if (el.dataset.change === 'showItem') { D.game.hidden[el.dataset.id] = !el.checked; save(); }

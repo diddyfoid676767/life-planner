@@ -290,7 +290,10 @@ func handleAccountPeople(w http.ResponseWriter, r *http.Request) {
 	}
 	sel := "select=username,display,avatar,stats,updated_at,badges,jersey"
 	var path string
-	if q := strings.ToLower(strings.TrimSpace(r.URL.Query().Get("q"))); q != "" {
+	if r.URL.Query().Get("suggest") != "" {
+		// people who were on most recently, for "people you might know"
+		path = "/rest/v1/profiles?" + sel + "&order=updated_at.desc&limit=24"
+	} else if q := strings.ToLower(strings.TrimSpace(r.URL.Query().Get("q"))); q != "" {
 		if !regexp.MustCompile(`^[a-z0-9_]{1,20}$`).MatchString(q) {
 			w.Write([]byte("[]"))
 			return
