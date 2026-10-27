@@ -2513,3 +2513,28 @@ main#view { padding-bottom: 80px; }
 .rkbar i { display: block; height: 100%; border-radius: 99px; }
 .pbcard .card-head { gap: 6px; }
 @media (max-width: 700px) { .fadd .grow { grid-column: auto; } .gymedit .gmeta { grid-template-columns: 1fr 1fr; } .fit-grid { grid-template-columns: 1fr; } }
+
+/* ---------- 2.25 forest: merging, archive island, reforge, streaks ---------- */
+.streakpill { display: inline-flex; align-items: center; gap: 4px; padding: 4px 12px; border-radius: 99px; background: var(--panel2); border: 1px solid var(--border); font-size: .85rem; font-weight: 600; color: var(--muted); }
+.streakpill.on { background: linear-gradient(90deg, #ff922b22, #f0386b22); border-color: #ff922b88; color: var(--text); }
+.streakpill b { color: #e8590c; } .streakpill small { font-weight: 500; opacity: .8; }
+.mergeall { align-self: center; }
+.tc-merge { margin-top: 10px; gap: 8px; flex-wrap: wrap; align-items: center; }
+.archcard .catchips { margin-bottom: 12px; }
+.archisle { border-radius: 40px; padding: 26px 22px; background: radial-gradient(ellipse at 50% 40%, #b2f2bb 0%, #8ce99a 45%, #d8c38f 72%, #74c0fc 74%, #4dabf7 100%); box-shadow: inset 0 0 0 10px #a5d8ff55; display: flex; flex-direction: column; gap: 14px; }
+@media (prefers-color-scheme: dark) { .archisle { background: radial-gradient(ellipse at 50% 40%, #2b5a34 0%, #234d2c 50%, #6b5a36 72%, #1c4f7a 74%, #163b5c 100%); } }
+.archmonth { background: color-mix(in srgb, #ffffff 35%, transparent); border-radius: 18px; padding: 8px 12px; }
+@media (prefers-color-scheme: dark) { .archmonth { background: rgba(0,0,0,.18); } }
+.archm-head { font-weight: 800; font-size: .9rem; margin-bottom: 4px; color: #1b4332; } .archm-head span { font-weight: 600; opacity: .7; font-size: .8rem; margin-left: 6px; }
+@media (prefers-color-scheme: dark) { .archm-head { color: #d3f9d8; } }
+.archtrees { display: flex; flex-wrap: wrap; gap: 2px; }
+.archtree { position: relative; border: 0; background: none; padding: 0; cursor: pointer; width: 40px; height: 48px; display: flex; align-items: flex-end; justify-content: center; transition: transform .12s; }
+.archtree:hover { transform: translateY(-3px) scale(1.15); z-index: 1; }
+.archtree.merged { opacity: .55; } .archtree svg { max-width: 100%; max-height: 100%; }
+.archtree i { position: absolute; top: -2px; right: -2px; font-style: normal; font-size: .62rem; }
+.rfgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 8px; margin-bottom: 10px; }
+.rfitem { display: flex; align-items: center; gap: 10px; border: 1px solid var(--border); border-left: 4px solid var(--rc); border-radius: 10px; padding: 6px 10px; background: var(--panel); }
+.rfitem .main { flex: 1; min-width: 0; display: flex; flex-direction: column; } .rfitem small { font-weight: 700; font-size: .74rem; }
+.rfitem > svg, .rfitem > img { width: 44px; height: 44px; flex: none; }
+.rfic { font-size: 1.8rem; width: 44px; text-align: center; flex: none; }
+.fstat small { font-size: .7em; opacity: .7; }

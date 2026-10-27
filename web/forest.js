@@ -1,9 +1,8 @@
 'use strict';
 /* Forest: every focus session of 10+ minutes plants a tree. Each subject has its
    own species (changeable) in its own colour. A tree starts as big as its
-   session was long, then keeps growing in the garden: slowly on its own, much
-   faster on days it's watered. It passes 8 stages, each taking twice as long
-   as the one before, from Sapling up to Ancient. */
+   session was long and grows by merging (see forest2.js), through 8 stages
+   from Sapling up to Ancient. */
 
 const TREE_SPECIES = [
   ['oak', 'Oak'], ['pine', 'Pine'], ['cherry', 'Blossom'], ['birch', 'Birch'],
@@ -16,9 +15,6 @@ const availableSpecies = () => [...TREE_SPECIES, ...BONUS_SPECIES.filter(b => D.
 // [growth minutes needed, name]. Each stage needs twice the growth of the last.
 const TREE_STAGES = [[10, 'Sapling'], [22, 'Young tree'], [45, 'Full tree'], [90, 'Mature tree'], [180, 'Grand tree'], [360, 'Elder tree'], [720, 'Old-growth tree'], [1440, 'Ancient tree']];
 const STAGE_ICON = ['🌱', '🌿', '🌳', '🌳', '🌸', '🍂', '🌲', '✨'];
-// growth after planting, in minutes: a quarter of a minute an hour on its own,
-// and 18 more for every watering (each watering is a day of fast growth)
-const GROW_PER_HOUR = .25, GROW_PER_WATER = 18;
 
 function shade(hex, amt) {
   let h = String(hex || '#2f9e44').replace('#', '');
@@ -36,14 +32,14 @@ function seeded(str) {
   return () => { h ^= h << 13; h ^= h >>> 17; h ^= h << 5; return ((h >>> 0) % 10000) / 10000; };
 }
 function treeStage(mins) { let s = 0; for (let i = 1; i < TREE_STAGES.length; i++) if (mins >= TREE_STAGES[i][0]) s = i; return s; }
-// how much a planted tree has grown (minutes): its session plus time in the garden
+// how big a tree is (minutes): its session, plus a stage for every merge (2.25:
+// trees don't grow on their own any more)
 function treeGrowth(l) {
   if (!l) return 0;
   if (l.mins < 10 || l.withered) return l.mins;
-  const r = (D.game.trees || {})[l.id] || {}, hrs = Math.max(0, (Date.now() - new Date(l.start)) / 36e5);
-  const lv = id => (typeof lupg === 'function' ? lupg(id) : 0);
-  const extra = (hrs * GROW_PER_HOUR + (r.water || 0) * GROW_PER_WATER * (1 + .5 * Math.min(4, lv('rain')))) * (1 + .1 * lv('sundial')) * (treeSpeciesBuff(l).grow || 1) * (1 + activeBuff('growAll') + (crit('turtle') ? .05 : 0));
-  return l.mins + extra;
+  const up = ((D.game.trees || {})[l.id] || {}).up || 0;
+  if (!up) return l.mins;
+  return Math.max(l.mins, TREE_STAGES[Math.min(TREE_STAGES.length - 1, treeStage(l.mins) + up)][0]);
 }
 const treeStageOf = l => treeStage(treeGrowth(l));
 // 0..1 progress from this stage to the next (1 when Ancient)
@@ -67,7 +63,7 @@ function checkTreeStages(quiet) {
   if (quiet) return;
   const top = grew.reduce((a, b) => b[1] > a[1] ? b : a);
   stageSfx(top[1]);
-  toast(`${STAGE_ICON[top[1]]} ${treeName(top[0])} grew into ${/^[AEIOU]/.test(TREE_STAGES[top[1]][1]) ? 'an' : 'a'} ${TREE_STAGES[top[1]][1].toLowerCase()}`, grew.length > 1 ? `${grew.length - 1} other tree${grew.length === 2 ? '' : 's'} grew too.` : 'Water your trees to help them grow faster.');
+  toast(`${STAGE_ICON[top[1]]} ${treeName(top[0])} grew into ${/^[AEIOU]/.test(TREE_STAGES[top[1]][1]) ? 'an' : 'a'} ${TREE_STAGES[top[1]][1].toLowerCase()}`, grew.length > 1 ? `${grew.length - 1} other tree${grew.length === 2 ? '' : 's'} grew too.` : 'Merge two trees of the same kind and stage to grow them.');
 }
 setInterval(() => { if (window.D && !document.hidden) checkTreeStages(); }, 60000);
 // Each subject gets its own tree type: picks first (in subject order, no two the
@@ -292,11 +288,11 @@ function bestStreak() {
 }
 
 function viewForest() {
-  checkTreeStages(); checkVisitors();
+  enforceGardenCap(); checkTreeStages(); checkVisitors();
   const t = today(), wk = mondayOf(t);
   const range = ui.forestRange || 'all';
   const from = range === 'week' ? wk : range === 'month' ? t.slice(0, 8) + '01' : '0000';
-  const logs = D.focusLogs.filter(l => l.mins >= 10 && l.date >= from).sort((a, b) => a.start - b.start || a.date.localeCompare(b.date));
+  const logs = D.focusLogs.filter(l => inGarden(l) && l.date >= from).sort((a, b) => a.start - b.start || a.date.localeCompare(b.date));
   const allTrees = D.focusLogs.filter(l => l.mins >= 10);
   const mins = D.focusLogs.filter(l => l.date >= from).reduce((a, l) => a + l.mins, 0);
   const streak = studyStreak(), best = bestStreak();
@@ -315,16 +311,17 @@ function viewForest() {
   const nClaim = claimable(), nReward = rewardsWaiting();
   const tab = (v, label) => `<button class="${page === v ? 'on' : ''}" data-act="forestPage" data-v="${v}">${label}</button>`;
   const head = `<div class="card-head forest-head"><h1 style="margin:0">My forest</h1>${gameHeader()}<span class="spacer" style="flex:1"></span>
-      <button class="btn primary" data-act="focusNew">▶ Start studying</button></div>
-    <div class="seg forest-tabs">${tab('forest', `🌳 Forest${nClaim + nReward ? ` <span class="dotbadge">${nClaim + nReward}</span>` : ''}`)}${tab('trees', '🌲 My trees')}${tab('critters', `🐾 Critters <span class="muted">${Object.keys(D.game.critters || {}).length}/${CRITTERS.length}</span>`)}${tab('shop', `🛒 Shop${giftReady() ? ' <span class="dotbadge">1</span>' : ''}`)}${tab('collection', `📖 Collection <span class="muted">${ITEMS.filter(i => owned(i.id)).length}/${ITEMS.length}</span>`)}</div>`;
+      ${streakPill()}<button class="btn primary" data-act="focusNew">▶ Start studying</button></div>
+    <div class="seg forest-tabs">${tab('forest', `🌳 Forest${nClaim + nReward ? ` <span class="dotbadge">${nClaim + nReward}</span>` : ''}`)}${tab('trees', '🌲 My trees')}${tab('archive', '🏝️ Archive')}${tab('critters', `🐾 Critters <span class="muted">${Object.keys(D.game.critters || {}).length}/${CRITTERS.length}</span>`)}${tab('shop', `🛒 Shop${giftReady() ? ' <span class="dotbadge">1</span>' : ''}`)}${tab('collection', `📖 Collection <span class="muted">${ITEMS.filter(i => owned(i.id)).length}/${ITEMS.length}</span>`)}</div>`;
   if (page === 'shop') return `${head}${shopView()}`;
   if (page === 'trees') return `${head}${treesView()}`;
+  if (page === 'archive') return `${head}${archiveView()}`;
   if (page === 'critters') return `${head}${crittersView()}`;
   if (page === 'collection') return `${head}${collectionView()}`;
   return `${head}
     ${leafBar()}${visitorBanner()}
     <div class="scene-wrap ${webglOK() ? 'g3wrap' : 'isowrap'}">${webglOK() ? garden3DHtml(logs) : forestGrid(logs)}
-      <div class="scene-stats">${stat(logs.length, logs.length === 1 ? 'tree' : 'trees')}${stat(fmtMins(mins) || '0m', 'studied')}${stat('🔥 ' + streak, 'day streak')}${stat(best, 'best streak')}</div>
+      <div class="scene-stats">${stat(`${logs.length}<small>/${gardenCap()}</small>`, 'in the garden')}${mergeablePairs() ? `<button class="btn small primary mergeall" data-f2="mergeAll">🔀 Merge all (${mergeablePairs()})</button>` : ''}${stat(fmtMins(mins) || '0m', 'studied')}${stat('🔥 ' + streak, 'day streak')}${stat(best, 'best streak')}</div>
       <div class="scene-ctl">${gardenFxPanel()}<div class="seg">${seg('week', 'This week')}${seg('month', 'This month')}${seg('all', 'All time')}</div></div>
       <div class="iso-hint">${webglOK() ? 'Drag to move around · pinch to zoom · right-drag or ⟲ ⟳ to spin · ◇ for an isometric view · drag a tree to move it' : 'Drag a tree to move it · click for details'}</div></div>
     <div class="forest-cols">
@@ -335,7 +332,7 @@ function viewForest() {
       <div class="stack">
       ${milestonesCard()}
       <div class="card"><h2>Your trees</h2><p class="muted small-text" style="margin-top:0">Each subject grows its own tree. Pick a different one for any subject. ★ trees come from boxes and the store, and grow leaves faster: rare ×1.5, epic ×2.5, legendary ×4.</p><div class="flegs">${legend || '<div class="empty">Add subjects in the Study tab.</div>'}</div><details class="howgrow"><summary class="muted small-text">How trees grow</summary><div class="fstages">${stages}</div>
-        <p class="muted small-text">A tree starts as big as your session was long, then keeps growing in the garden: a little every hour, and a lot on days you water it. Each stage takes twice as long as the last, so an Ancient tree is a long-term goal. A day counts toward your streak when you study 30+ minutes. Click any tree in the forest to name it, water it and see its stats.</p></details></div>
+        <p class="muted small-text">A tree is as big as your session was long. Trees don't grow on their own: drag a tree onto another of the same kind and stage (or press Merge all) and they become one tree a stage bigger, which grows more leaves. Your garden holds ${gardenCap()} trees; the rest wait on the Archive island. A day counts toward your streak when you study 30+ minutes. Click any tree in the forest to name it, water it and see its stats.</p></details></div>
       <div class="card"><h2>Recent sessions</h2>${recent.length ? `<ul class="list">${recent.map(l => `<li class="item tinted" style="--c:${subj(l.subjectId).color}">${treeSvg(subj(l.subjectId).color, treeGrowth(l), 1, speciesFor(l.subjectId), 34)}<div class="main"><div class="title">${esc(subj(l.subjectId).name)} · ${fmtMins(l.mins)}</div><div class="meta">${fmtDate(l.date)} ${fmtTime(new Date(l.start).toTimeString().slice(0, 5))}${l.mins < 10 ? ' · too short for a tree' : ''}</div></div><button class="iconbtn" data-act="delLog" data-id="${l.id}" title="Delete">✕</button></li>`).join('')}</ul>` : '<div class="empty">No sessions yet. Press ▶ Focus on a study block or Start studying.</div>'}</div>
       </div>
     </div>`;

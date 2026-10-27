@@ -7,10 +7,10 @@
 
 const COIN = '🪙';
 const RARITY = {
-  common: { name: 'Common', color: '#868e96', refund: 10 },
-  rare: { name: 'Rare', color: '#228be6', refund: 30 },
-  epic: { name: 'Epic', color: '#9c36b5', refund: 80 },
-  legendary: { name: 'Legendary', color: '#f59f00', refund: 200 },
+  common: { name: 'Common', color: '#868e96', refund: 5 },
+  rare: { name: 'Rare', color: '#228be6', refund: 12 },
+  epic: { name: 'Epic', color: '#9c36b5', refund: 30 },
+  legendary: { name: 'Legendary', color: '#f59f00', refund: 80 },
 };
 const ITEMS = [
   // trees (new species for "Your trees")
@@ -96,7 +96,7 @@ function dailyMins() { const m = {}; for (const l of D.focusLogs) m[l.date] = (m
 // coin multiplier for one focus session, from upgrades and critter buffs
 // (only buffs you had when the session started count, so new buffs don't pay out on old trees)
 function coinMult(l) {
-  let m = 1 + .05 * upg('magnet', l) + (crit('bee', l) ? .05 : 0) + (crit('platypus', l) ? .1 : 0) + (treeBuff(l).coin || 0) + sessionCoinBuff(l) + (l.mins >= 45 ? .05 * upg('lamp', l) : 0) + (crit('parrot', l) ? .05 : 0) + (crit('penguin', l) && l.mins >= 60 ? .1 : 0);
+  let m = 1 + .05 * upg('magnet', l) + (crit('bee', l) ? .05 : 0) + (crit('platypus', l) ? .1 : 0) + (treeBuff(l).coin || 0) + sessionCoinBuff(l) + (l.mins >= 45 ? .05 * upg('lamp', l) : 0) + (crit('parrot', l) ? .05 : 0) + (crit('penguin', l) && l.mins >= 60 ? .1 : 0) + (typeof streakBonus === 'function' ? streakBonus(l) : 0);
   const h = new Date(l.start).getHours();
   if (crit('kookaburra', l) && h < 12) m += .1;
   if (crit('fireflies', l) && h >= 19) m += .1;
@@ -119,7 +119,7 @@ function coinsEarned() {
 }
 const coins = () => Math.max(0, coinsEarned() - (D.game.spent || 0));
 function xpTotal() {
-  return Math.round(D.focusLogs.reduce((a, l) => a + creditMins(l) * (1 + (crit('kangaroo', l) ? .1 : 0) + (treeBuff(l).xp || 0) + sessionXpBuff(l) + .1 * upg('wise', l) + (l.mins >= 45 ? .05 * upg('lamp', l) : 0) + (crit('panda', l) ? .1 : 0) + (crit('bat', l) && new Date(l.start).getHours() >= 19 ? .1 : 0)), 0) + D.sessions.filter(x => x.done).length * 10 + D.assessments.filter(x => x.done).length * 50 + D.workouts.filter(x => x.done).length * 5);
+  return Math.round(D.focusLogs.reduce((a, l) => a + creditMins(l) * (1 + (crit('kangaroo', l) ? .1 : 0) + (treeBuff(l).xp || 0) + sessionXpBuff(l) + .1 * upg('wise', l) + (l.mins >= 45 ? .05 * upg('lamp', l) : 0) + (crit('panda', l) ? .1 : 0) + (crit('bat', l) && new Date(l.start).getHours() >= 19 ? .1 : 0) + (typeof streakBonus === 'function' ? streakBonus(l) : 0)), 0) + D.sessions.filter(x => x.done).length * 10 + D.assessments.filter(x => x.done).length * 50 + D.workouts.filter(x => x.done).length * 5);
 }
 // level n needs 30*n*(n-1) XP: 60 for level 2, 180 for 3, 360 for 4 ...
 function levelInfo(xp = xpTotal()) {
@@ -365,15 +365,16 @@ function boxesView() {
 // decorations and scenes for the garden cost leaves. There's no swapping one
 // for the other.
 const STORE_PRICE = { common: 90, rare: 220, epic: 500, legendary: 1200 };
+const TREE_PRICE = { common: 500, rare: 1400, epic: 3500, legendary: 9000 }; // trees are meant to come from boxes
 const LEAF_PRICE = { common: 120, rare: 300, epic: 700, legendary: 1500 };
 const storeCur = i => i.type === 'deco' || i.type === 'scene' ? 'leaf' : 'coin';
-const storePrice = i => (storeCur(i) === 'leaf' ? LEAF_PRICE : STORE_PRICE)[i.rarity];
+const storePrice = i => (storeCur(i) === 'leaf' ? LEAF_PRICE : i.type === 'tree' ? TREE_PRICE : STORE_PRICE)[i.rarity];
 function storeView() {
   const cat = ui.storeCat || 'tree';
   const cats = [['tree', `🌳 Trees · ${COIN}`], ['animal', `🦔 Animals · ${COIN}`], ['deco', `🏡 Decorations · ${LEAF}`], ['scene', `🌅 Scenes · ${LEAF}`]];
   const list = ITEMS.filter(i => i.type === cat).sort((a, b) => storePrice(a) - storePrice(b));
   const leafy = cat === 'deco' || cat === 'scene', have = leafy ? leaves() : coins(), sym = leafy ? LEAF : COIN;
-  return `<div class="card"><div class="card-head"><h2>Item store</h2><span class="muted small-text">${leafy ? 'garden decorations and scenes are paid with leaves' : 'trees and animals are paid with coins'}</span><span class="coins">${sym} <b>${leafy ? fmtLeaf(have) : have}</b></span></div>
+  return `<div class="card"><div class="card-head"><h2>Item store</h2><span class="muted small-text">${leafy ? 'garden decorations and scenes are paid with leaves' : cat === 'tree' ? 'buying a tree outright costs a lot: a Tree chest (220 🪙) is far cheaper' : 'animals are paid with coins'}</span><span class="coins">${sym} <b>${leafy ? fmtLeaf(have) : have}</b></span></div>
     <div class="seg" style="margin-bottom:10px">${cats.map(([k, l]) => `<button class="${cat === k ? 'on' : ''}" data-act="storeCat" data-v="${k}">${l}</button>`).join('')}</div>
     <div class="storegrid">${list.map(i => { const p = storePrice(i), has = owned(i.id);
       return `<div class="storeitem ${has ? 'own' : ''}" style="--rc:${RARITY[i.rarity].color}"><div class="storeart">${itemIcon(i, 70)}</div><b>${esc(i.name)}</b><span class="small-text" style="color:${RARITY[i.rarity].color}">${RARITY[i.rarity].name}</span>
@@ -390,7 +391,7 @@ function earnCard() {
   const ways = [['⏱️', `1 ${COIN} a minute`, `in focus sessions of 10+ minutes (up to ${fmtMins(120 + 30 * upg('longer'))} each)`], ['🌳', '+10 a full tree', 'for a 45+ minute session'],
     ['📅', `+${crit('echidna') ? 10 : 5} a study day`, 'each day you study 30+ minutes'], ['✅', 'Ticking things off', '+5 a study block, +25 a SAC or exam, +5 a workout, +2 a task'],
     ['🏆', 'Challenges', '15 to 150 coins each'], ['🎁', 'Daily gift', 'free coins once a day'], ['💧', 'Water your trees', 'coins for each tree, once a day each'],
-    ['🎖️', 'Milestones and critters', 'pay out once when you reach or find them'], ['📦', 'Duplicates', 'from boxes give coins back']];
+    ['🎖️', 'Milestones and critters', 'pay out once when you reach or find them'], ['📦', 'Duplicates', 'from boxes give a few coins back, or reforge them'], ['🔥', 'Study streaks', '+5% at 3 days, +10% at 7, +20% at 14, +30% at 30']];
   return `<div class="card"><div class="card-head"><h2>How to earn</h2></div>
     <div class="earngrid">${ways.map(([ic, t, d], i) => `<div class="earnitem" style="--i:${i}"><span>${ic}</span><div><b>${t}</b><div class="muted small-text">${d}</div></div></div>`).join('')}</div>
     <p class="muted small-text" style="margin:12px 0 0">${COIN} Coins buy lucky boxes, trees, animals and everything in the Arena. ${LEAF} Leaves are the garden's own money: your trees grow them every hour, and they buy garden upgrades, decorations and scenes. You can't swap one for the other.</p></div>`;

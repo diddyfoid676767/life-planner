@@ -13,7 +13,7 @@ function extendPrices(u) {
   u.prices = out.slice(0, max);
 }
 LEAF_UPGRADES.push(
-  { id: 'sundial', icon: '☀️', name: 'Sundial', desc: 'Trees grow 10% faster towards their next stage, per level', prices: [800], need: 5 },
+  { id: 'sundial', icon: '☀️', name: 'Sundial', desc: '+4% chance per level that a merge skips a stage', prices: [800], need: 5 },
   { id: 'trellis', icon: '🪴', name: 'Trellis', desc: '+3 leaves an hour for every mature or older tree, per level', prices: [1500], need: 10 },
   { id: 'birdbath', icon: '🐦', name: 'Bird bath', desc: 'Visiting critters drop by 10% more often, per level', prices: [1000], need: 5 },
 );

@@ -9,7 +9,7 @@ CRITTERS.push(
   { id: 'penguin', emoji: '🐧', name: 'Penguin', how: 'Grow 3 trees as Fir, Blue spruce or Frost tree', need: s => [s.sp('fir', 'spruce', 'frost'), 3], buff: '+10% coins for sessions of 60+ minutes', at: [380, 420] },
   { id: 'bat', emoji: '🦇', name: 'Fruit bat', how: 'Grow 3 trees as Moonlight, Lantern or Aurora tree', need: s => [s.sp('moon', 'lantern', 'aurora'), 3], buff: '+10% XP for sessions after 7pm', at: [720, 200], fly: true },
   { id: 'ladybug', emoji: '🐞', name: 'Ladybirds', how: 'Grow 5 trees as Blossom, Magnolia or Wisteria', need: s => [s.sp('cherry', 'magnolia', 'wisteria'), 5], buff: '+5% leaves from every tree', at: [160, 420] },
-  { id: 'turtle', emoji: '🐢', name: 'Old turtle', how: 'Grow a tree into an Elder tree', need: s => [s.elder, 1], buff: 'Every tree grows 5% faster', at: [470, 432] },
+  { id: 'turtle', emoji: '🐢', name: 'Old turtle', how: 'Grow a tree into an Elder tree', need: s => [s.elder, 1], buff: '+5% lucky merges (skip a stage)', at: [470, 432] },
 );
 // forest stats gain tree-type counts and the oldest stage reached
 {

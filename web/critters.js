@@ -178,7 +178,8 @@ function treeCardHtml(l) {
       <div class="tbuff">${LEAF} Grows <b>${fmtLeaf(treeLeafRate(l))} leaves an hour</b>${speciesRarity(speciesFor(l.subjectId)) !== 'common' ? ` (${esc(speciesName(speciesFor(l.subjectId)))} ×${LEAF_RARITY[speciesRarity(speciesFor(l.subjectId))]})` : ''}${(new Date(today()) - new Date(r.lastWater || '2000-01-01')) / 864e5 <= 1 ? ', watered ×1.5' : '. Water it for ×1.5'}</div>
       ${sess ? `<p class="small-text muted" style="margin:8px 0 0">Study block: <b>${esc(sess.topic || '')}</b></p>` : ''}
       <div class="row" style="margin-top:14px"><button class="btn ${ok && left > 0 ? 'primary' : ''}" data-tc="water" ${ok && left > 0 ? '' : 'disabled'}>💧 ${ok ? (left > 0 ? `Water (+${waterCoins(l)} ${COIN})` : 'Watered 10 trees today') : 'Watered today'}</button>
-        <span class="muted small-text">Watering makes trees grow taller and grow leaves faster for a day. ${left > 0 ? `${left} left today.` : ''}</span></div>
+        <span class="muted small-text">Watering makes a tree grow leaves faster for a day. ${left > 0 ? `${left} left today.` : ''}</span></div>
+      <div class="row tc-merge">${r.into ? `<span class="muted small-text">🔀 Merged into ${esc(treeName(logById(r.into) || l))}. It lives on in the Archive island as a study block.</span>` : r.arch ? `<button class="btn" data-tc="unarch">🌳 Bring back to the garden</button><span class="muted small-text">On the Archive island, so it can't merge.</span>` : `${mergePartner(l) ? `<button class="btn primary" data-tc="merge">🔀 Merge with another ${TREE_STAGES[si][1].toLowerCase()}</button>` : `<span class="muted small-text">${si >= TREE_STAGES.length - 1 ? 'Fully grown.' : `No other ${esc(speciesName(sp))} ${TREE_STAGES[si][1].toLowerCase()} in the garden to merge with yet.`}</span>`}<button class="btn" data-tc="arch">🏝️ Send to archive</button>`}</div>
     </div>`;
 }
 function openTreeCard(id) {
@@ -208,6 +209,9 @@ function openTreeCard(id) {
       const res = waterTree(id);
       if (res === 'ok') { const p = document.createElement('div'); p.className = 'coinpop'; p.textContent = `💧 +${waterCoins(l)} ${COIN}`; document.body.appendChild(p); setTimeout(() => p.remove(), 1600); lastCoins = coins(); }
     }
+    if (a === 'merge') { const p = mergePartner(l); if (p) { if (String(p.start) < String(l.start)) { mergeTrees(p.id, id); return close(); } mergeTrees(id, p.id); } }
+    if (a === 'arch') { archiveTree(id, true); return close(); }
+    if (a === 'unarch') { if (archiveTree(id, false)) return close(); }
     card.innerHTML = treeCardHtml(l);
   });
   ov.querySelector('#tcName').addEventListener('keydown', e => { if (e.key === 'Enter') { saveName(); e.target.blur(); } });
@@ -216,15 +220,15 @@ function openTreeCard(id) {
 // ---------- views ----------
 // stage name, a bar to the next stage, and how long until it gets there
 function stageMeter(g, big) {
-  const si = treeStage(g), last = si >= TREE_STAGES.length - 1, pct = Math.round(stageProgress(g) * 100);
-  const next = last ? '' : `${TREE_STAGES[si + 1][1]} in ${fmtGrow(TREE_STAGES[si + 1][0] - g)} of growth`;
-  return `<div class="stagemeter ${big ? 'big' : ''} s${si}"><div class="sm-top"><b>${STAGE_ICON[si]} ${TREE_STAGES[si][1]}</b><span>${big ? `${fmtGrow(g)} grown${next ? ' · ' + next : ' · fully grown'}` : last ? 'max' : pct + '%'}</span></div><div class="sm-bar"><i style="width:${pct}%"></i></div></div>`;
+  const si = treeStage(g), last = si >= TREE_STAGES.length - 1, pct = Math.round((si + 1) / TREE_STAGES.length * 100);
+  const next = last ? 'fully grown' : `merge with another ${TREE_STAGES[si][1].toLowerCase()} of its kind to make ${/^[AEIOU]/.test(TREE_STAGES[si + 1][1]) ? 'an' : 'a'} ${TREE_STAGES[si + 1][1].toLowerCase()}`;
+  return `<div class="stagemeter ${big ? 'big' : ''} s${si}"><div class="sm-top"><b>${STAGE_ICON[si]} ${TREE_STAGES[si][1]}</b><span>${big ? next : `stage ${si + 1}/${TREE_STAGES.length}`}</span></div><div class="sm-bar"><i style="width:${pct}%"></i></div></div>`;
 }
 const fmtGrow = m => m >= 60 ? `${(m / 60).toFixed(m >= 600 ? 0 : 1)} h` : `${Math.max(1, Math.round(m))} min`;
 const RARITY_ORDER = ['legendary', 'epic', 'rare', 'common'];
 function treesView() {
   const f = ui.treeSubj || 'all', tf = ui.treeFilt || {}, sort = tf.sort || 'new';
-  const base = D.focusLogs.filter(l => l.mins >= 10 && (f === 'all' || (f === 'fav' ? treeRec(l.id).fav : l.subjectId === f)));
+  const base = D.focusLogs.filter(l => inGarden(l) && (f === 'all' || (f === 'fav' ? treeRec(l.id).fav : l.subjectId === f)));
   const info = new Map(base.map(l => { const sp = speciesFor(l.subjectId), g = treeGrowth(l); return [l.id, { sp, g, st: treeStage(g), rar: speciesRarity(sp) }]; }));
   const I = l => info.get(l.id);
   let logs = base.filter(l => {
@@ -246,7 +250,7 @@ function treesView() {
   const sorts = [['new', 'Newest planted'], ['old', 'Oldest planted'], ['rarity', 'Rarity'], ['stage', 'Stage'], ['grown', 'Hours grown'], ['type', 'Tree type'], ['long', 'Longest session'], ['tall', 'Tallest']];
   const nFilt = ['stage', 'rar', 'sp', 'water'].filter(k => tf[k] != null && tf[k] !== '').length;
   const left = 10 - wateredToday();
-  return `<div class="card"><div class="card-head"><h2>My trees</h2><span class="muted">${logs.length}${logs.length !== base.length ? ` of ${base.length}` : ''} tree${base.length === 1 ? '' : 's'} · 💧 ${left > 0 ? `${left} waterings left today` : 'all watered for today'}</span></div>
+  return `<div class="card"><div class="card-head"><h2>My trees</h2><span class="muted">${logs.length}${logs.length !== base.length ? ` of ${base.length}` : ''} tree${base.length === 1 ? '' : 's'} · 💧 ${left > 0 ? `${left} waterings left today` : 'all watered for today'} · ${gardenLogs().length}/${gardenCap()} in the garden</span>${mergeablePairs() ? `<button class="btn small primary" data-f2="mergeAll">🔀 Merge all (${mergeablePairs()})</button>` : ''}</div>
     <div class="catchips">${chip('all', 'All')}${chip('fav', '★ Starred')}${D.subjects.map(s => chip(s.id, esc(s.name), s.color)).join('')}</div>
     <div class="tfilters">${sel('sort', 'Sort by', sorts.map(([v, n]) => [v, n]))}
       ${sel('stage', 'Stage', [['', 'Any stage'], ...TREE_STAGES.map(([, n], i) => [i, n])])}
@@ -286,7 +290,7 @@ function upgTile(u, lvl, have, cur, act, i, lockHtml) {
 }
 function shopView() {
   const tab = ui.shopTab || 'boxes', g = giftReady(), c = coins(), lv = leaves();
-  const tabs = [['boxes', '🎁 Lucky boxes'], ['store', '🛍️ Store'], ['upgrades', '⬆️ Upgrades'], ['earn', '💡 How to earn']];
+  const tabs = [['boxes', '🎁 Lucky boxes'], ['store', '🛍️ Store'], ['reforge', '🔨 Reforge'], ['upgrades', '⬆️ Upgrades'], ['earn', '💡 How to earn']];
   const wallet = `<div class="shopwallet">
       <div class="sw-card coin"><span class="sw-ic">${COIN}</span><div class="main"><b class="sw-n">${c}</b><span>coins</span></div><small>Boxes, trees, animals and the Arena</small></div>
       <div class="sw-card leaf"><span class="sw-ic">${LEAF}</span><div class="main"><b class="sw-n">${fmtLeaf(lv)}</b><span>leaves</span></div><small>Garden upgrades, decorations and scenes</small></div>
@@ -295,7 +299,7 @@ function shopView() {
   const nav = `<div class="seg shoptabs">${tabs.map(([k, l]) => `<button class="${tab === k ? 'on' : ''}" data-act="shopTab" data-v="${k}">${l}</button>`).join('')}</div>`;
   const coinUps = `<div class="card"><div class="card-head"><h2>${COIN} Coin upgrades</h2><span class="muted small-text">paid with coins</span><span class="coins">${COIN} <b>${c}</b></span></div>
     <div class="upgs">${UPGRADES.map((u, i) => upgTile(u, upg(u.id), c, COIN, 'buyUpg', i)).join('')}</div></div>`;
-  const body = tab === 'store' ? storeView() : tab === 'upgrades' ? `${leafShopView()}${coinUps}` : tab === 'earn' ? earnCard() : boxesView();
+  const body = tab === 'store' ? storeView() : tab === 'reforge' ? reforgeView() : tab === 'upgrades' ? `${leafShopView()}${coinUps}` : tab === 'earn' ? earnCard() : boxesView();
   setTimeout(() => { ui.justBought = null; }, 0);
   return `<div class="shoppage">${wallet}${nav}<div class="shopbody" key="${tab}">${body}</div></div>`;
 }

@@ -345,6 +345,7 @@ function g3events() {
       const glide = (o, x, z) => { const fx = o.position.x, fz = o.position.z, fy = o.position.y; let t = 0; const f = (tt, dt) => { t = Math.min(1, t + (dt || .016) * 5); const e = 1 - Math.pow(1 - t, 3); o.position.set(fx + (x - fx) * e, fy * (1 - e) + Math.sin(e * Math.PI) * .25, fz + (z - fz) * e); if (t >= 1) G3.tickers.splice(G3.tickers.indexOf(f), 1); }; G3.tickers.push(f); };
       if (d.cell && ev.type !== 'pointercancel') {
         const to = d.cell.join(','), from = pos[key], other = Object.keys(pos).find(k => pos[k] === to && k !== key);
+        if (other && typeof canMerge === 'function' && canMerge(other, key)) { mergeTrees(other, key); G3.sig = g3signature(); render(); return; }
         if (other) { pos[other] = from; const o2 = G3.objs.find(o => o.userData.key === other); if (o2 && home) glide(o2, home.x, home.z); }
         pos[key] = to; save(); setTimeout(() => sfx('plant'), 160);
         const [x, z] = tileXZ(d.cell[0], d.cell[1], G3.N); glide(d.obj, x, z);

@@ -243,6 +243,7 @@ document.addEventListener('pointerdown', e => {
     if (ev.type === 'pointercancel' || !over) { holder.setAttribute('transform', base); t.classList.remove('dragging'); render(); return; }
     const pos = D.game.gridPos, to = over.dataset.rc, from = pos[key];
     const other = Object.keys(pos).find(k => pos[k] === to && k !== key);
+    if (other && typeof canMerge === 'function' && canMerge(other, key)) { mergeTrees(other, key); render(); return; }
     if (other) pos[other] = from;
     pos[key] = to;
     save(); render();
