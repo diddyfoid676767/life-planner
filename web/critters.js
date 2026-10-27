@@ -179,7 +179,7 @@ function treeCardHtml(l) {
       ${sess ? `<p class="small-text muted" style="margin:8px 0 0">Study block: <b>${esc(sess.topic || '')}</b></p>` : ''}
       <div class="row" style="margin-top:14px"><button class="btn ${ok && left > 0 ? 'primary' : ''}" data-tc="water" ${ok && left > 0 ? '' : 'disabled'}>💧 ${ok ? (left > 0 ? `Water (+${waterCoins(l)} ${COIN})` : 'Watered 10 trees today') : 'Watered today'}</button>
         <span class="muted small-text">Watering makes a tree grow leaves faster for a day. ${left > 0 ? `${left} left today.` : ''}</span></div>
-      <div class="row tc-merge">${r.into ? `<span class="muted small-text">🔀 Merged into ${esc(treeName(logById(r.into) || l))}. It lives on in the Archive island as a study block.</span>` : r.arch ? `<button class="btn" data-tc="unarch">🌳 Bring back to the garden</button><span class="muted small-text">On the Archive island, so it can't merge.</span>` : `${mergePartner(l) ? `<button class="btn primary" data-tc="merge">🔀 Merge with another ${TREE_STAGES[si][1].toLowerCase()}</button>` : `<span class="muted small-text">${si >= TREE_STAGES.length - 1 ? 'Fully grown.' : `No other ${esc(speciesName(sp))} ${TREE_STAGES[si][1].toLowerCase()} in the garden to merge with yet.`}</span>`}<button class="btn" data-tc="arch">🏝️ Send to archive</button>`}</div>
+      <div class="row tc-merge">${r.into ? `<span class="muted small-text">🔀 Merged into ${esc(treeName(logById(r.into) || l))}. It lives on in the Archive island as a study block.</span>` : r.arch ? `<span class="muted small-text">🏝️ In the Archive island's study log. Archived trees don't grow leaves or merge.</span>` : `${mergePartner(l) ? `<button class="btn primary" data-tc="merge">🔀 Merge with another ${TREE_STAGES[si][1].toLowerCase()}</button>` : `<span class="muted small-text">${si >= TREE_STAGES.length - 1 ? 'Fully grown.' : `No other ${esc(speciesName(sp))} ${TREE_STAGES[si][1].toLowerCase()} in the garden to merge with yet.`}</span>`}<button class="btn" data-tc="arch" title="It goes into your study log for good: no more leaves or merging">🏝️ Send to archive</button>`}</div>
     </div>`;
 }
 function openTreeCard(id) {
@@ -210,8 +210,7 @@ function openTreeCard(id) {
       if (res === 'ok') { const p = document.createElement('div'); p.className = 'coinpop'; p.textContent = `💧 +${waterCoins(l)} ${COIN}`; document.body.appendChild(p); setTimeout(() => p.remove(), 1600); lastCoins = coins(); }
     }
     if (a === 'merge') { const p = mergePartner(l); if (p) { if (String(p.start) < String(l.start)) { mergeTrees(p.id, id); return close(); } mergeTrees(id, p.id); } }
-    if (a === 'arch') { archiveTree(id, true); return close(); }
-    if (a === 'unarch') { if (archiveTree(id, false)) return close(); }
+    if (a === 'arch') { if (confirm('Send this tree to the Archive island? It stays in your study log but stops growing leaves, and it can\'t come back to the garden.')) { archiveTree(id, true); return close(); } }
     card.innerHTML = treeCardHtml(l);
   });
   ov.querySelector('#tcName').addEventListener('keydown', e => { if (e.key === 'Enter') { saveName(); e.target.blur(); } });
@@ -225,7 +224,7 @@ function stageMeter(g, big) {
   return `<div class="stagemeter ${big ? 'big' : ''} s${si}"><div class="sm-top"><b>${STAGE_ICON[si]} ${TREE_STAGES[si][1]}</b><span>${big ? next : `stage ${si + 1}/${TREE_STAGES.length}`}</span></div><div class="sm-bar"><i style="width:${pct}%"></i></div></div>`;
 }
 const fmtGrow = m => m >= 60 ? `${(m / 60).toFixed(m >= 600 ? 0 : 1)} h` : `${Math.max(1, Math.round(m))} min`;
-const RARITY_ORDER = ['legendary', 'epic', 'rare', 'common'];
+const RARITY_ORDER = ['mythic', 'legendary', 'epic', 'rare', 'common'];
 function treesView() {
   const f = ui.treeSubj || 'all', tf = ui.treeFilt || {}, sort = tf.sort || 'new';
   const base = D.focusLogs.filter(l => inGarden(l) && (f === 'all' || (f === 'fav' ? treeRec(l.id).fav : l.subjectId === f)));
@@ -315,7 +314,7 @@ const speciesRarity = k => { const b = BONUS_SPECIES.find(x => x[0] === k); retu
 function openTreePicker(subjectId) {
   const s = subj(subjectId), cur = speciesFor(subjectId), map = speciesMap();
   const takenBy = k => D.subjects.find(x => x.id !== subjectId && map[x.id] === k);
-  const order = ['legendary', 'epic', 'rare', 'common'];
+  const order = RARITY_ORDER;
   const all = [...BONUS_SPECIES.map(b => ({ k: b[0], n: b[1], has: owned(b[2]) })), ...TREE_SPECIES.map(b => ({ k: b[0], n: b[1], has: true }))]
     .map(x => ({ ...x, r: speciesRarity(x.k) })).sort((a, b) => order.indexOf(a.r) - order.indexOf(b.r));
   const ov = document.createElement('div');
@@ -324,7 +323,7 @@ function openTreePicker(subjectId) {
     <h2 style="margin:0 0 4px">Choose a tree for ${esc(s.name)}</h2><p class="muted small-text" style="margin:0 0 12px">Each subject has its own tree, so trees another subject uses are greyed out. ★ trees come from boxes and the store. Rarer trees grow leaves faster, and switching changes every tree this subject has grown.</p>
     <div class="pickgrid">${all.map(x => { const rc = RARITY[x.r], tb = takenBy(x.k), ok = x.has && !tb; return `<button class="pick ${x.k === cur ? 'on' : ''} ${ok || x.k === cur ? '' : 'locked'}" ${ok ? `data-tp="${x.k}"` : 'disabled'} style="--rc:${rc.color}" ${tb ? `title="Already used by ${esc(tb.name)}"` : ''}>
       <div class="pickart">${x.has ? treeSvg(s.color, 45, 1, x.k, 70) : '<span class="pickq">?</span>'}</div><b>${x.has ? esc(x.n) : '???'}</b><span class="rar">${rc.name}</span>
-      <span class="pbuff">${x.has ? `${LEAF} ×${LEAF_RARITY[x.r]} leaves${speciesBuffText(x.k) ? `<br>✨ ${esc(speciesBuffText(x.k))}` : ''}` : speciesBuffText(x.k) ? `✨ ${esc(speciesBuffText(x.k))}<br><span class="muted">Find it in a box or the store</span>` : 'Find it in a box or the store'}</span>${x.k === cur ? '<span class="tag green">Current</span>' : tb && x.has ? `<span class="tag">Used by ${esc(tb.name)}</span>` : ''}</button>`; }).join('')}</div></div>`;
+      <span class="pbuff">${x.has ? `${LEAF} ×${LEAF_RARITY[x.r]} leaves${speciesBuffText(x.k) ? `<br>✨ ${esc(speciesBuffText(x.k))}` : ''}` : speciesBuffText(x.k) ? `✨ ${esc(speciesBuffText(x.k))}<br><span class="muted">${x.r === 'mythic' ? "Can't be bought or won. It finds you." : 'Find it in a box or the store'}</span>` : 'Find it in a box or the store'}</span>${x.k === cur ? '<span class="tag green">Current</span>' : tb && x.has ? `<span class="tag">Used by ${esc(tb.name)}</span>` : ''}</button>`; }).join('')}</div></div>`;
   document.body.appendChild(ov);
   const close = () => { ov.remove(); document.removeEventListener('keydown', key); };
   const key = e => { if (e.key === 'Escape') close(); };

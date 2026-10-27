@@ -1257,6 +1257,7 @@ function stopFocus(log, quiet) {
   if (log && mins >= 1) {
     D.focusLogs.push({ id: uid(), subjectId: f.subjectId, species: speciesFor(f.subjectId), ...((f.distractions || 0) >= DISTRACT_LIMIT ? { withered: true } : {}), sessionId: f.sessionId, date: ymd(new Date(f.startedAt)), start: new Date(f.startedAt).toISOString(), mins });
     leafSessionBonus(D.focusLogs[D.focusLogs.length - 1]);
+    if (typeof newTreeExtras === 'function') newTreeExtras(D.focusLogs[D.focusLogs.length - 1]); // heirloom seeds, mythic seeds
     const sess = f.sessionId && find('session', f.sessionId);
     if (sess && !sess.done && (!quiet) && confirm(`Logged ${fmtMins(mins)} of ${subj(f.subjectId).name}. Tick off this study block?`)) sess.done = true;
     else if (!quiet) toast(mins >= 10 ? '🌳 You grew a tree!' : 'Study time logged', `${fmtMins(mins)} of ${subj(f.subjectId).name}`);

@@ -2597,3 +2597,22 @@ main#view { padding-bottom: 80px; }
   .toast { padding: 9px 12px; }
   .twelcome { flex-wrap: wrap; } .twelcome .muted { flex-basis: 100%; order: 2; }
 }
+
+/* 2.29 Archive island: a log of every study session */
+.alogs { display: flex; flex-direction: column; gap: 3px; margin-top: 12px; }
+.alogs .archm-head { margin: 12px 0 4px; color: var(--text); }
+.alog { display: grid; grid-template-columns: 52px 108px minmax(90px, 160px) 1fr 64px 24px; align-items: center; gap: 8px; padding: 6px 10px; border-radius: 9px; background: var(--panel2); border-left: 4px solid var(--c); font-size: .85rem; }
+.alog-n { color: var(--muted); font-variant-numeric: tabular-nums; font-size: .78rem; }
+.alog-when { white-space: nowrap; } .alog-when b { font-weight: 700; }
+.alog-subj { font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.alog-topic { color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.alog-len { text-align: right; font-weight: 700; font-variant-numeric: tabular-nums; }
+.alog.merged { opacity: .75; }
+@media (max-width: 700px) { .alog { grid-template-columns: 40px 90px 1fr 54px 20px; } .alog-topic { display: none; } }
+
+/* 2.29 tree hover card */
+.treetip { position: fixed; z-index: 60; pointer-events: none; min-width: 180px; max-width: 260px; padding: 9px 11px; border-radius: 12px; background: color-mix(in srgb, var(--panel) 94%, transparent); backdrop-filter: blur(6px); border: 1px solid var(--border); border-top: 3px solid var(--rc); box-shadow: 0 8px 24px rgba(0,0,0,.18); font-size: .8rem; line-height: 1.35; }
+.treetip b { display: block; font-size: .88rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.treetip .tt-st { font-weight: 700; margin-top: 2px; } .treetip .tt-st span { color: var(--muted); font-weight: 600; font-size: .72rem; margin-left: 4px; }
+.treetip .tt-bar { height: 4px; border-radius: 3px; background: var(--panel2); margin: 5px 0; overflow: hidden; } .treetip .tt-bar i { display: block; height: 100%; background: var(--rc); border-radius: 3px; }
+.treetip .tt-meta { color: var(--muted); font-size: .74rem; }

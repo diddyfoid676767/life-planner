@@ -205,6 +205,7 @@ document.addEventListener('pointermove', e => {
       const x = +g.dataset.x, y = +g.dataset.y;
       if (Math.abs(p.x - x) > 46 || p.y > y + 12 || p.y < y - 150) return;
       const el = g.querySelector('.sway'), s = brush.get(el) || { a: 0, v: 0 };
+      if (Math.abs(dx) > 2 && typeof brushSfx === 'function') { const id = g.querySelector('[data-id]')?.dataset.id; if (id) brushSfx(logById(id), Math.min(1, Math.abs(dx) / 12)); }
       s.v += Math.max(-4, Math.min(4, dx * .35)) * (1 - Math.abs(p.x - x) / 60);
       s.a = Math.max(-24, Math.min(24, s.a)); brush.set(el, s);
     });

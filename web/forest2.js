@@ -7,7 +7,7 @@
    Also here: study streak bonuses and the reforge bench. */
 
 const FOREST2_START = '2026-10-27';
-const gardenCap = () => 36 + 8 * upg('land');
+const gardenCap = () => 36 + 8 * upg('land') + 2 * lupg('seedbank');
 const logById = id => D.focusLogs.find(l => l.id === id);
 const setRec = (id, patch) => { D.game.trees[id] = { ...treeRec(id), ...patch }; };
 const inGarden = l => !!l && l.mins >= 10 && !treeRec(l.id).arch && !treeRec(l.id).into;
@@ -28,6 +28,7 @@ function mergeTrees(targetId, srcId, quiet) {
   if (D.game.gridPos) delete D.game.gridPos[srcId];
   D.game.merges = (D.game.merges || 0) + 1;
   save();
+  if (typeof mythicOnMerge === 'function') setTimeout(() => mythicOnMerge(st + jump), quiet ? 0 : 1200);
   if (!quiet) {
     try { stageSfx(st + jump); } catch { }
     toast(`${STAGE_ICON[st + jump]} Merged into ${/^[AEIOU]/.test(TREE_STAGES[st + jump][1]) ? 'an' : 'a'} ${TREE_STAGES[st + jump][1].toLowerCase()}!`, jump > 1 ? 'Lucky merge: it skipped a whole stage.' : `${treeName(T)} is bigger, and grows more leaves.`);
@@ -57,23 +58,31 @@ function enforceGardenCap() {
   save();
   toast('🏝️ Trees moved to the Archive island', `Your garden holds ${gardenCap()} trees, so ${extra} older one${extra === 1 ? '' : 's'} moved there. Merge trees to make room.`, { timeout: 12000 });
 }
+// 2.29: archiving is one way. The Archive island is your study log now: archived
+// trees don't grow leaves or merge, and can't go back to the garden.
 function archiveTree(id, on) {
-  if (!on && gardenLogs().length >= gardenCap()) { toast('The garden is full', 'Merge or archive a tree first.'); return false; }
-  setRec(id, { arch: !!on }); if (on && D.game.gridPos) delete D.game.gridPos[id]; save(); return true;
+  if (!on) return false;
+  setRec(id, { arch: true }); if (D.game.gridPos) delete D.game.gridPos[id]; save(); return true;
 }
 function archiveView() {
-  const all = D.focusLogs.filter(l => l.mins >= 10).sort((a, b) => String(b.start).localeCompare(String(a.start)));
-  const f = ui.archSubj || 'all', list = all.filter(l => f === 'all' || l.subjectId === f);
-  const shown = ui.archAll ? list : list.slice(0, 240), months = {};
+  const all = D.focusLogs.filter(l => l.mins >= 10).sort((a, b) => String(a.start).localeCompare(String(b.start)));
+  const num = new Map(all.map((l, i) => [l.id, i + 1]));
+  const f = ui.archSubj || 'all', list = all.filter(l => f === 'all' || l.subjectId === f).reverse();
+  const shown = ui.archAll ? list : list.slice(0, 300), months = {};
   for (const l of shown) (months[l.date.slice(0, 7)] = months[l.date.slice(0, 7)] || []).push(l);
   const hrs = list.reduce((a, l) => a + l.mins, 0), inG = all.filter(inGarden).length;
   const chip = (v, label, color) => `<button class="cchip ${f === v ? 'on' : ''}" data-f2="archSubj" data-v="${v}" ${color ? `style="--c:${color}"` : ''}>${label}</button>`;
-  return `<div class="card archcard"><div class="card-head"><h2>🏝️ Archive island</h2><span class="muted small-text">every study block you've ever done · ${all.length} trees · ${fmtMins(hrs)} · ${inG}/${gardenCap()} in your garden</span></div>
-    <p class="muted small-text" style="margin-top:0">Trees here stay the size their session was and can't be merged, but they still grow leaves. Click a tree to bring it back to the garden (if there's room) or see its block.</p>
+  const hm = iso => { const d = new Date(iso); return isNaN(d) ? '' : fmtTime(d.toTimeString().slice(0, 5)); };
+  const row = l => { const r = treeRec(l.id), s = subj(l.subjectId), sess = l.sessionId && D.sessions.find(x => x.id === l.sessionId);
+    const where = r.into ? ['merged', '🔀', 'Merged into a bigger tree'] : r.arch ? ['arch', '🏝️', 'Archived'] : inGarden(l) ? ['garden', '🌳', 'In your garden'] : ['arch', '🏝️', 'Archived'];
+    return `<div class="alog ${where[0]}" style="--c:${s.color}"><span class="alog-n">#${num.get(l.id)}</span><span class="alog-when"><b>${DOW[parseYmd(l.date).getDay()]} ${parseYmd(l.date).getDate()}</b> ${hm(l.start)}</span>
+      <span class="alog-subj">${esc(s.name || 'Study')}</span><span class="alog-topic">${sess ? esc(String(sess.topic || '').replace(/^Revise: /, '')) : ''}${l.withered ? ' <span class="muted">· withered</span>' : ''}</span>
+      <span class="alog-len">${fmtMins(l.mins)}</span><span class="alog-st" title="${where[2]}">${where[1]}</span></div>`; };
+  return `<div class="card archcard"><div class="card-head"><h2>🏝️ Archive island</h2><span class="muted small-text">your log of every study session · ${all.length} sessions · ${fmtMins(all.reduce((a, l) => a + l.mins, 0))} · ${inG}/${gardenCap()} trees in your garden</span></div>
+    <p class="muted small-text" style="margin-top:0">Every session you've done, newest first and numbered in the order you did them. 🌳 is still in your garden, 🔀 was merged into a bigger tree, 🏝️ is archived. Archived trees are kept here for the record: they don't grow leaves and can't go back to the garden.</p>
     <div class="catchips">${chip('all', 'All')}${D.subjects.map(s => chip(s.id, esc(s.name), s.color)).join('')}</div>
-    <div class="archisle">${Object.entries(months).map(([m, ls]) => `<div class="archmonth"><div class="archm-head">${MONTHS[+m.slice(5) - 1]} ${m.slice(0, 4)} <span>${ls.length} · ${fmtMins(ls.reduce((a, l) => a + l.mins, 0))}</span></div>
-      <div class="archtrees">${ls.map(l => { const r = treeRec(l.id), s = subj(l.subjectId), st = r.into ? 'merged' : r.arch ? 'arch' : 'garden';
-        return `<button class="archtree ${st}" data-act="treeInfo" data-id="${l.id}" title="${esc(s.name)} · ${fmtMins(l.mins)} · ${fmtDate(l.date)}${st === 'garden' ? ' · in your garden' : st === 'merged' ? ' · merged into a bigger tree' : ''}">${treeSvg(s.color, l.mins, 1, speciesFor(l.subjectId), 46)}${st === 'garden' ? '<i>🌳</i>' : st === 'merged' ? '<i>🔀</i>' : ''}</button>`; }).join('')}</div></div>`).join('') || '<div class="empty">No study blocks yet.</div>'}</div>
+    ${f !== 'all' ? `<p class="small-text" style="margin:8px 0 0"><b>${list.length}</b> sessions · <b>${fmtMins(hrs)}</b> of ${esc(subj(f).name)}</p>` : ''}
+    <div class="alogs">${Object.entries(months).map(([m, ls]) => `<div class="archm-head">${MONTHS[+m.slice(5) - 1]} ${m.slice(0, 4)} <span>${ls.length} sessions · ${fmtMins(ls.reduce((a, l) => a + l.mins, 0))}</span></div>${ls.map(row).join('')}`).join('') || '<div class="empty">No study sessions yet. Start the focus timer and every session of 10+ minutes lands here.</div>'}</div>
     ${list.length > shown.length ? `<button class="btn" data-f2="archAll">Show all ${list.length}</button>` : ''}</div>`;
 }
 
@@ -94,13 +103,13 @@ const TIERS = ['common', 'rare', 'epic', 'legendary'];
 const REFORGE_FEE = { common: 40, rare: 100, epic: 220, legendary: 450 };
 function reforgeables() {
   const out = [];
-  for (const i of ITEMS) { const n = D.game.items[i.id] || 0; if (n > 0 && i.id !== 'scene_meadow') out.push({ kind: 'item', id: i.id, name: i.name, rarity: i.rarity, n, group: { tree: '🌳 Trees', animal: '🦔 Animals', deco: '🏡 Decorations', scene: '🌅 Scenes' }[i.type] || '🌳 Forest', type: i.type, art: itemIcon(i, 44) }); }
+  for (const i of ITEMS) { const n = D.game.items[i.id] || 0; if (n > 0 && i.id !== 'scene_meadow' && i.rarity !== 'mythic') out.push({ kind: 'item', id: i.id, name: i.name, rarity: i.rarity, n, group: { tree: '🌳 Trees', animal: '🦔 Animals', deco: '🏡 Decorations', scene: '🌅 Scenes' }[i.type] || '🌳 Forest', type: i.type, art: itemIcon(i, 44) }); }
   if (typeof COSMETICS !== 'undefined') { const av = myAv(); for (const c of COSMETICS) if ((c.coins || c.grit) && (D.arena.owned || {})[c.id] && av[c.cat] !== c.id) out.push({ kind: 'cos', id: c.id, name: c.name, rarity: priceRarity((c.coins || 0) + (c.grit || 0) * 1.2, [100, 200, 450]), n: 1, group: '👕 Avatar cosmetics', type: c.cat, art: '<span class="rfic">👕</span>' }); }
   if (typeof HELD !== 'undefined' && D.arena2) for (const h of HELD) { const n = (D.arena2.held || {})[h.id] || 0; if (n > 0) out.push({ kind: 'held', id: h.id, name: h.name, rarity: TIERS[Math.min(3, h.tier - 1)], n, group: '⚔️ Arena items', type: 'held', art: `<span class="rfic">${h.icon}</span>` }); }
   return out;
 }
 function reforgePool(x) {
-  if (x.kind === 'item') return ITEMS.filter(i => i.type === x.type && i.id !== x.id).map(i => ({ id: i.id, name: i.name, rarity: i.rarity, own: owned(i.id) }));
+  if (x.kind === 'item') return ITEMS.filter(i => i.type === x.type && i.id !== x.id && i.rarity !== 'mythic').map(i => ({ id: i.id, name: i.name, rarity: i.rarity, own: owned(i.id) }));
   if (x.kind === 'cos') return COSMETICS.filter(c => c.cat === x.type && c.id !== x.id && (c.coins || c.grit)).map(c => ({ id: c.id, name: c.name, rarity: priceRarity((c.coins || 0) + (c.grit || 0) * 1.2, [100, 200, 450]), own: ownsCos(c.id) }));
   return HELD.filter(h => h.id !== x.id).map(h => ({ id: h.id, name: h.name, rarity: TIERS[Math.min(3, h.tier - 1)], own: !!(D.arena2.held || {})[h.id] }));
 }

@@ -110,7 +110,7 @@ function boxBurstSfx(tier) {
     if (tier === 3) [1568, 2093, 2637, 3136, 2637, 3136].forEach((f, i) => tone(c, { f, dur: .3, vol: .025, type: 'sine', at: .5 + i * .09 }));
   } catch (e) { }
 }
-function stageSfx(stage) { try { const c = sfxReady('garden'); if (c) STAGE_SND[Math.max(0, Math.min(7, stage))](c); } catch (e) { } }
+function stageSfx(stage) { try { const c = sfxReady('garden'); if (c) STAGE_SND[Math.max(0, Math.min(STAGE_SND.length - 1, stage))](c); } catch (e) { } }
 function battleSfx(side, kind, d = {}) {
   const c = sfxReady('arena'); if (!c) return;
   if (kind === 'send') { hiss(c, { f: 500, f2: 4000, dur: .3, vol: .05 }); tone(c, { f: 523, f2: 1047, dur: .2, vol: .06, type: 'triangle', at: .2 }); }

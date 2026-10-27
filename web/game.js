@@ -372,7 +372,7 @@ const storePrice = i => (storeCur(i) === 'leaf' ? LEAF_PRICE : i.type === 'tree'
 function storeView() {
   const cat = ui.storeCat || 'tree';
   const cats = [['tree', `🌳 Trees · ${COIN}`], ['animal', `🦔 Animals · ${COIN}`], ['deco', `🏡 Decorations · ${LEAF}`], ['scene', `🌅 Scenes · ${LEAF}`]];
-  const list = ITEMS.filter(i => i.type === cat).sort((a, b) => storePrice(a) - storePrice(b));
+  const list = ITEMS.filter(i => i.type === cat && i.rarity !== 'mythic').sort((a, b) => storePrice(a) - storePrice(b));
   const leafy = cat === 'deco' || cat === 'scene', have = leafy ? leaves() : coins(), sym = leafy ? LEAF : COIN;
   return `<div class="card"><div class="card-head"><h2>Item store</h2><span class="muted small-text">${leafy ? 'garden decorations and scenes are paid with leaves' : cat === 'tree' ? 'buying a tree outright costs a lot: a Tree chest (220 🪙) is far cheaper' : 'animals are paid with coins'}</span><span class="coins">${sym} <b>${leafy ? fmtLeaf(have) : have}</b></span></div>
     <div class="seg" style="margin-bottom:10px">${cats.map(([k, l]) => `<button class="${cat === k ? 'on' : ''}" data-act="storeCat" data-v="${k}">${l}</button>`).join('')}</div>

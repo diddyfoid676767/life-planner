@@ -204,10 +204,10 @@ const T3 = {
 // Tree sizes by stage, sapling to ancient. Older trees also get more detail:
 // fruit (mature), blossom (grand), roots and moss (elder), hanging vines and
 // toadstools (old-growth), and a golden glow with drifting motes (ancient).
-const TREE3_SCALE = [1, .62, 1, 1.12, 1.24, 1.34, 1.44, 1.55];
+const TREE3_SCALE = [1, .62, 1, 1.12, 1.24, 1.34, 1.44, 1.55, 1.68, 1.8, 1.92, 2.05];
 function tree3(species, color, stage, seed) {
   const rnd = seeded('t3' + seed), col = color || '#2f9e44', g = new THREE.Group(), body = new THREE.Group();
-  stage = Math.max(0, Math.min(7, stage | 0));
+  stage = Math.max(0, Math.min(TREE3_SCALE.length - 1, stage | 0));
   g.add(body);
   if (stage === 0) {
     body.add(cyl(.025, .035, .45, shade(col, -.35), 0, 0, 0, 5), ball(.13, col, -.1, .38, 0, 1.3, .35, .7), ball(.12, shade(col, -.2), .1, .45, 0, 1.3, .35, .7), ball(.07, shade(col, .3), 0, .5, .02, 1, 1.4, 1));
@@ -240,6 +240,7 @@ function tree3(species, color, stage, seed) {
     ticks.push(tt => motes.forEach(m => { const [ph, rad, y, sp] = m.userData.p; m.position.set(Math.cos(tt * sp + ph) * rad, y + Math.sin(tt * 1.3 + ph) * .12, Math.sin(tt * sp + ph) * rad); }));
     if (!t.glow) t.glow = '#ffe066';
   }
+  if (stage >= 8 && typeof tree3Huge === 'function') tree3Huge(body, g, stage, col, rnd, ticks, t); // colossal and up, see trees3.js
   body.scale.setScalar(TREE3_SCALE[stage]);
   if (ticks.length) g.userData.tick = tt => ticks.forEach(f => f(tt));
   if (t.glow) g.userData.glow = t.glow;

@@ -305,6 +305,7 @@ function g3events() {
     if (touches.has(ev.pointerId)) touches.set(ev.pointerId, { x: ev.clientX, y: ev.clientY });
     if (touches.size === 2 && pinch) { const [a, b] = [...touches.values()], dd = Math.hypot(a.x - b.x, a.y - b.y); g3zoom(pinch / Math.max(1, dd)); pinch = dd; return; }
     if (drag) {
+      if (typeof treeTip === 'function') treeTip(null);
       const dx = ev.clientX - drag.x, dy = ev.clientY - drag.y; drag.x = ev.clientX; drag.y = ev.clientY;
       if (!drag.moved && Math.hypot(ev.clientX - drag.sx, ev.clientY - drag.sy) > 5) { drag.moved = true; if (drag.obj) sfx('pickup'); }
       if (!drag.moved) return;
@@ -325,11 +326,12 @@ function g3events() {
           const d = Math.sqrt(ray.distanceSqToSegment(a, b2)); if (d > .9) continue;
           const k = (1 - d / .9) * .05, mx = (right.x * dx - fwd.x * dy) * k, mz = (right.z * dx - fwd.z * dy) * k;
           const bd = o.userData.bend, cs = Math.cos(-o.rotation.y), sn = Math.sin(-o.rotation.y);
-          bd.vx += Math.max(-2, Math.min(2, mx * cs - mz * sn)); bd.vz += Math.max(-2, Math.min(2, mx * sn + mz * cs)); if (Math.abs(mx) + Math.abs(mz) > .02) sfx('rustle', { gap: 160 }); }
+          bd.vx += Math.max(-2, Math.min(2, mx * cs - mz * sn)); bd.vz += Math.max(-2, Math.min(2, mx * sn + mz * cs)); if (Math.abs(mx) + Math.abs(mz) > .02) { if (typeof brushSfx === 'function') brushSfx(o.userData.tree, Math.abs(mx) + Math.abs(mz)); else sfx('rustle', { gap: 160 }); } }
       }
     }
     last = { x: ev.clientX, y: ev.clientY };
     const h = g3pick(ev, [...G3.objs, ...G3.bubbles]); cv.style.cursor = h ? 'pointer' : 'grab';
+    if (typeof treeTip === 'function') { const rt = h && g3root(h.object); treeTip(rt?.userData.tree || null, ev.clientX, ev.clientY); }
   });
   const up = ev => {
     touches.delete(ev.pointerId); if (touches.size < 2) pinch = 0;
@@ -354,7 +356,7 @@ function g3events() {
     }
   };
   cv.addEventListener('pointerup', up); cv.addEventListener('pointercancel', up);
-  cv.addEventListener('pointerleave', () => { last = null; });
+  cv.addEventListener('pointerleave', () => { last = null; if (typeof treeTip === 'function') treeTip(null); });
   // a trackpad pinch (or ctrl + wheel) zooms; a two-finger swipe slides the view around
   cv.addEventListener('wheel', ev => {
     ev.preventDefault();
