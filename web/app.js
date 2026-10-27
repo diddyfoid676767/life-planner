@@ -2010,7 +2010,7 @@ async function initOnline() {
   }
   render();
   renderFocusBar();
-  OL.subscribe(remote => { if (dirty || saving) return; const keepFired = D.fired; D = migrate(remote); D.fired = keepFired; if (!modal.open) render(); renderFocusBar(); });
+  OL.subscribe((remote, force) => { if (!force && (dirty || saving)) return; if (force) dirty = false; const keepFired = D.fired; D = migrate(remote); D.fired = keepFired; if (!modal.open) render(); renderFocusBar(); });
   OL.watchInbox(applyInbox);
   loadGoogle(false);
   setInterval(() => loadGoogle(false), 30 * 60000);

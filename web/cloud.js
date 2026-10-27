@@ -8,7 +8,7 @@
 if (!/^(127\.0\.0\.1|localhost)$/.test(location.hostname) && location.protocol !== 'file:') window.OL = (() => {
   const URL_ = 'https://vtjvneusumjvhdctvijz.supabase.co';
   const KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZ0anZuZXVzdW1qdmhkY3R2aWp6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTI3MTYwODcsImV4cCI6MjEwODI5MjA4N30.TzQqwPjHrB4NAAYzciQYP75zE8JTPAZOXcV-pHJuMDc'; // public anon key, same as the PC app
-  const MAIL = 'users.lifeplanner.app', SESS = 'lpCloudSession', COPY = 'lpCloudCopy', PENDING = 'lpCloudPending'; // PENDING: the phone copy has changes the server hasn't got yet
+  const MAIL = 'users.lifeplanner.app', SESS = 'lpCloudSession', COPY = 'lpCloudCopy', PENDING = 'lpCloudPending'; // PENDING: the phone copy has changes the server hasn't got yet (holds the server time it was built on)
   const ls = { get: k => { try { return localStorage.getItem(k); } catch { return null; } }, set: (k, v) => { try { v == null ? localStorage.removeItem(k) : localStorage.setItem(k, v); } catch { } } };
   let sess = null; try { sess = JSON.parse(ls.get(SESS) || 'null'); } catch { }
   let lastAt = '', lastJson = '';
@@ -78,14 +78,17 @@ if (!/^(127\.0\.0\.1|localhost)$/.test(location.hostname) && location.protocol !
     if (!sess) await login();
     try {
       const row = await fetchRow('data,updated_at');
-      // changes made offline last time win over the server copy, and go up now
-      const copy = ls.get(PENDING) && ls.get(COPY);
-      if (copy) {
+      // changes made offline last time go up now, but only if nothing else
+      // (the PC) saved since: a newer copy on the server always wins
+      const base = ls.get(PENDING), copy = base && ls.get(COPY);
+      if (copy && (!row || row.updated_at === base)) {
         lastAt = row?.updated_at || ''; lastJson = '';
         const d = JSON.parse(copy);
         setTimeout(() => { save(d).then(() => window.toast?.('✅ Synced', 'The changes you made offline are uploaded.')).catch(() => { }); }, 500);
         return d;
       }
+      if (copy) { ls.set('lpCloudAside', copy); setTimeout(() => window.toast?.('Your PC saved newer changes', "Changes made on this phone while it was offline weren't uploaded, so they don't overwrite the newer ones."), 800); }
+      ls.set(PENDING, null);
       if (!row) return null;
       lastAt = row.updated_at; lastJson = JSON.stringify(row.data);
       ls.set(COPY, lastJson);
@@ -107,20 +110,29 @@ if (!/^(127\.0\.0\.1|localhost)$/.test(location.hostname) && location.protocol !
       try {
         const json = JSON.stringify(D);
         if (json !== lastJson) {
+          // never put an old copy over a newer one from the PC: take the newer one instead
+          const head = await fetchRow('updated_at');
+          if (head && head.updated_at !== lastAt) {
+            const row = await fetchRow('data,updated_at');
+            if (row) { lastAt = row.updated_at; lastJson = JSON.stringify(row.data); ls.set(COPY, lastJson); ls.set(PENDING, null); onRemoteFn?.(row.data, true); }
+            ok(); return;
+          }
           const out = await call('POST', '/rest/v1/planner_data?on_conflict=user_id&select=updated_at', { user_id: sess.user, data: D, device: 'phone' },
             { Prefer: 'resolution=merge-duplicates,return=representation' });
           lastJson = json; lastAt = out?.[0]?.updated_at || lastAt;
         }
         ls.set(COPY, json); ls.set(PENDING, null);
         ok();
-      } catch (e) { ls.set(COPY, JSON.stringify(D)); ls.set(PENDING, '1'); bad(e); }
+      } catch (e) { ls.set(COPY, JSON.stringify(D)); if (!ls.get(PENDING)) ls.set(PENDING, lastAt || 'none'); bad(e); }
     }, 1500));
     return waiting;
   }
 
   // changes from the PC: checked every 20s while the app is open, and as soon
   // as you come back to it
+  let onRemoteFn = null;
   function subscribe(onRemote) {
+    onRemoteFn = onRemote;
     let busy = false;
     const check = async () => {
       if (busy || document.hidden || !sess || waiting || ls.get(PENDING)) return;

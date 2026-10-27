@@ -157,6 +157,10 @@ func cloudSync(push bool) {
 				goto push
 			}
 			mu.Lock()
+			if old, err := os.ReadFile(path); err == nil && len(old) > 0 { // the copy it replaces, just in case
+				os.MkdirAll(filepath.Join(dataDir, "backups"), 0o755)
+				os.WriteFile(filepath.Join(dataDir, "backups", "before-cloud-"+time.Now().Format("2006-01-02-150405")+".json"), old, 0o644)
+			}
 			err := saveAtomic(path, rows[0].Data)
 			if err == nil {
 				dailyBackup(rows[0].Data)
