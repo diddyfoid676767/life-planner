@@ -52,7 +52,7 @@ function defaultData() {
 // ---------- persistence ----------
 let D = null;
 let saveTimer = null, saving = false, dirty = false, bootId = '', dataRev = 0, offlineSaid = false;
-let baseHash = ''; // the saved copy this tab's data is built on
+let baseHash = '', baseJson = ''; // the saved copy this tab's data is built on (its hash and text), so changes saved elsewhere can be merged in
 let lastAct = 0, userEdited = false; // unsaved changes that came from you (not reminders and the like)
 addEventListener('pointerdown', () => { lastAct = Date.now(); }, true);
 addEventListener('keydown', () => { lastAct = Date.now(); }, true);
@@ -74,28 +74,21 @@ async function flush() {
     finally { saving = false; }
     return;
   }
-  const body = JSON.stringify(D);
+  let body = JSON.stringify(D);
   stash(body); // kept in the browser until the PC app has it, so a closed or restarted app can't lose it
   try {
-    const hdrs = () => ({ 'Content-Type': 'application/json', 'X-Planner-Boot': bootId, 'X-Planner-Rev': String(dataRev), 'X-Planner-Base': baseHash });
-    let r = await fetch('/api/data', { method: 'PUT', headers: hdrs(), body });
-    if (r.status === 409) {
-      const why = await r.text();
-      if (/phone/.test(why)) { await pullData(); return; }
-      if (/another window/.test(why)) {
-        // another window saved since this one loaded. If you're editing here,
-        // your edit wins; a window in the background takes the newer copy instead
-        if (!(userEdited && document.visibilityState === 'visible')) { const mine = userEdited; if (mine) setAside(); unstash(); userEdited = false; await pullData(true); if (mine) showAside(); return; }
-        r = await fetch('/api/data', { method: 'PUT', headers: { ...hdrs(), 'X-Planner-Force': '1' }, body });
-      } else {
-      // the app restarted (an update, or it was closed and opened again): this
-      // tab has changes it hasn't saved, so keep them instead of reloading
-      if (!(await adoptBoot())) { setAside(); location.reload(); return; }
-      r = await fetch('/api/data', { method: 'PUT', headers: { ...hdrs(), 'X-Planner-Force': '1' }, body });
-      }
+    const put = merged => fetch('/api/data', { method: 'PUT', body, headers: { 'Content-Type': 'application/json', 'X-Planner-Boot': bootId, 'X-Planner-Rev': String(dataRev), 'X-Planner-Base': baseHash, ...(merged ? { 'X-Planner-Merged': '1' } : {}) } });
+    let r = await put();
+    // the planner changed since this window loaded it (another window saved,
+    // the phone's changes came in, or the app restarted): merge this window's
+    // changes into the newer copy and save that
+    for (let i = 0; r.status === 409 && i < 3; i++) {
+      if (!(await mergeLatest())) break;
+      body = JSON.stringify(D); stash(body);
+      r = await put(true);
     }
     if (!r.ok) throw new Error(await r.text());
-    baseHash = r.headers.get('X-Planner-Hash') || baseHash;
+    baseHash = r.headers.get('X-Planner-Hash') || baseHash; baseJson = body;
     if (!dirty) userEdited = false;
     unstash();
     $('#saveState').textContent = 'All changes saved';
@@ -106,25 +99,50 @@ async function flush() {
     setOffline(true);
   } finally { saving = false; }
 }
-const STASH = 'lpUnsaved';
-function stash(body) { try { localStorage.setItem(STASH, JSON.stringify({ at: Date.now(), d: body, base: baseHash })); } catch { } }
-function unstash() { try { localStorage.removeItem(STASH); } catch { } }
-// the kept copy, if it was built on the copy the app has now (otherwise another window saved since)
-function stashed(hash = baseHash) { try { const x = JSON.parse(localStorage.getItem(STASH) || 'null'); return x && x.base && Date.now() - x.at < 30 * 86400e3 && x.base === hash ? JSON.parse(x.d) : null; } catch { return null; } }
-// another window saved newer changes: keep this tab's unsaved ones aside, so they can be brought back
-function setAside() { try { if (userEdited) localStorage.setItem('lpAside', JSON.stringify({ at: Date.now(), d: JSON.stringify(D) })); } catch { } unstash(); dirty = false; }
-// take on the restarted app's boot id so this tab's changes can be saved:
-// when nothing else saved in the meantime, or when you edited in this window
-// and it's the one in front (otherwise it sets its changes aside instead)
-async function adoptBoot(inf) {
-  try { inf = inf || await (await fetch('/api/info', { cache: 'no-store' })).json(); if (!inf.boot || ((inf.hash || '') !== baseHash && !(userEdited && document.visibilityState === 'visible'))) return false; bootId = inf.boot; dataRev = inf.rev || 0; return true; }
-  catch { return false; }
+// loads the newest saved planner and merges this window's changes into it
+// (merge.js): what was added, changed or deleted on either side is kept
+async function mergeLatest() {
+  try {
+    const inf = await (await fetch('/api/info', { cache: 'no-store' })).json();
+    const r = await fetch('/api/data', { cache: 'no-store' }); if (!r.ok) return false;
+    const txt = await r.text(), theirs = JSON.parse(txt);
+    let base = null; try { base = baseJson ? JSON.parse(baseJson) : null; } catch { }
+    D = migrate(LPMerge.merge(base, D, theirs));
+    bootId = inf.boot || bootId; dataRev = +r.headers.get('X-Planner-Rev') || 0; baseHash = r.headers.get('X-Planner-Hash') || ''; baseJson = theirs ? txt : '';
+    if (!modal.open) render(); renderFocusBar();
+    return true;
+  } catch { return false; }
 }
+// the phone app merged in changes the PC saved meanwhile: show the merged copy
+// (with anything changed here since it went up merged in again)
+function tookMerge(res) {
+  const now = JSON.parse(JSON.stringify(D));
+  D = migrate(LPMerge.same(now, res.sent) ? res.merged : LPMerge.merge(res.sent, now, res.merged));
+  if (!modal.open) render(); renderFocusBar();
+}
+const STASH = 'lpUnsaved';
+function stash(body) {
+  // with the copy it was built on, so it can be merged into a newer one later
+  try { localStorage.setItem(STASH, JSON.stringify({ at: Date.now(), d: body, base: baseHash, bj: baseJson })); }
+  catch { try { localStorage.setItem(STASH, JSON.stringify({ at: Date.now(), d: body, base: baseHash })); } catch { } }
+}
+function unstash() { try { localStorage.removeItem(STASH); } catch { } }
+// unsaved changes kept in this browser from a loaded planner (not older than 30 days)
+function stashed() { try { const x = JSON.parse(localStorage.getItem(STASH) || 'null'); return x && x.base && Date.now() - x.at < 30 * 86400e3 ? x : null; } catch { return null; } }
+// the kept changes merged into the planner the app has now (built on it: as they are)
+function fromStash(x, hash, cur) {
+  const d = JSON.parse(x.d);
+  if (x.base === hash || !cur) return d;
+  let base = null; try { base = x.bj ? JSON.parse(x.bj) : null; } catch { }
+  return LPMerge.merge(base, d, cur);
+}
+// changes set aside by 2.32.x (before merging): they can still be brought back,
+// merged in so nothing newer is lost
 function showAside() {
   let x = null; try { x = JSON.parse(localStorage.getItem('lpAside') || 'null'); localStorage.removeItem('lpAside'); } catch { }
   if (!x || Date.now() - x.at > 86400e3) return;
-  setTimeout(() => toast('Another window saved newer changes', "This window's last changes were set aside so they didn't overwrite them. Bring them back only if they're the ones you want.", { timeout: 30000,
-    actions: [['Bring them back', () => { try { D = migrate(JSON.parse(x.d)); save(); render(); renderFocusBar(); } catch { } }]] }), 1500);
+  setTimeout(() => toast('Another window saved newer changes', "This window's last changes were set aside so they didn't overwrite them. Bring them back to add them to your planner.", { timeout: 30000,
+    actions: [['Bring them back', () => { try { D = migrate(LPMerge.merge(null, D, JSON.parse(x.d))); save(); render(); renderFocusBar(); } catch { } }]] }), 1500);
 }
 // save everything now and wait for it: true once the PC app has it all
 async function saveNow() {
@@ -144,8 +162,7 @@ async function ping() {
     if (!bootId && !dirty) { location.reload(); return; } // opened while the app was closed
     if (bootId && inf.boot !== bootId) {
       if (!dirty && !stashed()) { location.reload(); return; }
-      if (!(await adoptBoot(inf))) { setAside(); location.reload(); return; }
-      dirty = true;
+      dirty = true; // the save merges into whatever the app has now
       if (await saveNow()) toast('✅ Back up and running', 'Life Planner opened again and saved the changes you made while it was closed.');
       return;
     }
@@ -159,9 +176,9 @@ async function ping() {
 // the PC app took a newer copy from the phone: load it in place
 async function pullData(quiet) {
   try {
-    const r = await fetch('/api/data', { cache: 'no-store' }), d = await r.json();
-    if (!d) return;
-    const keepFired = D.fired; D = migrate(d); D.fired = keepFired; dataRev = +r.headers.get('X-Planner-Rev') || 0; baseHash = r.headers.get('X-Planner-Hash') || ''; dirty = false;
+    const r = await fetch('/api/data', { cache: 'no-store' }), txt = await r.text(), d = JSON.parse(txt);
+    if (!d || dirty || saving) return; // changes here: the next save merges instead
+    const keepFired = D.fired; D = migrate(d); D.fired = keepFired; dataRev = +r.headers.get('X-Planner-Rev') || 0; baseHash = r.headers.get('X-Planner-Hash') || ''; baseJson = txt;
     if (!modal.open) render(); renderFocusBar();
     if (!quiet) toast('Updated from your phone', 'Your planner now has the changes you made on your phone.');
   } catch { }
@@ -1721,7 +1738,7 @@ async function loadStarter(quiet) {
   } catch { if (!quiet) alert('Could not load the starter plan.'); return false; }
 }
 // ---------- the backups list (Settings, Backup & sync) ----------
-const BK_KIND = { daily: 'Start of the day', hourly: 'Hourly', 'before-cloud': "Before the phone's changes came in", 'before-sync': 'Before phone sync was first set up', 'before-restore': 'Before you restored a backup', 'before-import': 'Before you imported a file', replaced: 'Before a much smaller save', 'cloud-smaller': "A much emptier copy from the phone (not used)", damaged: "A damaged file (can't be restored)" };
+const BK_KIND = { daily: 'Start of the day', hourly: 'Hourly', 'before-cloud': "Before the phone's changes came in", 'before-merge': 'Before changes from another window were merged in', 'before-sync': 'Before phone sync was first set up', 'before-restore': 'Before you restored a backup', 'before-import': 'Before you imported a file', replaced: 'Before a much smaller save', 'cloud-smaller': "A much emptier copy from the phone (merged in without deleting anything)", damaged: "A damaged file (can't be restored)" };
 function bkContents(c) {
   if (!c) return '';
   const parts = [[c.sacs, 'SAC', 'SACs'], [c.study, 'study block', 'study blocks'], [c.workouts, 'workout', 'workouts'], [c.gym, 'gym session', 'gym sessions'], [c.focus, 'focus session', 'focus sessions'], [c.todos, 'task', 'tasks'], [c.events, 'event', 'events']];
@@ -2060,7 +2077,10 @@ async function initOnline() {
   }
   render();
   renderFocusBar();
-  OL.subscribe((remote, force) => { if (!force && (dirty || saving)) return; if (force) dirty = false; const keepFired = D.fired; D = migrate(remote); D.fired = keepFired; if (!modal.open) render(); renderFocusBar(); });
+  // the PC's changes: taken when nothing here is waiting to go up (otherwise
+  // that upload merges them in)
+  OL.subscribe(remote => { if (dirty || saving) return false; const keepFired = D.fired; D = migrate(remote); D.fired = keepFired; if (!modal.open) render(); renderFocusBar(); },
+    aside => { D = migrate(LPMerge.merge(null, D, aside)); save(); render(); renderFocusBar(); }, tookMerge);
   OL.watchInbox(applyInbox);
   loadGoogle(false);
   setInterval(() => loadGoogle(false), 30 * 60000);
@@ -2094,7 +2114,9 @@ function bootDone(skip) {
     const r = await fetch('/api/data', { cache: 'no-store' });
     dataRev = +r.headers.get('X-Planner-Rev') || 0; baseHash = r.headers.get('X-Planner-Hash') || '';
     if (!r.ok) throw new Error('no data');
-    const d = await r.json(), kept = stashed();
+    const txt = await r.text(), d = JSON.parse(txt), x = stashed();
+    let kept = null; try { kept = x && fromStash(x, baseHash, d); } catch { }
+    baseJson = d ? txt : '';
     loaded = true;
     showAside();
     D = migrate(kept || d || freshData());
@@ -2106,7 +2128,7 @@ function bootDone(skip) {
     // (only a copy that came from a loaded planner; until then nothing is saved)
     let x = null; try { x = JSON.parse(localStorage.getItem(STASH) || 'null'); if (x && !x.base) x = null; } catch { }
     bootId = '';
-    D = migrate(x ? JSON.parse(x.d) : defaultData()); setOffline(true); if (x) { loaded = true; baseHash = x.base; dirty = true; userEdited = true; }
+    D = migrate(x ? JSON.parse(x.d) : defaultData()); setOffline(true); if (x) { loaded = true; baseHash = x.base; baseJson = x.bj || ''; dirty = true; userEdited = true; }
   }
   render();
   try { localStorage.setItem('lpNoIntro', D.settings.bootIntro === false ? '1' : '0'); } catch { }

@@ -1,0 +1,735 @@
+[
+ {
+  "name": "todo added on each side",
+  "base": {
+   "todos": [
+    {
+     "id": "a",
+     "text": "A"
+    }
+   ]
+  },
+  "mine": {
+   "todos": [
+    {
+     "id": "a",
+     "text": "A"
+    },
+    {
+     "id": "m",
+     "text": "mine"
+    }
+   ]
+  },
+  "theirs": {
+   "todos": [
+    {
+     "id": "a",
+     "text": "A"
+    },
+    {
+     "id": "t",
+     "text": "theirs"
+    }
+   ]
+  },
+  "want": {
+   "todos": [
+    {
+     "id": "a",
+     "text": "A"
+    },
+    {
+     "id": "t",
+     "text": "theirs"
+    },
+    {
+     "id": "m",
+     "text": "mine"
+    }
+   ]
+  }
+ },
+ {
+  "name": "deleted on one side, untouched on the other",
+  "base": {
+   "todos": [
+    {
+     "id": "a"
+    },
+    {
+     "id": "b"
+    }
+   ]
+  },
+  "mine": {
+   "todos": [
+    {
+     "id": "a"
+    }
+   ]
+  },
+  "theirs": {
+   "todos": [
+    {
+     "id": "a"
+    },
+    {
+     "id": "b"
+    },
+    {
+     "id": "c"
+    }
+   ]
+  },
+  "want": {
+   "todos": [
+    {
+     "id": "a"
+    },
+    {
+     "id": "c"
+    }
+   ]
+  }
+ },
+ {
+  "name": "deleted on one side, changed on the other is kept",
+  "base": {
+   "todos": [
+    {
+     "id": "a",
+     "done": false
+    }
+   ]
+  },
+  "mine": {
+   "todos": []
+  },
+  "theirs": {
+   "todos": [
+    {
+     "id": "a",
+     "done": true
+    }
+   ]
+  },
+  "want": {
+   "todos": [
+    {
+     "id": "a",
+     "done": true
+    }
+   ]
+  }
+ },
+ {
+  "name": "different fields of one item",
+  "base": {
+   "todos": [
+    {
+     "id": "a",
+     "text": "x",
+     "done": false,
+     "due": ""
+    }
+   ]
+  },
+  "mine": {
+   "todos": [
+    {
+     "id": "a",
+     "text": "x2",
+     "done": false,
+     "due": ""
+    }
+   ]
+  },
+  "theirs": {
+   "todos": [
+    {
+     "id": "a",
+     "text": "x",
+     "done": true,
+     "due": ""
+    }
+   ]
+  },
+  "want": {
+   "todos": [
+    {
+     "id": "a",
+     "text": "x2",
+     "done": true,
+     "due": ""
+    }
+   ]
+  }
+ },
+ {
+  "name": "same field changed on both: mine",
+  "base": {
+   "s": {
+    "name": "A"
+   }
+  },
+  "mine": {
+   "s": {
+    "name": "M"
+   }
+  },
+  "theirs": {
+   "s": {
+    "name": "T"
+   }
+  },
+  "want": {
+   "s": {
+    "name": "M"
+   }
+  }
+ },
+ {
+  "name": "coins spent on both add up",
+  "base": {
+   "game": {
+    "spent": 100,
+    "bonus": 5
+   }
+  },
+  "mine": {
+   "game": {
+    "spent": 150,
+    "bonus": 5
+   }
+  },
+  "theirs": {
+   "game": {
+    "spent": 130,
+    "bonus": 9
+   }
+  },
+  "want": {
+   "game": {
+    "spent": 180,
+    "bonus": 9
+   }
+  }
+ },
+ {
+  "name": "counter never below zero",
+  "base": {
+   "game": {
+    "bank": 10
+   }
+  },
+  "mine": {
+   "game": {
+    "bank": 0
+   }
+  },
+  "theirs": {
+   "game": {
+    "bank": 5
+   }
+  },
+  "want": {
+   "game": {
+    "bank": 0
+   }
+  }
+ },
+ {
+  "name": "keys added and removed",
+  "base": {
+   "fired": {
+    "a": 1,
+    "b": 2
+   }
+  },
+  "mine": {
+   "fired": {
+    "a": 1,
+    "c": 3
+   }
+  },
+  "theirs": {
+   "fired": {
+    "a": 1,
+    "b": 2,
+    "d": 4
+   }
+  },
+  "want": {
+   "fired": {
+    "a": 1,
+    "c": 3,
+    "d": 4
+   }
+  }
+ },
+ {
+  "name": "no base keeps everything",
+  "base": null,
+  "mine": {
+   "todos": [
+    {
+     "id": "a",
+     "text": "mine"
+    },
+    {
+     "id": "m"
+    }
+   ],
+   "x": 1
+  },
+  "theirs": {
+   "todos": [
+    {
+     "id": "a",
+     "text": "theirs"
+    },
+    {
+     "id": "t"
+    }
+   ],
+   "y": 2
+  },
+  "want": {
+   "todos": [
+    {
+     "id": "a",
+     "text": "mine"
+    },
+    {
+     "id": "t"
+    },
+    {
+     "id": "m"
+    }
+   ],
+   "x": 1,
+   "y": 2
+  }
+ },
+ {
+  "name": "plain lists merge by content",
+  "base": {
+   "r": [
+    10080,
+    1440
+   ]
+  },
+  "mine": {
+   "r": [
+    10080,
+    1440,
+    60
+   ]
+  },
+  "theirs": {
+   "r": [
+    1440
+   ]
+  },
+  "want": {
+   "r": [
+    1440,
+    60
+   ]
+  }
+ },
+ {
+  "name": "repeated entries stay",
+  "base": {
+   "r": [
+    1,
+    1
+   ]
+  },
+  "mine": {
+   "r": [
+    1,
+    1,
+    1
+   ]
+  },
+  "theirs": {
+   "r": [
+    1,
+    1,
+    2
+   ]
+  },
+  "want": {
+   "r": [
+    1,
+    1,
+    2,
+    1
+   ]
+  }
+ },
+ {
+  "name": "order follows mine with theirs additions in place",
+  "base": {
+   "l": [
+    {
+     "id": 1
+    },
+    {
+     "id": 2
+    },
+    {
+     "id": 3
+    }
+   ]
+  },
+  "mine": {
+   "l": [
+    {
+     "id": 3
+    },
+    {
+     "id": 1
+    },
+    {
+     "id": 2
+    }
+   ]
+  },
+  "theirs": {
+   "l": [
+    {
+     "id": 1
+    },
+    {
+     "id": 9
+    },
+    {
+     "id": 2
+    },
+    {
+     "id": 3
+    }
+   ]
+  },
+  "want": {
+   "l": [
+    {
+     "id": 3
+    },
+    {
+     "id": 1
+    },
+    {
+     "id": 9
+    },
+    {
+     "id": 2
+    }
+   ]
+  }
+ },
+ {
+  "name": "theirs addition after an item deleted here",
+  "base": {
+   "l": [
+    {
+     "id": 1
+    },
+    {
+     "id": 2
+    }
+   ]
+  },
+  "mine": {
+   "l": [
+    {
+     "id": 1
+    }
+   ]
+  },
+  "theirs": {
+   "l": [
+    {
+     "id": 1
+    },
+    {
+     "id": 2
+    },
+    {
+     "id": 5
+    },
+    {
+     "id": 6
+    }
+   ]
+  },
+  "want": {
+   "l": [
+    {
+     "id": 1
+    },
+    {
+     "id": 5
+    },
+    {
+     "id": 6
+    }
+   ]
+  }
+ },
+ {
+  "name": "nested lists inside items",
+  "base": {
+   "fit": {
+    "gym": [
+     {
+      "id": "g",
+      "sets": [
+       {
+        "r": 5
+       }
+      ]
+     }
+    ]
+   }
+  },
+  "mine": {
+   "fit": {
+    "gym": [
+     {
+      "id": "g",
+      "sets": [
+       {
+        "r": 5
+       },
+       {
+        "r": 6
+       }
+      ]
+     }
+    ]
+   }
+  },
+  "theirs": {
+   "fit": {
+    "gym": [
+     {
+      "id": "g",
+      "sets": [
+       {
+        "r": 5
+       }
+      ],
+      "note": "hi"
+     }
+    ]
+   }
+  },
+  "want": {
+   "fit": {
+    "gym": [
+     {
+      "id": "g",
+      "sets": [
+       {
+        "r": 5
+       },
+       {
+        "r": 6
+       }
+      ],
+      "note": "hi"
+     }
+    ]
+   }
+  }
+ },
+ {
+  "name": "unchanged mine takes theirs",
+  "base": {
+   "a": 1,
+   "l": [
+    1
+   ]
+  },
+  "mine": {
+   "a": 1,
+   "l": [
+    1
+   ]
+  },
+  "theirs": {
+   "a": 2
+  },
+  "want": {
+   "a": 2
+  }
+ },
+ {
+  "name": "object entries without ids, key order ignored",
+  "base": {
+   "l": [
+    {
+     "t": "x",
+     "d": 1
+    }
+   ]
+  },
+  "mine": {
+   "l": [
+    {
+     "d": 1,
+     "t": "x"
+    },
+    {
+     "t": "y"
+    }
+   ]
+  },
+  "theirs": {
+   "l": [
+    {
+     "t": "x",
+     "d": 1
+    },
+    {
+     "t": "z"
+    }
+   ]
+  },
+  "want": {
+   "l": [
+    {
+     "d": 1,
+     "t": "x"
+    },
+    {
+     "t": "z"
+    },
+    {
+     "t": "y"
+    }
+   ]
+  }
+ },
+ {
+  "name": "null vs missing",
+  "base": {
+   "focus": null
+  },
+  "mine": {
+   "focus": {
+    "s": 1
+   }
+  },
+  "theirs": {},
+  "want": {
+   "focus": {
+    "s": 1
+   }
+  }
+ },
+ {
+  "name": "focus ended on one side",
+  "base": {
+   "focus": {
+    "s": 1
+   }
+  },
+  "mine": {
+   "focus": {
+    "s": 1
+   }
+  },
+  "theirs": {
+   "focus": null
+  },
+  "want": {
+   "focus": null
+  }
+ },
+ {
+  "name": "numeric ids",
+  "base": {
+   "l": [
+    {
+     "id": 1,
+     "v": "a"
+    }
+   ]
+  },
+  "mine": {
+   "l": [
+    {
+     "id": 1,
+     "v": "b"
+    }
+   ]
+  },
+  "theirs": {
+   "l": [
+    {
+     "id": "1",
+     "v": "c"
+    }
+   ]
+  },
+  "want": {
+   "l": [
+    {
+     "id": "1",
+     "v": "c"
+    },
+    {
+     "id": 1,
+     "v": "b"
+    }
+   ]
+  }
+ },
+ {
+  "name": "counters with no base: mine",
+  "base": null,
+  "mine": {
+   "game": {
+    "spent": 110
+   }
+  },
+  "theirs": {
+   "game": {
+    "spent": 130
+   }
+  },
+  "want": {
+   "game": {
+    "spent": 110
+   }
+  }
+ },
+ {
+  "name": "the same value on both sides is taken once",
+  "base": {
+   "game": {
+    "spent": 100
+   }
+  },
+  "mine": {
+   "game": {
+    "spent": 110
+   }
+  },
+  "theirs": {
+   "game": {
+    "spent": 110
+   }
+  },
+  "want": {
+   "game": {
+    "spent": 110
+   }
+  }
+ }
+]

@@ -5,9 +5,12 @@ package main
 // (the same pages, hosted on GitHub Pages) opens the same planner. Each save
 // here is pushed a few seconds later, and the cloud copy is checked whenever
 // the page pings, so an edit made on the phone shows up here within about 20s.
-// The last save wins. Nothing is synced while you're logged out.
+// When both changed since they last synced, the two are merged item by item
+// (mergePlanner), using the copy they last agreed on (cloudsync-base.json), so
+// neither side's changes are lost. Nothing is synced while you're logged out.
 
 import (
+	"bytes"
 	"encoding/json"
 	"log"
 	"net/http"
@@ -27,13 +30,18 @@ type syncState struct {
 var (
 	syncMu    sync.Mutex
 	syncSt    syncState
-	syncRev   int64 // bumps when the cloud copy replaced the local file, so the page reloads its data
+	syncRev   int64 // bumps when the cloud copy changed the local file, so the page reloads its data
 	syncErr   string
 	syncCheck time.Time
+	saveGen   int64 // bumps on every local save, so a push knows if another save came in meanwhile
 	pushTimer *time.Timer
 )
 
 func syncPath() string { return filepath.Join(dataDir, "cloudsync.json") }
+
+// syncBasePath holds the copy the cloud had when this PC last synced: the
+// starting point both sides' changes are measured from when merging.
+func syncBasePath() string { return filepath.Join(dataDir, "cloudsync-base.json") }
 
 func loadSyncState() {
 	b, _ := os.ReadFile(syncPath())
@@ -58,6 +66,7 @@ func dataSaved() {
 	syncMu.Lock()
 	defer syncMu.Unlock()
 	syncSt.Pending = true
+	saveGen++
 	saveSyncState()
 	if pushTimer != nil {
 		pushTimer.Stop()
@@ -85,8 +94,10 @@ type cloudRow struct {
 
 var syncRun sync.Mutex // one sync at a time
 
-// cloudSync pushes local changes, or pulls the cloud copy when it is newer
-// than the one this PC last saw. push skips the pull check.
+// cloudSync brings in the cloud copy when it changed since this PC last saw
+// it (merging it with any changes made here), then pushes local changes.
+// push skips the first look at the cloud: the push itself only goes through
+// if the cloud copy is still the one this PC last saw.
 func cloudSync(push bool) {
 	syncRun.Lock()
 	defer syncRun.Unlock()
@@ -98,10 +109,10 @@ func cloudSync(push bool) {
 	first := syncSt.User != a.UserID
 	if first { // first sync for this account on this PC (or this folder)
 		syncSt = syncState{User: a.UserID, Pending: true}
+		os.Remove(syncBasePath())
+		saveSyncState()
 	}
-	st := syncSt
 	syncMu.Unlock()
-	path := filepath.Join(dataDir, dataFileName)
 
 	setErr := func(e error) {
 		syncMu.Lock()
@@ -112,97 +123,174 @@ func cloudSync(push bool) {
 		}
 		syncMu.Unlock()
 	}
-
-	if !push || st.CloudAt == "" {
-		var rows []cloudRow
-		q := "/rest/v1/planner_data?select=updated_at&user_id=eq." + url.QueryEscape(a.UserID)
-		if _, err := supa("GET", q, a.Access, nil, &rows); err != nil {
-			setErr(err)
-			return
-		}
-		local, _ := os.Stat(path)
-		newer := len(rows) > 0 && rows[0].UpdatedAt != st.CloudAt
-		// the first time, the fuller of the two planners wins (so logging in
-		// from a fresh copy brings your planner down instead of wiping it), and
-		// the other one is kept in backups
-		takeCloud := false
-		if first && len(rows) > 0 && local != nil {
-			var full []cloudRow
-			if _, err := supa("GET", "/rest/v1/planner_data?select=data,updated_at&user_id=eq."+url.QueryEscape(a.UserID), a.Access, nil, &full); err == nil && len(full) > 0 && json.Valid(full[0].Data) {
-				takeCloud = int64(len(full[0].Data)) > local.Size()
-				keep := full[0].Data
-				if takeCloud {
-					keep, _ = os.ReadFile(path)
-				}
-				keepBackup("before-sync", keep)
-			}
-		}
-		// the first time, this PC's planner goes up unless it has none yet
-		if newer && ((st.CloudAt != "" && !st.Pending) || local == nil || takeCloud) {
-			rows = nil
-			if _, err := supa("GET", "/rest/v1/planner_data?select=data,updated_at&user_id=eq."+url.QueryEscape(a.UserID), a.Access, nil, &rows); err != nil || len(rows) == 0 || !json.Valid(rows[0].Data) {
-				setErr(err)
-				return
-			}
-			// a much emptier cloud copy never replaces a full planner here: it's
-			// kept in backups and this PC's planner goes up instead
-			if local != nil && local.Size() > 20<<10 && int64(len(rows[0].Data)) < local.Size()/3 {
-				keepBackup("cloud-smaller", rows[0].Data)
-				log.Printf("phone sync: cloud copy (%d bytes) much smaller than this PC's (%d), keeping this PC's", len(rows[0].Data), local.Size())
-				syncMu.Lock()
-				syncSt.Pending = true
-				syncMu.Unlock()
-				goto push
-			}
-			mu.Lock()
-			if old, err := os.ReadFile(path); err == nil && len(old) > 0 { // the copy it replaces, just in case
-				keepBackup("before-cloud", old)
-			}
-			err := saveAtomic(path, rows[0].Data)
-			if err == nil {
-				dailyBackup(rows[0].Data)
-			}
-			mu.Unlock()
-			if err != nil {
+	user := url.QueryEscape(a.UserID)
+	look := !push || first
+	for try := 0; try < 4; try++ {
+		if look {
+			var rows []cloudRow
+			if _, err := supa("GET", "/rest/v1/planner_data?select=updated_at&user_id=eq."+user, a.Access, nil, &rows); err != nil {
 				setErr(err)
 				return
 			}
 			syncMu.Lock()
-			syncSt.CloudAt = rows[0].UpdatedAt
-			syncRev++
-			saveSyncState()
+			seen := syncSt.CloudAt
 			syncMu.Unlock()
+			if len(rows) > 0 && (rows[0].UpdatedAt != seen || first) {
+				rows = nil
+				if _, err := supa("GET", "/rest/v1/planner_data?select=data,updated_at&user_id=eq."+user, a.Access, nil, &rows); err != nil {
+					setErr(err)
+					return
+				}
+				if len(rows) == 0 || !json.Valid(rows[0].Data) {
+					setErr(nil)
+					return
+				}
+				if err := takeCloud(rows[0], first); err != nil {
+					setErr(err)
+					return
+				}
+				first = false
+			}
+		}
+		look = true
+		syncMu.Lock()
+		st, gen := syncSt, saveGen
+		syncMu.Unlock()
+		if !st.Pending {
 			setErr(nil)
 			return
 		}
-		if !st.Pending && !(st.CloudAt == "" && local != nil) {
+		done, err := pushLocal(a, st.CloudAt, gen)
+		if err != nil {
+			setErr(err)
+			return
+		}
+		if done {
 			setErr(nil)
 			return
+		}
+		// the cloud copy changed since: bring it in and try again
+	}
+}
+
+// takeCloud brings the cloud copy into the planner here: as it is when
+// nothing changed here since the last sync, otherwise merged with the changes
+// made here. The planner it changes is kept in backups first.
+func takeCloud(row cloudRow, first bool) error {
+	path := filepath.Join(dataDir, dataFileName)
+	mu.Lock()
+	defer mu.Unlock()
+	syncMu.Lock()
+	pending := syncSt.Pending
+	syncMu.Unlock()
+	local, _ := os.ReadFile(path)
+	cloud := []byte(row.Data)
+	result := cloud
+	if len(local) > 0 && json.Valid(local) {
+		base, _ := os.ReadFile(syncBasePath())
+		if len(base) == 0 && !pending && !first {
+			base = local // synced by an older version: nothing changed here since
+		}
+		if first {
+			base = nil // the first time, nothing is deleted: both planners' items are kept
+			keepBackup("before-sync", cloud)
+		}
+		// a much emptier cloud copy can't delete things here: keep everything
+		if len(local) > 20<<10 && len(cloud) < len(local)/3 {
+			keepBackup("cloud-smaller", cloud)
+			log.Printf("phone sync: cloud copy (%d bytes) much smaller than this PC's (%d), keeping everything from both", len(cloud), len(local))
+			base = nil
+		}
+		if len(base) == 0 || !sameJSON(local, base) {
+			m, err := mergePlanner(base, local, cloud)
+			if err != nil {
+				return err
+			}
+			result = m
 		}
 	}
+	if !bytes.Equal(result, local) && !sameJSON(result, local) {
+		if len(local) > 0 {
+			keepBackup("before-cloud", local)
+		}
+		if err := saveAtomic(path, result); err != nil {
+			return err
+		}
+		dailyBackup(result)
+		syncMu.Lock()
+		syncRev++
+		syncMu.Unlock()
+	}
+	os.WriteFile(syncBasePath(), cloud, 0o644)
+	syncMu.Lock()
+	syncSt.CloudAt = row.UpdatedAt
+	syncSt.Pending = !sameJSON(result, cloud)
+	saveSyncState()
+	syncMu.Unlock()
+	return nil
+}
 
-push:
+func sameJSON(a, b []byte) bool {
+	if bytes.Equal(a, b) {
+		return true
+	}
+	x, e1 := decodeJSON(a)
+	y, e2 := decodeJSON(b)
+	return e1 == nil && e2 == nil && sameVal(x, y)
+}
+
+// pushLocal uploads the planner here, but only over the cloud copy this PC
+// last saw (cloudAt): false means the cloud changed since and nothing was
+// written.
+func pushLocal(a *account, cloudAt string, gen int64) (bool, error) {
+	path := filepath.Join(dataDir, dataFileName)
 	mu.Lock()
 	b, err := os.ReadFile(path)
 	mu.Unlock()
 	if err != nil || !json.Valid(b) {
-		return
+		return true, nil
 	}
-	var out []cloudRow
+	user := url.QueryEscape(a.UserID)
 	body := map[string]any{"user_id": a.UserID, "data": json.RawMessage(b), "device": "pc"}
-	if _, err := supa("POST", "/rest/v1/planner_data?on_conflict=user_id&select=updated_at", a.Access, body, &out,
-		"Prefer", "resolution=merge-duplicates,return=representation"); err != nil {
-		setErr(err)
-		return
+	var out []cloudRow
+	if cloudAt == "" { // no cloud copy yet: only create one
+		code, err := supa("POST", "/rest/v1/planner_data?select=updated_at", a.Access, body, &out, "Prefer", "return=representation")
+		if code == http.StatusConflict {
+			return false, nil
+		}
+		if err != nil {
+			return false, err
+		}
+	} else {
+		if _, err := supa("PATCH", "/rest/v1/planner_data?select=updated_at&user_id=eq."+user+"&updated_at=eq."+url.QueryEscape(cloudAt), a.Access,
+			map[string]any{"data": json.RawMessage(b), "device": "pc"}, &out, "Prefer", "return=representation"); err != nil {
+			return false, err
+		}
+		if len(out) == 0 {
+			// nothing matched: someone saved since, unless the time just didn't
+			// match as text, in which case the copy is still the one seen here
+			var rows []cloudRow
+			if _, err := supa("GET", "/rest/v1/planner_data?select=updated_at&user_id=eq."+user, a.Access, nil, &rows); err != nil {
+				return false, err
+			}
+			if len(rows) == 0 || rows[0].UpdatedAt != cloudAt {
+				return false, nil
+			}
+			if _, err := supa("POST", "/rest/v1/planner_data?on_conflict=user_id&select=updated_at", a.Access, body, &out,
+				"Prefer", "resolution=merge-duplicates,return=representation"); err != nil {
+				return false, err
+			}
+		}
 	}
+	os.WriteFile(syncBasePath(), b, 0o644)
 	syncMu.Lock()
 	if len(out) > 0 {
 		syncSt.CloudAt = out[0].UpdatedAt
 	}
-	syncSt.Pending = false
+	syncSt.Pending = saveGen != gen // saved again while this went up: push that too
 	saveSyncState()
 	syncMu.Unlock()
-	setErr(nil)
+	return true, nil
 }
 
 // forgetSync drops the sync state when you log out.
@@ -211,6 +299,7 @@ func forgetSync() {
 	syncSt = syncState{}
 	syncErr = ""
 	os.Remove(syncPath())
+	os.Remove(syncBasePath())
 	syncMu.Unlock()
 }
 

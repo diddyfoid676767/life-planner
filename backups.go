@@ -15,7 +15,7 @@ import (
 
 // Backups live in data/backups: the first copy of each day (planner-DATE),
 // the first copy of each hour in hourly/, and a copy of whatever was about to
-// be replaced by something else (before-cloud, before-sync, before-restore,
+// be replaced by something else (before-cloud, before-merge, before-sync, before-restore,
 // replaced, cloud-smaller, damaged). Settings lists them all so any of them can
 // be put back with one click.
 

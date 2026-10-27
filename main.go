@@ -306,6 +306,10 @@ func handleData(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "changed in another window", http.StatusConflict)
 			return
 		}
+		// a window's changes merged into a newer copy: that copy is kept too
+		if r.Header.Get("X-Planner-Merged") != "" {
+			keepBackup("before-merge", cur)
+		}
 		// a much smaller planner replacing a big one is kept aside, just in case
 		if len(cur) > 20<<10 && len(b) < len(cur)/3 {
 			keepBackup("replaced", cur)
