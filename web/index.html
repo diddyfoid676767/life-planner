@@ -43,6 +43,7 @@
   </nav>
   <div class="sidefoot">
     <div id="sideStats"></div>
+    <button id="feedbackBtn" class="small ghost" data-act="feedback" title="Report a bug or suggest an idea to the developer">💬 Send feedback</button>
     <button id="notifyBtn" class="small ghost" hidden>Turn on reminders</button>
     <span id="saveState" class="muted small-text"></span>
   </div>
@@ -50,7 +51,7 @@
 <div class="content">
 <div id="updateBar" class="banner good" hidden></div>
 <div id="focusBar" hidden></div>
-<div id="offline" class="banner danger" hidden>The planner has stopped running. Double-click <b>LifePlanner.exe</b> again to reopen it. Changes made now won't be saved.</div>
+<div id="offline" class="banner danger" hidden><b>Life Planner has closed.</b> Double-click <b>LifePlanner.exe</b> to open it again. Anything you do now is kept in this tab and saves by itself once it's open.</div>
 <main id="view"></main>
 </div>
 <div id="toasts"></div>
@@ -90,6 +91,7 @@
 <script src="account.js"></script>
 <script src="body.js"></script>
 <script src="fitness.js"></script>
+<script src="workout.js"></script>
 <script src="friends.js"></script>
 <script src="chats.js"></script>
 <script src="profile.js"></script>

@@ -48,8 +48,18 @@ Windows may warn that the app is from an unknown publisher. Click
 ## Updates
 
 The app checks this page for a new release every few hours. When there is
-one, it downloads it and shows **Update now** at the top of the planner. Your
-data stays as it is.
+one, it downloads it, saves everything and restarts by itself a minute later
+(**Save and restart now** does it straight away). Your data stays as it is.
+
+Changes are also kept in the browser until the app has saved them, so closing
+the app, a restart or an update can't lose them: they save as soon as the app
+is open again.
+
+## Feedback
+
+**Send feedback** (sidebar, or Settings, App) sends a bug report or idea to the
+developer as a chat, so their reply shows up in Friends & chats. The server
+needs `supabase-2.32-feedback.sql` run once in the Supabase SQL Editor.
 
 ## Building it yourself
 

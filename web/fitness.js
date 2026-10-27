@@ -34,7 +34,7 @@ const EXERCISES = [
   ['bench', 'Bench press', 'Chest', ['chest', 'triceps', 'delts'], 0, [.5, 1.75]],
   ['incline', 'Incline bench press', 'Chest', ['chest', 'delts', 'triceps'], 0, [.45, 1.5]],
   ['dbbench', 'Dumbbell bench (per hand)', 'Chest', ['chest', 'triceps', 'delts'], 0, [.2, .75]],
-  ['fly', 'Chest fly', 'Chest', ['chest'], 0, [.15, .7]],
+  ['fly', 'Chest fly', 'Chest', ['chest'], 0, [.25, .9]],
   ['pushup', 'Push-up', 'Chest', ['chest', 'triceps', 'delts'], .65, [.7, 1.9]],
   ['dip', 'Dips', 'Chest', ['triceps', 'chest', 'delts'], 1, [1.05, 2]],
   ['ohp', 'Overhead press', 'Shoulders', ['delts', 'triceps'], 0, [.35, 1.1]],
@@ -44,36 +44,36 @@ const EXERCISES = [
   ['face', 'Face pull', 'Shoulders', ['delts', 'upperback', 'traps'], 0, [.2, .7]],
   ['pullup', 'Pull-up', 'Back', ['lats', 'biceps', 'upperback'], 1, [1.03, 1.8]],
   ['chinup', 'Chin-up', 'Back', ['lats', 'biceps'], 1, [1.05, 1.85]],
-  ['pulldown', 'Lat pulldown', 'Back', ['lats', 'biceps'], 0, [.5, 1.4]],
+  ['pulldown', 'Lat pulldown', 'Back', ['lats', 'biceps'], 0, [.6, 1.5]],
   ['row', 'Barbell row', 'Back', ['upperback', 'lats', 'biceps'], 0, [.5, 1.5]],
-  ['cablerow', 'Seated cable row', 'Back', ['upperback', 'lats', 'biceps'], 0, [.5, 1.5]],
+  ['cablerow', 'Seated cable row', 'Back', ['upperback', 'lats', 'biceps'], 0, [.6, 1.6]],
   ['dbrow', 'Dumbbell row (per hand)', 'Back', ['lats', 'upperback', 'biceps'], 0, [.25, .85]],
-  ['shrug', 'Shrug', 'Back', ['traps', 'forearms'], 0, [.8, 2.5]],
+  ['shrug', 'Shrug', 'Back', ['traps', 'forearms'], 0, [.9, 2.7]],
   ['backext', 'Back extension', 'Back', ['lowerback', 'glutes', 'hams'], .5, [.55, 1.3]],
   ['curl', 'Barbell curl', 'Arms', ['biceps', 'forearms'], 0, [.25, .8]],
   ['dbcurl', 'Dumbbell curl (per hand)', 'Arms', ['biceps', 'forearms'], 0, [.1, .4]],
   ['hammer', 'Hammer curl (per hand)', 'Arms', ['forearms', 'biceps'], 0, [.1, .42]],
-  ['pushdown', 'Tricep pushdown', 'Arms', ['triceps'], 0, [.3, 1]],
+  ['pushdown', 'Tricep pushdown', 'Arms', ['triceps'], 0, [.45, 1.3]],
   ['skull', 'Skull crusher', 'Arms', ['triceps'], 0, [.25, .8]],
   ['squat', 'Back squat', 'Legs', ['quads', 'glutes', 'hams', 'lowerback'], 0, [.75, 2.5]],
   ['fsquat', 'Front squat', 'Legs', ['quads', 'glutes', 'abs'], 0, [.6, 2]],
-  ['legpress', 'Leg press', 'Legs', ['quads', 'glutes'], 0, [1.5, 5]],
+  ['legpress', 'Leg press', 'Legs', ['quads', 'glutes'], 0, [1.8, 5.5]],
   ['bss', 'Bulgarian split squat (total load)', 'Legs', ['quads', 'glutes'], 0, [.2, 1.1]],
   ['lunge', 'Lunge (total load)', 'Legs', ['quads', 'glutes', 'hams'], 0, [.3, 1.2]],
-  ['legext', 'Leg extension', 'Legs', ['quads'], 0, [.4, 1.4]],
+  ['legext', 'Leg extension (seated)', 'Legs', ['quads'], 0, [.6, 1.9]],
   ['deadlift', 'Deadlift', 'Legs', ['hams', 'glutes', 'lowerback', 'traps', 'forearms'], 0, [1, 3]],
   ['rdl', 'Romanian deadlift', 'Legs', ['hams', 'glutes', 'lowerback'], 0, [.6, 2.2]],
-  ['legcurl', 'Leg curl', 'Legs', ['hams'], 0, [.3, 1.1]],
+  ['legcurl', 'Lying leg curl', 'Legs', ['hams'], 0, [.5, 1.6]],
   ['hipthrust', 'Hip thrust', 'Legs', ['glutes', 'hams'], 0, [.75, 3]],
-  ['calf', 'Calf raise', 'Legs', ['calves'], 0, [.8, 3]],
+  ['calf', 'Standing calf raise', 'Legs', ['calves'], 0, [1, 3.2]],
   ['clean', 'Power clean', 'Power', ['quads', 'glutes', 'traps', 'hams', 'delts'], 0, [.5, 1.5]],
   ['snatch', 'Power snatch', 'Power', ['delts', 'traps', 'quads', 'glutes'], 0, [.4, 1.2]],
-  ['crunch', 'Cable crunch', 'Core', ['abs'], 0, [.3, 1.2]],
+  ['crunch', 'Cable crunch', 'Core', ['abs'], 0, [.4, 1.4]],
   ['hlr', 'Hanging leg raise', 'Core', ['abs', 'obliques'], .35, [.37, .6]],
   ['twist', 'Russian twist (load)', 'Core', ['obliques', 'abs'], 0, [.05, .4]],
   // 2.28: more lifts, and plyos (jumps, bounds and throws: logged as reps, with no 1RM)
   ['closegrip', 'Close-grip bench press', 'Chest', ['triceps', 'chest', 'delts'], 0, [.45, 1.5]],
-  ['cablefly', 'Cable fly', 'Chest', ['chest'], 0, [.1, .5]],
+  ['cablefly', 'Cable fly', 'Chest', ['chest'], 0, [.15, .6]],
   ['arnold', 'Arnold press (per hand)', 'Shoulders', ['delts', 'triceps'], 0, [.12, .45]],
   ['landmine', 'Landmine press', 'Shoulders', ['delts', 'chest', 'triceps'], 0, [.25, .9]],
   ['uprow', 'Upright row', 'Shoulders', ['delts', 'traps', 'biceps'], 0, [.25, .8]],
@@ -91,7 +91,7 @@ const EXERCISES = [
   ['goodmorning', 'Good morning', 'Legs', ['hams', 'lowerback', 'glutes'], 0, [.4, 1.4]],
   ['nordic', 'Nordic curl', 'Legs', ['hams'], .5, [.5, 1]],
   ['glutebridge', 'Glute bridge', 'Legs', ['glutes', 'hams'], 0, [.6, 2.5]],
-  ['seatcalf', 'Seated calf raise', 'Legs', ['calves'], 0, [.5, 2]],
+  ['seatcalf', 'Seated calf raise', 'Legs', ['calves'], 0, [.6, 2.2]],
   ['hangclean', 'Hang clean', 'Power', ['quads', 'glutes', 'traps', 'hams'], 0, [.45, 1.4]],
   ['pushpress', 'Push press', 'Power', ['delts', 'triceps', 'quads'], 0, [.45, 1.4]],
   ['jerk', 'Split jerk', 'Power', ['delts', 'triceps', 'quads', 'glutes'], 0, [.5, 1.6]],
@@ -117,7 +117,55 @@ const EXERCISES = [
   ['abwheel', 'Ab wheel rollout', 'Core', ['abs', 'obliques'], .3, [.3, .6]],
   ['pallof', 'Pallof press', 'Core', ['obliques', 'abs'], 0, [.1, .4]],
   ['farmer', 'Farmer carry (per hand)', 'Core', ['forearms', 'traps', 'abs'], 0, [.3, 1]],
+  // 2.32: single-leg, single-arm, seated and standing versions
+  ['seatlegcurl', 'Seated leg curl', 'Legs', ['hams'], 0, [.45, 1.5]],
+  ['sllegcurl', 'Single-leg leg curl (lying or seated)', 'Legs', ['hams'], 0, [.22, .75]],
+  ['standlegcurl', 'Standing single-leg curl', 'Legs', ['hams'], 0, [.14, .5]],
+  ['sllegext', 'Single-leg leg extension', 'Legs', ['quads'], 0, [.3, .95]],
+  ['sllegpress', 'Single-leg leg press', 'Legs', ['quads', 'glutes'], 0, [.8, 2.6]],
+  ['slcalf', 'Single-leg calf raise', 'Legs', ['calves'], 1, [1.2, 2.5]],
+  ['slseatcalf', 'Single-leg seated calf raise', 'Legs', ['calves'], 0, [.3, 1.1]],
+  ['slrdl', 'Single-leg RDL (total load)', 'Legs', ['hams', 'glutes', 'lowerback'], 0, [.2, 1]],
+  ['slhipthrust', 'Single-leg hip thrust', 'Legs', ['glutes', 'hams'], .5, [.6, 1.4]],
+  ['slglute', 'Single-leg glute bridge', 'Legs', ['glutes', 'hams'], .5, [.55, 1.2]],
+  ['slboxsq', 'Single-leg box squat', 'Legs', ['quads', 'glutes'], 1, [1, 1.4]],
+  ['seatohp', 'Seated overhead press', 'Shoulders', ['delts', 'triceps'], 0, [.33, 1.05]],
+  ['standdbohp', 'Standing dumbbell shoulder press (per hand)', 'Shoulders', ['delts', 'triceps', 'abs'], 0, [.13, .45]],
+  ['saohp', 'Single-arm dumbbell press', 'Shoulders', ['delts', 'triceps', 'obliques'], 0, [.13, .45]],
+  ['salat', 'Single-arm cable lateral raise', 'Shoulders', ['delts'], 0, [.04, .2]],
+  ['sadbbench', 'Single-arm dumbbell bench press', 'Chest', ['chest', 'triceps', 'obliques'], 0, [.2, .7]],
+  ['seatchest', 'Seated chest press (machine)', 'Chest', ['chest', 'triceps', 'delts'], 0, [.6, 1.8]],
+  ['sacablerow', 'Single-arm cable row', 'Back', ['lats', 'upperback', 'biceps'], 0, [.25, .8]],
+  ['salatpd', 'Single-arm lat pulldown', 'Back', ['lats', 'biceps'], 0, [.22, .7]],
+  ['seatrowm', 'Seated row (machine)', 'Back', ['upperback', 'lats', 'biceps'], 0, [.6, 1.6]],
+  ['seatdbcurl', 'Seated dumbbell curl (per hand)', 'Arms', ['biceps', 'forearms'], 0, [.09, .38]],
+  ['inclcurl', 'Incline dumbbell curl (per hand)', 'Arms', ['biceps'], 0, [.08, .33]],
+  ['sacablecurl', 'Single-arm cable curl', 'Arms', ['biceps'], 0, [.08, .3]],
+  ['sapushdown', 'Single-arm tricep pushdown', 'Arms', ['triceps'], 0, [.12, .45]],
+  ['seatohext', 'Seated overhead tricep extension', 'Arms', ['triceps'], 0, [.2, .7]],
+  ['slpogo', 'Single-leg pogo hops', 'Plyos', ['calves'], 1, null],
+  ['slboxjump', 'Single-leg box jump', 'Plyos', ['quads', 'glutes', 'calves'], 1, null],
 ];
+// search: every word typed has to be in the name or the group
+const exNorm = t => String(t).toLowerCase().replace(/\(.*?\)/g, ' ').replace(/single[\s-‑]*(leg|arm)/g, 'single$1').replace(/[-‑]/g, '').replace(/[^a-z0-9 ]/g, ' ').split(/\s+/).filter(Boolean).map(w => w.length > 3 && w.endsWith('s') && !w.endsWith('ss') ? w.slice(0, -1) : w);
+function exSearch(q) {
+  const words = exNorm(q); if (!words.length) return [];
+  const all = [...fitCfg().custom.map(c => [c.id, c.name, 'Custom']), ...EXERCISES];
+  return all.filter(e => { const hay = exNorm(e[1] + ' ' + e[2] + ' ' + (e[1].match(/\((.*?)\)/)?.[1] || '')).join(' ');
+    return words.every(w => hay.includes(w)); })
+    .map(e => { const n = exNorm(e[1]); return [e, (words.every(w => n.join(' ').includes(w)) ? 2 : 0) + (n[0] === words[0] ? 1 : 0)]; })
+    .sort((a, b) => b[1] - a[1] || a[0][1].length - b[0][1].length).map(x => x[0]).slice(0, 14);
+}
+// a planned line like "Calf raises 2x12" or "Bulgarian split squat 2x8/leg": the closest exercise
+function exMatch(name) {
+  const q = exNorm(name); if (!q.length) return null;
+  const all = [...fitCfg().custom.map(c => [c.id, c.name]), ...EXERCISES];
+  let best = null, bs = 0;
+  for (const e of all) { const t = exNorm(e[1]); if (t.every(w => q.includes(w)) && t.length > bs) { best = e[0]; bs = t.length; } }
+  if (best) return best;
+  for (const e of all) { const t = exNorm(e[1]); if (q.every(w => t.includes(w))) return e[0]; }
+  return null;
+}
 const isPlyo = ex => ex.group === 'Plyos';
 const setE = (ex, s) => isPlyo(ex) ? 0 : e1rm(setLoad(ex, s), +s.r); // plyos are about speed, so no 1RM
 const exInfo = id => { const c = fitCfg().custom.find(x => x.id === id); if (c) return { id, name: c.name, group: 'Custom', m: c.m || [], bwf: 0, std: null };
@@ -238,17 +286,39 @@ function startGym(copyId) {
 }
 function finishGym() {
   const g = gymSession(ui.gymEdit); if (!g) return;
+  if (typeof wmodeClose === 'function') wmodeClose(true);
   g.ex = g.ex.filter(it => it.sets.some(s => +s.r > 0));
   if (!g.ex.length) { fitCfg().gym = fitCfg().gym.filter(x => x !== g); ui.gymEdit = null; save(); render(); toast('Session discarded', 'It had no sets with reps in it.'); return; }
+  for (const it of g.ex) it.sets = it.sets.filter(s => +s.r > 0); // planned sets you didn't get to
+  if (g.startedAt && !g.wid) g.mins = Math.max(5, Math.min(300, Math.round((Date.now() - g.startedAt) / 60000))) || g.mins;
   const before = liftPRs(g.id), prs = [];
   for (const it of g.ex) { const best = Math.max(0, ...it.sets.filter(s => !s.warm).map(s => setE(exInfo(it.x), s))); if (before[it.x] && best > before[it.x].e + .01) prs.push(`${exInfo(it.x).name} ${r1(best)} kg`); }
   // mirror it as a done workout so it counts for the Arena, streaks and friends
-  const wv = { date: g.date, title: g.name, sport: 'Strength / Gym', duration: +g.mins || 60, intensity: 'Hard', done: true, notes: g.ex.map(it => `${exInfo(it.x).name} ${it.sets.filter(s => +s.r).map(s => `${s.w || 0}x${s.r}`).join(', ')}`).join('\n') };
-  const w = g.wid && D.workouts.find(x => x.id === g.wid);
-  if (w) Object.assign(w, wv); else { g.wid = uid(); D.workouts.push({ id: g.wid, ...wv }); }
+  const rpes = g.ex.flatMap(it => it.sets.map(s => +s.rpe).filter(Boolean)), rpe = rpes.length ? rpes.reduce((a, b) => a + b, 0) / rpes.length : 0;
+  const wv = { date: g.date, title: g.name, sport: 'Strength / Gym', duration: +g.mins || 60, intensity: !rpe ? 'Hard' : rpe < 6 ? 'Easy' : rpe < 7.5 ? 'Moderate' : 'Hard', done: true,
+    notes: g.ex.map(it => `${exInfo(it.x).name} ${it.sets.filter(s => +s.r).map(s => `${s.w || 0}x${s.r}${s.rpe ? ' @' + s.rpe : ''}`).join(', ')}`).join('\n') + (rpe ? `\nAverage RPE ${r1(rpe)}` : '') };
+  const wid = g.wid || g.pw, w = wid && D.workouts.find(x => x.id === wid);
+  if (w && !g.wid) { wv.time = w.time; wv.eventId = w.eventId; if (w.notes) wv.notes += '\n\nPlan: ' + w.notes; }
+  if (w) { Object.assign(w, wv); g.wid = w.id; } else { g.wid = uid(); D.workouts.push({ id: g.wid, ...wv }); }
+  delete g.pw;
   ui.gymEdit = null; save(); render();
   if (prs.length) celebrate({ icon: '<span class="critbig">🏆</span>', color: '#f59f00', kicker: `${prs.length} new PR${prs.length === 1 ? '' : 's'}!`, title: esc(prs.slice(0, 3).join(' · ')), text: 'Estimated one-rep maxes, from your best set of each lift.' });
   else toast('💪 Session saved', `${g.ex.length} exercise${g.ex.length === 1 ? '' : 's'}, ${g.ex.reduce((a, it) => a + it.sets.length, 0)} sets.`);
+}
+function exSearchBox() {
+  return `<div class="exsearch"><input id="exQ" type="search" placeholder="🔍 Search exercises, e.g. single leg curl" autocomplete="off" enterkeyhint="search"><div id="exRes" class="exres"></div></div>`;
+}
+function exResults(q) {
+  const r = exSearch(q);
+  return q.trim() ? (r.length ? r.map(e => `<button class="exhit" data-fit="exAdd" data-v="${e[0]}"><b>${esc(e[1])}</b><small>${esc(e[2])}</small></button>`).join('') : '<span class="muted small-text">Nothing found. Pick ➕ New exercise from the list to add your own.</span>') : '';
+}
+document.addEventListener('input', e => { if (e.target.id === 'exQ') { const box = document.getElementById('exRes'); if (box) box.innerHTML = exResults(e.target.value); } });
+// adds an exercise to a session, with the sets you did last time
+function gymAddEx(g, id) {
+  const F = fitCfg();
+  const prev = [...F.gym].filter(x => x.id !== g.id).sort((a, b) => b.date.localeCompare(a.date)).flatMap(x => x.ex).find(it => it.x === id);
+  g.ex.push({ x: id, sets: prev ? prev.sets.filter(s => !s.warm).map(s => ({ w: s.w, r: s.r })) : [{ w: '', r: '' }] });
+  save();
 }
 function exPicker() {
   const groups = {}; for (const e of EXERCISES) (groups[e[2]] = groups[e[2]] || []).push(e);
@@ -268,21 +338,23 @@ function gymEditor() {
   const rows = g.ex.map((it, ei) => {
     const ex = exInfo(it.x), pb = before[it.x];
     return `<div class="gex"><div class="gex-head"><b>${esc(ex.name)}</b><span class="muted small-text">${ex.m.map(m => MUSCLES[m]).join(', ')}${pb ? ` · best ${r1(pb.e)} kg est. 1RM` : ''}</span><span style="flex:1"></span><button class="iconbtn" data-fit="exDel" data-i="${ei}" title="Remove exercise">✕</button></div>
-      <div class="gsets"><div class="gset gset-h"><span>Set</span><span>${ex.bwf ? '+kg' : 'kg'}</span><span>Reps</span><span>${isPlyo(ex) ? '' : 'Est. 1RM'}</span><span></span></div>
+      <div class="gsets"><div class="gset gset-h"><span>Set</span><span>${ex.bwf ? '+kg' : 'kg'}</span><span>Reps</span><span title="How hard it was, 1 to 10 (10 = nothing left)">RPE</span><span>${isPlyo(ex) ? '' : 'Est. 1RM'}</span><span></span></div>
       ${it.sets.map((s, si) => { const e = setE(ex, s), isPr = !s.warm && e && (!pb || e > pb.e + .01);
         return `<div class="gset ${s.done ? 'done' : ''}"><button class="gnum ${s.warm ? 'warm' : ''}" data-fit="warm" data-i="${ei}" data-j="${si}" title="Tap to mark as a warm-up">${s.warm ? 'W' : si + 1}</button>
         <input id="gs_${ei}_${si}_w" data-gs="w" data-i="${ei}" data-j="${si}" type="number" step="0.5" min="0" inputmode="decimal" value="${s.w ?? ''}" placeholder="${ex.bwf ? '0' : 'kg'}">
-        <input id="gs_${ei}_${si}_r" data-gs="r" data-i="${ei}" data-j="${si}" type="number" min="0" inputmode="numeric" value="${s.r ?? ''}" placeholder="reps">
+        <input id="gs_${ei}_${si}_r" data-gs="r" data-i="${ei}" data-j="${si}" type="number" min="0" inputmode="numeric" value="${s.r ?? ''}" placeholder="${s.tr ? s.tr : 'reps'}">
+        <input id="gs_${ei}_${si}_rpe" data-gs="rpe" data-i="${ei}" data-j="${si}" type="number" min="1" max="10" step="0.5" inputmode="decimal" value="${s.rpe ?? ''}" placeholder="–" title="RPE: how hard it was, 1 to 10">
         <span class="ge1">${e ? r1(e) : '–'}${isPr && pb ? ' <span class="tag green">PR</span>' : ''}</span>
         <span class="gbtns"><button class="iconbtn ${s.done ? 'on' : ''}" data-fit="setDone" data-i="${ei}" data-j="${si}" title="Done (starts rest timer)">✓</button><button class="iconbtn" data-fit="setDel" data-i="${ei}" data-j="${si}" title="Delete set">−</button></span></div>`; }).join('')}</div>
       <button class="btn small" data-fit="setAdd" data-i="${ei}">+ Set</button></div>`;
   }).join('');
-  return `<div class="card gymedit" id="gymEdit"><div class="card-head"><h2>🏋️ Logging</h2><span id="restT" class="resttimer" hidden></span></div>
+  return `<div class="card gymedit" id="gymEdit"><div class="card-head"><h2>🏋️ Logging</h2><span id="restT" class="resttimer" hidden></span><span style="flex:1"></span><button class="btn small primary" data-fit="wmode" title="One set at a time, with big buttons and a rest timer">▶ Workout mode</button></div>
     <div class="frow gmeta"><div class="field"><label>Name</label><input data-gm="name" value="${esc(g.name)}"></div><div class="field"><label>Date</label><input data-gm="date" type="date" value="${g.date}"></div><div class="field"><label>Minutes</label><input data-gm="mins" type="number" min="5" value="${g.mins || 60}"></div></div>
     ${rows || '<p class="muted">Add your first exercise below. Each new set copies the one before it.</p>'}
-    <div class="row gadd">${exPicker()}<span style="flex:1"></span><button class="btn" data-fit="gymCancel">Discard</button><button class="btn primary" data-fit="gymFinish">Finish session</button></div></div>`;
+    ${exSearchBox()}<div class="row gadd">${exPicker()}<span style="flex:1"></span><button class="btn" data-fit="gymCancel">Discard</button><button class="btn primary" data-fit="gymFinish">Finish session</button></div></div>`;
 }
 function gymPage() {
+  if (!ui.gymEdit && fitCfg().live && gymSession(fitCfg().live)) ui.gymEdit = fitCfg().live; // a workout that's still going
   const F = fitCfg(), P = liftPRs(), ids = Object.keys(P).sort((a, b) => P[b].last.localeCompare(P[a].last));
   const sel = ui.gymEx && P[ui.gymEx] ? ui.gymEx : ids[0];
   const recent = [...F.gym].filter(g => g.id !== ui.gymEdit).sort((a, b) => b.date.localeCompare(a.date));
@@ -292,7 +364,7 @@ function gymPage() {
     return `<button class="prrow ${id === sel ? 'on' : ''}" data-fit="gymEx" data-v="${id}"><span class="main"><b>${esc(exInfo(id).name)}</b><small>${exInfo(id).bwf ? `most reps ${p.r}${p.w ? ` · heaviest +${r1(p.w)} kg` : ''}` : `heaviest ${r1(p.w)} kg · most reps ${p.r} · best volume ${Math.round(p.bestVol).toLocaleString()} kg`}</small></span><span class="prv">${r1(p.e)}<small>kg 1RM</small></span>${rankTag(rk)}</button>`; }).join('')}</div>` : '<p class="muted">Your PRs appear here once you log a session: best estimated 1RM, heaviest weight, most reps and best volume for every lift.</p>';
   const hist = sel ? Object.entries(P[sel].hist).sort().map(([x, y]) => ({ x, y })) : [];
   return `${ui.gymEdit ? gymEditor() : `<div class="card gymstart"><div><h2>🏋️ Gym log</h2><p class="muted small-text">Log weight × reps for each set. You get an estimated 1RM for every set and a PR flag the moment you beat your best.</p></div>
-      <div class="row"><button class="btn primary" data-fit="gymStart">+ Start a session</button>${recent[0] ? `<button class="btn" data-fit="gymStart" data-id="${recent[0].id}">↻ Repeat "${esc(recent[0].name)}"</button>` : ''}</div></div>`}
+      <div class="row"><button class="btn primary" data-fit="wmodeNew" title="Track your sets as you go, one at a time">▶ Start a workout</button><button class="btn" data-fit="gymStart">+ Log a session</button>${recent[0] ? `<button class="btn" data-fit="gymStart" data-id="${recent[0].id}">↻ Repeat "${esc(recent[0].name)}"</button>` : ''}</div></div>`}
     <div class="fit-grid">${bodyMapCard()}
       <div class="card"><div class="card-head"><h2>🏆 Lift PRs</h2><span class="muted small-text">est. 1RM = weight × (1 + reps ÷ 30)</span></div>${prTable}</div></div>
     <div class="fit-grid">
@@ -374,19 +446,33 @@ function foodPage() {
 const defaultMeal = () => { const h = new Date().getHours(); return h < 10 ? 'b' : h < 15 ? 'l' : h < 21 ? 'd' : 's'; };
 
 // ---------- athletics ----------
-const TEST_CATS = [['sprint', '⚡ Sprints'], ['hurdle', '🚧 Hurdles'], ['dist', '🏃 Middle and distance'], ['jump', '🦘 Jumps'], ['throw', '🥏 Throws'], ['rm', '🏋️ 1 rep maxes'], ['test', '📏 Fitness tests']];
+const TEST_CATS = [['sprint', '⚡ Sprints'], ['hurdle', '🚧 Hurdles'], ['dist', '🏃 Middle and distance'], ['jump', '🦘 Jumps'], ['throw', '🥏 Throws'], ['rm', '🏋️ Tested 1 rep maxes'], ['test', '📏 Fitness tests']];
+// PRs in three sections, each with its own subsections
+const PR_SECS = [['run', '🏃 Running', ['sprint', 'hurdle', 'dist']], ['gym', '🏋️ Gym', ['lifts', 'rm']], ['other', '🤸 Other', ['jump', 'throw', 'test']]];
+const PR_SUBS = Object.fromEntries([...TEST_CATS, ['lifts', '📈 Lift PRs from your gym log']]);
+const prSecOf = cat => (PR_SECS.find(x => x[2].includes(cat)) || PR_SECS[0])[0];
 function myBests() { const o = {}; for (const T of TESTS) { const b = pbHistory(T.id).best; if (b != null) o[T.id] = b; } return o; }
-function bestsSummary() {
-  const B = myBests(), P = liftPRs(), lifts = Object.entries(P).sort((a, b) => b[1].e - a[1].e).slice(0, 8);
-  const cells = TESTS.filter(T => B[T.id] != null).map(T => { const rk = rankOf(testLevel(T, B[T.id]) ?? 0); return `<div class="lbest" style="--rk:${rk.col}"><small>${esc(T.name)}</small><b>${fmtTest(T, B[T.id])}</b>${rankTag(rk)}</div>`; });
+function bestsSummary(sec) {
+  const S = PR_SECS.find(x => x[0] === sec), B = myBests(), P = liftPRs(), lifts = !S || sec === 'gym' ? Object.entries(P).sort((a, b) => b[1].e - a[1].e).slice(0, 8) : [];
+  const cells = TESTS.filter(T => B[T.id] != null && (!S || S[2].includes(T.cat))).map(T => { const rk = rankOf(testLevel(T, B[T.id]) ?? 0); return `<div class="lbest" style="--rk:${rk.col}"><small>${esc(T.name)}</small><b>${fmtTest(T, B[T.id])}</b>${rankTag(rk)}</div>`; });
   const liftCells = lifts.map(([id, p]) => { const f = liftLevel(id, p.e); return `<div class="lbest est" style="--rk:${f != null ? rankOf(f).col : 'var(--border)'}"><small>${esc(exInfo(id).name)} <em>est.</em></small><b>${r1(p.e)} kg</b>${f != null ? rankTag(rankOf(f)) : ''}</div>`; });
-  return `<div class="card"><div class="card-head"><h2>🏅 Logged bests</h2><span class="muted small-text">${cells.length} event${cells.length === 1 ? '' : 's'}${acct?.signedIn ? ' · your friends can see these' : ''}</span></div>
+  return `<div class="card"><div class="card-head"><h2>🏅 ${S ? S[1].replace(/^\S+ /, '') + ' bests' : 'Logged bests'}</h2><span class="muted small-text">${cells.length + liftCells.length} best${cells.length + liftCells.length === 1 ? '' : 's'}${acct?.signedIn ? ' · your friends can see these' : ''}</span></div>
     ${cells.length || liftCells.length ? `<div class="lbests">${cells.join('')}${liftCells.join('')}</div>` : '<p class="muted">Log a result below and it shows up here with its rank, from Rookie up to Legend.</p>'}</div>`;
 }
+// every lift in the gym log, grouped by body part
+function liftPrGroups() {
+  const P = liftPRs(), groups = {};
+  for (const id of Object.keys(P)) { const g = exInfo(id).group || 'Other'; (groups[g] = groups[g] || []).push(id); }
+  if (!Object.keys(groups).length) return '<div class="card"><p class="muted">Log a session on the Gym tab and every lift shows up here with its best estimated 1RM and rank.</p></div>';
+  return `<div class="pbgrid">${Object.entries(groups).map(([g, ids]) => `<div class="card"><div class="card-head"><h2>${esc(g)}</h2></div><div class="prtable">${ids.sort((a, b) => P[b].e - P[a].e).map(id => { const p = P[id], f = liftLevel(id, p.e), rk = f != null ? rankOf(f) : null;
+    return `<button class="prrow" data-fit="prLift" data-v="${id}" title="See the graph on the Gym tab"><span class="main"><b>${esc(exInfo(id).name)}</b><small>heaviest ${r1(p.w)} kg · most reps ${p.r}</small></span><span class="prv">${r1(p.e)}<small>kg 1RM</small></span>${rankTag(rk)}</button>`; }).join('')}</div></div>`).join('')}</div>`;
+}
 function athleticsPage() {
-  const cat = ui.athCat || 'sprint';
-  const tabs = `<div class="seg athtabs">${TEST_CATS.map(([k, l]) => `<button class="${cat === k ? 'on' : ''}" data-fit="athCat" data-v="${k}">${l}</button>`).join('')}<button class="${cat === 'records' ? 'on' : ''}" data-fit="athCat" data-v="records">🏆 Records</button></div>`;
-  if (cat === 'records') return `${bestsSummary()}${tabs}${recordsHtml().replace(/<h2 style="margin:18px 0 10px">.*<\/h2>/, '')}`;
+  const sec = ui.prSec || (ui.athCat && ui.athCat !== 'records' ? prSecOf(ui.athCat) : ui.athCat) || 'run';
+  const tabs = `<div class="seg athtabs">${PR_SECS.map(([k, l]) => `<button class="${sec === k ? 'on' : ''}" data-fit="prSec" data-v="${k}">${l}</button>`).join('')}<button class="${sec === 'records' ? 'on' : ''}" data-fit="prSec" data-v="records">🏆 Records</button></div>`;
+  if (sec === 'records') return `${tabs}${bestsSummary()}${recordsHtml().replace(/<h2 style="margin:18px 0 10px">.*<\/h2>/, '')}`;
+  const S = PR_SECS.find(x => x[0] === sec), sub = S[2].includes(ui.prSub) ? ui.prSub : '';
+  const subs = `<div class="prsubs">${[['', 'All'], ...S[2].map(k => [k, PR_SUBS[k]])].map(([k, l]) => `<button class="${sub === k ? 'on' : ''}" data-fit="prSub" data-v="${k}">${l}</button>`).join('')}</div>`;
   const card = T => {
     const h = pbHistory(T.id), last = h.list[h.list.length - 1], si = statInfo(T.stat), rk = h.best != null ? rankOf(testLevel(T, h.best) ?? 0) : null;
     const open = ui.athOpen === T.id;
@@ -398,10 +484,11 @@ function athleticsPage() {
       <div class="row pbadd"><input id="pbv_${T.id}" type="text" inputmode="decimal" placeholder="${T.time ? 'm:ss' : T.unit}"><input id="pbd_${T.id}" type="date" value="${today()}"><button class="btn small primary" data-act="addPb" data-id="${T.id}">Log</button></div><button class="pbunk" data-act="addPbUnk" data-id="${T.id}" title="Log the result without a date, for a best you did a while ago">🤷 Don't know when I did it</button>
       ${h.list.length ? `<details><summary class="small-text">History</summary>${[...h.list].reverse().map(p => `<div class="pbrow"><span>${pbWhen(p)}</span><b>${fmtTest(T, p.value)}</b>${p.pb ? '<span class="tag green">PB</span>' : ''}<button class="iconbtn" data-act="delPb" data-id="${p.id}" title="Delete">✕</button></div>`).join('')}</details>` : ''}</div>`;
   };
-  const est = cat === 'rm' ? (() => { const P = liftPRs(), map = { bench: 'bench', sq: 'squat', dl: 'deadlift', ohp: 'ohp', clean: 'clean', fsq: 'fsquat', hipt: 'hipthrust' };
+  const est = () => { const P = liftPRs(), map = { bench: 'bench', sq: 'squat', dl: 'deadlift', ohp: 'ohp', clean: 'clean', fsq: 'fsquat', hipt: 'hipthrust' };
     const rows = Object.entries(map).filter(([, x]) => P[x]).map(([t, x]) => `<span class="tag">${esc(exInfo(x).name)}: ~${r1(P[x].e)} kg</span>`);
-    return rows.length ? `<p class="muted small-text" style="margin-top:12px">Estimated from your gym log: ${rows.join(' ')}. Log a real max here when you test it.</p>` : ''; })() : '';
-  return `${bestsSummary()}${tabs}${est}<div class="pbgrid">${TESTS.filter(T => T.cat === cat).map(card).join('')}</div>`;
+    return rows.length ? `<p class="muted small-text" style="margin:0 0 10px">Estimated from your gym log: ${rows.join(' ')}. Log a real max here when you test it.</p>` : ''; };
+  const part = k => `<h3 class="prsubh">${PR_SUBS[k]}</h3>${k === 'lifts' ? liftPrGroups() : `${k === 'rm' ? est() : ''}<div class="pbgrid">${TESTS.filter(T => T.cat === k).map(card).join('')}</div>`}`;
+  return `${tabs}${bestsSummary(sec)}${subs}${(sub ? [sub] : S[2]).map(part).join('')}`;
 }
 // what friends see (kept small: it rides along with the board row)
 function fitPublish() {
@@ -425,7 +512,11 @@ document.addEventListener('click', e => {
     case 'gymStart': if (ui.gymEdit && !confirm('Discard the session you are logging and start another?')) return; if (ui.gymEdit) F.gym = F.gym.filter(x => x.id !== ui.gymEdit || x.wid); startGym(el.dataset.id); break;
     case 'gymOpen': ui.gymEdit = el.dataset.id; render(); window.scrollTo(0, 0); break;
     case 'gymFinish': finishGym(); break;
-    case 'gymCancel': if (g && !g.wid && !confirm('Discard this session?')) return; if (g && !g.wid) F.gym = F.gym.filter(x => x !== g); ui.gymEdit = null; save(); render(); break;
+    case 'gymCancel': if (g && !g.wid && !confirm('Discard this session?')) return; if (g && !g.wid) F.gym = F.gym.filter(x => x !== g); ui.gymEdit = null; if (typeof wmodeClose === 'function') wmodeClose(true); save(); render(); break;
+    case 'exAdd': { const gg = gymSession(ui.gymEdit); if (!gg) return; gymAddEx(gg, el.dataset.v); if (ui.wmode) { ui.wmEx = gg.ex.length - 1; ui.wmAdd = false; wmodeRender(); } else render(); break; }
+    case 'wmode': if (g) { ui.wmEx = null; wmodeOpen(); } break;
+    case 'wmodeNew': if (ui.gymEdit && gymSession(ui.gymEdit)) { ui.wmEx = null; wmodeOpen(); break; } startGym(); ui.wmEx = null; wmodeOpen(); break;
+    case 'wmodeW': if (modal.open) modal.close(); startPlanned(el.dataset.id); break;
     case 'gymDel': if (confirm('Delete this session?')) { const s = gymSession(el.dataset.id); F.gym = F.gym.filter(x => x !== s); if (s?.wid) D.workouts = D.workouts.filter(w => w.id !== s.wid); save(); render(); } break;
     case 'gymEx': ui.gymEx = el.dataset.v; render(); break;
     case 'gymAll': ui.gymAll = true; render(); break;
@@ -442,6 +533,9 @@ document.addEventListener('click', e => {
     case 'foodDay': { const n = +el.dataset.n; ui.foodDay = n === 0 ? today() : addDays(ui.foodDay || today(), n); if (ui.foodDay > today()) ui.foodDay = today(); render(); break; }
     case 'bwLog': { const v = +$('#bwIn').value; if (!(v >= 25 && v <= 250)) { toast('Enter your weight in kg'); return; } F.weights[today()] = r1(v); save(); render(); toast('⚖️ Weight logged', `${r1(v)} kg`); break; }
     case 'athCat': ui.athCat = el.dataset.v; render(); break;
+    case 'prSec': ui.prSec = el.dataset.v; ui.prSub = ''; render(); break;
+    case 'prSub': ui.prSub = el.dataset.v; render(); break;
+    case 'prLift': ui.gymEx = el.dataset.v; ui.bodyPage = 'gym'; render(); window.scrollTo(0, 0); break;
     case 'athOpen': ui.athOpen = ui.athOpen === el.dataset.v ? null : el.dataset.v; render(); break;
   }
 });
@@ -450,7 +544,7 @@ document.addEventListener('change', e => {
   if (el.dataset.gs || el.dataset.gm) {
     const g = gymSession(ui.gymEdit); if (!g) return;
     if (el.dataset.gm) g[el.dataset.gm] = el.dataset.gm === 'mins' ? +el.value : el.dataset.gm === 'date' ? (el.value || today()) : el.value.slice(0, 60);
-    else { const v = el.value === '' ? '' : Math.max(0, +el.value); g.ex[+el.dataset.i].sets[+el.dataset.j][el.dataset.gs] = v; }
+    else { const v = el.value === '' ? '' : el.dataset.gs === 'rpe' ? Math.min(10, Math.max(1, +el.value)) : Math.max(0, +el.value); g.ex[+el.dataset.i].sets[+el.dataset.j][el.dataset.gs] = v; }
     save();
     if (el.dataset.gs) setTimeout(() => { const f = document.activeElement?.id; const box = document.getElementById('gymEdit'); if (box) { box.outerHTML = gymEditor(); if (f) document.getElementById(f)?.focus(); } if (restEnd > Date.now()) startRest(Math.round((restEnd - Date.now()) / 1000)); }, 0);
   } else if (el.id === 'gymAddEx' && el.value) {
@@ -460,9 +554,8 @@ document.addEventListener('change', e => {
       const pick = (prompt(`Main muscles, separated by commas (${Object.values(MUSCLES).join(', ')})`) || '').toLowerCase();
       const m = Object.entries(MUSCLES).filter(([, n]) => pick.includes(n.toLowerCase())).map(([k]) => k);
       id = 'c' + uid(); F.custom.push({ id, name, m }); }
-    const prev = [...F.gym].filter(x => x.id !== g.id).sort((a, b) => b.date.localeCompare(a.date)).flatMap(x => x.ex).find(it => it.x === id);
-    g.ex.push({ x: id, sets: prev ? prev.sets.filter(s => !s.warm).map(s => ({ w: s.w, r: s.r })) : [{ w: '', r: '' }] });
-    save(); render();
+    gymAddEx(g, id); render();
+    if (ui.wmode) { ui.wmEx = g.ex.length - 1; ui.wmAdd = false; wmodeRender(); }
   } else if (el.dataset.fp) {
     const k = el.dataset.fp;
     if (k === 'weight') { if (+el.value >= 25) F.weights[today()] = r1(+el.value); }

@@ -4,7 +4,9 @@
 package main
 
 import (
+	"crypto/sha256"
 	"embed"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -35,7 +37,7 @@ var port = func() int {
 
 const (
 	dataFileName = "planner-data.json"
-	idleTimeout  = 3 * time.Minute // quit when no browser tab has checked in for this long
+	idleTimeout  = 15 * time.Minute // quit when no browser tab has checked in for this long (browsers can pause a tab for minutes)
 )
 
 var (
@@ -113,6 +115,7 @@ func main() {
 	mux.HandleFunc("/api/chat", handleChat)
 	mux.HandleFunc("/api/update", handleUpdate)
 	mux.HandleFunc("/api/update/check", handleUpdateCheck)
+	mux.HandleFunc("/api/restart", handleRestart)
 	mux.HandleFunc("/api/shortcuts", handleShortcuts)
 	mux.HandleFunc("/api/strava", handleStrava)
 	mux.HandleFunc("/api/strava/activities", handleStravaActivities)
@@ -160,7 +163,7 @@ func main() {
 	})
 	mux.HandleFunc("/api/info", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(map[string]any{"dataDir": dataDir, "version": version, "boot": bootID, "rev": currentRev()})
+		json.NewEncoder(w).Encode(map[string]any{"dataDir": dataDir, "version": version, "boot": bootID, "rev": currentRev(), "hash": dataHash()})
 	})
 	mux.HandleFunc("/api/quit", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
@@ -246,6 +249,7 @@ func handleData(w http.ResponseWriter, r *http.Request) {
 		b, err := os.ReadFile(path)
 		mu.Unlock()
 		w.Header().Set("X-Planner-Rev", jsonInt(currentRev()))
+		w.Header().Set("X-Planner-Hash", hashOf(b))
 		w.Header().Set("Content-Type", "application/json")
 		w.Header().Set("Cache-Control", "no-store")
 		if os.IsNotExist(err) {
@@ -289,10 +293,28 @@ func handleData(w http.ResponseWriter, r *http.Request) {
 		}
 		dailyBackup(b)
 		dataSaved()
+		w.Header().Set("X-Planner-Hash", hashOf(b))
 		w.WriteHeader(http.StatusNoContent)
 	default:
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 	}
+}
+
+// hashOf identifies one saved copy of the planner, so a page can tell whether
+// anyone else saved since it last loaded or saved.
+func hashOf(b []byte) string {
+	if len(b) == 0 {
+		return ""
+	}
+	h := sha256.Sum256(b)
+	return hex.EncodeToString(h[:8])
+}
+
+func dataHash() string {
+	mu.Lock()
+	b, _ := os.ReadFile(filepath.Join(dataDir, dataFileName))
+	mu.Unlock()
+	return hashOf(b)
 }
 
 func saveAtomic(path string, b []byte) error {

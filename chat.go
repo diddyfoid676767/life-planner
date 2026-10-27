@@ -16,7 +16,7 @@ import (
 )
 
 var chatFns = map[string]bool{"my_chats": true, "start_chat": true, "add_members": true, "rename_chat": true, "leave_chat": true,
-	"send_message": true, "mark_read": true, "block_user": true, "unblock_user": true, "my_blocks": true, "report_user": true}
+	"send_message": true, "mark_read": true, "block_user": true, "unblock_user": true, "my_blocks": true, "report_user": true, "feedback_chat": true}
 
 var chatIDRe = regexp.MustCompile(`^[0-9a-f-]{36}$`)
 

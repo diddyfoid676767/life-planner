@@ -51,9 +51,14 @@ function defaultData() {
 
 // ---------- persistence ----------
 let D = null;
-let saveTimer = null, saving = false, dirty = false, bootId = '', dataRev = 0;
+let saveTimer = null, saving = false, dirty = false, bootId = '', dataRev = 0, offlineSaid = false;
+let baseHash = ''; // the saved copy this tab's data is built on
+let lastAct = 0, userEdited = false; // unsaved changes that came from you (not reminders and the like)
+addEventListener('pointerdown', () => { lastAct = Date.now(); }, true);
+addEventListener('keydown', () => { lastAct = Date.now(); }, true);
 function save() {
   dirty = true;
+  if (Date.now() - lastAct < 5000) userEdited = true;
   $('#saveState').textContent = 'Saving…';
   clearTimeout(saveTimer);
   saveTimer = setTimeout(flush, 300);
@@ -62,27 +67,80 @@ async function flush() {
   if (saving) { saveTimer = setTimeout(flush, 200); return; }
   saving = true; dirty = false;
   if (ONLINE) {
-    try { await OL.save(D); $('#saveState').textContent = 'Saved online'; }
-    catch (e) { $('#saveState').textContent = 'Not saved!'; dirty = true; setTimeout(flush, 5000); }
+    try { await OL.save(D); $('#saveState').textContent = 'Saved online'; if (offlineSaid) { offlineSaid = false; toast('✅ Back online', 'Your changes are uploaded.'); } }
+    catch (e) { if (e.offline && !offlineSaid) { offlineSaid = true; toast('📴 Offline', "Keep going: your changes are saved on this device and upload by themselves when you're back online."); } $('#saveState').textContent = e.offline ? 'Offline: saved on this device, uploads when you\'re back online' : 'Not saved yet'; dirty = true; clearTimeout(saveTimer); saveTimer = setTimeout(flush, e.offline ? 15000 : 5000); }
     finally { saving = false; }
     return;
   }
+  const body = JSON.stringify(D);
+  stash(body); // kept in the browser until the PC app has it, so a closed or restarted app can't lose it
   try {
-    const r = await fetch('/api/data', { method: 'PUT', headers: { 'Content-Type': 'application/json', 'X-Planner-Boot': bootId, 'X-Planner-Rev': String(dataRev) }, body: JSON.stringify(D) });
-    if (r.status === 409) { if (/phone/.test(await r.text())) { await pullData(); return; } location.reload(); return; }
+    let r = await fetch('/api/data', { method: 'PUT', headers: { 'Content-Type': 'application/json', 'X-Planner-Boot': bootId, 'X-Planner-Rev': String(dataRev) }, body });
+    if (r.status === 409) {
+      if (/phone/.test(await r.text())) { await pullData(); return; }
+      // the app restarted (an update, or it was closed and opened again): this
+      // tab has changes it hasn't saved, so keep them instead of reloading
+      if (!(await adoptBoot())) { setAside(); location.reload(); return; }
+      r = await fetch('/api/data', { method: 'PUT', headers: { 'Content-Type': 'application/json', 'X-Planner-Boot': bootId, 'X-Planner-Rev': String(dataRev) }, body });
+    }
     if (!r.ok) throw new Error(await r.text());
+    baseHash = r.headers.get('X-Planner-Hash') || baseHash;
+    if (!dirty) userEdited = false;
+    unstash();
     $('#saveState').textContent = 'All changes saved';
     setOffline(false);
   } catch (e) {
-    $('#saveState').textContent = 'Not saved!';
+    $('#saveState').textContent = 'Not saved yet';
     dirty = true;
     setOffline(true);
   } finally { saving = false; }
 }
+const STASH = 'lpUnsaved';
+function stash(body) { try { localStorage.setItem(STASH, JSON.stringify({ at: Date.now(), d: body, base: baseHash })); } catch { } }
+function unstash() { try { localStorage.removeItem(STASH); } catch { } }
+// the kept copy, if it was built on the copy the app has now (otherwise another window saved since)
+function stashed(hash = baseHash) { try { const x = JSON.parse(localStorage.getItem(STASH) || 'null'); return x && Date.now() - x.at < 30 * 86400e3 && (!x.base || x.base === hash) ? JSON.parse(x.d) : null; } catch { return null; } }
+// another window saved newer changes: keep this tab's unsaved ones aside, so they can be brought back
+function setAside() { try { if (userEdited) localStorage.setItem('lpAside', JSON.stringify({ at: Date.now(), d: JSON.stringify(D) })); } catch { } unstash(); dirty = false; }
+// take on the restarted app's boot id so this tab's changes can be saved:
+// when nothing else saved in the meantime, or when this is the window you're
+// using (a window in the background sets its changes aside instead)
+async function adoptBoot(inf) {
+  try { inf = inf || await (await fetch('/api/info', { cache: 'no-store' })).json(); if (!inf.boot || ((inf.hash || '') !== baseHash && document.visibilityState !== 'visible')) return false; bootId = inf.boot; dataRev = inf.rev || 0; return true; }
+  catch { return false; }
+}
+function showAside() {
+  let x = null; try { x = JSON.parse(localStorage.getItem('lpAside') || 'null'); localStorage.removeItem('lpAside'); } catch { }
+  if (!x || Date.now() - x.at > 86400e3) return;
+  setTimeout(() => toast('Another window saved newer changes', "This window's last changes were set aside so they didn't overwrite them. Bring them back only if they're the ones you want.", { timeout: 30000,
+    actions: [['Bring them back', () => { try { D = migrate(JSON.parse(x.d)); save(); render(); renderFocusBar(); } catch { } }]] }), 1500);
+}
+// save everything now and wait for it: true once the PC app has it all
+async function saveNow() {
+  if (ONLINE) { if (dirty) await flush(); return !dirty; }
+  clearTimeout(saveTimer);
+  for (let i = 0; i < 100 && saving; i++) await new Promise(r => setTimeout(r, 100));
+  if (dirty) await flush();
+  return !dirty && !saving;
+}
 function setOffline(off) { $('#offline').hidden = !off; }
 async function ping() {
   if (ONLINE) return;
-  try { const r = await fetch('/api/ping', { cache: 'no-store' }); if (!r.ok) throw 0; setOffline(false); const inf = await (await fetch('/api/info', { cache: 'no-store' })).json(); if (bootId && inf.boot !== bootId) { location.reload(); return; } if ((inf.rev || 0) !== dataRev && !dirty && !saving) { await pullData(); return; } if (dirty) flush(); }
+  try {
+    const r = await fetch('/api/ping', { cache: 'no-store' }); if (!r.ok) throw 0;
+    const wasOff = !$('#offline').hidden; setOffline(false);
+    const inf = await (await fetch('/api/info', { cache: 'no-store' })).json();
+    if (!bootId && !dirty) { location.reload(); return; } // opened while the app was closed
+    if (bootId && inf.boot !== bootId) {
+      if (!dirty && !stashed()) { location.reload(); return; }
+      if (!(await adoptBoot(inf))) { setAside(); location.reload(); return; }
+      dirty = true;
+      if (await saveNow()) toast('✅ Back up and running', 'Life Planner opened again and saved the changes you made while it was closed.');
+      return;
+    }
+    if ((inf.rev || 0) !== dataRev && !dirty && !saving) { await pullData(); return; }
+    if (dirty) { await flush(); if (wasOff && !dirty) toast('✅ Saved', 'Your changes are saved.'); }
+  }
   catch { setOffline(true); }
 }
 // the PC app took a newer copy from the phone: load it in place
@@ -90,7 +148,7 @@ async function pullData() {
   try {
     const r = await fetch('/api/data', { cache: 'no-store' }), d = await r.json();
     if (!d) return;
-    const keepFired = D.fired; D = migrate(d); D.fired = keepFired; dataRev = +r.headers.get('X-Planner-Rev') || 0; dirty = false;
+    const keepFired = D.fired; D = migrate(d); D.fired = keepFired; dataRev = +r.headers.get('X-Planner-Rev') || 0; baseHash = r.headers.get('X-Planner-Hash') || ''; dirty = false;
     if (!modal.open) render(); renderFocusBar();
     toast('Updated from your phone', 'Your planner now has the changes you made on your phone.');
   } catch { }
@@ -220,6 +278,7 @@ function itemHtml(e, opts = {}) {
     <div class="main"><div class="title"><span class="tag ktag">${esc(e.tag)}</span>${esc(e.title)} ${urg}</div>${meta ? `<div class="meta">${esc(meta)}</div>` : ''}</div>
     ${move}
     ${e.kind === 'session' && !e.done ? `<button class="btn small" data-act="focus" data-id="${e.id}" title="Start a focus timer for this block">▶ Focus</button>` : ''}
+    ${e.kind === 'workout' && !e.done && dd <= 0 && isGymWorkout(find('workout', e.id)) ? `<button class="btn small" data-fit="wmodeW" data-id="${e.id}" title="Track your sets as you go">▶ Workout</button>` : ''}
     ${e.kind === 'feed' ? '' : `<button class="iconbtn" data-act="edit" data-kind="${e.kind}" data-id="${e.id}" title="Edit">✎</button>`}
   </li>`;
 }
@@ -287,12 +346,14 @@ function render() {
   if (view === 'day') view = 'today';
   document.querySelectorAll('#tabs button').forEach(b => b.classList.toggle('active', b.dataset.view === view));
   const v = $('#view');
-  const y = window.scrollY;
+  const y = window.scrollY, ks = {}; // boxes that scroll by themselves keep their place
+  v.querySelectorAll('[data-ks]').forEach(el => { ks[el.dataset.ks] = el.scrollTop; });
   if (v.dataset.view !== view) { v.classList.remove('enter'); void v.offsetWidth; v.classList.add('enter'); v.dataset.view = view; }
   v.innerHTML = ({ today: viewToday, calendar: viewCalendar, study: viewStudyHub, forest: viewForest, training: viewTraining, arena: viewArena, friends: viewFriends, board: viewLeaderboard, chats: () => { view = 'friends'; return viewFriends(); }, profile: viewProfile, school: viewSchool, health: () => { view = 'training'; ui.bodyPage = 'health'; return viewTraining(); }, personal: viewPersonal, todo: viewTodo, inbox: viewInbox, settings: viewSettings })[view]();
   updateInboxBadge();
   gameFeedback();
   window.scrollTo(0, y);
+  v.querySelectorAll('[data-ks]').forEach(el => { if (ks[el.dataset.ks]) el.scrollTop = ks[el.dataset.ks]; });
   updateNotifyBtn();
 }
 
@@ -888,7 +949,8 @@ function viewSettings() {
     ${aiSettingsCard()}
     <div class="card" data-sec="app" style="${ONLINE ? 'display:none' : ''}"><h2>App</h2>
       <p class="small-text"><b id="verText">Version ${esc(appVersion)}</b> <button class="btn small" data-act="checkUpdateNow">Check for updates</button> · New versions download by themselves from GitHub. You can also put a LifePlanner zip in your Downloads folder.</p>
-      <label class="row small-text"><input type="checkbox" data-setting="autoUpdate" ${D.settings.autoUpdate !== false ? 'checked' : ''}> Install updates automatically (never during a focus timer)</label>
+      <p class="small-text">Updates install by themselves a minute after they arrive. Your work is saved first, and the planner opens again where you were.</p>
+      <button class="btn small" data-act="restartApp">🔄 Save and restart</button> <button class="btn small" data-act="feedback">💬 Report a bug or suggest an idea</button>
       <p class="small-text"><b>Brain.fm:</b> <span id="brainfmState">${brainfmApp ? 'opens the app (' + esc(brainfmApp.split(/[\\/]/).pop()) + ')' : 'app not found, so it opens the website'}</span></p>
       <div class="row" style="margin-bottom:10px"><input type="text" placeholder="Brain.fm app path (optional, e.g. C:\\Users\\you\\AppData\\Local\\brain\\Brain.fm.exe)" data-setting="brainfmPath" value="${esc(D.settings.brainfmPath || '')}" style="flex:1;min-width:220px"><button class="btn small" data-act="brainfmTest">Test</button></div>
       <p class="muted small-text" style="margin-top:0">Closing this tab is fine: the planner shuts itself down a few minutes after the last tab is closed. To reopen it, double-click LifePlanner.exe.</p>
@@ -923,10 +985,10 @@ function fieldHtml(f) {
   return `<div class="field"><label for="${id}">${esc(f.label)}</label>${input}${f.hint ? `<span class="hint">${esc(f.hint)}</span>` : ''}</div>`;
 }
 function flatFields(fields) { return fields.flatMap(f => f.type === 'row' ? flatFields(f.fields) : f.type === 'html' ? [] : [f]); }
-function showForm({ title, fields, onSave, onDelete, saveLabel = 'Save' }) {
+function showForm({ title, fields, onSave, onDelete, saveLabel = 'Save', extra = '' }) {
   formCtx = { fields, onSave, onDelete };
   mform.innerHTML = `<h2>${esc(title)}</h2>${fields.map(fieldHtml).join('')}
-    <div class="modal-actions">${onDelete ? '<button type="button" class="btn danger left" data-mact="delete">Delete</button>' : ''}
+    <div class="modal-actions">${onDelete ? '<button type="button" class="btn danger left" data-mact="delete">Delete</button>' : ''}${extra}
       <button type="button" class="btn" data-mact="cancel">Cancel</button><button type="submit" class="btn primary">${esc(saveLabel)}</button></div>`;
   modal.showModal();
   const firstInput = mform.querySelector('input[type=text],select,textarea');
@@ -1036,6 +1098,7 @@ const editors = {
         { key: 'remind', label: 'Remind me', type: 'remind', value: w.remind }, notesF(w.notes), { key: 'done', label: 'Done', type: 'bool', value: w.done }],
       onSave: v => upsert('workouts', id, v),
       onDelete: id && (() => { remove('workouts', id); }),
+      extra: id && isGymWorkout(w) ? `<button type="button" class="btn" data-fit="wmodeW" data-id="${id}" title="Track sets, weights and how hard each set felt">🏋️ ${fitCfg().gym.some(g => g.wid === id) ? 'Edit sets' : 'Log sets'}</button>` : '',
     });
   },
   event(id, pre = {}) {
@@ -1565,7 +1628,7 @@ async function refreshFeeds(force) {
 
 // ---------- updates ----------
 let appVersion = '';
-let autoUpdateTimer = 0, autoUpdateSkip = false;
+let autoUpdateTimer = 0, updateAt = 0, updating = false;
 async function checkUpdate() {
   try {
     const u = await (await fetch('/api/update', { cache: 'no-store' })).json();
@@ -1575,28 +1638,45 @@ async function checkUpdate() {
     }
     appVersion = u.version;
     const bar = $('#updateBar');
+    if (updating) return;
     bar.hidden = !u.available;
-    if (u.available && !autoUpdateTimer) bar.innerHTML = `A new version of Life Planner is ready. <button class="btn small" data-act="applyUpdate">Update now</button> <span class="small-text">Your data stays as it is.</span>`;
-    // install by itself when nothing is in progress
-    if (u.available && D.settings.autoUpdate !== false && !D.focus && !autoUpdateSkip && !autoUpdateTimer) {
-      bar.innerHTML = `Installing the new version of Life Planner in 15 seconds… <button class="btn small" data-act="applyUpdate">Now</button> <button class="btn small ghost" data-act="skipUpdate">Not now</button>`;
-      autoUpdateTimer = setTimeout(() => { autoUpdateTimer = 0; if (!D.focus && !autoUpdateSkip) applyUpdate(); else checkUpdate(); }, 15000);
-    }
+    // updates are a must: it saves everything, installs and restarts by itself
+    // a minute after one arrives (waiting while a form is open), so nobody
+    // keeps working in an old copy and loses it
+    if (u.available && !autoUpdateTimer) { updateAt = Date.now() + 60000; updateTick(); }
     const v = $('#verText'); if (v) v.textContent = 'Version ' + u.version;
   } catch { }
 }
-async function applyUpdate() {
-  const bar = $('#updateBar');
-  bar.textContent = 'Updating… the planner will reload in a few seconds.';
-  await flush();
-  try { const r = await fetch('/api/update', { method: 'POST' }); if (!r.ok) throw new Error(await r.text()); }
-  catch (e) { bar.textContent = 'Update failed: ' + (e.message || e); return; }
+function updateTick() {
+  clearTimeout(autoUpdateTimer); autoUpdateTimer = 0;
+  if (updating) return;
+  const bar = $('#updateBar'), left = Math.max(0, Math.ceil((updateAt - Date.now()) / 1000));
+  const busy = modal.open ? 'as soon as you close this window' : ui.wmode ? 'when you finish or hide your workout' : '';
+  if (!left && !busy) { applyUpdate(); return; }
+  bar.hidden = false;
+  if (!bar.querySelector('#updLeft')) bar.innerHTML = `<b>A new version of Life Planner is ready.</b> <span id="updLeft"></span> Everything is saved first. <button class="btn small primary" data-act="applyUpdate">🔄 Save and restart now</button>`;
+  bar.querySelector('#updLeft').textContent = busy ? `It restarts ${busy}.` : `Restarting in ${left}s.`;
+  autoUpdateTimer = setTimeout(updateTick, 1000);
+}
+// saves, then restarts the app (installing the update when one is waiting)
+async function applyUpdate(restartOnly) {
+  if (updating) return;
+  updating = true; clearTimeout(autoUpdateTimer); autoUpdateTimer = 0;
+  const bar = $('#updateBar'); bar.hidden = false;
+  bar.textContent = 'Saving your work…';
+  if (!(await saveNow())) {
+    updating = false; bar.textContent = "Couldn't save yet, so Life Planner didn't restart. Trying again in a few seconds…";
+    updateAt = Date.now() + 5000; autoUpdateTimer = setTimeout(restartOnly ? () => applyUpdate(true) : updateTick, 5000); return;
+  }
+  bar.textContent = restartOnly ? 'Restarting… the planner reloads in a few seconds.' : 'Updating… the planner reloads in a few seconds.';
+  try { const r = await fetch(restartOnly ? '/api/restart' : '/api/update', { method: 'POST' }); if (!r.ok) throw new Error(await r.text()); }
+  catch (e) { updating = false; bar.textContent = (restartOnly ? 'Restart' : 'Update') + ' failed: ' + (e.message || e); return; }
   await new Promise(r => setTimeout(r, 1500));
   for (let i = 0; i < 40; i++) {
     try { const r = await fetch('/api/ping', { cache: 'no-store' }); if (r.ok) { location.reload(); return; } } catch { }
     await new Promise(r => setTimeout(r, 750));
   }
-  bar.textContent = 'The update was installed. Double-click LifePlanner.exe to open the planner again.';
+  bar.textContent = 'Life Planner closed but didn\'t open again. Double-click LifePlanner.exe to open it. Your work was saved.';
 }
 
 // ---------- starter plan ----------
@@ -1816,19 +1896,21 @@ document.addEventListener('click', e => {
     case 'focusCancelYes': focusAskCancel = false; stopFocus(false); toast('Study session cancelled', 'Nothing was logged.', { timeout: 3500 }); break;
     case 'focusNew': focusPicker(); break;
     case 'delLog': if (confirm('Delete this logged study time?')) { D.focusLogs = D.focusLogs.filter(l => l.id !== id); save(); render(); } break;
-    case 'applyUpdate': clearTimeout(autoUpdateTimer); autoUpdateTimer = 0; applyUpdate(); break;
+    case 'applyUpdate': applyUpdate(); break;
+    case 'restartApp': applyUpdate(true); break;
+    case 'feedback': openFeedback(); break;
+    case 'fbLogin': modal.close(); ui.setTab = 'account'; view = 'settings'; render(); break;
     case 'examPlan': buildExamPlan(); break;
     case 'logPaper': logPaper({ assessmentId: el.dataset.id }); break;
     case 'checkUpdateNow': {
       el.disabled = true; el.textContent = 'Checking…';
       fetch('/api/update/check', { method: 'POST' }).then(r => r.json()).then(u => {
         if (u.error) toast("Couldn't check for updates", u.error, { cls: 'danger' });
-        else if (u.available) { autoUpdateSkip = false; checkUpdate(); toast('⬇️ Update found', `Version ${String(u.latest || '').replace(/^v/, '')} is installing.`); }
+        else if (u.available) { checkUpdate(); toast('⬇️ Update found', `Version ${String(u.latest || '').replace(/^v/, '')} is installing.`); }
         else toast("✅ You're up to date", `Version ${u.version} is the newest.`);
       }).catch(() => toast("Couldn't check for updates", 'Try again in a minute.', { cls: 'danger' })).finally(() => { el.disabled = false; el.textContent = 'Check for updates'; });
       break;
     }
-    case 'skipUpdate': clearTimeout(autoUpdateTimer); autoUpdateTimer = 0; autoUpdateSkip = true; checkUpdate(); break;
     case 'loadStarter': if (confirm('Add your exams, SACs, study blocks, training and tasks from the starter plan? Anything already there stays; nothing is duplicated.')) loadStarter(false); break;
     case 'inboxDismiss': inboxDismiss(id); break;
     case 'inboxCheck': inboxCheckNow(); break;
@@ -1896,7 +1978,9 @@ document.addEventListener('keydown', e => {
   const keys = { '1': 'today', '2': 'calendar', '3': 'study', '4': 'training', '5': 'arena', '6': 'friends', '7': 'todo', '8': 'todo', '9': 'settings' };
   if (keys[e.key]) { view = keys[e.key]; render(); }
 });
-window.addEventListener('beforeunload', e => { if (dirty) { flush(); e.preventDefault(); } });
+window.addEventListener('beforeunload', e => { if (dirty || saving) { if (!ONLINE) stash(JSON.stringify(D)); flush(); e.preventDefault(); } });
+addEventListener('online', () => { if (ONLINE && dirty) flush(); });
+document.addEventListener('visibilitychange', () => { if (document.hidden && dirty && !ONLINE) { stash(JSON.stringify(D)); flush(); } else if (!document.hidden) ping(); });
 
 // ---------- start ----------
 async function initOnline() {
@@ -1945,12 +2029,17 @@ function bootDone(skip) {
     const inf = await (await fetch('/api/info', { cache: 'no-store' })).json();
     bootId = inf.boot || '';
     const r = await fetch('/api/data', { cache: 'no-store' });
-    dataRev = +r.headers.get('X-Planner-Rev') || 0;
-    const d = await r.json();
-    D = migrate(d || freshData());
-    if (!d) save();
+    dataRev = +r.headers.get('X-Planner-Rev') || 0; baseHash = r.headers.get('X-Planner-Hash') || '';
+    const d = await r.json(), kept = stashed();
+    showAside();
+    D = migrate(kept || d || freshData());
+    if (!d || kept) save();
+    if (kept) userEdited = true;
+    if (kept) setTimeout(() => toast('✅ Unsaved changes restored', "Life Planner closed before it could save your last changes, so they were kept here and are saved now."), 1500);
   } catch (e) {
-    D = defaultData(); setOffline(true);
+    // the app isn't running: open what this browser kept, and save it once it's back
+    let x = null; try { x = JSON.parse(localStorage.getItem(STASH) || 'null'); } catch { }
+    D = migrate(x ? JSON.parse(x.d) : defaultData()); setOffline(true); if (x) { baseHash = x.base || ''; dirty = true; userEdited = true; }
   }
   render();
   try { localStorage.setItem('lpNoIntro', D.settings.bootIntro === false ? '1' : '0'); } catch { }

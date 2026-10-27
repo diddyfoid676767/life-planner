@@ -83,6 +83,7 @@ setInterval(() => { if (view === 'friends' && chatOpen && document.visibilitySta
 
 const others = c => (c.members || []).filter(m => m.u !== acct.username);
 function chatTitle(c) {
+  if (c.name && /^Feedback · @/.test(c.name) && c.name === 'Feedback · @' + acct.username) return '🛠️ Feedback to the developer';
   if (c.name) return c.name;
   const o = others(c);
   if (!o.length) return 'Just you';
@@ -286,3 +287,37 @@ document.addEventListener('input', e => {
 });
 // open chats straight away once you're logged in
 setTimeout(async () => { if (ONLINE) return; await loadAccount(); if (acct.signedIn) { loadMyBadges().then(() => { if (view === 'friends' || view === 'settings') render(); }); refreshChats(true); } }, 1500);
+
+// ---------- feedback: bug reports and ideas go to the developer ----------
+// They land in a chat between you and the developer (supabase-2.32-feedback.sql),
+// so any reply shows up in Friends & chats like any other message.
+const FB_KINDS = [['bug', '🐞 Something\'s broken'], ['idea', '💡 An idea or improvement'], ['other', '💬 Something else']];
+function openFeedback() {
+  if (ONLINE) { toast('Send feedback from the PC app', 'Feedback goes through your chats, which are on the PC for now.'); return; }
+  if (!acct.signedIn) {
+    mform.innerHTML = `<h2>💬 Send feedback</h2><p>Bug reports and ideas go straight to the developer as a chat, so you'll see their reply. Log in (or make an account) first, under Settings, Account.</p>
+      <div class="modal-actions"><button type="button" class="btn" data-mact="cancel">Cancel</button><button type="button" class="btn primary" data-act="fbLogin">Log in</button></div>`;
+    formCtx = { fields: [], onSave() { } }; modal.showModal(); return;
+  }
+  showForm({
+    title: '💬 Send feedback',
+    fields: [{ key: 'kind', label: 'What is it?', type: 'select', options: FB_KINDS, value: 'bug' },
+      { key: 'body', label: 'Tell the developer', type: 'textarea', value: '', required: true, placeholder: "What happened, or what would make Life Planner better? For a bug, say what you were doing when it went wrong." }],
+    saveLabel: 'Send',
+    onSave: v => { sendFeedback(v); return false; },
+  });
+}
+async function sendFeedback(v) {
+  const body = String(v.body || '').trim(); if (!body) { toast('Type your feedback first'); return; }
+  const btn = mform.querySelector('button[type=submit]'); if (btn) { btn.disabled = true; btn.textContent = 'Sending…'; }
+  try {
+    const kind = (FB_KINDS.find(k => k[0] === v.kind) || FB_KINDS[2])[1];
+    const c = await chatCall('feedback_chat');
+    await chatCall('send_message', { c, body: `${kind} · version ${appVersion || '?'}\n${body}`.slice(0, 2000) });
+    modal.close();
+    toast('✅ Feedback sent', "Thanks! The developer's reply will show up in Friends & chats.", { actions: [['Open chat', () => { view = 'friends'; refreshChats(true).then(() => openChat(c)); }]] });
+  } catch (e) {
+    if (btn) { btn.disabled = false; btn.textContent = 'Send'; }
+    toast("Couldn't send it", chatSetup ? "Feedback isn't switched on yet. Try again soon." : e.message, { cls: 'danger' });
+  }
+}

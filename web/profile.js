@@ -24,12 +24,15 @@ function viewProfile() {
       <div class="pfstage-btns"><button class="btn small" data-pf="dance" title="Play your victory dance">💃 Dance</button><button class="btn small" data-pf="turnL" title="Turn left">⟲</button><button class="btn small" data-pf="turnR" title="Turn right">⟳</button><button class="btn small ${PF.spin ? 'on' : ''}" data-pf="spin" title="Spin on its own">🔄</button></div>
       ${tryC ? `<div class="pftry"><span>Trying on <b>${esc(tryC.name)}</b></span>${pfBuyBtn(tryC)}<button class="btn small" data-pf="untry">Take off</button></div>` : '<div class="pfhint">Drag to turn your athlete</div>'}</div>`;
   return `${pageHead('👤 Profile', 'Your avatar, your badges and your number')}
-    <div class="pfwrap"><div class="stack">
+    <div class="pfwrap">
       <div class="card pfcard">${stage}
         <div class="pfname"><h2>${esc(D.settings.name || 'You')}${typeof badgeTags === 'function' ? badgeTags(myBadges) : ''}</h2>
           <div class="muted">${user}${user ? ' · ' : ''}Level ${lv.n} ${esc(lv.title)} · #${esc(D.settings.jerseyNo ?? 11)}</div></div>
         <div class="pfstats"><span>${COIN} <b>${coins()}</b></span><span>${GRIT} <b>${grit()}</b></span><span>🔥 <b>${studyStreak()}</b> day streak</span><span>👕 <b>${owned}</b>/${COSMETICS.length} styles</span></div>
       </div>
+      <div class="stack pfright">
+    <div class="card pfedit"><div class="pfcats">${PF_CATS.map(([k, l]) => `<button class="${cat === k ? 'on' : ''}" data-pf="cat" data-v="${k}">${l}</button>`).join('')}</div>
+      <div class="pfopts" data-ks="pf-${cat}">${cat === 'look' ? lookEditor() : pfGrid(cat, av, spec)}</div></div>
       <div class="card"><h2>About you</h2>
         <div class="frow"><div class="field"><label>Display name</label><input type="text" data-setting="name" value="${esc(D.settings.name || '')}" maxlength="30" placeholder="What friends see"></div>
           <div class="field"><label>Jersey number</label><input type="number" min="0" max="99" data-setting="jerseyNo" value="${esc(D.settings.jerseyNo ?? 11)}" style="width:90px"></div></div>
@@ -37,9 +40,7 @@ function viewProfile() {
         ${typeof myBadges !== 'undefined' && myBadges.length ? `<div class="pfbadges">${myBadges.filter(b => BADGES[b]).map(b => `<div class="pfbadge ${b}"><span>${BADGES[b][0]}</span><div><b>${BADGES[b][1]}</b><small>${esc(BADGES[b][2])}</small></div></div>`).join('')}</div>` : ''}
       </div>
       ${accountCard()}
-    </div>
-    <div class="card pfedit"><div class="pfcats">${PF_CATS.map(([k, l]) => `<button class="${cat === k ? 'on' : ''}" data-pf="cat" data-v="${k}">${l}</button>`).join('')}</div>
-      ${cat === 'look' ? lookEditor() : pfGrid(cat, av, spec)}</div></div>`;
+    </div></div>`;
 }
 function pfBuyBtn(c) {
   if (ownsCos(c.id)) return `<button class="btn small primary" data-act="wearCos" data-id="${c.id}">Wear it</button>`;

@@ -24,7 +24,7 @@ import (
 	"time"
 )
 
-const version = "2.31.0"
+const version = "2.32.0"
 
 var (
 	selfHashOnce sync.Once
@@ -170,15 +170,33 @@ func handleUpdate(w http.ResponseWriter, r *http.Request) {
 	}
 	log.Printf("updated from %s", c.path)
 	w.Write([]byte(`{"ok":true}`))
-	go func() {
-		time.Sleep(300 * time.Millisecond)
-		cmd := exec.Command(self, "--restarted")
-		cmd.Dir = dir
-		if err := cmd.Start(); err != nil {
-			log.Printf("restart failed: %v", err)
-		}
-		os.Exit(0)
-	}()
+	go restartSelf(self)
+}
+
+// restartSelf starts a fresh copy of the exe (which waits for the port) and
+// quits, after any save that is being written has finished.
+func restartSelf(self string) {
+	time.Sleep(300 * time.Millisecond)
+	mu.Lock() // no data write is cut off half way
+	cmd := exec.Command(self, "--restarted")
+	cmd.Dir = filepath.Dir(self)
+	if err := cmd.Start(); err != nil {
+		log.Printf("restart failed: %v", err)
+		mu.Unlock()
+		return
+	}
+	os.Exit(0)
+}
+
+// POST /api/restart: the page has saved everything and asks for a restart.
+func handleRestart(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "POST only", http.StatusMethodNotAllowed)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.Write([]byte(`{"ok":true}`))
+	go restartSelf(exePath())
 }
 
 // cleanupOld removes the previous exe left behind by an update.

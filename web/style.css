@@ -2471,7 +2471,7 @@ main#view { padding-bottom: 80px; }
 .gymedit .gmeta { grid-template-columns: 2fr 1fr 1fr; }
 .gex { border: 1px solid var(--border); border-radius: 12px; padding: 10px 12px; margin-bottom: 10px; background: var(--panel2); }
 .gex-head { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; margin-bottom: 6px; }
-.gset { display: grid; grid-template-columns: 38px 1fr 1fr 1.2fr 64px; gap: 8px; align-items: center; padding: 3px 0; }
+.gset { display: grid; grid-template-columns: 38px 1fr 1fr 58px 1.1fr 64px; gap: 8px; align-items: center; padding: 3px 0; }
 .gset-h { font-size: .74rem; color: var(--muted); font-weight: 700; }
 .gset input { width: 100%; padding: 5px 8px; border: 1px solid var(--border); border-radius: 8px; background: var(--panel); }
 .gset.done input { background: color-mix(in srgb, var(--ok) 12%, var(--panel)); }
@@ -2621,7 +2621,7 @@ main#view { padding-bottom: 80px; }
 #mnavMore, #mnavShade, #mnavSheet { display: none; }
 @media (max-width: 640px) {
   /* nothing wider than the screen, so iPhone never zooms the page out */
-  html, body { overflow-x: hidden; max-width: 100%; }
+  html, body { overflow-x: hidden; overflow-x: clip; max-width: 100%; } /* clip where it works, so sticky boxes still stick */
   #view { overflow-x: clip; }
   main, main#view { padding: 14px 14px calc(86px + env(safe-area-inset-bottom)); }
   .grid, .g2, .g3, .tgrid, .today-grid, .day-grid, .train-top, .study-grid, .study-grid2, .friends-top, .friends-main, .arena-home { grid-template-columns: minmax(0, 1fr) !important; }
@@ -2679,3 +2679,77 @@ main#view { padding-bottom: 80px; }
   #mnavSheet button[data-badge]::after { content: attr(data-badge); position: absolute; top: 6px; right: 8px; min-width: 16px; height: 16px; padding: 0 4px; border-radius: 99px; background: #e03131; color: #fff; font-size: .66rem; display: grid; place-items: center; }
 }
 @keyframes sheetup { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: none; } }
+/* ---------- 2.32: profile editor keeps your athlete in view ---------- */
+.pfwrap > .pfcard { position: sticky; top: 16px; z-index: 3; }
+.pfedit { display: flex; flex-direction: column; max-height: calc(100vh - 40px); padding-bottom: 0; }
+.pfedit .pfcats { flex: none; }
+.pfedit .pfopts { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding: 2px 4px 16px 2px; margin: 0 -4px 0 -2px; scrollbar-width: thin; }
+@media (max-width: 900px) {
+  .pfwrap { display: flex; flex-direction: column; align-items: stretch; }
+  .pfwrap > * { min-width: 0; }
+  .pfwrap > .pfcard { top: 54px; box-shadow: var(--shadow); }
+  .pfwrap > .pfcard .pfstage { height: 230px; }
+  .pfwrap > .pfcard .pfname, .pfwrap > .pfcard .pfstats { display: none; }
+  .pfedit { max-height: none; }
+  .pfedit .pfopts { overflow: visible; }
+  .pfedit .pfcats { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; margin-bottom: 10px; }
+  .pfedit .pfcats button { flex: none; }
+}
+
+/* ---------- 2.32: PR sections ---------- */
+.prsubs { display: flex; flex-wrap: wrap; gap: 6px; margin: 14px 0 4px; }
+.prsubs button { border: 1px solid var(--border); background: var(--panel2); color: inherit; border-radius: 99px; padding: 5px 12px; cursor: pointer; font-weight: 600; font-size: .85rem; }
+.prsubs button.on { background: var(--accent); color: #fff; border-color: var(--accent); }
+.prsubh { margin: 18px 0 10px; font-size: 1.05rem; }
+
+/* ---------- 2.32: workout mode ---------- */
+.wmode { position: fixed; inset: 0; z-index: 90; background: var(--bg); display: flex; flex-direction: column; overflow: hidden;
+  padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left); }
+body.wm-on { overflow: hidden; }
+body.wm-on #toasts { top: max(64px, env(safe-area-inset-top)); bottom: auto; }
+.wm-top { display: flex; align-items: center; gap: 10px; padding: 10px 14px; border-bottom: 1px solid var(--border); background: var(--panel); }
+.wm-title { flex: 1; min-width: 0; text-align: center; display: flex; flex-direction: column; }
+.wm-title b { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.wm-title small { color: var(--accent); font-weight: 800; font-variant-numeric: tabular-nums; }
+.wm-chips { display: flex; gap: 6px; overflow-x: auto; padding: 10px 14px; scrollbar-width: none; flex: none; }
+.wm-chips button { flex: none; display: flex; flex-direction: column; align-items: flex-start; gap: 1px; border: 1px solid var(--border); background: var(--panel); color: inherit; border-radius: 12px; padding: 6px 12px; font-weight: 700; font-size: .85rem; cursor: pointer; max-width: 170px; }
+.wm-chips button small { font-weight: 600; color: var(--muted); font-size: .72rem; }
+.wm-chips button.on { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 12%, var(--panel)); }
+.wm-chips button.done { border-color: var(--ok, #2f9e44); }
+.wm-chips button.done small { color: var(--ok, #2f9e44); }
+.wm-body { flex: 1; min-height: 0; overflow-y: auto; padding: 0 14px 18px; overscroll-behavior: contain; }
+.wm-card { max-width: 620px; margin: 0 auto; display: flex; flex-direction: column; gap: 10px; }
+.wm-card h2 { margin: 6px 0 0; font-size: 1.35rem; }
+.wm-card > p { margin: 0; }
+.wm-exhead { display: flex; align-items: center; gap: 8px; } .wm-exhead h2 { flex: 1; }
+.wm-sets { display: flex; flex-direction: column; gap: 8px; }
+.wm-set { display: grid; grid-template-columns: 40px 1fr 1fr 0.8fr 52px; gap: 8px; align-items: end; padding: 8px; border-radius: 14px; border: 2px solid transparent; background: var(--panel); }
+.wm-set.cur { border-color: var(--accent); box-shadow: var(--shadow); }
+.wm-set.done { background: color-mix(in srgb, var(--ok, #2f9e44) 12%, var(--panel)); }
+.wm-set label { display: flex; flex-direction: column; gap: 2px; font-size: .7rem; font-weight: 700; color: var(--muted); min-width: 0; }
+.wm-set input { width: 100%; font-size: 1.25rem; font-weight: 700; padding: 8px 6px; text-align: center; border: 1px solid var(--border); border-radius: 10px; background: var(--panel2); color: inherit; font-variant-numeric: tabular-nums; }
+.wm-n { height: 44px; border: 0; border-radius: 10px; background: var(--panel2); color: inherit; font-weight: 800; font-size: 1rem; cursor: pointer; }
+.wm-n.warm { color: var(--warn, #f08c00); }
+.wm-tick { height: 44px; border: 2px solid var(--border); border-radius: 12px; background: var(--panel2); font-size: 1.3rem; cursor: pointer; color: var(--muted); }
+.wm-tick.on { background: var(--ok, #2f9e44); border-color: var(--ok, #2f9e44); color: #fff; }
+.wm-rpe { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.wm-rpe span { flex-basis: 100%; }
+.wm-rpe button { flex: 1; min-width: 44px; height: 42px; border: 1px solid var(--border); border-radius: 10px; background: var(--panel); color: inherit; font-weight: 800; font-size: 1rem; cursor: pointer; }
+.wm-rpe button.on { background: var(--accent); border-color: var(--accent); color: #fff; }
+.wm-small { gap: 8px; }
+.wm-big { width: 100%; min-height: 60px; border: 0; border-radius: 16px; background: var(--accent); color: #fff; font-size: 1.15rem; font-weight: 800; cursor: pointer; box-shadow: var(--shadow); margin-top: 4px; }
+.wm-big.next { background: var(--panel2); color: inherit; border: 2px solid var(--accent); }
+.wm-big.fin { background: var(--ok, #2f9e44); }
+.wm-rest { display: flex; align-items: center; gap: 8px; padding: 12px 14px calc(12px + env(safe-area-inset-bottom)); background: var(--accent); color: #fff; flex: none; }
+.wm-rest[hidden] { display: none; }
+.wm-rest b { font-size: 1.6rem; font-variant-numeric: tabular-nums; flex: 1; }
+.wm-rest button { border: 0; border-radius: 10px; padding: 8px 12px; background: rgba(255,255,255,.2); color: #fff; font-weight: 700; cursor: pointer; }
+.exsearch { margin-top: 8px; }
+.exsearch input { width: 100%; padding: 9px 12px; border-radius: 10px; border: 1px solid var(--border); background: var(--panel); color: inherit; font-size: 16px; }
+.exres { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+.exres:empty { display: none; }
+.exhit { display: flex; flex-direction: column; align-items: flex-start; border: 1px solid var(--border); background: var(--panel); color: inherit; border-radius: 10px; padding: 6px 10px; cursor: pointer; text-align: left; }
+.exhit:hover { border-color: var(--accent); }
+.exhit small { color: var(--muted); font-size: .72rem; }
+@media (max-width: 640px) { .pfwrap > .pfcard { top: 8px; } }
+.seg.athtabs { display: flex; width: max-content; max-width: 100%; margin: 0 0 14px; }

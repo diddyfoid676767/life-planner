@@ -8,7 +8,7 @@
 if (!/^(127\.0\.0\.1|localhost)$/.test(location.hostname) && location.protocol !== 'file:') window.OL = (() => {
   const URL_ = 'https://vtjvneusumjvhdctvijz.supabase.co';
   const KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZ0anZuZXVzdW1qdmhkY3R2aWp6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTI3MTYwODcsImV4cCI6MjEwODI5MjA4N30.TzQqwPjHrB4NAAYzciQYP75zE8JTPAZOXcV-pHJuMDc'; // public anon key, same as the PC app
-  const MAIL = 'users.lifeplanner.app', SESS = 'lpCloudSession', COPY = 'lpCloudCopy';
+  const MAIL = 'users.lifeplanner.app', SESS = 'lpCloudSession', COPY = 'lpCloudCopy', PENDING = 'lpCloudPending'; // PENDING: the phone copy has changes the server hasn't got yet
   const ls = { get: k => { try { return localStorage.getItem(k); } catch { return null; } }, set: (k, v) => { try { v == null ? localStorage.removeItem(k) : localStorage.setItem(k, v); } catch { } } };
   let sess = null; try { sess = JSON.parse(ls.get(SESS) || 'null'); } catch { }
   let lastAt = '', lastJson = '';
@@ -67,7 +67,7 @@ if (!/^(127\.0\.0\.1|localhost)$/.test(location.hostname) && location.protocol !
       };
     });
   }
-  function logout() { sess = null; ls.set(SESS, null); ls.set(COPY, null); location.reload(); }
+  function logout() { sess = null; ls.set(SESS, null); ls.set(COPY, null); ls.set(PENDING, null); location.reload(); }
 
   async function fetchRow(cols) {
     const rows = await call('GET', `/rest/v1/planner_data?select=${cols}&user_id=eq.${sess.user}`);
@@ -78,6 +78,14 @@ if (!/^(127\.0\.0\.1|localhost)$/.test(location.hostname) && location.protocol !
     if (!sess) await login();
     try {
       const row = await fetchRow('data,updated_at');
+      // changes made offline last time win over the server copy, and go up now
+      const copy = ls.get(PENDING) && ls.get(COPY);
+      if (copy) {
+        lastAt = row?.updated_at || ''; lastJson = '';
+        const d = JSON.parse(copy);
+        setTimeout(() => { save(d).then(() => window.toast?.('✅ Synced', 'The changes you made offline are uploaded.')).catch(() => { }); }, 500);
+        return d;
+      }
       if (!row) return null;
       lastAt = row.updated_at; lastJson = JSON.stringify(row.data);
       ls.set(COPY, lastJson);
@@ -103,9 +111,9 @@ if (!/^(127\.0\.0\.1|localhost)$/.test(location.hostname) && location.protocol !
             { Prefer: 'resolution=merge-duplicates,return=representation' });
           lastJson = json; lastAt = out?.[0]?.updated_at || lastAt;
         }
-        ls.set(COPY, json);
+        ls.set(COPY, json); ls.set(PENDING, null);
         ok();
-      } catch (e) { ls.set(COPY, JSON.stringify(D)); bad(e); }
+      } catch (e) { ls.set(COPY, JSON.stringify(D)); ls.set(PENDING, '1'); bad(e); }
     }, 1500));
     return waiting;
   }
@@ -115,7 +123,7 @@ if (!/^(127\.0\.0\.1|localhost)$/.test(location.hostname) && location.protocol !
   function subscribe(onRemote) {
     let busy = false;
     const check = async () => {
-      if (busy || document.hidden || !sess || waiting) return;
+      if (busy || document.hidden || !sess || waiting || ls.get(PENDING)) return;
       busy = true;
       try {
         const head = await fetchRow('updated_at');
