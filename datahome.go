@@ -29,15 +29,21 @@ func appHome() string {
 	return filepath.Join(dir, "LifePlanner")
 }
 
-// inTempFolder is true for an exe opened from inside a zip (or anywhere in temp).
+// inTempFolder is true for an exe opened from inside a zip: Windows runs it
+// from a folder like ...\Temp\Temp1_LifePlanner.zip\. (Only that pattern:
+// on some computers the temp folder setting covers the whole user folder.)
 func inTempFolder(dir string) bool {
 	d := strings.ToLower(filepath.Clean(dir)) + string(filepath.Separator)
 	t := strings.ToLower(filepath.Clean(os.TempDir())) + string(filepath.Separator)
-	return strings.HasPrefix(d, t) || strings.Contains(d, ".zip")
+	return strings.Contains(d, ".zip"+string(filepath.Separator)) || (strings.HasPrefix(d, t) && strings.Contains(t, "temp") && len(d) > len(t))
 }
 
 func pickDataDir(exe string) string {
 	dir := filepath.Dir(exe)
+	// a planner next to the exe is always the one to use
+	if own := filepath.Join(dir, "data"); hasPlanner(own) {
+		return own
+	}
 	if inTempFolder(dir) {
 		if h := appHome(); h != "" {
 			return filepath.Join(h, "data")

@@ -56,7 +56,9 @@ let baseHash = ''; // the saved copy this tab's data is built on
 let lastAct = 0, userEdited = false; // unsaved changes that came from you (not reminders and the like)
 addEventListener('pointerdown', () => { lastAct = Date.now(); }, true);
 addEventListener('keydown', () => { lastAct = Date.now(); }, true);
+let loaded = ONLINE; // the PC app's planner has been loaded into this tab (never save over it before that)
 function save() {
+  if (!loaded) return;
   dirty = true;
   if (Date.now() - lastAct < 5000) userEdited = true;
   $('#saveState').textContent = 'Saving…';
@@ -108,7 +110,7 @@ const STASH = 'lpUnsaved';
 function stash(body) { try { localStorage.setItem(STASH, JSON.stringify({ at: Date.now(), d: body, base: baseHash })); } catch { } }
 function unstash() { try { localStorage.removeItem(STASH); } catch { } }
 // the kept copy, if it was built on the copy the app has now (otherwise another window saved since)
-function stashed(hash = baseHash) { try { const x = JSON.parse(localStorage.getItem(STASH) || 'null'); return x && Date.now() - x.at < 30 * 86400e3 && (!x.base || x.base === hash) ? JSON.parse(x.d) : null; } catch { return null; } }
+function stashed(hash = baseHash) { try { const x = JSON.parse(localStorage.getItem(STASH) || 'null'); return x && x.base && Date.now() - x.at < 30 * 86400e3 && x.base === hash ? JSON.parse(x.d) : null; } catch { return null; } }
 // another window saved newer changes: keep this tab's unsaved ones aside, so they can be brought back
 function setAside() { try { if (userEdited) localStorage.setItem('lpAside', JSON.stringify({ at: Date.now(), d: JSON.stringify(D) })); } catch { } unstash(); dirty = false; }
 // take on the restarted app's boot id so this tab's changes can be saved:
@@ -2041,7 +2043,9 @@ function bootDone(skip) {
     bootId = inf.boot || '';
     const r = await fetch('/api/data', { cache: 'no-store' });
     dataRev = +r.headers.get('X-Planner-Rev') || 0; baseHash = r.headers.get('X-Planner-Hash') || '';
+    if (!r.ok) throw new Error('no data');
     const d = await r.json(), kept = stashed();
+    loaded = true;
     showAside();
     D = migrate(kept || d || freshData());
     if (!d || kept) save();
@@ -2049,14 +2053,16 @@ function bootDone(skip) {
     if (kept) setTimeout(() => toast('✅ Unsaved changes restored', "Life Planner closed before it could save your last changes, so they were kept here and are saved now."), 1500);
   } catch (e) {
     // the app isn't running: open what this browser kept, and save it once it's back
-    let x = null; try { x = JSON.parse(localStorage.getItem(STASH) || 'null'); } catch { }
-    D = migrate(x ? JSON.parse(x.d) : defaultData()); setOffline(true); if (x) { baseHash = x.base || ''; dirty = true; userEdited = true; }
+    // (only a copy that came from a loaded planner; until then nothing is saved)
+    let x = null; try { x = JSON.parse(localStorage.getItem(STASH) || 'null'); if (x && !x.base) x = null; } catch { }
+    bootId = '';
+    D = migrate(x ? JSON.parse(x.d) : defaultData()); setOffline(true); if (x) { loaded = true; baseHash = x.base; dirty = true; userEdited = true; }
   }
   render();
   try { localStorage.setItem('lpNoIntro', D.settings.bootIntro === false ? '1' : '0'); } catch { }
   bootDone(D.settings.bootIntro === false);
   // new or empty planner: run the setup (and the tour after it)
-  if (!D.settings.setupDone && !D.assessments.length && !D.sessions.length && !D.workouts.length) {
+  if (loaded && !D.settings.setupDone && !D.assessments.length && !D.sessions.length && !D.workouts.length) {
     const seed = await fetch('/api/seed', { cache: 'no-store' }).then(r => r.json()).catch(() => null);
     openSetup(true); wiz.seed = !!(seed && seed.subjects); drawSetup();
   }

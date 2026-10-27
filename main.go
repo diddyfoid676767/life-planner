@@ -291,11 +291,20 @@ func handleData(w http.ResponseWriter, r *http.Request) {
 		defer mu.Unlock()
 		// a window that has fallen behind (another window saved since it last
 		// loaded) mustn't put its old copy back over the newer one
-		if base := r.Header.Get("X-Planner-Base"); base != "" && r.Header.Get("X-Planner-Force") == "" {
-			if cur, err := os.ReadFile(path); err == nil && hashOf(cur) != base {
-				http.Error(w, "changed in another window", http.StatusConflict)
-				return
-			}
+		cur, _ := os.ReadFile(path)
+		if base := r.Header.Get("X-Planner-Base"); len(cur) > 0 && base == "" {
+			// a page that never loaded this planner (or an older version's page)
+			http.Error(w, "stale page, reload", http.StatusConflict)
+			return
+		} else if base != "" && r.Header.Get("X-Planner-Force") == "" && hashOf(cur) != base {
+			http.Error(w, "changed in another window", http.StatusConflict)
+			return
+		}
+		// a much smaller planner replacing a big one is kept aside, just in case
+		if len(cur) > 20<<10 && len(b) < len(cur)/3 {
+			os.MkdirAll(filepath.Join(dataDir, "backups"), 0o755)
+			os.WriteFile(filepath.Join(dataDir, "backups", "replaced-"+time.Now().Format("2006-01-02-150405")+".json"), cur, 0o644)
+			log.Printf("planner shrank from %d to %d bytes; the old one is in backups", len(cur), len(b))
 		}
 		if err := saveAtomic(path, b); err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -337,7 +346,19 @@ func saveAtomic(path string, b []byte) error {
 }
 
 // dailyBackup keeps one snapshot per day for the last 14 days in data/backups.
+// dailyBackup keeps the first copy of each day for 14 days, and the first
+// copy of each hour for two days.
 func dailyBackup(b []byte) {
+	if dir := filepath.Join(dataDir, "backups", "hourly"); os.MkdirAll(dir, 0o755) == nil {
+		name := filepath.Join(dir, "planner-"+time.Now().Format("2006-01-02-15")+".json")
+		if _, err := os.Stat(name); err != nil {
+			os.WriteFile(name, b, 0o644)
+			entries, _ := os.ReadDir(dir)
+			for i := 0; i < len(entries)-48; i++ {
+				os.Remove(filepath.Join(dir, entries[i].Name()))
+			}
+		}
+	}
 	dir := filepath.Join(dataDir, "backups")
 	if err := os.MkdirAll(dir, 0o755); err != nil {
 		return

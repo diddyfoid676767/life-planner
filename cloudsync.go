@@ -145,6 +145,17 @@ func cloudSync(push bool) {
 				setErr(err)
 				return
 			}
+			// a much emptier cloud copy never replaces a full planner here: it's
+			// kept in backups and this PC's planner goes up instead
+			if local != nil && local.Size() > 20<<10 && int64(len(rows[0].Data)) < local.Size()/3 {
+				os.MkdirAll(filepath.Join(dataDir, "backups"), 0o755)
+				os.WriteFile(filepath.Join(dataDir, "backups", "cloud-smaller-"+time.Now().Format("2006-01-02-150405")+".json"), rows[0].Data, 0o644)
+				log.Printf("phone sync: cloud copy (%d bytes) much smaller than this PC's (%d), keeping this PC's", len(rows[0].Data), local.Size())
+				syncMu.Lock()
+				syncSt.Pending = true
+				syncMu.Unlock()
+				goto push
+			}
 			mu.Lock()
 			err := saveAtomic(path, rows[0].Data)
 			if err == nil {
@@ -169,6 +180,7 @@ func cloudSync(push bool) {
 		}
 	}
 
+push:
 	mu.Lock()
 	b, err := os.ReadFile(path)
 	mu.Unlock()
