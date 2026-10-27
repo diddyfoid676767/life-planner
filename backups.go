@@ -15,7 +15,7 @@ import (
 
 // Backups live in data/backups: the first copy of each day (planner-DATE),
 // the first copy of each hour in hourly/, and a copy of whatever was about to
-// be replaced by something else (before-cloud, before-merge, before-sync, before-restore,
+// be replaced by something else (manual, before-cloud, before-merge, before-sync, before-restore,
 // replaced, cloud-smaller, damaged). Settings lists them all so any of them can
 // be put back with one click.
 
@@ -185,12 +185,17 @@ func handleBackups(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		if req.Snapshot != "" {
-			if req.Snapshot != "before-import" {
+			if req.Snapshot != "before-import" && req.Snapshot != "manual" {
 				http.Error(w, "bad request", http.StatusBadRequest)
 				return
 			}
 			mu.Lock()
 			cur, _ := os.ReadFile(filepath.Join(dataDir, dataFileName))
+			if len(cur) == 0 || !json.Valid(cur) {
+				mu.Unlock()
+				http.Error(w, "there's no planner to back up yet", http.StatusConflict)
+				return
+			}
 			keepBackup(req.Snapshot, cur)
 			mu.Unlock()
 			writeJSON(w, map[string]any{"ok": true})

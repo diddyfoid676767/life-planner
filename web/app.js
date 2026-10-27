@@ -1738,7 +1738,7 @@ async function loadStarter(quiet) {
   } catch { if (!quiet) alert('Could not load the starter plan.'); return false; }
 }
 // ---------- the backups list (Settings, Backup & sync) ----------
-const BK_KIND = { daily: 'Start of the day', hourly: 'Hourly', 'before-cloud': "Before the phone's changes came in", 'before-merge': 'Before changes from another window were merged in', 'before-sync': 'Before phone sync was first set up', 'before-restore': 'Before you restored a backup', 'before-import': 'Before you imported a file', replaced: 'Before a much smaller save', 'cloud-smaller': "A much emptier copy from the phone (merged in without deleting anything)", damaged: "A damaged file (can't be restored)" };
+const BK_KIND = { manual: 'You backed it up', daily: 'Start of the day', hourly: 'Hourly', 'before-cloud': "Before the phone's changes came in", 'before-merge': 'Before changes from another window were merged in', 'before-sync': 'Before phone sync was first set up', 'before-restore': 'Before you restored a backup', 'before-import': 'Before you imported a file', replaced: 'Before a much smaller save', 'cloud-smaller': "A much emptier copy from the phone (merged in without deleting anything)", damaged: "A damaged file (can't be restored)" };
 function bkContents(c) {
   if (!c) return '';
   const parts = [[c.sacs, 'SAC', 'SACs'], [c.study, 'study block', 'study blocks'], [c.workouts, 'workout', 'workouts'], [c.gym, 'gym session', 'gym sessions'], [c.focus, 'focus session', 'focus sessions'], [c.todos, 'task', 'tasks'], [c.events, 'event', 'events']];
@@ -1750,10 +1750,11 @@ function bkWhen(iso) {
 }
 function backupList() {
   const B = ui.backups;
-  if (!B) return `<div class="row" style="margin-top:8px"><button class="btn" data-act="showBackups">Restore a backup…</button></div>`;
+  const now = `<button class="btn" data-act="backupNow">💾 Back up now</button>`;
+  if (!B) return `<div class="row" style="margin-top:8px">${now} <button class="btn" data-act="showBackups">Restore a backup…</button></div>`;
   if (B.error) return `<p class="muted small-text">Couldn't load the backups: ${esc(B.error)}</p>`;
   const list = B.all ? B.list : B.list.slice(0, 15);
-  return `<div class="bklist"><h3>Backups</h3><p class="muted small-text">Pick one to put it back. Your planner as it is right now is kept as a backup first, so restoring can always be undone.</p>
+  return `<div class="row" style="margin-top:8px">${now}</div><div class="bklist"><h3>Backups</h3><p class="muted small-text">Pick one to put it back. Your planner as it is right now is kept as a backup first, so restoring can always be undone.</p>
     ${list.length ? '' : '<p class="muted small-text">No backups yet. One is made the first time your planner saves each hour.</p>'}
     ${list.map(b => `<div class="bkrow"><div><b>${esc(bkWhen(b.at))}</b> <span class="muted small-text">${esc(BK_KIND[b.kind] || b.kind)}</span><div class="muted small-text">${b.damaged ? "Damaged, can't be read" : esc(bkContents(b.counts))}</div></div>
       ${b.damaged ? '' : `<button class="btn small" data-act="restoreBackup" data-v="${esc(b.name)}">Restore</button>`}</div>`).join('')}
@@ -1765,6 +1766,16 @@ async function showBackups() {
     const j = await r.json(); ui.backups = { list: j.backups || [] };
   } catch (e) { ui.backups = { error: e.message || 'the app is not running' }; }
   render();
+}
+// a backup of the planner as it is right now, on top of the automatic ones
+async function backupNow() {
+  if (!(await saveNow())) { toast("Couldn't back up yet", 'Your latest changes haven\'t saved. Is Life Planner still running?', { cls: 'danger' }); return; }
+  try {
+    const r = await fetch('/api/backups', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ snapshot: 'manual' }) });
+    if (!r.ok) throw new Error((await r.text()).trim());
+  } catch (e) { toast("Couldn't back up", e.message || 'Is Life Planner still running?', { cls: 'danger' }); return; }
+  toast('💾 Backed up', 'Your planner as it is right now is saved. Find it under Restore a backup.');
+  if (ui.backups) { ui.backups = null; await showBackups(); }
 }
 async function restoreBackup(name) {
   const b = ui.backups?.list.find(x => x.name === name); if (!b) return;
@@ -1953,6 +1964,7 @@ document.addEventListener('click', e => {
     case 'askNotify': askNotify(); break;
     case 'testNotify': notify('Test reminder', 'This is what a reminder looks like.', 'test'); break;
     case 'showBackups': showBackups(); break;
+    case 'backupNow': backupNow(); break;
     case 'allBackups': ui.backups.all = true; render(); break;
     case 'restoreBackup': restoreBackup(el.dataset.v); break;
     case 'exportJson': download(`life-planner-backup-${today()}.json`, JSON.stringify(D, null, 2), 'application/json'); break;
