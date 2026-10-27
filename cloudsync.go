@@ -95,7 +95,8 @@ func cloudSync(push bool) {
 		return
 	}
 	syncMu.Lock()
-	if syncSt.User != a.UserID { // first sync for this account on this PC
+	first := syncSt.User != a.UserID
+	if first { // first sync for this account on this PC (or this folder)
 		syncSt = syncState{User: a.UserID, Pending: true}
 	}
 	st := syncSt
@@ -121,8 +122,24 @@ func cloudSync(push bool) {
 		}
 		local, _ := os.Stat(path)
 		newer := len(rows) > 0 && rows[0].UpdatedAt != st.CloudAt
+		// the first time, the fuller of the two planners wins (so logging in
+		// from a fresh copy brings your planner down instead of wiping it), and
+		// the other one is kept in backups
+		takeCloud := false
+		if first && len(rows) > 0 && local != nil {
+			var full []cloudRow
+			if _, err := supa("GET", "/rest/v1/planner_data?select=data,updated_at&user_id=eq."+url.QueryEscape(a.UserID), a.Access, nil, &full); err == nil && len(full) > 0 && json.Valid(full[0].Data) {
+				takeCloud = int64(len(full[0].Data)) > local.Size()
+				keep := full[0].Data
+				if takeCloud {
+					keep, _ = os.ReadFile(path)
+				}
+				os.MkdirAll(filepath.Join(dataDir, "backups"), 0o755)
+				os.WriteFile(filepath.Join(dataDir, "backups", "before-sync-"+time.Now().Format("2006-01-02-150405")+".json"), keep, 0o644)
+			}
+		}
 		// the first time, this PC's planner goes up unless it has none yet
-		if newer && ((st.CloudAt != "" && !st.Pending) || local == nil) {
+		if newer && ((st.CloudAt != "" && !st.Pending) || local == nil || takeCloud) {
 			rows = nil
 			if _, err := supa("GET", "/rest/v1/planner_data?select=data,updated_at&user_id=eq."+url.QueryEscape(a.UserID), a.Access, nil, &rows); err != nil || len(rows) == 0 || !json.Valid(rows[0].Data) {
 				setErr(err)

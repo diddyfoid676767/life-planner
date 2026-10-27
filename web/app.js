@@ -1708,11 +1708,11 @@ async function loadStarter(quiet) {
 }
 async function checkTempFolder() {
   try {
-    const { dataDir } = await (await fetch('/api/info')).json();
-    if (/\\temp\\|\.zip/i.test(dataDir)) {
-      const b = $('#offline'); b.hidden = false;
-      b.innerHTML = 'You are running the planner from inside the zip, so nothing will be saved. Close this, right-click the zip, choose <b>Extract All</b>, then open LifePlanner.exe from the extracted folder.';
-    }
+    const inf = await (await fetch('/api/info')).json();
+    const b = $('#tempWarn');
+    if (inf.temp && b) { b.hidden = false; b.innerHTML = "You opened Life Planner from inside the zip. Your planner is still saved, but updates can't install like this. Close it, right-click the zip, choose <b>Extract All</b>, then open LifePlanner.exe from the extracted folder."; }
+    let seen = ''; try { seen = localStorage.getItem('lpCarried') || ''; localStorage.setItem('lpCarried', inf.carried || ''); } catch { }
+    if (inf.carried && seen !== inf.carried) toast('📦 Your planner came with you', `This copy of Life Planner started empty, so it brought over your planner from ${inf.carried}.`, { timeout: 15000 });
   } catch { }
 }
 

@@ -41,11 +41,12 @@ const (
 )
 
 var (
-	bootID   = fmt.Sprint(time.Now().UnixNano())
-	dataDir  string
-	mu       sync.Mutex
-	lastPing = time.Now()
-	pingMu   sync.Mutex
+	bootID       = fmt.Sprint(time.Now().UnixNano())
+	dataDir      string
+	mu           sync.Mutex
+	lastPing     = time.Now()
+	pingMu       sync.Mutex
+	rememberOnce sync.Once
 )
 
 func main() {
@@ -54,13 +55,14 @@ func main() {
 		log.Fatal(err)
 	}
 	exe, _ = filepath.EvalSymlinks(exe)
-	dataDir = filepath.Join(filepath.Dir(exe), "data")
+	dataDir = pickDataDir(exe)
 	if err := os.MkdirAll(dataDir, 0o755); err != nil {
 		log.Fatal(err)
 	}
 	if f, err := os.OpenFile(filepath.Join(dataDir, "planner.log"), os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0o644); err == nil {
 		log.SetOutput(f)
 	}
+	carryOverData()
 
 	url := fmt.Sprintf("http://127.0.0.1:%d/", port)
 
@@ -163,7 +165,7 @@ func main() {
 	})
 	mux.HandleFunc("/api/info", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(map[string]any{"dataDir": dataDir, "version": version, "boot": bootID, "rev": currentRev(), "hash": dataHash()})
+		json.NewEncoder(w).Encode(map[string]any{"dataDir": dataDir, "version": version, "boot": bootID, "rev": currentRev(), "hash": dataHash(), "carried": carriedFrom, "temp": inTempFolder(filepath.Dir(exePath()))})
 	})
 	mux.HandleFunc("/api/quit", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
@@ -292,6 +294,7 @@ func handleData(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		dailyBackup(b)
+		rememberOnce.Do(rememberDataDir)
 		dataSaved()
 		w.Header().Set("X-Planner-Hash", hashOf(b))
 		w.WriteHeader(http.StatusNoContent)
