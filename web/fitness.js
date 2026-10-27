@@ -71,7 +71,55 @@ const EXERCISES = [
   ['crunch', 'Cable crunch', 'Core', ['abs'], 0, [.3, 1.2]],
   ['hlr', 'Hanging leg raise', 'Core', ['abs', 'obliques'], .35, [.37, .6]],
   ['twist', 'Russian twist (load)', 'Core', ['obliques', 'abs'], 0, [.05, .4]],
+  // 2.28: more lifts, and plyos (jumps, bounds and throws: logged as reps, with no 1RM)
+  ['closegrip', 'Close-grip bench press', 'Chest', ['triceps', 'chest', 'delts'], 0, [.45, 1.5]],
+  ['cablefly', 'Cable fly', 'Chest', ['chest'], 0, [.1, .5]],
+  ['arnold', 'Arnold press (per hand)', 'Shoulders', ['delts', 'triceps'], 0, [.12, .45]],
+  ['landmine', 'Landmine press', 'Shoulders', ['delts', 'chest', 'triceps'], 0, [.25, .9]],
+  ['uprow', 'Upright row', 'Shoulders', ['delts', 'traps', 'biceps'], 0, [.25, .8]],
+  ['tbarrow', 'T-bar row', 'Back', ['upperback', 'lats', 'biceps'], 0, [.5, 1.6]],
+  ['invrow', 'Inverted row', 'Back', ['upperback', 'lats', 'biceps'], .6, [.65, 1.3]],
+  ['preacher', 'Preacher curl', 'Arms', ['biceps'], 0, [.2, .7]],
+  ['ohext', 'Overhead tricep extension', 'Arms', ['triceps'], 0, [.2, .7]],
+  ['boxsquat', 'Box squat', 'Legs', ['quads', 'glutes', 'hams'], 0, [.7, 2.3]],
+  ['gobletsq', 'Goblet squat', 'Legs', ['quads', 'glutes', 'abs'], 0, [.3, 1]],
+  ['hacksquat', 'Hack squat', 'Legs', ['quads', 'glutes'], 0, [.8, 2.8]],
+  ['stepup', 'Step-up (total load)', 'Legs', ['quads', 'glutes'], 0, [.2, 1]],
+  ['pistol', 'Pistol squat', 'Legs', ['quads', 'glutes'], 1, [1, 1.5]],
+  ['trapdl', 'Trap bar deadlift', 'Legs', ['quads', 'glutes', 'hams', 'traps'], 0, [1, 3.1]],
+  ['sumodl', 'Sumo deadlift', 'Legs', ['glutes', 'hams', 'quads', 'lowerback'], 0, [1, 3]],
+  ['goodmorning', 'Good morning', 'Legs', ['hams', 'lowerback', 'glutes'], 0, [.4, 1.4]],
+  ['nordic', 'Nordic curl', 'Legs', ['hams'], .5, [.5, 1]],
+  ['glutebridge', 'Glute bridge', 'Legs', ['glutes', 'hams'], 0, [.6, 2.5]],
+  ['seatcalf', 'Seated calf raise', 'Legs', ['calves'], 0, [.5, 2]],
+  ['hangclean', 'Hang clean', 'Power', ['quads', 'glutes', 'traps', 'hams'], 0, [.45, 1.4]],
+  ['pushpress', 'Push press', 'Power', ['delts', 'triceps', 'quads'], 0, [.45, 1.4]],
+  ['jerk', 'Split jerk', 'Power', ['delts', 'triceps', 'quads', 'glutes'], 0, [.5, 1.6]],
+  ['jumpsquat', 'Jump squat (weighted)', 'Power', ['quads', 'glutes', 'calves'], 0, [.2, .8]],
+  ['kbswing', 'Kettlebell swing', 'Power', ['glutes', 'hams', 'lowerback'], 0, [.2, .7]],
+  ['sledpush', 'Sled push (total load)', 'Power', ['quads', 'glutes', 'calves'], 0, [1, 3]],
+  ['boxjump', 'Box jump', 'Plyos', ['quads', 'glutes', 'calves'], 1, null],
+  ['depthjump', 'Depth jump', 'Plyos', ['quads', 'calves', 'glutes'], 1, null],
+  ['broadjump', 'Broad jump', 'Plyos', ['glutes', 'quads', 'hams'], 1, null],
+  ['squatjump', 'Squat jump', 'Plyos', ['quads', 'glutes', 'calves'], 1, null],
+  ['tuckjump', 'Tuck jump', 'Plyos', ['quads', 'abs', 'calves'], 1, null],
+  ['hurdlehop', 'Hurdle hops', 'Plyos', ['calves', 'quads', 'hams'], 1, null],
+  ['pogo', 'Pogo jumps', 'Plyos', ['calves'], 1, null],
+  ['slhop', 'Single-leg hops', 'Plyos', ['calves', 'quads', 'glutes'], 1, null],
+  ['bounds', 'Bounding', 'Plyos', ['glutes', 'hams', 'calves'], 1, null],
+  ['skaters', 'Lateral bounds (skaters)', 'Plyos', ['glutes', 'quads', 'calves'], 1, null],
+  ['splitjump', 'Split squat jump', 'Plyos', ['quads', 'glutes', 'hams'], 1, null],
+  ['plyopush', 'Plyo (clap) push-up', 'Plyos', ['chest', 'triceps', 'delts'], .65, null],
+  ['mbslam', 'Med ball slam', 'Plyos', ['abs', 'lats', 'delts'], 0, null],
+  ['mbchest', 'Med ball chest pass', 'Plyos', ['chest', 'triceps', 'delts'], 0, null],
+  ['mbrot', 'Med ball rotational throw', 'Plyos', ['obliques', 'abs', 'delts'], 0, null],
+  ['mbovh', 'Med ball overhead throw', 'Plyos', ['delts', 'abs', 'lats'], 0, null],
+  ['abwheel', 'Ab wheel rollout', 'Core', ['abs', 'obliques'], .3, [.3, .6]],
+  ['pallof', 'Pallof press', 'Core', ['obliques', 'abs'], 0, [.1, .4]],
+  ['farmer', 'Farmer carry (per hand)', 'Core', ['forearms', 'traps', 'abs'], 0, [.3, 1]],
 ];
+const isPlyo = ex => ex.group === 'Plyos';
+const setE = (ex, s) => isPlyo(ex) ? 0 : e1rm(setLoad(ex, s), +s.r); // plyos are about speed, so no 1RM
 const exInfo = id => { const c = fitCfg().custom.find(x => x.id === id); if (c) return { id, name: c.name, group: 'Custom', m: c.m || [], bwf: 0, std: null };
   const e = EXERCISES.find(x => x[0] === id); return e ? { id, name: e[1], group: e[2], m: e[3], bwf: e[4], std: e[5] } : { id, name: 'Exercise', group: '', m: [], bwf: 0, std: null }; };
 const setLoad = (ex, s) => (+s.w || 0) + (ex.bwf ? ex.bwf * (bodyweight() || 65) : 0);
@@ -81,7 +129,7 @@ function allSets() {
   const out = [];
   for (const g of [...fitCfg().gym].sort((a, b) => a.date.localeCompare(b.date))) for (const it of g.ex || []) {
     const ex = exInfo(it.x);
-    for (const s of it.sets || []) if (!s.warm && +s.r > 0 && (+s.w > 0 || ex.bwf)) out.push({ date: g.date, sid: g.id, x: it.x, w: +s.w || 0, r: +s.r, e: e1rm(setLoad(ex, s), +s.r) });
+    for (const s of it.sets || []) if (!s.warm && +s.r > 0 && (+s.w > 0 || ex.bwf)) out.push({ date: g.date, sid: g.id, x: it.x, w: +s.w || 0, r: +s.r, e: setE(ex, s) });
   }
   return out;
 }
@@ -89,7 +137,7 @@ function allSets() {
 function liftPRs(exclude) {
   const P = {};
   for (const s of allSets()) {
-    if (s.sid === exclude) continue;
+    if (s.sid === exclude || !s.e) continue; // plyos have no 1RM
     const p = P[s.x] = P[s.x] || { e: 0, w: 0, r: 0, vol: {}, hist: {}, last: '' };
     if (s.e > p.e) { p.e = s.e; p.eDate = s.date; }
     if (s.w > p.w) p.w = s.w; if (s.r > p.r) p.r = s.r;
@@ -193,7 +241,7 @@ function finishGym() {
   g.ex = g.ex.filter(it => it.sets.some(s => +s.r > 0));
   if (!g.ex.length) { fitCfg().gym = fitCfg().gym.filter(x => x !== g); ui.gymEdit = null; save(); render(); toast('Session discarded', 'It had no sets with reps in it.'); return; }
   const before = liftPRs(g.id), prs = [];
-  for (const it of g.ex) { const best = Math.max(0, ...it.sets.filter(s => !s.warm).map(s => e1rm(setLoad(exInfo(it.x), s), +s.r))); if (before[it.x] && best > before[it.x].e + .01) prs.push(`${exInfo(it.x).name} ${r1(best)} kg`); }
+  for (const it of g.ex) { const best = Math.max(0, ...it.sets.filter(s => !s.warm).map(s => setE(exInfo(it.x), s))); if (before[it.x] && best > before[it.x].e + .01) prs.push(`${exInfo(it.x).name} ${r1(best)} kg`); }
   // mirror it as a done workout so it counts for the Arena, streaks and friends
   const wv = { date: g.date, title: g.name, sport: 'Strength / Gym', duration: +g.mins || 60, intensity: 'Hard', done: true, notes: g.ex.map(it => `${exInfo(it.x).name} ${it.sets.filter(s => +s.r).map(s => `${s.w || 0}x${s.r}`).join(', ')}`).join('\n') };
   const w = g.wid && D.workouts.find(x => x.id === g.wid);
@@ -220,8 +268,8 @@ function gymEditor() {
   const rows = g.ex.map((it, ei) => {
     const ex = exInfo(it.x), pb = before[it.x];
     return `<div class="gex"><div class="gex-head"><b>${esc(ex.name)}</b><span class="muted small-text">${ex.m.map(m => MUSCLES[m]).join(', ')}${pb ? ` · best ${r1(pb.e)} kg est. 1RM` : ''}</span><span style="flex:1"></span><button class="iconbtn" data-fit="exDel" data-i="${ei}" title="Remove exercise">✕</button></div>
-      <div class="gsets"><div class="gset gset-h"><span>Set</span><span>${ex.bwf ? '+kg' : 'kg'}</span><span>Reps</span><span>Est. 1RM</span><span></span></div>
-      ${it.sets.map((s, si) => { const e = e1rm(setLoad(ex, s), +s.r), isPr = !s.warm && e && (!pb || e > pb.e + .01);
+      <div class="gsets"><div class="gset gset-h"><span>Set</span><span>${ex.bwf ? '+kg' : 'kg'}</span><span>Reps</span><span>${isPlyo(ex) ? '' : 'Est. 1RM'}</span><span></span></div>
+      ${it.sets.map((s, si) => { const e = setE(ex, s), isPr = !s.warm && e && (!pb || e > pb.e + .01);
         return `<div class="gset ${s.done ? 'done' : ''}"><button class="gnum ${s.warm ? 'warm' : ''}" data-fit="warm" data-i="${ei}" data-j="${si}" title="Tap to mark as a warm-up">${s.warm ? 'W' : si + 1}</button>
         <input id="gs_${ei}_${si}_w" data-gs="w" data-i="${ei}" data-j="${si}" type="number" step="0.5" min="0" inputmode="decimal" value="${s.w ?? ''}" placeholder="${ex.bwf ? '0' : 'kg'}">
         <input id="gs_${ei}_${si}_r" data-gs="r" data-i="${ei}" data-j="${si}" type="number" min="0" inputmode="numeric" value="${s.r ?? ''}" placeholder="reps">
@@ -345,10 +393,10 @@ function athleticsPage() {
     return `<div class="card pbcard" style="--sc:${si[3]}"><div class="card-head"><h2>${esc(T.name)}</h2>${rankTag(rk)}<span class="tag" style="background:${si[3]}22;color:${si[3]}">${si[2]}</span></div>
       <div class="pbbest">${h.best != null ? fmtTest(T, h.best) : '<span class="muted">No result yet</span>'}</div>
       ${rk ? `<div class="rkbar" title="Progress from starting out to elite"><i style="width:${Math.min(100, rk.f * 100).toFixed(0)}%;background:${rk.col}"></i></div>` : ''}
-      ${open ? lineChart(h.list.map(p => ({ x: p.date, y: p.value })), { lower: T.lower, fmt: v => fmtTest(T, v), h: 120 }) : spark(h.list.map(p => p.value), T.lower)}
-      <div class="muted small-text">${h.list.length ? `${h.list.length} result${h.list.length === 1 ? '' : 's'} · ${h.list.filter(p => p.pb).length} PB${h.list.filter(p => p.pb).length === 1 ? '' : 's'} · last ${fmtDate(last.date)}` : `${T.lower ? 'Lower' : 'Higher'} is better · ${T.time ? 'm:ss' : T.unit}`}${h.list.length > 1 ? ` · <a href="#" data-fit="athOpen" data-v="${T.id}">${open ? 'hide graph' : 'graph'}</a>` : ''}</div>
-      <div class="row pbadd"><input id="pbv_${T.id}" type="text" inputmode="decimal" placeholder="${T.time ? 'm:ss' : T.unit}"><input id="pbd_${T.id}" type="date" value="${today()}"><button class="btn small primary" data-act="addPb" data-id="${T.id}">Log</button></div>
-      ${h.list.length ? `<details><summary class="small-text">History</summary>${[...h.list].reverse().map(p => `<div class="pbrow"><span>${fmtDate(p.date)}</span><b>${fmtTest(T, p.value)}</b>${p.pb ? '<span class="tag green">PB</span>' : ''}<button class="iconbtn" data-act="delPb" data-id="${p.id}" title="Delete">✕</button></div>`).join('')}</details>` : ''}</div>`;
+      ${open ? lineChart(h.list.filter(p => p.date).map(p => ({ x: p.date, y: p.value })), { lower: T.lower, fmt: v => fmtTest(T, v), h: 120 }) : spark(h.list.map(p => p.value), T.lower)}
+      <div class="muted small-text">${h.list.length ? `${h.list.length} result${h.list.length === 1 ? '' : 's'} · ${h.list.filter(p => p.pb).length} PB${h.list.filter(p => p.pb).length === 1 ? '' : 's'} · last ${pbWhen(last)}` : `${T.lower ? 'Lower' : 'Higher'} is better · ${T.time ? 'm:ss' : T.unit}`}${h.list.length > 1 ? ` · <a href="#" data-fit="athOpen" data-v="${T.id}">${open ? 'hide graph' : 'graph'}</a>` : ''}</div>
+      <div class="row pbadd"><input id="pbv_${T.id}" type="text" inputmode="decimal" placeholder="${T.time ? 'm:ss' : T.unit}"><input id="pbd_${T.id}" type="date" value="${today()}"><button class="btn small primary" data-act="addPb" data-id="${T.id}">Log</button></div><button class="pbunk" data-act="addPbUnk" data-id="${T.id}" title="Log the result without a date, for a best you did a while ago">🤷 Don't know when I did it</button>
+      ${h.list.length ? `<details><summary class="small-text">History</summary>${[...h.list].reverse().map(p => `<div class="pbrow"><span>${pbWhen(p)}</span><b>${fmtTest(T, p.value)}</b>${p.pb ? '<span class="tag green">PB</span>' : ''}<button class="iconbtn" data-act="delPb" data-id="${p.id}" title="Delete">✕</button></div>`).join('')}</details>` : ''}</div>`;
   };
   const est = cat === 'rm' ? (() => { const P = liftPRs(), map = { bench: 'bench', sq: 'squat', dl: 'deadlift', ohp: 'ohp', clean: 'clean', fsq: 'fsquat', hipt: 'hipthrust' };
     const rows = Object.entries(map).filter(([, x]) => P[x]).map(([t, x]) => `<span class="tag">${esc(exInfo(x).name)}: ~${r1(P[x].e)} kg</span>`);

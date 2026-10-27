@@ -2554,3 +2554,26 @@ main#view { padding-bottom: 80px; }
 .suggest { margin: 8px 0 12px; } .suggest.big .friendlist li { padding: 8px 0; }
 .chatunread.muted { background: var(--muted); }
 .todayquick { display: flex; justify-content: flex-end; margin: -6px 0 8px; }
+
+/* 2.28 exam planner: subjects, week hours, days off */
+.xcol-head { align-items: center; gap: 4px; }
+.xcol-head > span { margin-left: auto; }
+.xdaybtn { width: 22px; height: 22px; font-size: .8rem; opacity: .55; }
+.xcol:hover .xdaybtn, .xdaybtn.on { opacity: 1; }
+.xcol.dayoff { background: repeating-linear-gradient(135deg, var(--panel), var(--panel) 8px, color-mix(in srgb, #fa5252 7%, var(--panel)) 8px, color-mix(in srgb, #fa5252 7%, var(--panel)) 16px); }
+.xnote { font-size: .75rem; padding: 4px 8px; border-radius: 8px; background: var(--panel2); color: var(--muted); }
+.xpsubjs { display: grid; gap: 6px; }
+.xpsubj { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; padding: 7px 10px; border-radius: 10px; border: 1px solid var(--border); border-left: 4px solid var(--c); font-size: .9rem; color: var(--text); cursor: pointer; }
+.xpsubj input[type=checkbox] { width: auto; }
+.xpsubj .muted { margin-left: auto; }
+.xpnew input { width: auto; padding: 3px 6px; font-size: .8rem; }
+.xpweek { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 6px; }
+.xpday { display: flex; align-items: center; gap: 6px; padding: 5px 8px; border-radius: 10px; background: var(--panel2); }
+.xpday > span:first-child { font-weight: 700; width: 32px; }
+.xpday input[type=number] { width: 56px; padding-left: 8px; padding-right: 4px; }
+.xpday input[type=time] { width: auto; flex: 1; min-width: 116px; }
+.xpoffrow { gap: 6px; margin-bottom: 6px; }
+.xpoff a { margin-left: 4px; text-decoration: none; }
+.clsdone.absent { color: var(--muted); }
+.pbunk { background: none; border: 0; padding: 2px 0; color: var(--accent); font-size: .78rem; cursor: pointer; text-align: left; }
+.pbunk:hover { text-decoration: underline; }

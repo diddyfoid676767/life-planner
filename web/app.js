@@ -1729,6 +1729,7 @@ document.addEventListener('click', e => {
     case 'crewUp': crewUp(id); break;
     case 'fightMode': startBattle(null, el.dataset.v); break;
     case 'addPb': addPb(id); break;
+    case 'addPbUnk': addPb(id, true); break;
     case 'delPb': if (confirm('Delete this result?')) { D.arena.pbs = D.arena.pbs.filter(p => p.id !== id); save(); render(); } break;
     case 'buyGear': buyGear(id); break;
     case 'openArenaBox': openArenaBox(id); break;

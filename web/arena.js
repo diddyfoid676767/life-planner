@@ -132,7 +132,7 @@ const enemyStats = e => Object.fromEntries(STAT_IDS.map(k => [k, Math.max(10, Ma
 function workoutGains(w) {
   const t = `${w.title || ''} ${w.notes || ''}`.toLowerCase(), sp = w.sport || '';
   let g;
-  if (sp === 'Strength / Gym') g = /power|jump|plyo|push press|clean/.test(t) ? { pow: 3, str: 2 } : /lower|squat|deadlift|lunge/.test(t) ? { str: 3, pow: 1 } : /upper|bench|pull|row/.test(t) ? { str: 3, end: .5 } : { str: 2, pow: 1 };
+  if (sp === 'Strength / Gym') g = /power|jump|plyo|push press|clean|bound|hop|slam|throw|swing|jerk|snatch|sled/.test(t) ? { pow: 3, str: 2 } : /lower|squat|deadlift|lunge/.test(t) ? { str: 3, pow: 1 } : /upper|bench|pull|row/.test(t) ? { str: 3, end: .5 } : { str: 2, pow: 1 };
   else if (sp === 'Speed / Agility') g = /repeat/.test(t) ? { spd: 2, end: 2 } : /change of direction|plyo|bound/.test(t) ? { agi: 3, pow: 2 } : { spd: 3, agi: 2 };
   else if (sp === 'Running') g = /sprint/.test(t) ? { spd: 3, pow: 1 } : /easy|jog|recovery/.test(t) ? { end: 2 } : /interval|tempo|400|600|300|mid/.test(t) ? { end: 3, spd: 1 } : { end: 3 };
   else if (sp === 'Team sport') g = { agi: 2, end: 2, spd: 1 };
@@ -162,7 +162,8 @@ function statPoints() {
   for (const [k, v] of Object.entries(D.arena.extraPts || {})) if (k in pts) pts[k] += v;
   return pts;
 }
-const rating = p => Math.min(99, Math.round(30 + 5.5 * Math.sqrt(p)));
+// 2.28: stats start at 12 (was 30) and climb more slowly: 100 points is 52 (was 85), and 99 takes about 470
+const rating = p => Math.min(99, Math.round(12 + 4 * Math.sqrt(p)));
 function athlete() {
   const pts = statPoints(), base = Object.fromEntries(STAT_IDS.map(k => [k, rating(pts[k])]));
   // 2.23: gear was refunded, so it no longer adds to your stats
@@ -314,13 +315,16 @@ function parseTest(T, s) {
   if (T.time) { const m = s.match(/^(\d+):(\d{1,2}(?:\.\d+)?)$/); return m ? +m[1] * 60 + +m[2] : (isFinite(+s) ? +s * 60 : null); }
   return isFinite(+s) && +s > 0 ? +s : null;
 }
-function addPb(testId) {
+// "don't know when": an old best with no date. It sorts as your earliest result.
+const pbWhen = p => p.date ? fmtDate(p.date) : 'Date unknown';
+function addPb(testId, unknown) {
   const T = TESTS.find(x => x.id === testId); if (!T) return;
-  const v = parseTest(T, $(`#pbv_${testId}`)?.value), d = $(`#pbd_${testId}`)?.value || today();
+  const v = parseTest(T, $(`#pbv_${testId}`)?.value), d = unknown ? '' : $(`#pbd_${testId}`)?.value || today();
   if (v == null) { toast('Enter a result first', T.time ? 'Use minutes:seconds, e.g. 7:45' : `In ${T.unit}`); return; }
   const before = pbHistory(testId).best;
-  D.arena.pbs = [...(D.arena.pbs || []), { id: uid(), test: testId, value: v, date: d }];
+  D.arena.pbs = [...(D.arena.pbs || []), { id: uid(), test: testId, value: v, date: d, ...(unknown ? { unk: true } : {}) }];
   save(); render();
+  if (unknown) { toast(`📏 ${T.name}: ${fmtTest(T, v)} saved`, `With no date, it counts as one of your earliest results${before != null && (T.lower ? v < before : v > before) ? ' and is now your best' : ''}.`); return; }
   const isPb = before != null && (T.lower ? v < before : v > before);
   if (isPb) celebrate({ icon: '<span class="critbig">🎉</span>', color: '#f59f00', kicker: 'New personal best!', title: `${esc(T.name)}: ${fmtTest(T, v)}`, text: `Beat your old best of ${fmtTest(T, before)}. +30 ${GRIT} and a boost to ${statInfo(T.stat)[1]}.` });
   else toast(before == null ? `📏 ${T.name} baseline saved` : 'Result saved', before == null ? `+10 ${GRIT}. Beat it next time for a PB.` : `Your best is still ${fmtTest(T, before)}.`);
@@ -540,9 +544,9 @@ function arenaBests() {
     return `<div class="card pbcard" style="--sc:${si[3]}"><div class="card-head"><h2>${esc(T.name)}</h2><span class="tag" style="background:${si[3]}22;color:${si[3]}">${si[2]}</span></div>
       <div class="pbbest">${h.best != null ? fmtTest(T, h.best) : '<span class="muted">No result yet</span>'}</div>
       ${spark(h.list.map(p => p.value), T.lower)}
-      <div class="muted small-text">${h.list.length ? `${h.list.length} result${h.list.length === 1 ? '' : 's'} · ${h.list.filter(p => p.pb).length} PB${h.list.filter(p => p.pb).length === 1 ? '' : 's'} · last ${fmtDate(last.date)}` : `${T.lower ? 'Lower' : 'Higher'} is better`}</div>
-      <div class="row pbadd"><input id="pbv_${T.id}" type="text" inputmode="decimal" placeholder="${T.time ? 'm:ss' : T.unit}"><input id="pbd_${T.id}" type="date" value="${today()}"><button class="btn small primary" data-act="addPb" data-id="${T.id}">Log</button></div>
-      ${h.list.length ? `<details><summary class="small-text">History</summary>${[...h.list].reverse().map(p => `<div class="pbrow"><span>${fmtDate(p.date)}</span><b>${fmtTest(T, p.value)}</b>${p.pb ? '<span class="tag green">PB</span>' : ''}<button class="iconbtn" data-act="delPb" data-id="${p.id}" title="Delete">✕</button></div>`).join('')}</details>` : ''}</div>`;
+      <div class="muted small-text">${h.list.length ? `${h.list.length} result${h.list.length === 1 ? '' : 's'} · ${h.list.filter(p => p.pb).length} PB${h.list.filter(p => p.pb).length === 1 ? '' : 's'} · last ${pbWhen(last)}` : `${T.lower ? 'Lower' : 'Higher'} is better`}</div>
+      <div class="row pbadd"><input id="pbv_${T.id}" type="text" inputmode="decimal" placeholder="${T.time ? 'm:ss' : T.unit}"><input id="pbd_${T.id}" type="date" value="${today()}"><button class="btn small primary" data-act="addPb" data-id="${T.id}">Log</button></div><button class="pbunk" data-act="addPbUnk" data-id="${T.id}" title="Log the result without a date, for a best you did a while ago">🤷 Don't know when I did it</button>
+      ${h.list.length ? `<details><summary class="small-text">History</summary>${[...h.list].reverse().map(p => `<div class="pbrow"><span>${pbWhen(p)}</span><b>${fmtTest(T, p.value)}</b>${p.pb ? '<span class="tag green">PB</span>' : ''}<button class="iconbtn" data-act="delPb" data-id="${p.id}" title="Delete">✕</button></div>`).join('')}</details>` : ''}</div>`;
   }).join('')}</div>`;
 }
 function arenaLocker(g) {

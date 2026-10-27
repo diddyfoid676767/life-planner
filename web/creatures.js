@@ -189,7 +189,7 @@ function crStats(m, trainerInfo) {
   const mon = mkMon({ key: 'u:' + m.uid, uid: m.uid, sp: s.id, name: m.nick || s.name, icon: s.icon, types: s.types, lv: m.lv, base, dv: m.iv || 10, sx: clamp(10 + T.lv * 2, 10, 63), moves: m.moves.map(moveById).filter(Boolean) });
   const held = heldOf(m.item);
   for (const k of ['hp', 'atk', 'def', 'spd', 'spc']) {
-    const fromTrainer = (T.st[TRAINER_FEEDS[k]] - 30) / 300;
+    const fromTrainer = (T.st[TRAINER_FEEDS[k]] - 12) / 380;
     mon.st[k] = Math.round(mon.st[k] * (1 + aura + drills + Math.max(0, fromTrainer) + (k === 'hp' ? spirit : 0)) * (held?.mul?.[k] || 1));
   }
   mon.hp = mon.st.hp; mon.held = m.item || null;

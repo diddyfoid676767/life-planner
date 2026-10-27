@@ -58,15 +58,17 @@ function currentPeriod() {
 function unrated(d = today()) {
   if (!isSchoolDay(d)) return [];
   const m = d === today() ? nowMin() : 1e9, log = D.school?.log?.[d] || {};
-  return schoolCfg().bells.map((b, i) => ({ b, i })).filter(({ b, i }) => !b.brk && hmToMin(b.end) <= m && !(log[i] && log[i].effort));
+  return schoolCfg().bells.map((b, i) => ({ b, i })).filter(({ b, i }) => !b.brk && hmToMin(b.end) <= m && !(log[i] && (log[i].effort || log[i].absent)));
 }
 const clockTxt = cp => { const s = cp ? Math.max(0, Math.round(cp.left * 60)) : 0; return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`; };
 const periodCoins = r => r.effort + (r.phone ? 2 : 0) + (r.goal && r.goalMet ? 2 : 0);
 
 function rateDay(d) {
   const log = schoolLog(d), bells = schoolCfg().bells, lessons = bells.map((b, i) => i).filter(i => !bells[i].brk);
-  if (!lessons.every(i => log[i] && log[i].effort)) return;
-  const avg = lessons.reduce((a, i) => a + eff10(log[i]), 0) / lessons.length;
+  if (!lessons.every(i => log[i] && (log[i].effort || log[i].absent))) return;
+  // periods you weren't in don't count toward your effort
+  const rated = lessons.filter(i => !log[i].absent); if (!rated.length) return;
+  const avg = rated.reduce((a, i) => a + eff10(log[i]), 0) / rated.length;
   if (avg >= 7 && !(('clsday:' + d) in D.game.ledger)) {
     D.game.ledger['clsday:' + d] = 10;
     celebrate({ icon: '<span class="critbig">🏫</span>', color: '#3b5bdb', kicker: 'Full school day', title: 'Every period rated', text: `Average effort ${avg.toFixed(1)} out of 10. +10 ${COIN} bonus.` });
@@ -112,7 +114,7 @@ function openRating(d, i, early) {
     ${r.goal ? `<label class="clschk"><input type="checkbox" id="clsMet" ${r.goalMet ? 'checked' : ''}> 🎯 I hit my goal <span class="muted">+2 ${COIN}</span></label>` : ''}
     <input type="text" id="clsHw" placeholder="Homework or something to remember? (adds a task due tomorrow)" maxlength="200">
     <div class="row" style="justify-content:flex-end;margin-top:10px"><span class="muted small-text" style="margin-right:auto">Effort pays 1 to 5 ${COIN}. Be honest, it's only for you.</span>
-      <button class="btn primary" data-save disabled>Save</button></div></div>`;
+      <button class="btn" data-absent title="Away, sick, on an excursion… It won't count toward your effort">🚫 I wasn't there</button><button class="btn primary" data-save disabled>Save</button></div></div>`;
   document.body.appendChild(ov);
   let pick = eff10(r);
   const saveBtn = ov.querySelector('[data-save]'); saveBtn.disabled = !pick;
@@ -120,8 +122,10 @@ function openRating(d, i, early) {
     const eb = e.target.closest('[data-e]');
     if (eb) { pick = +eb.dataset.e; ov.querySelectorAll('[data-e]').forEach(x => x.classList.toggle('on', x === eb)); ov.querySelector('#effLabel').textContent = `${effIcon(pick)} ${pick}/10 · ${EFFORT[Math.ceil(pick / 2) - 1][1]}`; saveBtn.disabled = false; return; }
     if (e.target.closest('[data-x]') || e.target === ov) { ov.remove(); render(); return; }
+    if (e.target.closest('[data-absent]')) { ov.remove(); markAbsent(d, i, sid); return; }
     if (e.target.closest('[data-save]') && pick) {
       const rec = schoolLog(d)[i] = Object.assign(schoolLog(d)[i] || {}, { subj: sid, effort: Math.ceil(pick / 2), e10: pick, phone: ov.querySelector('#clsPhone').checked, goalMet: !!ov.querySelector('#clsMet')?.checked, at: new Date().toISOString() });
+      delete rec.absent;
       const hw = ov.querySelector('#clsHw').value.trim();
       if (hw) D.todos.push({ id: uid(), text: `${sid && sid !== 'free' && sid !== 'sport' ? subj(sid).name + ': ' : ''}${hw}`, due: addDays(d, 1), done: false, notes: `From ${b.n}`, remind: D.settings.remind.todo });
       const c = periodCoins(rec), first = !(`cls:${d}:${i}` in D.game.ledger);
@@ -132,6 +136,15 @@ function openRating(d, i, early) {
       rateDay(d); save(); updateSchoolBadge();
     }
   });
+}
+// not in class (sick, excursion, appointment): no rating, no coins, and it's left out of your effort averages
+function markAbsent(d, i, sid) {
+  const r = schoolLog(d)[i] = Object.assign(schoolLog(d)[i] || {}, { subj: sid ?? periodSubj(d, i), absent: true, at: new Date().toISOString() });
+  delete r.effort; delete r.e10; delete r.phone; delete r.goalMet;
+  delete D.game.ledger[`cls:${d}:${i}`];
+  if (D.school.active && D.school.active.date === d && D.school.active.i === i) D.school.active = null;
+  save(); render(); updateSchoolBadge(); rateDay(d); save();
+  toast(`🚫 ${schoolCfg().bells[i]?.n || 'Period'}: not present`, "It won't count toward your effort rating.");
 }
 function coinPop(n) {
   const el = document.createElement('div'); el.className = 'coinpop'; el.textContent = `+${n} ${COIN}`;
@@ -207,8 +220,9 @@ function viewSchool() {
       <div class="clsclock" id="clsClock">${clockTxt(cp)}</div><div class="clsbar"><i id="clsBar" style="width:${100 * (1 - cp.left / cp.len)}%"></i></div>
       ${on ? `<div class="clslive">${r.goal ? `🎯 <b>${esc(r.goal)}</b>` : 'In class focus'} · 📵 phone away</div>
           <div class="row" style="justify-content:center"><button class="btn" data-cls="end">End early and rate</button></div>`
+        : r.absent ? `<p class="muted" style="text-align:center">Marked 🚫 not present. <a href="#" data-cls="rate" data-i="${cp.i}">Change</a></p>`
         : r.effort ? `<p class="muted" style="text-align:center">Rated ${effIcon(eff10(r))} ${eff10(r)}/10 already.</p>`
-          : `<div class="row clsstart"><input type="text" id="clsGoal" placeholder="Lesson goal (optional), e.g. finish Q1 to 8" maxlength="120"><button class="btn primary" data-cls="start" data-i="${cp.i}">▶ Start class focus</button></div>`}
+          : `<div class="row clsstart"><input type="text" id="clsGoal" placeholder="Lesson goal (optional), e.g. finish Q1 to 8" maxlength="120"><button class="btn primary" data-cls="start" data-i="${cp.i}">▶ Start class focus</button><button class="btn" data-cls="absent" data-i="${cp.i}" title="It won't count toward your effort">🚫 Not present</button></div>`}
     </div>`;
   } else {
     const m = nowMin(), next = cfg.bells.find(b => hmToMin(b.start) > m);
@@ -219,15 +233,16 @@ function viewSchool() {
   const rows = isSchoolDay(t) ? cfg.bells.map((b, i) => {
     if (b.brk) return `<div class="clsrow brk"><span class="clstime">${fmtTime(b.start)}</span><span class="muted">${esc(b.n)}</span></div>`;
     const sid = periodSubj(t, i), r = log[i] || {}, over = hmToMin(b.end) <= m, now = cp && cp.i === i;
-    const right = r.effort ? `<span class="clsdone" title="${EFFORT[r.effort - 1][1]}">${effIcon(eff10(r))} ${eff10(r)}/10 +${D.game.ledger[`cls:${t}:${i}`] || 0} ${COIN}</span>${r.phone ? '<span title="Phone away">📵</span>' : ''}<button class="iconbtn" data-cls="rate" data-i="${i}" title="Change rating">✎</button>`
-      : over ? `<button class="btn small primary" data-cls="rate" data-i="${i}">Rate effort</button>` : now ? '<span class="tag green">Now</span>' : '';
-    return `<div class="clsrow ${now ? 'now' : ''} ${over && !r.effort ? 'due' : ''}" style="--c:${subjColor(sid)}"><span class="clstime">${fmtTime(b.start)}</span><b class="clsn">${esc(b.n)}</b>${subjSelect(t, i, sid)}${evChips(t, b)}<span style="flex:1"></span>${right}</div>`;
+    const right = r.absent ? `<span class="clsdone absent">🚫 Not present</span><button class="iconbtn" data-cls="rate" data-i="${i}" title="Change">✎</button>`
+      : r.effort ? `<span class="clsdone" title="${EFFORT[r.effort - 1][1]}">${effIcon(eff10(r))} ${eff10(r)}/10 +${D.game.ledger[`cls:${t}:${i}`] || 0} ${COIN}</span>${r.phone ? '<span title="Phone away">📵</span>' : ''}<button class="iconbtn" data-cls="rate" data-i="${i}" title="Change rating">✎</button>`
+      : over ? `<button class="btn small" data-cls="absent" data-i="${i}" title="It won't count toward your effort">🚫 Not present</button><button class="btn small primary" data-cls="rate" data-i="${i}">Rate effort</button>` : now ? '<span class="tag green">Now</span>' : `<button class="btn small ghost" data-cls="absent" data-i="${i}" title="Won't be there? It won't count toward your effort">🚫</button>`;
+    return `<div class="clsrow ${now ? 'now' : ''} ${over && !r.effort && !r.absent ? 'due' : ''}" style="--c:${subjColor(sid)}"><span class="clstime">${fmtTime(b.start)}</span><b class="clsn">${esc(b.n)}</b>${subjSelect(t, i, sid)}${evChips(t, b)}<span style="flex:1"></span>${right}</div>`;
   }).join('') : '';
   const wk = weekEffort();
   const week = wk.length ? `<div class="card"><h2>Effort this week</h2><div class="bars">${wk.map(w => `<div class="bar"><span>${esc(w.k ? subjLabel(w.k) : 'No subject set')}</span><div class="track"><div class="fill" style="width:${w.avg / 10 * 100}%;background:${subjColor(w.k)}"></div></div><span class="muted">${effIcon(Math.round(w.avg))} ${w.avg.toFixed(1)}/10 · ${w.n}</span></div>`).join('')}</div>
     <p class="muted small-text" style="margin:8px 0 0">Average effort out of 10 for each subject since Monday.</p></div>` : '';
   return `${head}<div class="clsgrid"><div>${hero}${rows ? `<div class="card"><div class="card-head"><h2>Today's periods</h2></div>${rows}
-      <p class="muted small-text" style="margin:8px 0 0">The subject you pick is remembered for ${cd ? `Day ${cd} of your timetable` : 'this day of the week'}. Rate each period out of 10: up to 5 ${COIN} for effort, +2 for phone away, +2 for hitting your goal. Rate every period with an average of 7+ for a +10 ${COIN} day bonus.</p></div>` : ''}</div>
+      <p class="muted small-text" style="margin:8px 0 0">The subject you pick is remembered for ${cd ? `Day ${cd} of your timetable` : 'this day of the week'}. Rate each period out of 10: up to 5 ${COIN} for effort, +2 for phone away, +2 for hitting your goal. Weren't there? Press 🚫 and it's left out of your effort. Rate every period with an average of 7+ for a +10 ${COIN} day bonus.</p></div>` : ''}</div>
     <div>${week}${bellCard()}</div></div>`;
 }
 function bellCard() {
@@ -248,6 +263,7 @@ document.addEventListener('click', e => {
     case 'start': startClass(i); break;
     case 'end': endClass(true); break;
     case 'rate': openRating(today(), i); break;
+    case 'absent': markAbsent(today(), i); break;
     case 'on': cfg.on = true; save(); render(); break;
     case 'badd': { const last = cfg.bells[cfg.bells.length - 1]; const s = last ? last.end : '15:00'; const e2 = Math.min(1439, hmToMin(s) + 50); cfg.bells.push({ n: `Period ${cfg.bells.filter(b => !b.brk).length + 1}`, start: s, end: `${String(Math.floor(e2 / 60)).padStart(2, '0')}:${String(e2 % 60).padStart(2, '0')}` }); ui.bellsOpen = true; save(); render(); break; }
     case 'bdel': cfg.bells.splice(i, 1); ui.bellsOpen = true; save(); render(); break;

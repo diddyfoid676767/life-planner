@@ -13,7 +13,31 @@ const EXAM_TOPICS = [
   [/chem/i, ['Stoichiometry', 'Organic chemistry', 'Equilibrium', 'Redox & electrochemistry', 'Analysis techniques']],
   [/business/i, ['Key terms & definitions', 'Case study application', 'Extended response', 'Operations & strategy']],
 ];
-const examPrep = () => (D.examPrep = Object.assign({ papers: [], hoursSchool: 2, hoursWeekend: 4, schoolStart: '17:00', weekendStart: '09:30', perExam: 3 }, D.examPrep || {}));
+// filled in place, so a settings object you're holding stays the live one
+const EXAM_PREP_DEFAULTS = { hoursSchool: 2, hoursWeekend: 4, schoolStart: '17:00', weekendStart: '09:30', perExam: 3, blockMins: 45, breakMins: 10 };
+function examPrep() {
+  const P = D.examPrep = D.examPrep || {};
+  for (const [k, v] of Object.entries(EXAM_PREP_DEFAULTS)) if (P[k] == null) P[k] = v;
+  if (!Array.isArray(P.papers)) P.papers = [];
+  if (!P.off || typeof P.off !== 'object') P.off = {};
+  return P;
+}
+// 2.28: hours and a start time for each day of the week (Sunday first), and
+// one-off changes for single dates (off: { date: { h, start, note } }, h 0 = can't study)
+const DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+function planWeek(P = examPrep()) {
+  if (!Array.isArray(P.days) || P.days.length !== 7) P.days = DAY_NAMES.map((_, i) => i === 0 || i === 6 ? { h: P.hoursWeekend, start: P.weekendStart } : { h: P.hoursSchool, start: P.schoolStart });
+  return P.days;
+}
+// how long you can study on a date and from when; holidays use Saturday's hours
+function dayPlan(d) {
+  const P = examPrep(), dow = parseYmd(d).getDay(), wk = planWeek(P), o = (P.off || {})[d];
+  const base = typeof isHoliday === 'function' && isHoliday(d) && dow > 0 && dow < 6 ? wk[6] : wk[dow];
+  return o ? { h: +o.h || 0, start: o.start || base.start, note: o.note || '', off: !(+o.h), custom: true } : { h: +base.h || 0, start: base.start, off: !(+base.h) };
+}
+const dayCapMins = d => Math.round(dayPlan(d).h * 60);
+// the subjects the exam plan covers (all with an exam coming up, unless you picked some)
+const planExams = from => upcomingExams(from).filter(a => !Array.isArray(examPrep().subjects) || examPrep().subjects.includes(a.subjectId));
 const isExam = a => /exam/i.test(a.type || '') && a.type !== 'Practice exam';
 function upcomingExams(from = today(), days = 60) {
   return D.assessments.filter(a => isExam(a) && !a.done && a.date >= from && diffDays(from, a.date) <= days).sort((a, b) => (a.date + (a.time || '')).localeCompare(b.date + (b.time || '')));
@@ -61,36 +85,74 @@ function examReadiness(a) {
 }
 
 // ---------- the plan ----------
+// 2.28: the planner form picks which subjects have exams (and adds an exam date
+// for any that has none yet), the block and break lengths, hours for each day
+// of the week, and the days you can't study.
 function buildExamPlan() {
-  const exams = upcomingExams(addDays(today(), 1));
-  if (!exams.length) { alert('Add your exams first (as SAC / Exam with the type "Exam"), then build the plan.'); return; }
-  const P = examPrep(), h = new Date().getHours();
+  if (!D.subjects.length) { alert('Add your subjects first (Study tab).'); return; }
+  const P = examPrep(), h = new Date().getHours(), wk = planWeek(P), t = today();
+  const hasPlan = D.sessions.some(s => s.examPlan && !s.done && s.date >= t);
+  const examsOf = sid => upcomingExams(addDays(t, 1), 120).filter(a => a.subjectId === sid);
+  const picked = sid => Array.isArray(P.subjects) ? P.subjects.includes(sid) : examsOf(sid).length > 0;
+  const subjRows = D.subjects.map(s => { const xs = examsOf(s.id);
+    return `<label class="xpsubj" style="--c:${s.color}"><input type="checkbox" data-xps="${s.id}" ${picked(s.id) ? 'checked' : ''}><b>${esc(s.name)}</b>
+      ${xs.length ? `<span class="muted small-text">${xs.map(a => `${esc(a.title)} · ${fmtDate(a.date)}`).join(', ')}</span>` : `<span class="xpnew muted small-text">no exam yet · date <input type="date" data-xpd="${s.id}" min="${addDays(t, 1)}"></span>`}</label>`; }).join('');
+  const order = [1, 2, 3, 4, 5, 6, 0];
+  const weekRows = order.map(i => `<div class="xpday"><span>${DAY_NAMES[i].slice(0, 3)}</span><input type="number" min="0" max="14" step=".5" value="${wk[i].h}" data-xph="${i}" title="Hours of study"><span class="muted small-text">h from</span><input type="time" value="${wk[i].start}" data-xpt="${i}"></div>`).join('');
+  const offChip = d => `<span class="tag xpoff" data-xpoffd="${d}">${fmtDate(d)}${P.off[d].h ? ` · ${P.off[d].h}h` : ' · off'} <a href="#" data-xpoffx="${d}" title="Remove">✕</a></span>`;
+  const offs = () => Object.keys(P.off).filter(d => d >= t).sort().map(offChip).join('') || '<span class="muted small-text">None yet</span>';
+  const opt = (v, list) => list.map(([x, l]) => `<option value="${x}" ${+v === x ? 'selected' : ''}>${l}</option>`).join('');
   showForm({
-    title: '🎓 Add exam prep to my plan',
-    saveLabel: 'Build plan',
-    fields: [{ type: 'html', html: `<p class="muted small-text" style="margin-top:0">Plans revision for ${exams.map(a => `<b>${esc(subj(a.subjectId).name)}</b> (${fmtDate(a.date)})`).join(', ')}. Your current study plan stays as it is. This adds timed past papers on days with enough free time, prep for SACs in the next few days that don't have any yet, and a light review the day before each exam, all after what you've already got planned. You can edit or delete any block afterwards, and there's an Undo.</p>` },
-      { type: 'row', fields: [{ key: 'start', label: 'Start from', type: 'date', value: h >= 18 ? addDays(today(), 1) : today(), required: true }, { key: 'perExam', label: 'Past papers per exam', type: 'number', value: P.perExam, min: 0, step: 1 }] },
-      { type: 'row', fields: [{ key: 'hoursSchool', label: 'Hours on a school day', type: 'number', value: P.hoursSchool, min: 0, step: .5 }, { key: 'schoolStart', label: 'Starting at', type: 'time', value: P.schoolStart }] },
-      { type: 'row', fields: [{ key: 'hoursWeekend', label: 'Hours on a weekend or holiday', type: 'number', value: P.hoursWeekend, min: 0, step: .5 }, { key: 'weekendStart', label: 'Starting at', type: 'time', value: P.weekendStart }] },
-      { key: 'mode', label: 'What to add', type: 'select', value: 'add', options: [['add', 'Past papers, SAC prep and light days only (keeps my plan)'], ['fill', 'Those, plus extra topic revision in any free time'], ['rebuild', 'Rebuild: fold my exam revision blocks into a new plan']] }],
+    title: '🎓 Build my exam timetable',
+    saveLabel: hasPlan ? 'Rebuild' : 'Build plan',
+    fields: [{ type: 'html', html: `<p class="muted small-text" style="margin-top:0">Pick the subjects you have exams for, how long each block and break should be, and how much you can study on each day. You can edit, drag or delete any block afterwards, mark days you can't study on the timetable, and there's an Undo.</p>
+        <div class="field"><label>Subjects with exams</label><div class="xpsubjs">${subjRows}</div></div>` },
+      { type: 'row', fields: [{ key: 'start', label: 'Start from', type: 'date', value: h >= 18 ? addDays(t, 1) : t, required: true }, { key: 'perExam', label: 'Past papers per exam', type: 'number', value: P.perExam, min: 0, step: 1 }] },
+      { type: 'html', html: `<div class="frow"><div class="field"><label>Study blocks</label><select data-xpb>${opt(P.blockMins, [[25, '25 minutes'], [30, '30 minutes'], [40, '40 minutes'], [45, '45 minutes'], [50, '50 minutes'], [60, '1 hour'], [75, '1¼ hours'], [90, '1½ hours']])}</select></div>
+        <div class="field"><label>Breaks between blocks</label><select data-xpbr>${opt(P.breakMins, [[0, 'No break'], [5, '5 minutes'], [10, '10 minutes'], [15, '15 minutes'], [20, '20 minutes'], [30, '30 minutes']])}</select></div></div>
+        <div class="field"><label>Each day of the week</label><div class="xpweek">${weekRows}</div><span class="hint">Set a day to 0 hours to keep it free. Holidays use Saturday's hours.</span></div>
+        <div class="field"><label>Days I can't study (or have less time)</label><div class="row xpoffrow"><input type="date" data-xpoffin min="${t}" style="width:auto"><input type="number" data-xpoffh min="0" max="14" step=".5" value="0" style="width:70px" title="Hours you can still study that day (0 = none)"><span class="muted small-text">h</span><button type="button" class="btn small" data-xpoffadd>Add</button></div><div class="catchips" id="xpOffs">${offs()}</div></div>` },
+      { key: 'mode', label: 'What to do', type: 'select', value: hasPlan ? 'rebuild' : 'fill', options: [['rebuild', 'Rebuild the whole timetable (finished blocks stay)'], ['fill', 'Keep my blocks and fill free time with revision'], ['add', 'Only add past papers, SAC prep and light days']] }],
     onSave: v => {
-      Object.assign(P, { perExam: Math.max(0, Math.min(6, v.perExam ?? 3)), hoursSchool: Math.max(0, Math.min(10, v.hoursSchool ?? 2)), hoursWeekend: Math.max(0, Math.min(12, v.hoursWeekend ?? 4)), schoolStart: v.schoolStart || '17:00', weekendStart: v.weekendStart || '09:30' });
+      const q = sel => [...mform.querySelectorAll(sel)];
+      const subs = q('[data-xps]').filter(x => x.checked).map(x => x.dataset.xps);
+      // a ticked subject with no exam yet gets one on the date you gave
+      let added = 0;
+      for (const sid of subs) {
+        const dIn = mform.querySelector(`[data-xpd="${sid}"]`);
+        if (dIn && dIn.value && !examsOf(sid).length) { D.assessments.push({ id: uid(), subjectId: sid, type: 'Exam', title: `${subj(sid).name} exam`, date: dIn.value, time: '', weight: '', score: '', notes: 'Added from the exam planner', done: false, remind: D.settings.remind.assessment }); added++; }
+      }
+      if (!subs.some(sid => examsOf(sid).length)) { alert('Tick at least one subject that has an exam coming up (or give it an exam date).'); return false; }
+      P.subjects = subs;
+      q('[data-xph]').forEach(x => { wk[+x.dataset.xph].h = Math.max(0, Math.min(14, +x.value || 0)); });
+      q('[data-xpt]').forEach(x => { if (x.value) wk[+x.dataset.xpt].start = x.value; });
+      Object.assign(P, { blockMins: +mform.querySelector('[data-xpb]').value || 45, breakMins: +mform.querySelector('[data-xpbr]').value, perExam: Math.max(0, Math.min(6, v.perExam ?? 3)),
+        hoursSchool: wk[1].h, hoursWeekend: wk[6].h, schoolStart: wk[1].start, weekendStart: wk[6].start });
       const before = D.sessions.slice();
-      const made = makeExamPlan(v.start || today(), v.mode || 'add');
-      if (!made) { alert('There was no free time to plan in. Try more hours or an earlier start.'); return false; }
+      const made = makeExamPlan(v.start || t, v.mode || 'rebuild');
+      if (!made) { alert('There was no free time to plan in. Try more hours, fewer days off or an earlier start.'); return false; }
       ui.studyTab = 'board'; view = 'study';
-      setTimeout(() => undoToast(`🎓 Exam prep added: ${made.blocks} blocks including ${made.papers} timed past papers${made.swapped ? `, reorganising ${made.swapped} of your existing blocks` : ''}.`, () => { D.sessions = before; }), 50);
+      setTimeout(() => undoToast(`🎓 Timetable ${v.mode === 'rebuild' ? 'rebuilt' : 'updated'}: ${made.blocks} blocks including ${made.papers} timed past papers${added ? `, and ${added} new exam${added === 1 ? '' : 's'}` : ''}.`, () => { D.sessions = before; }), 50);
     },
   });
+  // days off: add and remove right in the form
+  mform.querySelector('[data-xpoffadd]')?.addEventListener('click', () => {
+    const d = mform.querySelector('[data-xpoffin]').value; if (!d) return;
+    P.off[d] = { h: Math.max(0, +mform.querySelector('[data-xpoffh]').value || 0) }; mform.querySelector('#xpOffs').innerHTML = offs();
+  });
+  mform.querySelector('#xpOffs')?.addEventListener('click', e => { const x = e.target.closest('[data-xpoffx]'); if (!x) return; e.preventDefault(); delete P.off[x.dataset.xpoffx]; mform.querySelector('#xpOffs').innerHTML = offs(); });
 }
 
 function makeExamPlan(start, mode = 'add') {
   const replace = mode === 'rebuild';
   const P = examPrep();
-  const exams = upcomingExams(addDays(start, 1)), last = exams[exams.length - 1].date;
+  const exams = planExams(addDays(start, 1)); if (!exams.length) return null;
+  const last = exams[exams.length - 1].date, blk = Math.max(20, +P.blockMins || 45), gap = Math.max(0, P.breakMins == null ? 10 : +P.breakMins || 0);
   // the old plan's unfinished blocks go, and (if you choose) your regular study blocks in the same period
   const forExam = s => { const a = s.assessmentId && D.assessments.find(x => x.id === s.assessmentId); return !s.assessmentId || (a && isExam(a)); };
-  const removed = D.sessions.filter(s => !s.done && s.date >= start && (s.examPlan || (replace && s.date <= last && forExam(s))));
+  // (only adding? then your exam-plan revision blocks stay and just the extras are redone)
+  const extra = s => s.paper || /^(Timed past paper|Light review|Prep for )/.test(s.topic || '');
+  const removed = D.sessions.filter(s => !s.done && s.date >= start && ((s.examPlan && (mode !== 'add' || extra(s))) || (replace && s.date <= last && forExam(s))));
   // topics from the blocks you'd already planned carry over, per subject
   const carried = {};
   for (const s of removed.filter(s => !s.examPlan && !s.paper)) {
@@ -101,11 +163,11 @@ function makeExamPlan(start, mode = 'add') {
   const sacs = D.assessments.filter(a => !isExam(a) && !a.done && a.date > start && a.date <= last && a.type !== 'Practice exam');
   const examDays = new Set(exams.map(a => a.date));
   const weekend = d => [0, 6].includes(parseYmd(d).getDay()) || (typeof isHoliday === 'function' && isHoliday(d));
-  // minutes free each day: your hours, less study already planned, and just an hour on exam days
+  // minutes free each day: that day's hours, less study already planned, and just an hour on exam days
   const cap = {}, days = [];
   for (let d = start; d < last; d = addDays(d, 1)) {
     const other = D.sessions.filter(s => s.date === d && !s.done).reduce((a, s) => a + (+s.duration || 0), 0);
-    cap[d] = Math.max(0, Math.round((weekend(d) ? P.hoursWeekend : P.hoursSchool) * 60) - other);
+    cap[d] = Math.max(0, dayCapMins(d) - other);
     if (examDays.has(d)) cap[d] = Math.min(cap[d], 60);
     days.push(d);
   }
@@ -113,7 +175,7 @@ function makeExamPlan(start, mode = 'add') {
   const add = (d, b) => { (plan[d] = plan[d] || []).push(b); cap[d] -= b.duration; };
   // 1. the day before each exam: light review only
   const taperDays = new Set();
-  for (const a of exams) { const d = addDays(a.date, -1); if (cap[d] != null) { taperDays.add(d); add(d, { a, duration: 45, topic: taperText(a), taper: true }); } }
+  for (const a of exams) { const d = addDays(a.date, -1); if (cap[d] != null && !dayPlan(d).off) { taperDays.add(d); add(d, { a, duration: Math.min(45, blk), topic: taperText(a), taper: true }); } }
   // 2. timed past papers, spread through each exam's run-up, on days with room
   for (const a of exams) {
     const need = paperMins(a), done = P.papers.filter(p => p.assessmentId === a.id).length;
@@ -149,35 +211,37 @@ function makeExamPlan(start, mode = 'add') {
     if (mode === 'add') { // only prep for SACs in the next 3 days that have nothing planned, up to 2 blocks each
       const planned = a => Object.values(plan).flat().filter(b => b.a === a).length;
       const due = sacs.filter(a => a.date > d && diffDays(d, a.date) <= 3 && !D.sessions.some(s => s.assessmentId === a.id && !s.examPlan) && planned(a) < 2).sort((x, y) => x.date.localeCompare(y.date));
-      for (const sac of due.slice(0, 2)) add(d, { a: sac, duration: 45, topic: `Prep for ${sac.title}` }); // urgent, so it goes in even on a full day
+      if (!dayPlan(d).off) for (const sac of due.slice(0, 2)) add(d, { a: sac, duration: Math.min(45, blk), topic: `Prep for ${sac.title}` }); // urgent, so it goes in even on a full day
       continue;
     }
     const picked = {};
-    while (cap[d] >= 40) {
+    while (cap[d] >= Math.min(blk, 30)) {
       const opts = [
         ...exams.filter(a => a.date > addDays(d, 1)).map(a => ({ a, w: 1 / (diffDays(d, a.date) + 2) })),
         ...sacs.filter(a => a.date > d && diffDays(d, a.date) <= 5 && D.sessions.filter(s => s.assessmentId === a.id && !s.examPlan).length < 2).map(a => ({ a, w: 1.4 / (diffDays(d, a.date) + 1), sac: true })),
       ].map(o => ({ ...o, w: o.w * Math.pow(.35, picked[o.a.subjectId] || 0) })).sort((x, y) => y.w - x.w);
       if (!opts.length) break;
-      const o = opts[0], len = Math.min(60, cap[d]);
+      const o = opts[0], len = Math.min(blk, cap[d]);
       picked[o.a.subjectId] = (picked[o.a.subjectId] || 0) + 1;
       add(d, { a: o.a, duration: len, topic: o.sac ? `Prep for ${o.a.title}` : `Revise: ${nextTopic(o.a)}` });
     }
   }
-  // give each day's blocks times, papers first while you're fresh, with 10 minute breaks
+  // give each day's blocks times, papers first while you're fresh, with your breaks between
   const created = [];
   for (const d of Object.keys(plan).sort()) {
-    const startT = examDays.has(d) ? '17:00' : weekend(d) ? P.weekendStart : P.schoolStart;
+    const startT = examDays.has(d) && hmToMin(dayPlan(d).start) < 17 * 60 ? '17:00' : dayPlan(d).start;
     // start after anything already planned that day
     const busy = [...D.sessions, ...D.workouts].filter(s => s.date === d && s.time && !s.examPlan).map(s => hmToMin(s.time) + (+s.duration || 30));
-    let m = Math.max(hmToMin(startT), ...busy.filter(x => x > hmToMin(startT) - 60).map(x => x + 10));
+    let m = Math.max(hmToMin(startT), ...busy.filter(x => x > hmToMin(startT) - 60).map(x => x + gap));
     for (const b of plan[d].sort((x, y) => (y.paper || y.paperPart ? 1 : 0) - (x.paper || x.paperPart ? 1 : 0))) {
       created.push({ id: uid() + created.length, subjectId: b.a.subjectId, assessmentId: b.a.id, date: d, time: `${String(Math.floor(m / 60) % 24).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`, duration: b.duration, topic: b.topic, notes: '', done: false, remind: D.settings.remind.session, examPlan: true, ...(b.paper ? { paper: true } : {}) });
-      m += b.duration + 10;
+      m += b.duration + gap;
     }
   }
   if (!created.length) { D.sessions.push(...removed); return null; }
   D.sessions.push(...created);
+  // blocks you'd already put on a day you can't study move to days with room
+  for (const d of Object.keys(P.off || {})) if (d >= start && dayPlan(d).h * 60 < D.sessions.filter(s => s.date === d && !s.done).reduce((a, s) => a + (+s.duration || 30), 0)) reflowDay(d);
   return { blocks: created.length, papers: created.filter(s => s.paper).length, swapped: removed.filter(s => !s.examPlan).length };
 }
 
@@ -246,9 +310,9 @@ function examHub() {
       <button class="btn small" data-act="logPaper" data-id="${a.id}">Log a paper</button></div>`;
   }).join('');
   return `<div class="card examhub"><div class="card-head"><h2>🎓 Exam lead-up</h2><span class="muted small-text">${exams.length} exam${exams.length === 1 ? '' : 's'} · the first is ${relDays(diffDays(t, exams[0].date))}</span>
-      <span style="flex:1"></span><button class="btn small" data-act="logPaper">📝 Log a past paper</button><button class="btn small primary" data-act="examPlan">${hasPlan ? 'Redo exam extras' : '✨ Add exam prep to my plan'}</button></div>
+      <span style="flex:1"></span><button class="btn small" data-act="logPaper">📝 Log a past paper</button><button class="btn small primary" data-act="examPlan">${hasPlan ? '🔁 Rebuild my timetable' : '✨ Build my exam timetable'}</button></div>
     <div class="examcards">${cards}</div>
-    ${hasPlan ? '' : `<p class="muted small-text" style="margin:10px 0 0">Add exam prep and it slots timed past papers into your current plan wherever there's room, preps any SAC that has nothing planned, and keeps the day before each exam light. You can study ${P.hoursSchool}h on school days and ${P.hoursWeekend}h on weekends (change it when you build).</p>`}</div>`;
+    ${hasPlan ? '' : `<p class="muted small-text" style="margin:10px 0 0">Add exam prep and it slots timed past papers into your current plan wherever there's room, preps any SAC that has nothing planned, and keeps the day before each exam light. You pick the subjects, block and break lengths, and your hours for each day when you build.</p>`}</div>`;
 }
 // a card on Today the day before an exam
 function examEveCard() {
@@ -323,22 +387,24 @@ function examBoard() {
         <span style="flex:1"></span><button class="iconbtn" data-act="edit" data-kind="session" data-id="${s.id}" title="Edit">✎</button><button class="iconbtn" data-xa="del" data-id="${s.id}" title="Delete">✕</button></div></div>`; };
   const cols = days.map(d => {
     const list = D.sessions.filter(s => s.date === d).sort((a, b) => (a.time || '99').localeCompare(b.time || '99'));
-    const mins = list.reduce((a, s) => a + (+s.duration || 0), 0), cap = Math.round((weekend(d) ? P.hoursWeekend : P.hoursSchool) * 60), ex = examOn(d), dt = parseYmd(d);
-    return `<div class="xcol ${d === t ? 'today' : ''} ${weekend(d) ? 'wkend' : ''} ${ex.length ? 'examday' : ''}" data-xday="${d}">
-      <div class="xcol-head"><b>${DOW[dt.getDay()]} ${dt.getDate()}</b><span class="${mins > cap ? 'red-text' : 'muted'}">${fmtMins(mins) || '0m'} / ${fmtMins(cap)}</span></div>
+    const mins = list.reduce((a, s) => a + (+s.duration || 0), 0), dp = dayPlan(d), cap = dayCapMins(d), ex = examOn(d), dt = parseYmd(d);
+    return `<div class="xcol ${d === t ? 'today' : ''} ${weekend(d) ? 'wkend' : ''} ${ex.length ? 'examday' : ''} ${dp.off ? 'dayoff' : ''}" data-xday="${d}">
+      <div class="xcol-head"><b>${DOW[dt.getDay()]} ${dt.getDate()}</b><span class="${mins > cap ? 'red-text' : 'muted'}">${dp.off ? "Can't study" : `${fmtMins(mins) || '0m'} / ${fmtMins(cap)}`}</span>
+        <button class="iconbtn xdaybtn ${dp.custom ? 'on' : ''}" data-xdayset="${d}" title="${dp.custom ? `Changed${dp.note ? ': ' + esc(dp.note) : ''}. Click to edit` : "Can't study this day, or have less time?"}">${dp.off ? '🚫' : dp.custom ? '✎' : '⋯'}</button></div>
+      ${dp.note ? `<div class="xnote">${esc(dp.note)}</div>` : ''}
       ${ex.map(a => `<div class="xexam" style="--c:${subj(a.subjectId).color}">🎓 ${esc(subj(a.subjectId).name)}: ${esc(a.title)}${a.time ? ' · ' + fmtTime(a.time) : ''}</div>`).join('')}
       ${list.map(block).join('')}
       <button class="xadd" data-act="new" data-kind="session" data-date="${d}">＋</button></div>`;
   }).join('');
   return `<div class="study2">${pageHead('Study', 'Your exam timetable', `<button class="btn" data-act="examPlan">Rebuild…</button><button class="btn primary" data-act="focusNew">▶ Start studying</button>`)}${studyTabs()}
-    <p class="muted small-text">Drag a block to another day to move it. Use − and ＋ to change how long it is. The numbers at the top of each day are planned time against your daily hours (${P.hoursSchool}h school days, ${P.hoursWeekend}h weekends).</p>
+    <p class="muted small-text">Drag a block to another day to move it. Use − and ＋ to change how long it is. The numbers at the top of each day are planned time against that day's hours. Got something on? Press ⋯ on a day to mark it as a day you can't study (or have less time) and its blocks move to other days.</p>
     <div class="xboard">${cols}</div></div>`;
 }
 // re-time a day's blocks one after another, keeping the earliest start
 function retimeDay(d) {
   const list = D.sessions.filter(s => s.date === d && s.time).sort((a, b) => a.time.localeCompare(b.time)); if (!list.length) return;
-  let m = hmToMin(list[0].time);
-  for (const s of list) { s.time = `${String(Math.floor(m / 60) % 24).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`; m += (+s.duration || 30) + 10; }
+  let m = hmToMin(list[0].time); const gap = examPrep().breakMins ?? 10;
+  for (const s of list) { s.time = `${String(Math.floor(m / 60) % 24).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`; m += (+s.duration || 30) + gap; }
 }
 document.addEventListener('click', e => {
   const b = e.target.closest('[data-xa]'); if (!b) return;
@@ -353,9 +419,58 @@ document.addEventListener('drop', e => {
   const c = e.target.closest?.('[data-xday]'), id = e.dataTransfer.getData('text/xb'); if (!c || !id) return;
   e.preventDefault(); c.classList.remove('over');
   const s = D.sessions.find(x => x.id === id); if (!s || s.date === c.dataset.xday) return;
-  const from = s.date, d = c.dataset.xday, P = examPrep(), wk = [0, 6].includes(parseYmd(d).getDay());
-  const ends = D.sessions.filter(x => x.date === d && x.time && x !== s).map(x => hmToMin(x.time) + (+x.duration || 30) + 10);
-  const m = Math.max(hmToMin(wk ? P.weekendStart : P.schoolStart), ...ends);
+  const from = s.date, d = c.dataset.xday, gap = examPrep().breakMins ?? 10;
+  const ends = D.sessions.filter(x => x.date === d && x.time && x !== s).map(x => hmToMin(x.time) + (+x.duration || 30) + gap);
+  const m = Math.max(hmToMin(dayPlan(d).start), ...ends);
   s.date = d; s.time = `${String(Math.floor(m / 60) % 24).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`; retimeDay(from);
   save(); render();
 });
+
+// ---------- 2.28: a day you can't study (or have less time) ----------
+// Marking a day moves the blocks that no longer fit to the nearest days that
+// have room, before that block's exam where possible.
+function editPlanDay(d) {
+  const P = examPrep(), cur = (P.off || {})[d], wk = planWeek(P)[parseYmd(d).getDay()];
+  showForm({
+    title: `📅 ${fullDate(d)}`,
+    saveLabel: 'Save',
+    fields: [{ key: 'what', label: 'This day', type: 'select', value: cur ? (+cur.h ? 'less' : 'off') : 'normal', options: [['normal', `Normal (${wk.h}h from ${fmtTime(wk.start)})`], ['off', "I can't study this day"], ['less', 'I have less time (or a different start)']] },
+      { type: 'row', fields: [{ key: 'h', label: 'Hours I can study', type: 'number', min: 0, max: 14, step: .5, value: cur ? cur.h : Math.max(0, wk.h - 1) }, { key: 'start', label: 'Starting at', type: 'time', value: (cur && cur.start) || wk.start }] },
+      { key: 'note', label: "What's on (optional)", value: cur?.note || '', placeholder: 'e.g. Soccer final, family dinner' }],
+    onSave: v => {
+      const before = D.sessions.map(s => ({ ...s })), offBefore = { ...P.off };
+      if (v.what === 'normal') delete P.off[d];
+      else P.off[d] = { h: v.what === 'off' ? 0 : Math.max(0, +v.h || 0), start: v.what === 'less' ? v.start : '', note: v.note };
+      const r = reflowDay(d);
+      setTimeout(() => undoToast(v.what === 'normal' ? `${fullDate(d)} is back to normal.` : `${fullDate(d)} updated${r.moved ? `: ${r.moved} block${r.moved === 1 ? '' : 's'} moved to other days` : ''}${r.dropped ? `, ${r.dropped} didn't fit anywhere and came off the plan` : ''}.`, () => { D.sessions = before; P.off = offBefore; }), 50);
+    },
+  });
+}
+function reflowDay(d) {
+  const t = today(), gap = examPrep().breakMins ?? 10;
+  const list = D.sessions.filter(s => s.date === d && !s.done).sort((a, b) => (b.paper ? 1 : 0) - (a.paper ? 1 : 0) || (a.time || '99').localeCompare(b.time || '99'));
+  let room = dayCapMins(d), moved = 0, dropped = 0;
+  const keep = [], move = [];
+  for (const s of list) { if ((+s.duration || 30) <= room) { keep.push(s); room -= +s.duration || 30; } else move.push(s); }
+  // keep what still fits, starting from that day's start time
+  let m = hmToMin(dayPlan(d).start);
+  for (const s of keep.sort((a, b) => (a.time || '99').localeCompare(b.time || '99'))) { s.time = `${String(Math.floor(m / 60) % 24).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`; m += (+s.duration || 30) + gap; }
+  const used = x => D.sessions.filter(s => s.date === x && !s.done).reduce((a, s) => a + (+s.duration || 30), 0);
+  for (const s of move) {
+    const ex = s.assessmentId && D.assessments.find(a => a.id === s.assessmentId), until = ex ? addDays(ex.date, s.taper ? 0 : -1) : addDays(d, 21);
+    const near = [];
+    for (let k = 1; k <= 21; k++) { const a = addDays(d, k), b = addDays(d, -k); if (a < until) near.push(a); if (b >= t && b < until) near.push(b); }
+    const to = near.find(x => !dayPlan(x).off && dayCapMins(x) - used(x) >= (+s.duration || 30));
+    if (!to) { D.sessions = D.sessions.filter(x => x !== s); dropped++; continue; }
+    const ends = D.sessions.filter(x => x.date === to && x.time && x !== s).map(x => hmToMin(x.time) + (+x.duration || 30) + gap);
+    const mm = Math.max(hmToMin(dayPlan(to).start), ...ends);
+    s.date = to; s.time = `${String(Math.floor(mm / 60) % 24).padStart(2, '0')}:${String(mm % 60).padStart(2, '0')}`; moved++;
+  }
+  return { moved, dropped };
+}
+document.addEventListener('click', e => {
+  const b = e.target.closest('[data-xdayset]'); if (!b) return;
+  e.preventDefault(); e.stopPropagation(); editPlanDay(b.dataset.xdayset);
+});
+// typing an exam date for a subject ticks it
+document.addEventListener('input', e => { const d = e.target.closest?.('[data-xpd]'); if (d && d.value) { const c = mform.querySelector(`[data-xps="${d.dataset.xpd}"]`); if (c) c.checked = true; } });
