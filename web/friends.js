@@ -84,7 +84,7 @@ function compareFriend(id) {
   }).join('');
   mform.innerHTML = `<h2>You vs ${esc(f.name)}</h2>
     <div class="cmp-head"><div>${safeBadge(me.av, 80)}<b>You</b><span class="cmp-score ${mine > theirs ? 'win' : ''}">${mine}</span></div><div class="cmp-vs">VS</div><div>${safeBadge(f.av, 80)}<b>${esc(f.name)}</b><span class="cmp-score ${theirs > mine ? 'win' : ''}">${theirs}</span></div></div>
-    <div class="cmp">${body}</div>
+    <div class="cmp">${body}</div>${friendBestsHtml(f)}
     <p class="muted small-text">${mine > theirs ? `You're winning ${mine} of ${rows.length} categories. Keep it up!` : mine < theirs ? `${esc(f.name)} leads ${theirs} categories. Time to catch up!` : 'Dead even. Next session decides it.'}${stale ? ' Their weekly numbers are from last week.' : ''}</p>
     <div class="modal-actions"><button type="button" class="btn primary" data-mact="cancel">Close</button></div>`;
   modal.showModal();

@@ -61,12 +61,14 @@ function bodyProfile() {
 function viewTraining() {
   const page = ui.bodyPage || 'profile';
   const tab = (v, l) => `<button class="${page === v ? 'on' : ''}" data-act="bodyPage" data-v="${v}">${l}</button>`;
-  const head = pageHead('💪 Training &amp; Health', 'How you\'re going physically. It all feeds your Arena athlete.', `<button class="btn" data-act="new" data-kind="workout">+ Workout</button><button class="btn primary" data-act="new" data-kind="tevent">+ Event</button>`)
-    + `<div class="seg arenatabs bodytabs">${tab('profile', '📊 Profile')}${tab('plan', '📅 Training')}${tab('health', '🌙 Sleep &amp; health')}${tab('bests', '📈 Bests')}</div>`;
+  const head = pageHead('💪 Training &amp; Health', 'Gym, food, athletics, sleep. It all feeds your Arena athlete.', `<button class="btn" data-act="new" data-kind="workout">+ Workout</button><button class="btn primary" data-act="new" data-kind="tevent">+ Event</button>`)
+    + `<div class="seg arenatabs bodytabs">${tab('profile', '📊 Profile')}${tab('gym', '🏋️ Gym')}${tab('food', '🍎 Food')}${tab('bests', '🏅 Athletics')}${tab('plan', '📅 Training')}${tab('health', '🌙 Sleep &amp; health')}</div>`;
   let body;
   if (page === 'plan') body = trainingPlan();
   else if (page === 'health') body = viewHealth(true);
-  else if (page === 'bests') body = arenaBests();
+  else if (page === 'bests') body = athleticsPage();
+  else if (page === 'gym') body = gymPage();
+  else if (page === 'food') body = foodPage();
   else body = bodyProfile();
   return head + body;
 }

@@ -13,33 +13,53 @@ const statInfo = id => STATS.find(s => s[0] === id);
 const INTENSITY = { Easy: .8, Moderate: 1, Hard: 1.3 };
 const MOVES = { spd: ['💨', 'Burst of speed'], pow: ['💥', 'Leap and bump'], str: ['🛡️', 'Shoulder charge'], end: ['🫁', 'Outlast'], agi: ['🌀', 'Sidestep'] };
 
+// cat groups the Athletics page; std is [starting out, elite] for the rank badge
 const TESTS = [
-  { id: 's40', name: '40m sprint', unit: 's', lower: true, stat: 'spd' },
-  { id: 's100', name: '100m sprint', unit: 's', lower: true, stat: 'spd' },
-  { id: 'agil', name: '5-10-5 agility', unit: 's', lower: true, stat: 'agi' },
-  { id: 'vj', name: 'Vertical jump', unit: 'cm', stat: 'pow' },
-  { id: 'bj', name: 'Standing broad jump', unit: 'cm', stat: 'pow' },
-  { id: 'beep', name: 'Beep test', unit: 'level', stat: 'end' },
-  { id: 'tt2k', name: '2km time trial', unit: 'm:ss', lower: true, stat: 'end', time: true },
-  { id: 'sq', name: 'Back squat (best set)', unit: 'kg', stat: 'str' },
-  { id: 'bench', name: 'Bench press (best set)', unit: 'kg', stat: 'str' },
-  { id: 'pull', name: 'Pull-ups (max reps)', unit: 'reps', stat: 'str' },
-  { id: 's60', name: '60m sprint', unit: 's', lower: true, stat: 'spd' },
-  { id: 's200', name: '200m', unit: 's', lower: true, stat: 'spd' },
-  { id: 's400', name: '400m', unit: 's', lower: true, stat: 'spd' },
-  { id: 'tt1k', name: '1km time trial', unit: 'm:ss', lower: true, stat: 'end', time: true },
-  { id: 'tt3k', name: '3km time trial', unit: 'm:ss', lower: true, stat: 'end', time: true },
-  { id: 'tt5k', name: '5km run', unit: 'm:ss', lower: true, stat: 'end', time: true },
-  { id: 'tt10k', name: '10km run', unit: 'm:ss', lower: true, stat: 'end', time: true },
-  { id: 'yoyo', name: 'Yo-yo test', unit: 'level', stat: 'end' },
-  { id: 'illi', name: 'Illinois agility', unit: 's', lower: true, stat: 'agi' },
-  { id: 'tri', name: 'Triple jump (standing)', unit: 'm', stat: 'pow' },
-  { id: 'mb', name: 'Med ball throw', unit: 'm', stat: 'pow' },
-  { id: 'dl', name: 'Deadlift (best set)', unit: 'kg', stat: 'str' },
-  { id: 'push', name: 'Push-ups (max reps)', unit: 'reps', stat: 'str' },
-  { id: 'plank', name: 'Plank hold', unit: 'm:ss', stat: 'str', time: true },
-  { id: 'sit', name: 'Sit-and-reach', unit: 'cm', stat: 'agi' },
-  { id: 'swim50', name: '50m swim', unit: 's', lower: true, stat: 'end' },
+  { id: 's40', name: '40m sprint', unit: 's', lower: true, stat: 'spd', cat: 'sprint', std: [6.6, 4.6] },
+  { id: 's60', name: '60m sprint', unit: 's', lower: true, stat: 'spd', cat: 'sprint', std: [9.2, 6.7] },
+  { id: 's100', name: '100m', unit: 's', lower: true, stat: 'spd', cat: 'sprint', std: [15.5, 10.6] },
+  { id: 's150', name: '150m', unit: 's', lower: true, stat: 'spd', cat: 'sprint', std: [23, 15.8] },
+  { id: 's200', name: '200m', unit: 's', lower: true, stat: 'spd', cat: 'sprint', std: [32, 21.5] },
+  { id: 's400', name: '400m', unit: 's', lower: true, stat: 'spd', cat: 'sprint', std: [78, 48] },
+  { id: 'h100', name: '100m / 110m hurdles', unit: 's', lower: true, stat: 'agi', cat: 'hurdle', std: [22, 14] },
+  { id: 'h400', name: '400m hurdles', unit: 's', lower: true, stat: 'end', cat: 'hurdle', std: [90, 53] },
+  { id: 's800', name: '800m', unit: 'm:ss', lower: true, stat: 'end', time: true, cat: 'dist', std: [195, 112] },
+  { id: 'tt1k', name: '1km time trial', unit: 'm:ss', lower: true, stat: 'end', time: true, cat: 'dist', std: [290, 150] },
+  { id: 's1500', name: '1500m', unit: 'm:ss', lower: true, stat: 'end', time: true, cat: 'dist', std: [410, 230] },
+  { id: 'mile', name: 'Mile', unit: 'm:ss', lower: true, stat: 'end', time: true, cat: 'dist', std: [440, 250] },
+  { id: 'tt2k', name: '2km time trial', unit: 'm:ss', lower: true, stat: 'end', time: true, cat: 'dist', std: [610, 335] },
+  { id: 'tt3k', name: '3000m', unit: 'm:ss', lower: true, stat: 'end', time: true, cat: 'dist', std: [930, 510] },
+  { id: 'steep', name: '2000m steeplechase', unit: 'm:ss', lower: true, stat: 'end', time: true, cat: 'dist', std: [720, 370] },
+  { id: 'tt5k', name: '5km', unit: 'm:ss', lower: true, stat: 'end', time: true, cat: 'dist', std: [1700, 900] },
+  { id: 'tt10k', name: '10km', unit: 'm:ss', lower: true, stat: 'end', time: true, cat: 'dist', std: [3600, 1860] },
+  { id: 'hj', name: 'High jump', unit: 'm', stat: 'pow', cat: 'jump', std: [1.2, 2.1] },
+  { id: 'lj', name: 'Long jump', unit: 'm', stat: 'pow', cat: 'jump', std: [3.6, 7.3] },
+  { id: 'tj', name: 'Triple jump', unit: 'm', stat: 'pow', cat: 'jump', std: [7.5, 15] },
+  { id: 'pv', name: 'Pole vault', unit: 'm', stat: 'pow', cat: 'jump', std: [1.8, 5.2] },
+  { id: 'vj', name: 'Vertical jump', unit: 'cm', stat: 'pow', cat: 'jump', std: [30, 80] },
+  { id: 'bj', name: 'Standing broad jump', unit: 'cm', stat: 'pow', cat: 'jump', std: [160, 310] },
+  { id: 'tri', name: 'Standing triple jump', unit: 'm', stat: 'pow', cat: 'jump', std: [5, 9.5] },
+  { id: 'shot', name: 'Shot put', unit: 'm', stat: 'str', cat: 'throw', std: [6, 17] },
+  { id: 'disc', name: 'Discus', unit: 'm', stat: 'str', cat: 'throw', std: [15, 55] },
+  { id: 'jav', name: 'Javelin', unit: 'm', stat: 'pow', cat: 'throw', std: [18, 65] },
+  { id: 'ham', name: 'Hammer', unit: 'm', stat: 'str', cat: 'throw', std: [15, 60] },
+  { id: 'mb', name: 'Med ball throw', unit: 'm', stat: 'pow', cat: 'throw', std: [4, 12] },
+  { id: 'bench', name: 'Bench press 1RM', unit: 'kg', stat: 'str', cat: 'rm', bw: [0.5, 1.75] },
+  { id: 'sq', name: 'Back squat 1RM', unit: 'kg', stat: 'str', cat: 'rm', bw: [0.75, 2.5] },
+  { id: 'dl', name: 'Deadlift 1RM', unit: 'kg', stat: 'str', cat: 'rm', bw: [1, 3] },
+  { id: 'ohp', name: 'Overhead press 1RM', unit: 'kg', stat: 'str', cat: 'rm', bw: [0.35, 1.1] },
+  { id: 'clean', name: 'Power clean 1RM', unit: 'kg', stat: 'pow', cat: 'rm', bw: [0.5, 1.5] },
+  { id: 'fsq', name: 'Front squat 1RM', unit: 'kg', stat: 'str', cat: 'rm', bw: [0.6, 2] },
+  { id: 'hipt', name: 'Hip thrust 1RM', unit: 'kg', stat: 'pow', cat: 'rm', bw: [0.75, 3] },
+  { id: 'agil', name: '5-10-5 agility', unit: 's', lower: true, stat: 'agi', cat: 'test', std: [6.2, 4.2] },
+  { id: 'illi', name: 'Illinois agility', unit: 's', lower: true, stat: 'agi', cat: 'test', std: [20, 14.5] },
+  { id: 'beep', name: 'Beep test', unit: 'level', stat: 'end', cat: 'test', std: [5, 14] },
+  { id: 'yoyo', name: 'Yo-yo test', unit: 'level', stat: 'end', cat: 'test', std: [13, 21] },
+  { id: 'pull', name: 'Pull-ups (max reps)', unit: 'reps', stat: 'str', cat: 'test', std: [1, 25] },
+  { id: 'push', name: 'Push-ups (max reps)', unit: 'reps', stat: 'str', cat: 'test', std: [10, 70] },
+  { id: 'plank', name: 'Plank hold', unit: 'm:ss', stat: 'str', time: true, cat: 'test', std: [30, 300] },
+  { id: 'sit', name: 'Sit-and-reach', unit: 'cm', stat: 'agi', cat: 'test', std: [0, 35] },
+  { id: 'swim50', name: '50m swim', unit: 's', lower: true, stat: 'end', cat: 'test', std: [60, 26] },
 ];
 const GEAR = [
   { id: 'b_run', slot: 'boots', icon: '👟', name: 'Training runners', bonus: { spd: 2 }, price: 80 },
@@ -277,7 +297,7 @@ function spark(vals, lower) {
   const pts = vals.map((v, i) => `${(i / (vals.length - 1) * w).toFixed(1)},${(max === min ? h / 2 : lower ? (v - min) / (max - min) * h : h - (v - min) / (max - min) * h).toFixed(1)}`).join(' ');
   return `<svg class="spark" viewBox="-3 -3 ${w + 6} ${h + 6}" width="${w}" height="${h}"><polyline points="${pts}" fill="none" stroke="var(--accent)" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/></svg>`;
 }
-const fmtTest = (T, v) => v == null ? '–' : T.time ? `${Math.floor(v / 60)}:${String(Math.round(v % 60)).padStart(2, '0')}` : `${+(+v).toFixed(2)} ${T.unit}`;
+const fmtTest = (T, v) => v == null ? '–' : T.time ? `${Math.floor(v / 60)}:${(v % 60 < 10 ? '0' : '') + +(v % 60).toFixed(v % 1 ? 1 : 0)}` : `${+(+v).toFixed(2)} ${T.unit}`;
 function parseTest(T, s) {
   s = String(s || '').trim(); if (!s) return null;
   if (T.time) { const m = s.match(/^(\d+):(\d{1,2}(?:\.\d+)?)$/); return m ? +m[1] * 60 + +m[2] : (isFinite(+s) ? +s * 60 : null); }
