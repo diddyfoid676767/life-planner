@@ -55,6 +55,15 @@ const SPECIES = [
   sp('drakelet', 'Drakelet', '🐉', ['legend'], [45, 64, 45, 50, 50], { evo: { to: 'wyrmlord', lv: 45 }, rar: 'legend', reg: 4, plan: 'serpent', col: ['#5f3dc4', '#ffd43b', '#e5dbff'], f: { horns: 1, wings: 1 }, dex: 'Hatches once in a hundred years.' }),
   sp('wyrmlord', 'Wyrmlord', '🐲', ['legend', 'air'], [95, 134, 95, 85, 100], { stage: 2, plan: 'serpent', col: ['#3b2a6b', '#ff922b', '#e5dbff'], f: { horns: 1, wings: 1, big: 1 }, dex: 'Its roar starts avalanches.' }),
   sp('phoenixa', 'Phoenixa', '🔥', ['fire', 'air'], [90, 100, 90, 90, 125], { rar: 'legend', plan: 'bird', col: ['#ff6b00', '#ffd43b', '#fff3bf'], f: { crest: 1, flame: 1 }, dex: 'Rises from the ashes of every loss.' }),
+  // 2.27: eight more to find
+  sp('mudpup', 'Mudpup', '🐶', ['earth'], [50, 55, 50, 45, 30], { evo: { to: 'quakehound', lv: 24 }, rar: 'common', reg: 0, plan: 'quad', col: ['#a47148', '#6b4226', '#f4e3cf'], f: { ears: 'round', tail: 'long' }, dex: 'Digs holes in the long jump pit.' }),
+  sp('quakehound', 'Quakehound', '🐕', ['earth', 'combat'], [80, 95, 80, 70, 45], { stage: 2, plan: 'quad', col: ['#7a4f2b', '#ffa94d', '#f4e3cf'], f: { ears: 'pointy', tail: 'long', mane: 1 }, dex: 'Each step registers on a seismograph.' }),
+  sp('sparkfly', 'Sparkfly', '🪲', ['spark', 'swarm'], [40, 50, 40, 75, 55], { evo: { to: 'voltbeetle', lv: 25 }, rar: 'common', reg: 1, plan: 'bug', col: ['#94d82d', '#fab005', '#f4fce3'], dex: 'Lights up the track for night training.' }),
+  sp('voltbeetle', 'Voltbeetle', '🪲', ['spark', 'swarm'], [70, 85, 85, 95, 75], { stage: 2, plan: 'bug', col: ['#5c940d', '#ffd43b', '#f4fce3'], f: { crown: 1 }, dex: 'Its shell stores enough power for a stadium.' }),
+  sp('reefray', 'Reefray', '🐟', ['water', 'mind'], [55, 40, 55, 70, 70], { evo: { to: 'abyssray', lv: 32 }, rar: 'common', reg: 2, plan: 'serpent', col: ['#22b8cf', '#e64980', '#e3fafc'], f: { fin: 1 }, dex: 'Glides past swimmers without a ripple.' }),
+  sp('abyssray', 'Abyssray', '🐋', ['water', 'spirit'], [85, 70, 80, 95, 105], { stage: 2, plan: 'serpent', col: ['#0b7285', '#cc5de8', '#e3fafc'], f: { fin: 1, glow: 1 }, dex: 'Lives where the light never reaches.' }),
+  sp('cinderling', 'Cinderling', '🦎', ['fire', 'stone'], [55, 70, 65, 55, 50], { evo: { to: 'magmadon', lv: 38 }, rar: 'rare', reg: 3, plan: 'frog', col: ['#e8590c', '#495057', '#fff4e6'], dex: 'Basks on the hot asphalt of the car park.' }),
+  sp('magmadon', 'Magmadon', '🦖', ['fire', 'stone'], [95, 120, 105, 65, 70], { stage: 2, plan: 'golem', col: ['#c92a2a', '#343a40', '#ffd8a8'], f: { horns: 1, runes: 1 }, dex: 'The ground melts where it stomps.' }),
 ];
 const specOf = id => SPECIES.find(s => s.id === id);
 const STARTERS = ['emberpup', 'splashkit', 'sproutle'];
@@ -204,7 +213,9 @@ const TRAINER_TEAMS = {
   wall: ['golemite', 'thornshell'], cheetah: ['shadecat', 'quokkazap'], roo: ['rockroo', 'gustling'], croc: ['toxifrog', 'torrentter'], storm: ['gustling', 'voltquokka', 'torrentter', 'stormhawk'],
   ox: ['golemite', 'boulderoo'], champ: ['blazehound', 'voltquokka'], ninja: ['shadecat', 'phantomcat'], marathon: ['thornshell', 'venomtoad', 'hootmind'], titan: ['golemite', 'grovetitan', 'boulderoo', 'monolith'],
   bolt: ['stormhawk', 'voltquokka', 'quokkazap'], mountain: ['blizzkoala', 'monolith'], phantom: ['glimmo', 'phantomcat', 'venomtoad'], goat: ['tidalord', 'grovetitan', 'lumidra', 'infernowolf'],
-  sherpa: ['yetling', 'blizzkoala', 'golemite'], avalanche: ['frostkoala', 'stormhawk', 'yetling'], eaglepk: ['oracowl', 'stormhawk', 'phoenixa'], yeti: ['blizzkoala', 'phantomcat', 'wyrmlord', 'yetiking'],
+  sherpa: ['yetling', 'blizzkoala', 'golemite'],
+  digger: ['mudpup', 'pebblit'], captain: ['gustling', 'mudpup', 'buzzlet'], surfer: ['reefray', 'toxifrog'], glow: ['sparkfly', 'quokkazap', 'toxifrog'], keeper: ['quakehound', 'golemite', 'reefray'], coxswain: ['abyssray', 'voltbeetle', 'stormhawk'],
+  magma: ['cinderling', 'blizzkoala', 'phantomcat'], ace: ['voltbeetle', 'oracowl', 'magmadon'], ghostrun: ['abyssray', 'phantomcat', 'yetling'], dragon: ['magmadon', 'wyrmlord', 'yetiking'], avalanche: ['frostkoala', 'stormhawk', 'yetling'], eaglepk: ['oracowl', 'stormhawk', 'phoenixa'], yeti: ['blizzkoala', 'phantomcat', 'wyrmlord', 'yetiking'],
 };
 const LEAGUE_LV = [6, 16, 28, 40, 52];
 function trainerLevelOf(e) {

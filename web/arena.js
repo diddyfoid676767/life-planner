@@ -96,24 +96,34 @@ const ENEMIES = [
   { id: 'turtle', league: 'local', icon: '🐢', name: 'Turtle Tom', r: 40, bias: { end: 8, spd: -10 }, line: 'Slow, but never stops.' },
   { id: 'sprinter', league: 'local', icon: '🏃', name: 'Club Sprinter', r: 46, bias: { spd: 10, end: -8 }, line: 'Fast off the blocks, fades late.' },
   { id: 'gymbro', league: 'local', icon: '🏋️', name: 'Gym Bro Brad', r: 51, bias: { str: 12, agi: -8, end: -4 }, line: 'Never skips leg day. Or arm day. Or any day.' },
+  { id: 'digger', league: 'local', icon: '⛏️', name: 'Long Jump Lou', r: 53, bias: { pow: 10, end: -6 }, line: 'Lands in the pit, digs for treasure.' },
+  { id: 'captain', league: 'local', icon: '🧢', name: 'Captain Kez', r: 55, bias: { agi: 6, end: 4 }, line: 'Calls the plays. Usually the right ones.' },
   { id: 'coach', league: 'local', icon: '📣', name: 'Coach Crusher', r: 56, bias: { end: 6, str: 4 }, boss: true, hp: 130, special: 'Extra laps!', line: 'BOSS. Again! And this time like you mean it!' },
   { id: 'wall', league: 'regional', icon: '🧱', name: 'The Wall', r: 60, bias: { str: 10, pow: 4, spd: -10 }, line: 'Full-back. You won\'t get past easily.' },
   { id: 'cheetah', league: 'regional', icon: '🐆', name: 'Cheetah Kid', r: 64, bias: { spd: 12, agi: 6, str: -10 }, line: 'Blink and you\'ll miss them.' },
   { id: 'roo', league: 'regional', icon: '🦘', name: 'Ruckman Roo', r: 68, bias: { pow: 12, str: 4, agi: -8 }, line: 'Jumps over everyone at the bounce.' },
   { id: 'croc', league: 'regional', icon: '🐊', name: 'Croc Rocket', r: 71, bias: { pow: 8, str: 8, end: -8 }, line: 'Lies still, then explodes.' },
+  { id: 'surfer', league: 'regional', icon: '🏄', name: 'Surf Lifesaver Sky', r: 72, bias: { end: 10, str: 4, agi: -6 }, line: 'Swims out the back before breakfast.' },
+  { id: 'glow', league: 'regional', icon: '🔦', name: 'Night Runner Nova', r: 73, bias: { spd: 8, end: 4, str: -6 }, line: 'Trains under the floodlights.' },
   { id: 'storm', league: 'regional', icon: '🌪️', name: 'Storm Rider', r: 74, bias: { agi: 10, spd: 6 }, boss: true, hp: 140, special: 'Twister', line: 'BOSS. Spins defenders into the turf.' },
   { id: 'ox', league: 'state', icon: '🐂', name: 'Iron Ox', r: 77, bias: { str: 12, end: 6, spd: -8 }, line: 'Built like a tractor.' },
   { id: 'champ', league: 'state', icon: '⚡', name: 'Track Champion', r: 80, bias: { spd: 10, pow: 6, str: -6 }, line: 'State champ. Owns the 100m.' },
   { id: 'ninja', league: 'state', icon: '🥷', name: 'Agility Ninja', r: 83, bias: { agi: 12, spd: 4, str: -8 }, line: 'You never see the sidestep coming.' },
   { id: 'marathon', league: 'state', icon: '🦌', name: 'Marathon Mo', r: 85, bias: { end: 14, pow: -8 }, line: 'Will still be running when you\'re in bed.' },
+  { id: 'keeper', league: 'state', icon: '🧤', name: 'Keeper Kai', r: 86, bias: { agi: 8, str: 6, end: -6 }, line: 'Nothing gets past those gloves.' },
+  { id: 'coxswain', league: 'state', icon: '🚣', name: 'Rowing Rhi', r: 87, bias: { end: 10, str: 6, spd: -8 }, line: 'Two thousand metres, every morning.' },
   { id: 'titan', league: 'state', icon: '🗿', name: 'The Titan', r: 88, bias: { str: 10, pow: 6, agi: -6 }, boss: true, hp: 160, special: 'Earthquake slam', line: 'BOSS. The ground shakes when it walks.' },
   { id: 'bolt', league: 'national', icon: '🌩️', name: 'Lightning Bolt', r: 90, bias: { spd: 9, pow: 5, end: -6 }, line: 'Already finished. You just haven\'t noticed.' },
   { id: 'mountain', league: 'national', icon: '🏔️', name: 'The Mountain', r: 92, bias: { str: 7, end: 5, agi: -6 }, line: 'You don\'t tackle it. You climb it.' },
   { id: 'phantom', league: 'national', icon: '👻', name: 'The Phantom', r: 94, bias: { agi: 6, spd: 4, str: -4 }, line: 'Here. Gone. Behind you.' },
+  { id: 'magma', league: 'national', icon: '🌋', name: 'Magma Max', r: 95, bias: { pow: 8, str: 6, agi: -8 }, line: 'Hot-headed. Literally.' },
+  { id: 'ace', league: 'national', icon: '🎾', name: 'Ace Arlo', r: 96, bias: { agi: 8, spd: 4, end: -4 }, line: 'Serves at 200 km/h.' },
   { id: 'goat', league: 'national', icon: '🐐', name: 'The GOAT', r: 97, bias: { agi: 2, end: 2 }, boss: true, hp: 180, special: 'Greatest of all time', line: 'FINAL BOSS. Good at everything.' },
   { id: 'sherpa', league: 'summit', icon: '🧗', name: 'Sherpa Sam', r: 96, bias: { end: 8, str: 4, spd: -6 }, line: 'Climbs Everest for a warm-up.' },
   { id: 'avalanche', league: 'summit', icon: '🏂', name: 'Avalanche Ash', r: 97, bias: { spd: 6, agi: 6, str: -6 }, line: 'Comes down the mountain faster than the snow.' },
   { id: 'eaglepk', league: 'summit', icon: '🦅', name: 'Peak Eagle', r: 98, bias: { pow: 6, agi: 4, end: -6 }, line: 'Strikes from above.' },
+  { id: 'ghostrun', league: 'summit', icon: '🌫️', name: 'Whiteout Wren', r: 98, bias: { spd: 6, agi: 6, str: -4 }, line: 'You hear the footsteps. You never see them.' },
+  { id: 'dragon', league: 'summit', icon: '🐲', name: 'Dragon Rider Drew', r: 99, bias: { pow: 6, str: 6, agi: -4 }, line: 'Flew up here. Didn\'t climb.' },
   { id: 'yeti', league: 'summit', icon: '🦍', name: 'The Yeti', r: 99, bias: { str: 4, end: 4 }, boss: true, hp: 200, special: 'Avalanche', line: 'SECRET BOSS. Nobody has ever got a photo of it.' },
 ];
 const enemyStats = e => Object.fromEntries(STAT_IDS.map(k => [k, Math.max(10, Math.min(99, e.r + (e.bias[k] || 0)))]));
@@ -239,7 +249,8 @@ function claimQuest(key) {
 const battlesToday = () => (D.arena.battles || []).filter(b => ymd(new Date(b.at)) === today()).length; // local day, not UTC
 const tokensLeft = () => Math.max(0, 2 + Math.min(3, doneWorkouts().filter(w => w.date === today()).length) + ((D.arena.tickets || {})[today()] || 0) - battlesToday());
 const beaten = id => (D.arena.battles || []).some(b => b.e === id && b.win);
-const unlockedUpTo = () => { let i = 0; while (i < ENEMIES.length - 1 && beaten(ENEMIES[i].id)) i++; return i; };
+// rivals added in an update don't lock arenas you've already got past
+const unlockedUpTo = () => { let i = 0; while (i < ENEMIES.length - 1 && beaten(ENEMIES[i].id)) i++; let last = -1; ENEMIES.forEach((e, k) => { if (beaten(e.id)) last = k; }); return Math.max(i, Math.min(ENEMIES.length - 1, last + 1)); };
 const leagueOf = e => LEAGUES.find(l => l.id === e.league);
 let battle = null;
 function battleStats() {

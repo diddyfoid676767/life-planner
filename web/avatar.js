@@ -166,8 +166,9 @@ const LOOK_OPTS = {
   browCut: [['none', 'None'], ['one', 'One slit'], ['two', 'Two slits']],
   sideburns: [['none', 'None'], ['short', 'Short'], ['long', 'Long']],
   lashes: [['none', 'Normal'], ['lashes', 'Long lashes']],
+  height: [['short', 'Shorter'], ['average', 'Average'], ['tall', 'Taller']],
 };
-const LOOK_DEFAULT = { skinC: '', hairC: '', eyeCol: '#6b4423', face: 'round', eyes: 'dots', brows: 'straight', nose: 'small', mouth: 'smile', ears: 'normal', beard: 'none', extras: 'none', glasses: 'none', build: 'regular', earrings: 'none', browCut: 'none', sideburns: 'none', lashes: 'none' };
+const LOOK_DEFAULT = { skinC: '', hairC: '', eyeCol: '#6b4423', face: 'round', eyes: 'dots', brows: 'straight', nose: 'small', mouth: 'smile', ears: 'normal', beard: 'none', extras: 'none', glasses: 'none', build: 'regular', height: 'average', earrings: 'none', browCut: 'none', sideburns: 'none', lashes: 'none' };
 const myLook = () => Object.assign({}, LOOK_DEFAULT, D.arena.look || {});
 function setLook(k, v) { if (!(k in LOOK_DEFAULT)) return; D.arena.look = { ...myLook(), [k]: v }; save(); render(); }
 
@@ -382,6 +383,7 @@ function lookEditor() {
     ${row('face', 'Face shape')}${row('eyes', 'Eyes')}${row('brows', 'Eyebrows')}${row('nose', 'Nose')}${row('mouth', 'Mouth')}${row('ears', 'Ears')}
     ${row('beard', 'Facial hair')}${row('sideburns', 'Sideburns')}${row('extras', 'Details')}${row('lashes', 'Eyelashes')}${row('browCut', 'Eyebrow slit')}${row('earrings', 'Earrings')}${row('glasses', 'Glasses')}
     <div class="lookrow"><span class="lklabel">Build</span><div class="lkopts">${LOOK_OPTS.build.map(([v, n]) => `<button class="lkopt ${L.build === v ? 'on' : ''}" data-act="setLook" data-k="build" data-v="${v}">${n}</button>`).join('')}</div></div>
+    <div class="lookrow"><span class="lklabel">Height</span><div class="lkopts">${LOOK_OPTS.height.map(([v, n]) => `<button class="lkopt ${L.height === v ? 'on' : ''}" data-act="setLook" data-k="height" data-v="${v}">${n}</button>`).join('')}</div></div>
     <p class="muted small-text">Hairstyles are under <b>Hair</b>. Ginger, black, brown and blonde are free there too, or pick any colour above.</p></div>`;
 }
 // head-only crop of the avatar for the creator buttons

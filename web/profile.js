@@ -4,7 +4,7 @@
    clothes, extras, pets, dances). Changes show on the 3D model straight away;
    things you haven't unlocked yet can be tried on before you buy them. */
 
-const PF = { R: null, on: false, key: '', yaw: 0, spin: true, drag: null, dance: null, tick: [] };
+const PF = { R: null, on: false, key: '', yaw: 0, spin: false, drag: null, dance: null, tick: [] };
 
 // ---------- the page ----------
 const PF_CATS = [['look', '🪞 Look like me'], ['hair', '💇 Hair'], ['hairCol', '🎨 Hair colour'], ['face', '😀 Face'], ['hat', '🧢 Headwear'], ['eyes', '🕶️ Eyewear'], ['kit', '👕 Kit'], ['shoes', '👟 Shoes'], ['extra', '✨ Extras'], ['pet', '🐶 Pet'], ['bg', '🌄 Background'], ['dance', '💃 Dance'], ['skin', 'Skin tone']];
@@ -21,8 +21,8 @@ function viewProfile() {
   const user = acct.signedIn ? `@${esc(acct.username)}` : acct.configured && !ONLINE ? '<a href="#" data-pf="login">Log in to show friends</a>' : '';
   const stage = `<div class="pfstage" id="pfStage" style="background:${BG_CSS[spec.bg] || 'radial-gradient(ellipse at 50% 30%,var(--panel),var(--panel2))'}">
       <div class="pf3d" id="pf3d"></div><div class="pf2d">${avatarFull(spec, { size: 300, cls: 'idle' })}${petHtml(spec.pet, 60)}</div>
-      <div class="pfstage-btns"><button class="btn small" data-pf="dance" title="Play your victory dance">💃 Dance</button><button class="btn small ${PF.spin ? 'on' : ''}" data-pf="spin" title="Turn on or off the slow spin">🔄</button></div>
-      ${tryC ? `<div class="pftry"><span>Trying on <b>${esc(tryC.name)}</b></span>${pfBuyBtn(tryC)}<button class="btn small" data-pf="untry">Take off</button></div>` : '<div class="pfhint">Drag to spin</div>'}</div>`;
+      <div class="pfstage-btns"><button class="btn small" data-pf="dance" title="Play your victory dance">💃 Dance</button><button class="btn small" data-pf="turnL" title="Turn left">⟲</button><button class="btn small" data-pf="turnR" title="Turn right">⟳</button><button class="btn small ${PF.spin ? 'on' : ''}" data-pf="spin" title="Spin on its own">🔄</button></div>
+      ${tryC ? `<div class="pftry"><span>Trying on <b>${esc(tryC.name)}</b></span>${pfBuyBtn(tryC)}<button class="btn small" data-pf="untry">Take off</button></div>` : '<div class="pfhint">Drag to turn your athlete</div>'}</div>`;
   return `${pageHead('👤 Profile', 'Your avatar, your badges and your number')}
     <div class="pfwrap"><div class="stack">
       <div class="card pfcard">${stage}
@@ -75,6 +75,7 @@ async function pfAction(el) {
   else if (a === 'untry') { ui.pfTry = null; render(); }
   else if (a === 'dance') pfDance();
   else if (a === 'spin') { PF.spin = !PF.spin; el.classList.toggle('on', PF.spin); }
+  else if (a === 'turnL' || a === 'turnR') { PF.vel = 0; PF.yawGoal = (PF.yawGoal ?? PF.yaw) + (a === 'turnL' ? -1 : 1) * Math.PI / 4; }
   else if (a === 'login') { ui.setTab = 'account'; view = 'settings'; render(); }
 }
 document.addEventListener('click', e => { const el = e.target.closest('[data-pf]'); if (!el) return; e.preventDefault(); pfAction(el); });
@@ -100,6 +101,7 @@ function pfLook(spec) {
     skin: Lk.skinC || C(spec.skin).c || '#f1c9a5', hairC: (dyed ? C(spec.hairCol).c : Lk.hairC) || C(spec.hairCol).c || '#5c3a21', hair: HAIR3[spec.hair] || 'short',
     kit, kit2: shadeHex(kit, .7), shorts: '#2b2f3a', shoe: C(spec.shoes).c || (spec.shoes === 'sh_black' ? '#212529' : '#f8f9fa'),
     bulk: { slim: .92, regular: 1, athletic: 1.07, broad: 1.15 }[Lk.build] || 1, angry: spec.face === 'f_fierce' || spec.face === 'f_focus',
+    look: Lk,
     extras: [Lk.beard !== 'none' && 'beard', Lk.glasses !== 'none' && spec.eyes === 'eye_none' && 'glasses'].filter(Boolean),
   };
 }
@@ -267,7 +269,7 @@ function pfMount() {
       const petBlob = fxBlob(.2, .45); scene.add(petBlob);
       Object.assign(PF, { R, scene, cam, ring, aura, spark, pet, petBlob, clock: new THREE.Clock() });
       const cv = R.domElement;
-      cv.addEventListener('pointerdown', e => { PF.drag = { x: e.clientX, yaw: PF.yaw, moved: 0 }; cv.setPointerCapture(e.pointerId); });
+      cv.addEventListener('pointerdown', e => { PF.yawGoal = null; PF.drag = { x: e.clientX, yaw: PF.yaw, moved: 0 }; cv.setPointerCapture(e.pointerId); });
       cv.addEventListener('pointermove', e => { if (!PF.drag) return; const dx = e.clientX - PF.drag.x; PF.drag.moved = Math.max(PF.drag.moved, Math.abs(dx)); PF.yaw = PF.drag.yaw + dx * .012; PF.vel = dx; });
       cv.addEventListener('pointerup', () => { if (PF.drag && PF.drag.moved < 4) pfPop(); PF.drag = null; });
       cv.addEventListener('wheel', e => { e.preventDefault(); PF.zoom = Math.min(1.25, Math.max(.6, (PF.zoom || 1) + e.deltaY * .0008)); }, { passive: false });
@@ -325,6 +327,7 @@ function pfLoop() {
   // spin: slow turn, or the flick you gave it, easing back to the front while dancing
   if (!PF.drag) {
     if (PF.dance) PF.yaw += (Math.round(PF.yaw / (Math.PI * 2)) * Math.PI * 2 - PF.yaw) * Math.min(1, dt * 5);
+    else if (PF.yawGoal != null && !PF.drag) { PF.yaw += (PF.yawGoal - PF.yaw) * Math.min(1, dt * 8); if (Math.abs(PF.yawGoal - PF.yaw) < .002) PF.yawGoal = null; }
     else { PF.vel = (PF.vel || 0) * Math.pow(.05, dt); PF.yaw += (PF.spin ? dt * .35 : 0) + PF.vel * .0025; }
   }
   const b = Math.sin(t * 2.2);

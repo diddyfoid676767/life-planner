@@ -291,7 +291,6 @@ function c3loop() {
   const dt = Math.min(.05, C3V.clock.getDelta()), t = C3V.clock.elapsedTime, { R, scene, cam } = C3V;
   for (const s of C3V.slots) {
     const P = s.P, b = Math.sin(t * 2.6 + s.cv.width);
-    if (!s.drag) s.yaw += dt * .4;
     s.pop = Math.max(0, s.pop - dt * 2); const k = Math.sin((1 - s.pop) * Math.PI) * (s.pop > 0 ? 1 : 0);
     const pose = { ...POSE0, crouch: .03 + b * .02, headY: Math.sin(t * .7) * .25, headX: -k * .3, y: k * .35, shL: POSE0.shL - k * 1.2, shR: POSE0.shR - k * 1.2 };
     P.flap = k > .1;

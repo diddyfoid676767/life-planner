@@ -89,15 +89,34 @@ function fighter3(L) {
   // head
   const head = b3at(new THREE.Group(), 0, .78, 0); spine.add(head); P.head = head;
   head.add(b3at(b3mesh(new THREE.CylinderGeometry(.07, .085, .14, 16), M.skin), 0, -.04, 0));
-  const skull = b3mesh(new THREE.SphereGeometry(.24, 40, 28), M.skin); skull.scale.set(1, 1.08, 1.02); head.add(b3at(skull, 0, .2, 0));
+  // the face follows the avatar editor's look (face shape, eyes, brows, nose, mouth, ears...)
+  const Lk = L.look || {}, fs = { round: [1, 1, 1], oval: [.95, 1.07, 1], square: [1.05, .98, 1.02], long: [.93, 1.15, .98], heart: [1.03, 1.03, 1] }[Lk.face] || [1, 1, 1];
+  head.scale.set(fs[0], fs[1], fs[2]); // hair, hats and glasses sit on the head, so they follow its shape too
+  const sg = new THREE.SphereGeometry(.24, 40, 28);
+  if (Lk.face === 'square' || Lk.face === 'heart') { const p = sg.attributes.position; for (let i = 0; i < p.count; i++) { let x = p.getX(i), y = p.getY(i), z = p.getZ(i);
+    if (Lk.face === 'square') { const m = Math.max(Math.abs(x), Math.abs(y), Math.abs(z)) || 1, k = .28; x += (x / m * .24 - x) * k; y += (y / m * .24 - y) * k * .7; z += (z / m * .24 - z) * k * .5; }
+    else { const t = y / .24; x *= 1 + .1 * t - (t < -.3 ? .12 * (-t - .3) : 0); }
+    p.setXYZ(i, x, y, z); } sg.computeVertexNormals(); }
+  const skull = b3mesh(sg, M.skin); skull.scale.set(1, 1.08, 1.02); head.add(b3at(skull, 0, .2, 0));
+  const eyeS = { round: [1.1, 1.1], almond: [1.15, .8], wide: [1.3, 1.3], sleepy: [1.05, .7], narrow: [1.1, .62] }[Lk.eyes] || [1, 1];
+  const iris = b3mat(Lk.eyeCol || '#4a2f1b', { rough: .2 });
+  const earK = { small: .78, big: 1.3 }[Lk.ears] || 1;
   for (const s of [-1, 1]) {
-    const eye = b3mesh(new THREE.SphereGeometry(.05, 20, 14), M.white, { cast: false }); eye.scale.set(1, 1.15, .6); head.add(b3at(eye, s * .085, .23, .205));
-    const pup = b3mesh(new THREE.SphereGeometry(.03, 16, 12), L.glowEyes ? b3mat('#ff6b6b', { emi: '#ff2222', ei: 3 }) : M.dark, { cast: false }); head.add(b3at(pup, s * .085, .225, .232));
-    const brow = b3mesh(new THREE.CapsuleGeometry(.014, .06, 4, 8), M.hair, { cast: false }); brow.rotation.z = Math.PI / 2 + s * (L.angry ? .35 : .08); head.add(b3at(brow, s * .088, .3, .22));
-    if (!L.ears) head.add(b3at(b3mesh(new THREE.SphereGeometry(.05, 16, 12), M.skin), s * .235, .2, 0));
+    const eye = b3mesh(new THREE.SphereGeometry(.05, 20, 14), M.white, { cast: false }); eye.scale.set(eyeS[0], 1.15 * eyeS[1], .6); head.add(b3at(eye, s * .085, .23, .205));
+    if (!L.glowEyes) { const ir = b3mesh(new THREE.SphereGeometry(.032, 16, 12), iris, { cast: false }); ir.scale.set(1, eyeS[1], .5); head.add(b3at(ir, s * .085, .226, .228)); }
+    const pup = b3mesh(new THREE.SphereGeometry(L.glowEyes ? .03 : .017, 16, 12), L.glowEyes ? b3mat('#ff6b6b', { emi: '#ff2222', ei: 3 }) : M.dark, { cast: false }); head.add(b3at(pup, s * .085, .226, .238));
+    if (Lk.brows !== 'none') { const bt = { thick: .022, thin: .009 }[Lk.brows] || .014; const brow = b3mesh(new THREE.CapsuleGeometry(bt, .062, 4, 8), M.hair, { cast: false }); brow.rotation.z = Math.PI / 2 + s * (L.angry || Lk.brows === 'angled' ? .35 : Lk.brows === 'arched' ? -.18 : .08); head.add(b3at(brow, s * .088, .3 + (Lk.brows === 'arched' ? .01 : 0), .22)); }
+    if (!L.ears) { const ear = b3mesh(new THREE.SphereGeometry(.05, 16, 12), M.skin); ear.scale.set(.55 * earK, earK, .8 * earK); head.add(b3at(ear, s * .238, .2, 0));
+      if ((Lk.earrings === 'stud' && s > 0) || Lk.earrings === 'studs') head.add(b3at(b3mesh(new THREE.SphereGeometry(.014, 10, 8), b3mat('#e9ecef', { metal: .9, rough: .15 }), { cast: false }), s * .245, .155, .01));
+      if ((Lk.earrings === 'hoop' && s > 0) || Lk.earrings === 'hoops') { const h = b3mesh(new THREE.TorusGeometry(.024, .005, 6, 20), b3mat('#fcc419', { metal: .9, rough: .2 }), { cast: false }); h.rotation.y = Math.PI / 2; head.add(b3at(h, s * .247, .13, .01)); } }
+    if (Lk.extras === 'blush' || Lk.extras === 'dimples') { const c = b3mesh(new THREE.CircleGeometry(.03, 16), b3mat('#ff8fa3', { rough: .8 }), { cast: false }); c.material.transparent = true; c.material.opacity = Lk.extras === 'blush' ? .55 : .25; head.add(b3at(c, s * .13, .15, .212)); c.lookAt(c.position.clone().multiplyScalar(3)); }
   }
-  head.add(b3at(b3mesh(new THREE.SphereGeometry(.03, 14, 10), M.skin, { cast: false }), 0, .17, .24));
-  const mouth = b3mesh(new THREE.TorusGeometry(.045, .011, 6, 20, Math.PI), b3mat('#a61e1e'), { cast: false }); mouth.rotation.z = Math.PI; head.add(b3at(mouth, 0, .1, .225)); P.mouth = mouth;
+  if (Lk.extras === 'freckles') for (let k = 0; k < 10; k++) { const f = b3mesh(new THREE.SphereGeometry(.006, 6, 4), b3mat('#a0522d'), { cast: false }); const s = k < 5 ? -1 : 1, a = (k % 5) / 5; head.add(b3at(f, s * (.06 + a * .07), .17 + (k % 2) * .015, .225 - a * .02)); }
+  const nose = { button: [.034, 1, 1, .8], long: [.028, .9, 1.5, 1.2], wide: [.038, 1.4, .9, .9], pointed: [.026, .85, 1.2, 1.4] }[Lk.nose] || [.03, 1, 1, 1];
+  const nm = b3mesh(new THREE.SphereGeometry(nose[0], 14, 10), M.skin, { cast: false }); nm.scale.set(nose[1], nose[2], nose[3]); head.add(b3at(nm, 0, .17, .24));
+  const mouthArc = { neutral: .25, smirk: .6, small: .8, open: 1 }[Lk.mouth] ?? 1;
+  const mouth = b3mesh(new THREE.TorusGeometry(Lk.mouth === 'small' ? .03 : Lk.mouth === 'open' ? .05 : .045, Lk.mouth === 'open' ? .018 : .011, 6, 20, Math.PI * mouthArc), b3mat(Lk.mouth === 'braces' ? '#adb5bd' : '#a61e1e'), { cast: false });
+  mouth.rotation.z = Math.PI + (Math.PI - Math.PI * mouthArc) / 2 + (Lk.mouth === 'smirk' ? .25 : 0); head.add(b3at(mouth, 0, .1, .225)); P.mouth = mouth;
   hairOn(head, L.hair || 'short', M.hair, L);
   for (const x of L.extras || []) extraOn(P, x, M, L);
   // arms: shoulder pivot, upper arm, elbow, forearm, hand
@@ -106,14 +125,14 @@ function fighter3(L) {
     const shp = b3at(new THREE.Group(), s * (.3 * bulk + .04), .6, 0); spine.add(shp);
     const sl = b3mesh(new THREE.SphereGeometry(.105 * Math.sqrt(bulk), 20, 14), M.kit); sl.scale.set(1, .9, 1); shp.add(sl);
     shp.add(limb(.075 * Math.sqrt(bulk), .24, M.skin));
-    const el = b3at(new THREE.Group(), 0, -.33, 0); shp.add(el); el.add(limb(.065 * Math.sqrt(bulk), .22, M.skin));
+    const el = b3at(new THREE.Group(), 0, -.33, 0); shp.add(el); el.add(limb(.065 * Math.sqrt(bulk), .22, M.skin)); el.add(b3mesh(new THREE.SphereGeometry(.07 * Math.sqrt(bulk), 16, 12), M.skin));
     const hand = b3mesh(new THREE.SphereGeometry(.075, 20, 14), L.gloves ? b3mat(L.gloves, { phys: true, cc: .8, rough: .3 }) : M.skin); hand.scale.set(.9, 1, 1); el.add(b3at(hand, 0, -.33, 0));
     return { sh: shp, el, hand, s };
   });
   P.legs = [-1, 1].map(s => {
     const hp = b3at(new THREE.Group(), s * .12 * bulk, -.06, 0); hips.add(hp);
     hp.add(limb(.095 * Math.sqrt(bulk), .3, M.skin));
-    const kn = b3at(new THREE.Group(), 0, -.43, 0); hp.add(kn); kn.add(limb(.08 * Math.sqrt(bulk), .28, M.skin));
+    const kn = b3at(new THREE.Group(), 0, -.43, 0); hp.add(kn); kn.add(limb(.08 * Math.sqrt(bulk), .28, M.skin)); kn.add(b3mesh(new THREE.SphereGeometry(.088 * Math.sqrt(bulk), 16, 12), M.skin));
     const sock = b3mesh(new THREE.CylinderGeometry(.075, .07, .1, 16), M.white); kn.add(b3at(sock, 0, -.34, 0));
     const shoe = b3mesh(new THREE.CapsuleGeometry(.075, .14, 6, 16), M.shoe); shoe.rotation.x = Math.PI / 2; shoe.scale.set(1.15, 1, .9); kn.add(b3at(shoe, 0, -.44, .06));
     const sole = b3mesh(new THREE.CapsuleGeometry(.078, .15, 4, 12), M.sole); sole.rotation.x = Math.PI / 2; sole.scale.set(1.2, 1, .35); kn.add(b3at(sole, 0, -.5, .06));
@@ -121,6 +140,7 @@ function fighter3(L) {
   });
   if (L.ghost) P.legs.forEach(l => { l.kn.visible = false; });
   root.scale.setScalar(L.scale || 1);
+  body.scale.y = { short: .93, tall: 1.07 }[(L.look || {}).height] || 1;
   root.traverse(o => { if (o.isMesh && o.material?.emissive && !P.mats.includes(o.material)) P.mats.push(o.material); });
   P.mats = [...new Set(P.mats)]; P.mats.forEach(m => { m.userData.emi = m.emissive.clone(); m.userData.op = m.opacity; m.userData.tr = m.transparent; });
   return P;
@@ -187,6 +207,16 @@ const LOOKS = {
   sherpa: { hair: 'short', kit: '#e8590c', kit2: '#fff4e6', extras: ['hood', 'goggles'], hoodC: '#e8590c' },
   avalanche: { hair: 'long', hairC: '#ffd43b', kit: '#4dabf7', kit2: '#f8f9fa', extras: ['goggles', 'helmet'] },
   eaglepk: { hair: 'spiky', hairC: '#f8f9fa', kit: '#7048e8', kit2: '#fcc419', extras: ['goggles'] },
+  digger: { hair: 'curly', hairC: '#7a4f2b', kit: '#e8590c', kit2: '#ffd8a8', extras: ['cap'], capC: '#e8590c' },
+  captain: { hair: 'short', hairC: '#3b2416', kit: '#1c7ed6', kit2: '#f8f9fa', extras: ['cap', 'whistle'], capC: '#1864ab' },
+  surfer: { hair: 'long', hairC: '#e0c07a', kit: '#e03131', kit2: '#ffd43b', skin: '#e0ac69', extras: ['cap'], capC: '#ffd43b' },
+  glow: { hair: 'pony', hairC: '#212529', kit: '#94d82d', kit2: '#212529', extras: ['headband', 'headphones'] },
+  keeper: { hair: 'buzz', hairC: '#212529', kit: '#fab005', kit2: '#212529', bulk: 1.15, gloves: '#40c057' },
+  coxswain: { hair: 'pony', hairC: '#c8a060', kit: '#1b2a6b', kit2: '#fcc419', bulk: 1.12, extras: ['cap'], capC: '#1b2a6b' },
+  magma: { hair: 'spiky', hairC: '#ff6b00', kit: '#c92a2a', kit2: '#343a40', bulk: 1.2, angry: 1, glowEyes: 1, extras: ['aura'] },
+  ace: { hair: 'short', hairC: '#5c3a21', kit: '#f8f9fa', kit2: '#2f9e44', extras: ['headband'] },
+  ghostrun: { hair: 'long', hairC: '#e9ecef', kit: '#e9ecef', kit2: '#74c0fc', ghost: 1, extras: ['hood', 'goggles'], hoodC: '#dee2e6' },
+  dragon: { hair: 'mohawk', hairC: '#7048e8', kit: '#3b2a6b', kit2: '#ff922b', scale: 1.12, extras: ['horns', 'cape'], capeC: '#5f3dc4' },
   yeti: { hair: 'afro', hairC: '#f1f3f5', skin: '#cfe3f0', kit: '#e9ecef', kit2: '#a5d8ff', shorts: '#e9ecef', bulk: 1.45, scale: 1.32, glowEyes: 1, extras: ['fur', 'aura'], angry: 1 },
 };
 const SKINS = ['#f1c9a5', '#e0ac69', '#c68642', '#8d5524', '#ffdbac', '#d1a07a'];
