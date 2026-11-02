@@ -2913,3 +2913,32 @@ h1 { font-size: 1.6rem; letter-spacing: -.015em; }
 .navplace b { width: 80px; }
 .navplace label { display: inline-flex; gap: 6px; align-items: center; font-size: .9rem; }
 @media (prefers-reduced-motion: reduce) { #places button, #subnav button { transition: none; } }
+/* calm Today: rows instead of tinted boxes, actions on hover, quieter strip */
+.tl-card { background: var(--panel); border: 1px solid var(--border); border-left: 3px solid var(--c); border-radius: 8px; }
+.tl-card:hover { transform: none; background: var(--panel2); }
+.tl-label { color: var(--muted); }
+.dpill { border-radius: 10px; }
+.dpill:hover { transform: none; box-shadow: none; background: var(--panel2); }
+.dpill.sel { background: color-mix(in srgb, var(--accent) 12%, var(--panel)); color: var(--accent); border-color: var(--accent); box-shadow: none; }
+.dpill.sel .dn { color: var(--accent); }
+.todo-list { gap: 0; }
+.todo-item { background: none; border-radius: 0; border-left: 0; border-bottom: 1px solid var(--border); padding: 10px 4px; }
+.todo-list.compact .todo-item { padding: 8px 2px; }
+.todo-item:last-child { border-bottom: 0; }
+.todo-item input[type=checkbox] { border-radius: 50%; accent-color: var(--ok); }
+.todo-pri { color: var(--danger); }
+.todo-acts { opacity: 0; transition: opacity .15s; }
+.todo-item:hover .todo-acts, .todo-item:focus-within .todo-acts { opacity: 1; }
+.tag.red { font-weight: 700; }
+.appchip { padding: 3px 10px 3px 3px; font-size: .82rem; }
+.appchip:hover { transform: none; box-shadow: none; border-color: color-mix(in srgb, var(--accent) 40%, var(--border)); }
+.appchip i { width: 18px; height: 18px; font-size: .65rem; }
+#ai-fab, .aifab { box-shadow: 0 4px 14px rgba(0,0,0,.15); }
+.tweek .dpill.sel .dn b, .dpill.sel b { color: var(--accent); }
+.seg button.on { background: color-mix(in srgb, var(--accent) 14%, var(--panel)); color: var(--accent); }
+.ktag { font-weight: 600; }
+.stab { padding: 5px 12px; font-weight: 600; }
+.stab:hover { transform: none; box-shadow: none; border-color: color-mix(in srgb, var(--c) 45%, var(--border)); }
+.stab.on, .stab.plan.on { background: color-mix(in srgb, var(--c) 12%, var(--panel)); color: var(--text); border-color: var(--c); box-shadow: none; }
+.stab.on i { background: var(--c); }
+.stab.on .stab-d { background: color-mix(in srgb, var(--c) 16%, transparent); color: var(--c); }

@@ -21,7 +21,7 @@
     out.push({ k: 'Action', t: 'Send feedback', run: act('feedback') });
     if (typeof D !== 'object' || !D) return out;
     const t = typeof today === 'function' ? today() : '';
-    const add = (arr, kind, k, title) => { for (const x of arr || []) { const n = title(x); if (n && !x.done) out.push({ k, t: n, sub: x.date || x.due || '', run: act('edit', { kind, id: x.id }), old: (x.date || x.due || '9') < t }); } };
+    const add = (arr, kind, k, title) => { for (const x of arr || []) { const n = title(x); if (n && !x.done) out.push({ k, t: n, sub: (x.date || x.due) && typeof fmtDate === 'function' ? fmtDate(x.date || x.due) : '', run: act('edit', { kind, id: x.id }), old: (x.date || x.due || '9') < t }); } };
     add(D.todos, 'todo', 'Task', x => x.text);
     add(D.assessments, 'assessment', 'SAC / exam', x => x.title);
     add(D.events, 'event', 'Event', x => x.title);
