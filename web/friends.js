@@ -56,7 +56,7 @@ function friendCards() {
   const wk = mondayOf(today());
   return `<div class="fcards">${list.map(f => {
     const stale = f.week && f.week !== wk;
-    return `<div class="fcard"><div class="fcard-av">${safeBadge(f.av, 64)}</div><div class="main"><b>${esc(f.name)}</b>${badgeTags(f.badges, true)}<div class="muted small-text">${f.user ? '@' + esc(f.user) : 'friend code'}${f.updated ? ' · ' + esc(ago(new Date(f.updated).toISOString())) : ''}</div>
+    return `<div class="fcard"><div class="fcard-av">${safeBadge(f.av, 64)}</div><div class="main"><b>${esc(f.name)}${presStar(f)}</b>${badgeTags(f.badges, true)}<div class="muted small-text">${f.user ? '@' + esc(f.user) : 'friend code'}${f.updated ? ' · ' + esc(ago(new Date(f.updated).toISOString())) : ''}</div>
       <div class="fcard-stats"><span>📚 ${fmtMins(stale ? 0 : f.study?.mins) || '0m'}</span><span>🏃 ${fmtMins(stale ? 0 : f.work?.mins) || '0m'}</span><span>🔥 ${f.study?.streak || 0}</span><span>⭐ ${f.work?.ovr || '–'}</span></div></div>
       <div class="fcard-btns"><button class="btn small primary" data-act="friendCompare" data-id="${esc(f.id)}">Compare</button>${f.user && acct.signedIn ? `<button class="btn small" data-chat="dm" data-u="${esc(f.user)}" title="Message">💬</button>` : ''}${f.user ? `<button class="iconbtn" data-acct="unfriend" data-u="${esc(f.user)}" title="Remove">✕</button>` : `<button class="iconbtn" data-fact="remove" data-id="${esc(f.id)}" title="Remove">✕</button>`}</div></div>`;
   }).join('')}</div>`;

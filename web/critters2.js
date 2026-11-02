@@ -53,6 +53,7 @@ function checkVisitors() {
   const k = visitorById(id); if (!k) return;
   D.game.visitLog = { ...(D.game.visitLog || {}), [id]: (D.game.visitLog?.[id] || 0) + 1 };
   if (id === 'raccoon') D.game.ledger['v:' + t] = 30;
+  if (id === 'fox') D.game.ledger['v:' + t] = 60;
   save();
   setTimeout(() => toast(`${k.emoji} ${k.name} is visiting today`, k.buff), 800);
 }

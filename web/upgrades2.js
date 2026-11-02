@@ -6,10 +6,11 @@
 
 const UPG_MAX = 20, UPG_STEP = 1.45;
 const nicePrice = n => { const p = Math.pow(10, Math.max(0, Math.floor(Math.log10(n)) - 1)); return Math.round(n / p) * p; };
-function extendPrices(u) {
+// 2.35: garden (leaf) upgrades go on to level 30, and each level past 20 costs 60% more than the one before
+function extendPrices(u, top = UPG_MAX) {
   if (u.once) return;
-  const out = [...u.prices], max = u.max || UPG_MAX;
-  while (out.length < max) out.push(nicePrice(out[out.length - 1] * UPG_STEP));
+  const out = [...u.prices], max = u.max || top;
+  while (out.length < max) out.push(nicePrice(out[out.length - 1] * (out.length >= 20 ? 1.6 : UPG_STEP)));
   u.prices = out.slice(0, max);
 }
 LEAF_UPGRADES.push(
@@ -27,4 +28,4 @@ UPGRADES.push(
 for (const id of ['compost', 'mulch', 'gnome', 'stream']) { const u = LEAF_UPGRADES.find(x => x.id === id); if (u) u.once = true; }
 for (const id of ['shield', 'discount', 'goldseed']) { const u = UPGRADES.find(x => x.id === id); if (u) u.once = true; }
 { const u = UPGRADES.find(x => x.id === 'extra'); if (u) { u.prices = [250, 900, 3000]; u.max = 3; } }
-LEAF_UPGRADES.forEach(extendPrices); UPGRADES.forEach(extendPrices);
+LEAF_UPGRADES.forEach(u => extendPrices(u, 30)); UPGRADES.forEach(u => extendPrices(u));

@@ -75,15 +75,18 @@ const ITEMS = [
   { id: 'a_unicorn', type: 'animal', name: 'Unicorn', rarity: 'legendary', at: [140, 362] },
 ];
 const BOXES = [
-  { id: 'wood', name: 'Wooden box', price: 60, odds: { common: 70, rare: 25, epic: 4.5, legendary: .5 }, colors: ['#b07a46', '#8a5a2e', '#e0b47a'] },
-  { id: 'silver', name: 'Silver box', price: 150, odds: { common: 35, rare: 45, epic: 17, legendary: 3 }, colors: ['#adb5bd', '#6c757d', '#f1f3f5'] },
-  { id: 'gold', name: 'Golden box', price: 350, odds: { common: 0, rare: 40, epic: 45, legendary: 15 }, colors: ['#fcc419', '#e67700', '#fff3bf'] },
-  { id: 'seed', name: 'Seed pouch', price: 25, odds: { common: 90, rare: 10 }, colors: ['#8ce99a', '#2f9e44', '#d3f9d8'], note: 'Cheap and cheerful' },
+  { id: 'wood', name: 'Wooden box', price: 60, odds: { common: 70, rare: 25, epic: 4.5, legendary: .5 }, types: ['tree'], colors: ['#b07a46', '#8a5a2e', '#e0b47a'] },
+  { id: 'silver', name: 'Silver box', price: 150, odds: { common: 35, rare: 45, epic: 17, legendary: 3 }, types: ['tree'], colors: ['#adb5bd', '#6c757d', '#f1f3f5'] },
+  { id: 'gold', name: 'Golden box', price: 350, odds: { common: 0, rare: 40, epic: 45, legendary: 15 }, types: ['tree'], colors: ['#fcc419', '#e67700', '#fff3bf'] },
+  { id: 'seed', name: 'Seed pouch', price: 25, odds: { common: 90, rare: 10 }, types: ['tree'], colors: ['#8ce99a', '#2f9e44', '#d3f9d8'], note: 'Cheap and cheerful' },
+  // 2.35: cosmetics have their own chests, so tree boxes only ever give trees
+  { id: 'cosmo', name: 'Cosmetic chest', price: 160, odds: { common: 45, rare: 38, epic: 14, legendary: 3 }, types: ['deco', 'scene', 'animal'], colors: ['#f783ac', '#a61e4d', '#fff0f6'], note: 'Decorations, animals and scenes' },
+  { id: 'cosmo2', name: 'Grand cosmetic chest', price: 420, odds: { common: 0, rare: 40, epic: 42, legendary: 18 }, types: ['deco', 'scene', 'animal'], colors: ['#e599f7', '#862e9c', '#f8f0fc'], note: 'Rare or better cosmetics' },
   { id: 'deco', name: 'Decor crate', price: 120, odds: { common: 50, rare: 35, epic: 12, legendary: 3 }, types: ['deco'], colors: ['#ffa8a8', '#c92a2a', '#fff5f5'], note: 'Decorations only' },
   { id: 'animal', name: 'Animal crate', price: 180, odds: { common: 30, rare: 45, epic: 20, legendary: 5 }, types: ['animal'], colors: ['#ffc078', '#d9480f', '#fff4e6'], note: 'Animals only' },
   { id: 'tree', name: 'Tree chest', price: 220, odds: { common: 0, rare: 50, epic: 38, legendary: 12 }, types: ['tree'], colors: ['#69db7c', '#2b8a3e', '#ebfbee'], note: 'Rare trees only' },
   { id: 'scene', name: 'Scene capsule', price: 300, odds: { common: 0, rare: 55, epic: 30, legendary: 15 }, types: ['scene'], colors: ['#74c0fc', '#1864ab', '#e7f5ff'], note: 'Forest scenes only' },
-  { id: 'mythic', name: 'Mythic box', price: 800, odds: { common: 0, rare: 0, epic: 60, legendary: 40 }, colors: ['#da77f2', '#862e9c', '#f8f0fc'], note: 'Epic or better' },
+  { id: 'mythic', name: 'Mythic box', price: 800, odds: { common: 0, rare: 0, epic: 60, legendary: 40 }, types: ['tree'], colors: ['#da77f2', '#862e9c', '#f8f0fc'], note: 'Epic or better' },
 ];
 const boxPrice = b => Math.round(b.price * (1 - .1 * upg('discount')));
 const LEVELS = ['Seedling', 'Sprout', 'Sapling', 'Grove keeper', 'Forester', 'Ranger', 'Woodland sage', 'Forest guardian', 'Ancient oak', 'Legend of the forest'];
@@ -170,7 +173,7 @@ function rollItem(box) {
   let r = Math.random() * 100, rarity = 'common';
   for (const [k, p] of Object.entries(odds)) { if (r < p) { rarity = k; break; } r -= p; }
   let pool = ITEMS.filter(i => i.rarity === rarity && (!box.types || box.types.includes(i.type)));
-  if (!pool.length) pool = ITEMS.filter(i => !box.types || box.types.includes(i.type));
+  if (!pool.length) pool = ITEMS.filter(i => i.rarity !== 'mythic' && (!box.types || box.types.includes(i.type)));
   const fresh = pool.filter(i => !owned(i.id));
   // a little kindness: new items are twice as likely as duplicates
   const weighted = [...pool, ...fresh];
@@ -354,12 +357,12 @@ function challengesCard() {
     <div class="daygroup">This week</div><ul class="chals">${list.filter(c => c.kind === 'This week').map(row).join('')}</ul></div>`;
 }
 function boxesView() {
-  const have = coins();
-  return `<div class="card"><div class="card-head"><h2>Lucky boxes</h2><span class="muted small-text">coins only</span><span class="coins">${COIN} <b>${have}</b></span></div>
-    <div class="boxes">${BOXES.map(b => { const p = boxPrice(b); return `<div class="boxcard ${have >= p ? '' : 'poor'}" style="--bc:${b.colors[0]}">
+  const have = coins(), isTree = b => (b.types || []).includes('tree');
+  return [['🌳 Tree boxes', 'new trees for your subjects', BOXES.filter(isTree)], ['✨ Cosmetic chests', 'decorations, animals and scenes', BOXES.filter(b => !isTree(b))]].map(([h, sub, list]) => `<div class="card"><div class="card-head"><h2>${h}</h2><span class="muted small-text">${sub} · coins only</span><span class="coins">${COIN} <b>${have}</b></span></div>
+    <div class="boxes">${list.map(b => { const p = boxPrice(b); return `<div class="boxcard ${have >= p ? '' : 'poor'}" style="--bc:${b.colors[0]}">
       <div class="boxart">${boxSvg(b, 120)}</div><h3>${b.name}</h3>${b.note ? `<div class="boxnote">${b.note}</div>` : ''}
       <div class="odds">${Object.entries(b.odds).filter(([, p]) => p).map(([r, p]) => `<span style="color:${RARITY[r].color}">${RARITY[r].name} ${p}%</span>`).join('')}</div>
-      <button class="btn ${have >= p ? 'primary' : ''}" data-act="openBox" data-id="${b.id}" ${have >= p ? '' : 'disabled'}>Open · ${p} ${COIN}</button></div>`; }).join('')}</div></div>`;
+      <button class="btn ${have >= p ? 'primary' : ''}" data-act="openBox" data-id="${b.id}" ${have >= p ? '' : 'disabled'}>Open · ${p} ${COIN}</button></div>`; }).join('')}</div></div>`).join('');
 }
 // Coins and leaves buy different things: trees and animals cost coins, while
 // decorations and scenes for the garden cost leaves. There's no swapping one

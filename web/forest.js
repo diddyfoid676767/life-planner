@@ -309,9 +309,11 @@ function viewForest() {
   const grand = allTrees.filter(l => l.mins >= 90).length;
   const seg = (v, label) => `<button class="${range === v ? 'on' : ''}" data-act="forestRange" data-v="${v}">${label}</button>`;
   const stat = (big, label) => `<div class="fstat"><b>${big}</b><span>${label}</span></div>`;
-  const legend = D.subjects.map(s => {
+  // 2.35: subjects ranked by the total size of their garden trees (every stage counts)
+  const size = subjectSizes(), ranked = [...D.subjects].sort((a, b) => (size[b.id] || 0) - (size[a.id] || 0));
+  const legend = ranked.map((s, ri) => {
     const sp = speciesFor(s.id), cnt = allTrees.filter(l => l.subjectId === s.id).length;
-    return `<div class="fleg" style="--c:${s.color}">${treeSvg(s.color, 45, 1, sp, 46)}<div class="main"><b>${esc(s.name)}</b><div class="muted small-text">${esc(speciesName(sp))} · <span style="color:${RARITY[speciesRarity(sp)].color};font-weight:700">${RARITY[speciesRarity(sp)].name}</span> · ${cnt} tree${cnt === 1 ? '' : 's'}</div><div class="tbuff sm">${LEAF} ×${LEAF_RARITY[speciesRarity(sp)]} leaves</div></div>
+    return `<div class="fleg" style="--c:${s.color}">${treeSvg(s.color, 45, 1, sp, 46)}<div class="main"><b><span class="frank">#${ri + 1}</span> ${esc(s.name)}</b><div class="muted small-text">Forest size ${size[s.id] || 0}</div><div class="muted small-text">${esc(speciesName(sp))} · <span style="color:${RARITY[speciesRarity(sp)].color};font-weight:700">${RARITY[speciesRarity(sp)].name}</span> · ${cnt} tree${cnt === 1 ? '' : 's'}</div><div class="tbuff sm">${LEAF} ×${LEAF_RARITY[speciesRarity(sp)]} leaves</div></div>
       <button class="btn small" data-act="treePick" data-id="${s.id}" title="Choose this subject's tree">Change tree</button></div>`;
   }).join('');
   const stages = TREE_STAGES.map(([m, name], i) => `<div class="fstage">${`<svg class="tree" viewBox="-42 -128 84 134" width="40" height="64">${treeG('oak', '#40c057', i, 'stage')}</svg>`}<b>${name.replace(' tree', '')}</b><span class="muted small-text">${m < 60 ? m + ' min' : m / 60 + ' h'}</span></div>`).join('');
@@ -319,10 +321,11 @@ function viewForest() {
   let page = ui.forestPage || 'forest'; if (page === 'boxes') page = 'shop';
   const nClaim = claimable(), nReward = rewardsWaiting();
   const tab = (v, label) => `<button class="${page === v ? 'on' : ''}" data-act="forestPage" data-v="${v}">${label}</button>`;
-  const head = `<div class="card-head forest-head"><h1 style="margin:0">My forest</h1>${gameHeader()}<span class="spacer" style="flex:1"></span>
+  const head = `<div class="card-head forest-head"><h1 style="margin:0">My forest${presStar({ me: true })}</h1>${gameHeader()}<span class="spacer" style="flex:1"></span>
       ${streakPill()}<button class="btn primary" data-act="focusNew">▶ Start studying</button></div>
-    <div class="seg forest-tabs">${tab('forest', `🌳 Forest${nClaim + nReward ? ` <span class="dotbadge">${nClaim + nReward}</span>` : ''}`)}${tab('trees', '🌲 My trees')}${tab('archive', '🏝️ Archive')}${tab('critters', `🐾 Critters <span class="muted">${Object.keys(D.game.critters || {}).length}/${CRITTERS.length}</span>`)}${tab('shop', `🛒 Shop${giftReady() ? ' <span class="dotbadge">1</span>' : ''}`)}${tab('collection', `📖 Collection <span class="muted">${ITEMS.filter(i => owned(i.id)).length}/${ITEMS.length}</span>`)}</div>`;
+    <div class="seg forest-tabs">${tab('forest', `🌳 Forest${nClaim + nReward ? ` <span class="dotbadge">${nClaim + nReward}</span>` : ''}`)}${tab('trees', '🌲 My trees')}${tab('archive', '🏝️ Archive')}${tab('critters', `🐾 Critters <span class="muted">${Object.keys(D.game.critters || {}).length}/${CRITTERS.length}</span>`)}${tab('prestige', `⭐ Prestige${presReady() ? ' <span class="dotbadge">!</span>' : ''}`)}${tab('shop', `🛒 Shop${giftReady() ? ' <span class="dotbadge">1</span>' : ''}`)}${tab('collection', `📖 Collection <span class="muted">${ITEMS.filter(i => owned(i.id)).length}/${ITEMS.length}</span>`)}</div>`;
   if (page === 'shop') return `${head}${shopView()}`;
+  if (page === 'prestige') return `${head}${prestigeView()}`;
   if (page === 'trees') return `${head}${treesView()}`;
   if (page === 'archive') return `${head}${archiveView()}`;
   if (page === 'critters') return `${head}${crittersView()}`;
@@ -340,7 +343,7 @@ function viewForest() {
       </div>
       <div class="stack">
       ${milestonesCard()}
-      <div class="card"><h2>Your trees</h2><p class="muted small-text" style="margin-top:0">Each subject grows its own tree. Pick a different one for any subject. ★ trees come from boxes and the store, and grow leaves faster: rare ×1.5, epic ×2.5, legendary ×4, and the three mythic trees ×7 (they can't be bought: they turn up, very rarely, after long sessions and giant merges).</p><div class="flegs">${legend || '<div class="empty">Add subjects in the Study tab.</div>'}</div><details class="howgrow"><summary class="muted small-text">How trees grow</summary><div class="fstages">${stages}</div>
+      <div class="card"><div class="card-head"><h2>Your trees</h2><button class="btn small" data-f3="autopick" title="Give your rarest trees to the subjects with the biggest forests">✨ Auto-pick best trees</button></div><p class="muted small-text" style="margin-top:0">Each subject grows its own tree. Pick a different one for any subject. ★ trees come from boxes and the store, and grow leaves faster: rare ×1.5, epic ×2.5, legendary ×4, and the three mythic trees ×7 (they can't be bought: they turn up, very rarely, after long sessions and giant merges).</p><div class="flegs">${legend || '<div class="empty">Add subjects in the Study tab.</div>'}</div><details class="howgrow"><summary class="muted small-text">How trees grow</summary><div class="fstages">${stages}</div>
         <p class="muted small-text">A tree is as big as your session was long. Trees don't grow on their own: drag a tree onto another of the same kind and stage (or press Merge all) and they become one tree a stage bigger, which grows more leaves. Your garden holds ${gardenCap()} trees; when it's full the oldest go to the Archive island, your log of every study session (archived trees don't grow leaves). A day counts toward your streak when you study 30+ minutes. Click any tree in the forest to name it, water it and see its stats.</p></details></div>
       <div class="card"><h2>Recent sessions</h2>${recent.length ? `<ul class="list">${recent.map(l => `<li class="item tinted" style="--c:${subj(l.subjectId).color}">${treeSvg(subj(l.subjectId).color, treeGrowth(l), 1, speciesFor(l.subjectId), 34)}<div class="main"><div class="title">${esc(subj(l.subjectId).name)} · ${fmtMins(l.mins)}</div><div class="meta">${fmtDate(l.date)} ${fmtTime(new Date(l.start).toTimeString().slice(0, 5))}${l.mins < 10 ? ' · too short for a tree' : ''}</div></div><button class="iconbtn" data-act="delLog" data-id="${l.id}" title="Delete">✕</button></li>`).join('')}</ul>` : '<div class="empty">No sessions yet. Press ▶ Focus on a study block or Start studying.</div>'}</div>
       </div>

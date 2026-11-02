@@ -50,11 +50,12 @@ setInterval(() => {
 }, 2000);
 
 // ---------- golden leaf ----------
-let goldenAt = Date.now() + (5 + Math.random() * 10) * 60e3;
+const goldenGap = () => { let n = 0; try { n = upg('goldfind'); } catch (e) { } return (5 + Math.random() * 10) * 60e3 / (1 + .25 * n); };
+let goldenAt = Date.now() + goldenGap();
 function goldenTick() {
   if (!D?.game || document.hidden || view !== 'forest' || (ui.forestPage || 'forest') !== 'forest' || document.getElementById('goldleaf')) return;
   if (Date.now() < goldenAt) return;
-  goldenAt = Date.now() + (5 + Math.random() * 10) * 60e3;
+  goldenAt = Date.now() + goldenGap();
   const scene = document.querySelector('.scene-wrap'); if (!scene) return;
   const r = scene.getBoundingClientRect();
   const g = document.createElement('button'); g.id = 'goldleaf'; g.title = 'Golden leaf! Tap it'; g.textContent = '🍂';
@@ -79,7 +80,8 @@ setInterval(goldenTick, 5000);
 // ---------- fruit and mushrooms ----------
 const FRUIT_H = 5, FRUIT_MAX = 4, SHROOM_H = 48;
 function extrasState() { const L = leafState(), now = Date.now(); if (!L.fruitAt) L.fruitAt = now; if (!L.shroomAt) L.shroomAt = now; return L; }
-const fruitReady = () => Math.min(FRUIT_MAX, Math.floor((Date.now() - extrasState().fruitAt) / (FRUIT_H * 36e5)));
+const fruitMax = () => FRUIT_MAX + 2 * upg('fruitbowl');
+const fruitReady = () => Math.min(fruitMax(), Math.floor((Date.now() - extrasState().fruitAt) / (FRUIT_H * 36e5)));
 const shroomReady = () => Date.now() - extrasState().shroomAt >= SHROOM_H * 36e5;
 function pickFruit(el) {
   const n = fruitReady(); if (!n) return;
@@ -95,8 +97,15 @@ function pickShroom(el) {
 }
 
 // ---------- skills ----------
+const RAIN_PRICE = 150;
 function rainDance() {
   const L = leafState(); if (L.rainDay === today()) return;
+  // 2.35: a one-time unlock for 150 coins, then free once a day
+  if (!D.game.rainOwned) {
+    if (coins() < RAIN_PRICE) { toast('🌧️ Rain dance', `Unlock it once for ${RAIN_PRICE} ${COIN}, then use it every day for free. You have ${coins()} ${COIN}.`); return; }
+    if (!confirm(`Unlock Rain dance for ${RAIN_PRICE} coins? It waters every tree once a day, for free from then on.`)) return;
+    D.game.spent += RAIN_PRICE; D.game.rainOwned = new Date().toISOString();
+  }
   L.rainDay = today();
   for (const l of D.focusLogs.filter(x => x.mins >= 10 && !x.withered)) { const r = D.game.trees[l.id] = { ...treeRec(l.id) }; r.lastWater = today(); delete r.wilted; }
   sfx('water'); save(); render(); toast('🌧️ Rain dance', 'Every tree is watered for today. No coins for this one, but they all grow ×1.5 leaves.');
@@ -115,12 +124,12 @@ function harvestMoon() {
     if (!D.game.leaves) return base();
     const L = extrasState(), f = fruitReady(), sh = shroomReady(), t = today();
     const nextFruit = fmtMins(Math.ceil((L.fruitAt + (f + 1) * FRUIT_H * 36e5 - Date.now()) / 6e4));
-    const bonus = [[collectionMult(), '📚 Collection'], [seedMult(), '🌱 Seeds']].filter(([m]) => m > 1).map(([m, l]) => `<span class="lchip" title="${l} bonus">${l} ×${m.toFixed(2)}</span>`).join('');
+    const bonus = [[collectionMult(), '📚 Collection'], [seedMult(), '🍂 Seasons']].filter(([m]) => m > 1).map(([m, l]) => `<span class="lchip" title="${l} bonus">${l} ×${m.toFixed(2)}</span>`).join('');
     const live = [rushOn() && '<span class="lchip hot">🍂 Leaf rush ×10</span>', harvestOn() && `<span class="lchip hot">🌕 Harvest moon ×2 · ${fmtMins(Math.ceil((L.harvestUntil - Date.now()) / 6e4))} left</span>`].filter(Boolean).join('');
     const extras = `<div class="leafx">
-      <button class="lchip btnish ${f ? 'ready' : ''}" data-g2="fruit" ${f ? '' : 'disabled'} title="Fruit grows every ${FRUIT_H} hours, up to ${FRUIT_MAX}">🍎 ${f ? `Pick ${f} fruit` : `Fruit in ${nextFruit}`}</button>
+      <button class="lchip btnish ${f ? 'ready' : ''}" data-g2="fruit" ${f ? '' : 'disabled'} title="Fruit grows every ${FRUIT_H} hours, up to ${fruitMax()}">🍎 ${f ? `Pick ${f} fruit` : `Fruit in ${nextFruit}`}</button>
       <button class="lchip btnish ${sh ? 'ready' : ''}" data-g2="shroom" ${sh ? '' : 'disabled'} title="A fairy ring grows every 2 days">🍄 ${sh ? 'Fairy ring!' : `Fairy ring in ${fmtMins(Math.ceil((L.shroomAt + SHROOM_H * 36e5 - Date.now()) / 6e4))}`}</button>
-      <button class="lchip btnish ${L.rainDay !== t ? 'ready' : ''}" data-g2="rain" ${L.rainDay !== t ? '' : 'disabled'} title="Water every tree, once a day">🌧️ ${L.rainDay !== t ? 'Rain dance' : 'Rain dance used'}</button>
+      <button class="lchip btnish ${L.rainDay !== t && D.game.rainOwned ? 'ready' : ''}" data-g2="rain" ${L.rainDay !== t ? '' : 'disabled'} title="Water every tree, once a day${D.game.rainOwned ? '' : `. A one-time unlock for ${RAIN_PRICE} coins`}">🌧️ ${!D.game.rainOwned ? `Rain dance · ${RAIN_PRICE} ${COIN}` : L.rainDay !== t ? 'Rain dance' : 'Rain dance used'}</button>
       <button class="lchip btnish ${L.moonDay !== t && studiedLong() ? 'ready' : ''}" data-g2="moon" ${L.moonDay !== t && studiedLong() ? '' : 'disabled'} title="Double leaves for an hour, after a 25+ minute session, once a day">🌕 ${L.moonDay === t ? 'Harvest moon used' : studiedLong() ? 'Harvest moon' : 'Harvest moon: study 25m'}</button>
       ${live}${bonus}</div>`;
     return base().replace(/<\/div>\s*$/, extras + '</div>');
@@ -174,7 +183,7 @@ function bestValueUpgrade() {
   const L = leafState(), now = leafRate(), have = leaves(), n = gardenTrees();
   let best = null;
   for (const u of LEAF_UPGRADES) {
-    const lvl = lupg(u.id), price = u.prices[lvl]; if (price == null || n < (u.need || 0)) continue;
+    const lvl = lupg(u.id), price = u.prices[lvl]; if (price == null || upLock(u)) continue;
     const a = L.ups[u.id] = [...(L.ups[u.id] || []), 'x']; const gain = leafRate() - now; a.pop(); if (!a.length) delete L.ups[u.id];
     if (gain <= 0) continue;
     const pay = price / gain; if (!best || pay < best.pay) best = { id: u.id, pay, gain, afford: have >= price };

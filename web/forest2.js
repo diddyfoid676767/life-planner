@@ -16,14 +16,17 @@ function canMerge(a, b) {
   const A = logById(a), B = logById(b);
   return !!(A && B && A !== B && inGarden(A) && inGarden(B) && !A.withered && !B.withered && speciesFor(A.subjectId) === speciesFor(B.subjectId) && treeStageOf(A) === treeStageOf(B) && treeStageOf(A) < TREE_STAGES.length - 1);
 }
+// a tree's leaves an hour before any bonuses: its stage, or what its merged trees grew, if that's more
+const treeBase = l => { const st = treeStageOf(l); return Math.max(LEAF_STAGE[lupg('mulch') && st < 2 ? st + 1 : st] || 0, treeRec(l.id).floor || 0); };
 const mergePartner = l => gardenLogs().find(x => x.id !== l.id && canMerge(l.id, x.id));
 // chance that a merge skips a stage: the old growth buffs feed this now
-const mergeLuck = l => Math.min(.5, activeBuff('growAll') + .04 * lupg('sundial') + (crit('turtle') ? .05 : 0) + Math.max(0, (treeSpeciesBuff(l).grow || 1) - 1));
+const mergeLuck = l => Math.min(.5, (typeof presFx === 'function' ? presFx('luck') : 0) + activeBuff('growAll') + .04 * lupg('sundial') + .03 * upg('mergebell') + (crit('turtle') ? .05 : 0) + Math.max(0, (treeSpeciesBuff(l).grow || 1) - 1));
 function mergeTrees(targetId, srcId, quiet) {
   if (!canMerge(targetId, srcId)) return 0;
-  const T = logById(targetId), st = treeStageOf(T);
+  const T = logById(targetId), st = treeStageOf(T), both = treeBase(T) + treeBase(logById(srcId));
   const jump = st + 2 < TREE_STAGES.length && Math.random() < mergeLuck(T) ? 2 : 1;
-  setRec(targetId, { up: st + jump - treeStage(T.mins), merged: (treeRec(targetId).merged || 0) + 1 + (treeRec(srcId).merged || 0), stage: st + jump });
+  // 2.35: never a loss. The new tree grows at least as many leaves as the two did
+  setRec(targetId, { up: st + jump - treeStage(T.mins), merged: (treeRec(targetId).merged || 0) + 1 + (treeRec(srcId).merged || 0), stage: st + jump, floor: both > (LEAF_STAGE[st + jump] || 0) ? both : 0 });
   setRec(srcId, { into: targetId });
   if (D.game.gridPos) delete D.game.gridPos[srcId];
   D.game.merges = (D.game.merges || 0) + 1;

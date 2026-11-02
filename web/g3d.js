@@ -207,10 +207,10 @@ function g3build() {
   });
   // animals and critters roam between tiles
   if (gfx('critters')) {
-    const list = [...ITEMS.filter(i => i.type === 'animal' && ANIMAL3[i.id] && owned(i.id) && !D.game.hidden[i.id]).map(i => ANIMAL3[i.id]),
-      ...CRITTERS.filter(k => crit(k.id) && CRIT3[k.id]).map(k => CRIT3[k.id]), ...visitorsToday().filter(id => VISIT3[id]).map(id => VISIT3[id])];
+    const list = [...ITEMS.filter(i => i.type === 'animal' && ANIMAL3[i.id] && owned(i.id) && !D.game.hidden[i.id]).map(i => [ANIMAL3[i.id], 'item', i.id]),
+      ...CRITTERS.filter(k => crit(k.id) && CRIT3[k.id]).map(k => [CRIT3[k.id], 'crit', k.id]), ...visitorsToday().filter(id => VISIT3[id]).map(id => [VISIT3[id], 'visit', id])];
     const rr = seeded('roam' + today());
-    for (const mk of list) { const a = mk(); const r = Math.floor(rr() * N), c = Math.floor(rr() * N), [x, z] = tileXZ(r, c, N); a.position.set(x + (rr() - .5), 0, z + (rr() - .5)); a.rotation.y = rr() * 6;
+    for (const [mk, kind, id] of list) { const a = mk(); a.userData.crit = { kind, id }; const r = Math.floor(rr() * N), c = Math.floor(rr() * N), [x, z] = tileXZ(r, c, N); a.position.set(x + (rr() - .5), 0, z + (rr() - .5)); a.rotation.y = rr() * 6;
       a.scale.multiplyScalar(.8); a.traverse(o => { if (o.isMesh) o.castShadow = true; }); a.add(fxBlob(.45, .5)); W.add(a); G3.roam.push({ o: a, tx: a.position.x, tz: a.position.z, wait: rr() * 3, hop: rr() * 6 }); }
     const FLY = { bee: ['#fcc419', '#ffffff', .5], fireflies: ['#ffe066', '#fff9db', .35], parrot: ['#e03131', '#2f9e44', .9], bat: ['#343a40', '#495057', .8] };
     for (const k of CRITTERS.filter(k => crit(k.id) && k.fly)) G3.fliers.push(g3flier(bird3(...(FLY[k.id] || ['#8a5a3b', '#d9a066', 1]))));
@@ -265,6 +265,7 @@ function g3loop() {
   const lim = G3.N * T3D / 2 - .4;
   for (const a of G3.roam) {
     const o = a.o, dx = a.tx - o.position.x, dz = a.tz - o.position.z, dist = Math.hypot(dx, dz);
+    if (a.jump > 0) { a.jump = Math.max(0, a.jump - dt * 1.6); o.position.y = Math.abs(Math.sin(a.jump * Math.PI * 2)) * .55 * a.jump; o.rotation.y += dt * 9 * a.jump; continue; } // petted: a happy double hop
     if (dist < .05) { a.wait -= dt; if (a.wait < 0) { a.tx = Math.max(-lim, Math.min(lim, o.position.x + (Math.random() - .5) * 5)); a.tz = Math.max(-lim, Math.min(lim, o.position.z + (Math.random() - .5) * 5)); a.wait = 1 + Math.random() * 4; } o.position.y = 0; continue; }
     const sp = Math.min(dist, dt * .9); o.position.x += dx / dist * sp; o.position.z += dz / dist * sp;
     const want = Math.atan2(-dz, dx); let dr = want - o.rotation.y; dr = Math.atan2(Math.sin(dr), Math.cos(dr)); o.rotation.y += dr * Math.min(1, dt * 6);
@@ -281,7 +282,7 @@ function g3pick(ev, list) {
   G3.ray.setFromCamera(v, G3.camera);
   return G3.ray.intersectObjects(list, true)[0];
 }
-const g3root = o => { while (o && !o.userData.key && !o.userData.bubble) o = o.parent; return o; };
+const g3root = o => { while (o && !o.userData.key && !o.userData.bubble && !o.userData.crit) o = o.parent; return o; };
 function g3ground(ev) { const h = g3pick(ev, [G3.tiles]); if (h) return h.point; const p = new THREE.Vector3(); return G3.ray.ray.intersectPlane(new THREE.Plane(new THREE.Vector3(0, 1, 0), 0), p) ? p : null; }
 // slide the view across the ground (dx, dy in screen pixels)
 function g3pan(dx, dy) {
@@ -299,8 +300,8 @@ function g3events() {
     cv.setPointerCapture(ev.pointerId);
     if (ev.button === 2 || ev.shiftKey) { drag = { x: ev.clientX, y: ev.clientY, sx: ev.clientX, sy: ev.clientY, rotate: true, moved: false }; return; }
     if (ev.button > 0) return;
-    const hit = g3pick(ev, [...G3.objs, ...G3.bubbles]), root = hit && g3root(hit.object);
-    drag = { sx: ev.clientX, sy: ev.clientY, x: ev.clientX, y: ev.clientY, obj: root?.userData.key ? root : null, home: root?.userData.key ? root.position.clone() : null, bubble: root?.userData.bubble, moved: false, yaw: G3.yaw, pitch: G3.pitch };
+    const hit = g3pick(ev, [...G3.objs, ...G3.bubbles, ...G3.roam.map(a => a.o)]), root = hit && g3root(hit.object);
+    drag = { crit: root?.userData.crit ? root : null, sx: ev.clientX, sy: ev.clientY, x: ev.clientX, y: ev.clientY, obj: root?.userData.key ? root : null, home: root?.userData.key ? root.position.clone() : null, bubble: root?.userData.bubble, moved: false, yaw: G3.yaw, pitch: G3.pitch };
   });
   cv.addEventListener('pointermove', ev => {
     if (touches.has(ev.pointerId)) touches.set(ev.pointerId, { x: ev.clientX, y: ev.clientY });
@@ -331,13 +332,16 @@ function g3events() {
       }
     }
     last = { x: ev.clientX, y: ev.clientY };
-    const h = g3pick(ev, [...G3.objs, ...G3.bubbles]); cv.style.cursor = h ? 'pointer' : 'grab';
-    if (typeof treeTip === 'function') { const rt = h && g3root(h.object); treeTip(rt?.userData.tree || null, ev.clientX, ev.clientY); }
+    const h = g3pick(ev, [...G3.objs, ...G3.bubbles, ...G3.roam.map(a => a.o)]); cv.style.cursor = h ? 'pointer' : 'grab';
+    const rt = h && g3root(h.object);
+    if (rt?.userData.crit && typeof critTip === 'function') critTip(rt.userData.crit, ev.clientX, ev.clientY);
+    else if (typeof treeTip === 'function') treeTip(rt?.userData.tree || null, ev.clientX, ev.clientY);
   });
   const up = ev => {
     touches.delete(ev.pointerId); if (touches.size < 2) pinch = 0;
     if (!drag) return; const d = drag; drag = null; cv.style.cursor = 'grab'; G3.hl.visible = false;
     if (!d.moved && !d.rotate) {
+      if (d.crit && typeof petCritter === 'function') { petCritter(d.crit.userData.crit, ev, d.crit); return; }
       if (d.bubble) { collectLeaves(cv); g3popBubbles(); G3.sig = g3signature(); render(); return; }
       if (d.obj?.userData.tree) { if (!(typeof g3water === 'function' && g3water(d.obj, ev))) openTreeCard(d.obj.userData.tree.id); return; }
       return;

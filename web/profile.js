@@ -26,7 +26,7 @@ function viewProfile() {
   return `${pageHead('👤 Profile', 'Your avatar, your badges and your number')}
     <div class="pfwrap">
       <div class="card pfcard">${stage}
-        <div class="pfname"><h2>${esc(D.settings.name || 'You')}${typeof badgeTags === 'function' ? badgeTags(myBadges) : ''}</h2>
+        <div class="pfname"><h2>${esc(D.settings.name || 'You')}${typeof presStar === 'function' ? presStar({ me: true }) : ''}${typeof badgeTags === 'function' ? badgeTags(myBadges) : ''}</h2>
           <div class="muted">${user}${user ? ' · ' : ''}Level ${lv.n} ${esc(lv.title)} · #${esc(D.settings.jerseyNo ?? 11)}</div></div>
         <div class="pfstats"><span>${COIN} <b>${coins()}</b></span><span>${GRIT} <b>${grit()}</b></span><span>🔥 <b>${studyStreak()}</b> day streak</span><span>👕 <b>${owned}</b>/${COSMETICS.length} styles</span></div>
       </div>

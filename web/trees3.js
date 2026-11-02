@@ -121,8 +121,10 @@ SPECIES_BUFFS.phoenix = { ...SPECIES_BUFFS.phoenix, text: '+5% to every Arena st
 // Not in boxes, the store or the reforge bench. A 1 in 400 chance after any
 // study session of 45+ minutes, 3% when a merge makes a Colossal tree or
 // bigger, and a sure thing the first time you grow an Eternal tree.
-function grantMythic(why) {
-  const left = MYTHIC_TREES.filter(i => !owned(i.id)); if (!left.length) return false;
+// 2.35: the Prism tree and Spirit blossom only come from their quests (see forest3.js); lucky drops can only be the Starfall tree
+const QUEST_MYTHICS = ['sp_prism', 'sp_spirit'];
+function grantMythic(why, only) {
+  const left = MYTHIC_TREES.filter(i => !owned(i.id) && (only ? i.id === only : !QUEST_MYTHICS.includes(i.id))); if (!left.length) return false;
   const it = left[Math.floor(Math.random() * left.length)];
   D.game.items[it.id] = 1; (D.game.mythics = D.game.mythics || []).push({ id: it.id, at: new Date().toISOString(), why }); save();
   try { [523, 784, 1047, 1568, 2093].forEach((f, i) => tone(sfxReady('ui'), { f, dur: 1.2, vol: .04, type: 'sine', at: i * .12 })); } catch (e) { }
@@ -131,13 +133,13 @@ function grantMythic(why) {
 }
 function mythicOnMerge(stage) {
   if (stage >= TOP_STAGE && !D.game.eternalMythic) { D.game.eternalMythic = 1; if (grantMythic('Your first Eternal tree left a seed behind.')) return; }
-  if (stage >= 8 && Math.random() < .03) grantMythic('A seed fell from your new giant.');
+  if (stage >= 8 && Math.random() < .01) grantMythic('A seed fell from your new giant.');
 }
 // a new tree: heirloom seeds may make it sprout a stage bigger, and long sessions might drop a mythic seed
 function newTreeExtras(l) {
   if (!l || l.mins < 10) return;
   if (!l.withered && Math.random() < .08 * lupg('heirloom') && treeStage(l.mins) < TOP_STAGE) { D.game.trees[l.id] = { ...treeRec(l.id), up: 1 }; setTimeout(() => toast('📜 Heirloom seed!', 'Your new tree sprouted a whole stage bigger.'), 1500); }
-  if (l.mins >= 45 && Math.random() < 1 / 400) setTimeout(() => grantMythic(`A mythic seed fell during your ${fmtMins(l.mins)} session.`), 2500);
+  if (l.mins >= 45 && Math.random() < 1 / 1200) setTimeout(() => grantMythic(`A mythic seed fell during your ${fmtMins(l.mins)} session.`), 2500);
 }
 
 // ---------- garden upgrades ----------
