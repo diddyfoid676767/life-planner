@@ -188,8 +188,9 @@ func cloudSync(push bool) {
 			}
 			syncMu.Lock()
 			seen := syncSt.CloudAt
-			if !ok && seen != "" { // the cloud copy is gone (or this PC last synced with the old server)
+			if !ok { // no cloud copy (it's gone, or this PC last synced with the old server): this PC's goes up
 				syncSt.CloudAt = ""
+				syncSt.Pending = true
 			}
 			syncMu.Unlock()
 			if ok && (at != seen || first) {

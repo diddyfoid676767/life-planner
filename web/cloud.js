@@ -6,13 +6,17 @@
    keeps in sync while you're logged in there. A copy stays on the phone so it
    opens without internet. Does nothing when the PC app serves the page. */
 if (!/^(127\.0\.0\.1|localhost)$/.test(location.hostname) && location.protocol !== 'file:') window.OL = (() => {
-  const URL_ = 'https://vtjvneusumjvhdctvijz.supabase.co';
-  const KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZ0anZuZXVzdW1qdmhkY3R2aWp6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTI3MTYwODcsImV4cCI6MjEwODI5MjA4N30.TzQqwPjHrB4NAAYzciQYP75zE8JTPAZOXcV-pHJuMDc'; // public anon key, same as the PC app
-  const MAIL = 'users.lifeplanner.app', SESS = 'lpCloudSession', COPY = 'lpCloudCopy', PENDING = 'lpCloudPending', BASE = 'lpCloudBase', BASE_AT = 'lpCloudBaseAt';
+  // the friends server (Firebase, since 2.39): the same project and key as the PC app
+  let FB_KEY = 'AIzaSyCucsGSWVIGnGYmmlOifIvYsEHC1FtBQjs', FB_PROJECT = 'life-planner-4663f';
+  let AUTH = 'https://identitytoolkit.googleapis.com/v1', TOK = 'https://securetoken.googleapis.com/v1', DOCS = 'https://firestore.googleapis.com/v1';
+  if (/\.test$/.test(location.hostname)) try { const t = JSON.parse(localStorage.getItem('lpTestServer') || 'null'); if (t) ({ key: FB_KEY, project: FB_PROJECT, auth: AUTH, tok: TOK, docs: DOCS } = t); } catch { } // the emulators, for testing
+  const MAIL = 'users.lifeplanner.app', SESS = 'lpCloudSession', COPY = 'lpCloudCopy', PENDING = 'lpCloudPending', BASE = 'lpCloudBase', BASE_AT = 'lpCloudBaseAt', SERVER = 'lpCloudServer';
   // PENDING: the phone copy has changes the server hasn't got yet (holds the server time it was built on).
   // BASE: the server copy this phone last had (from the server time in BASE_AT), so changes the PC saved meanwhile merge in
+  // SERVER: 'fb' once this phone has synced with Firebase (before 2.43 the phone still used the old server)
   const ls = { get: k => { try { return localStorage.getItem(k); } catch { return null; } }, set: (k, v) => { try { v == null ? localStorage.removeItem(k) : localStorage.setItem(k, v); } catch { } } };
   let sess = null; try { sess = JSON.parse(ls.get(SESS) || 'null'); } catch { }
+  if (sess && !sess.fb) sess = null; // logged in on the old server: log in again (the planner on this phone is kept and merged in)
   let lastAt = '', lastJson = '';
   // the server copy the planner here is built on
   function setLast(at, json) {
@@ -27,26 +31,30 @@ if (!/^(127\.0\.0\.1|localhost)$/.test(location.hostname) && location.protocol !
     ? Promise.resolve(new Response(JSON.stringify({ error: 'This only works in the PC app.' }), { status: 503, headers: { 'Content-Type': 'application/json' } }))
     : realFetch(u, o);
 
-  async function call(method, path, body, extra = {}) {
-    const headers = { apikey: KEY, 'Content-Type': 'application/json', ...extra };
-    headers.Authorization = 'Bearer ' + (path.startsWith('/auth/') ? KEY : await token());
+  async function req(url, opts) {
     let r;
-    try { r = await realFetch(URL_ + path, { method, headers, body: body == null ? undefined : JSON.stringify(body), cache: 'no-store' }); }
+    try { r = await realFetch(url, { cache: 'no-store', ...opts }); }
     catch { throw Object.assign(new Error('No internet right now.'), { offline: true }); }
     const j = await r.json().catch(() => null);
-    if (!r.ok) throw Object.assign(new Error((j && (j.msg || j.message || j.error_description)) || r.statusText), { status: r.status });
+    if (!r.ok) { const e = j?.error || {}; throw Object.assign(new Error(e.message || r.statusText), { status: r.status, code: e.status || e.message || '' }); }
     return j;
   }
+  const authPost = (path, body) => req(`${AUTH}/${path}?key=${FB_KEY}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
   function keep(a, username) {
-    sess = { access: a.access_token, refresh: a.refresh_token, exp: a.expires_at || Math.floor(Date.now() / 1000) + (a.expires_in || 3600), user: a.user?.id || sess?.user, username: username || sess?.username };
+    sess = { fb: true, access: a.idToken || a.id_token, refresh: a.refreshToken || a.refresh_token, exp: Math.floor(Date.now() / 1000) + (+(a.expiresIn || a.expires_in) || 3600), user: a.localId || a.user_id || sess?.user, username: username || sess?.username };
     ls.set(SESS, JSON.stringify(sess));
   }
   async function token() {
     if (!sess) throw new Error('not logged in');
     if (Date.now() / 1000 < sess.exp - 60) return sess.access;
-    try { keep(await call('POST', '/auth/v1/token?grant_type=refresh_token', { refresh_token: sess.refresh })); }
+    try { keep(await req(`${TOK}/token?key=${FB_KEY}`, { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: 'grant_type=refresh_token&refresh_token=' + encodeURIComponent(sess.refresh) })); }
     catch (e) { if (e.status === 400 || e.status === 401) { sess = null; ls.set(SESS, null); } throw e; }
     return sess.access;
+  }
+  const docPath = () => `projects/${FB_PROJECT}/databases/(default)/documents/planner/${sess.user}`;
+  async function docCall(method, url, body) {
+    try { return await req(url, { method, headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + await token() }, body: body == null ? undefined : JSON.stringify(body) }); }
+    catch (e) { if (e.status === 401 || e.message === 'not logged in') throw Object.assign(new Error('not logged in'), { status: 401 }); throw e; }
   }
 
   // the login screen, shown over the app until you're in
@@ -55,7 +63,7 @@ if (!/^(127\.0\.0\.1|localhost)$/.test(location.hostname) && location.protocol !
       const el = document.createElement('div');
       el.className = 'cloud-login';
       el.innerHTML = `<form class="card"><img src="icon.svg" alt="" width="64" height="64"><h2>Life Planner</h2>
-        <p class="muted small-text">Log in with your Life Planner account, the same one you use for friends in the PC app. Make one in the PC app under Settings, Account if you don't have one yet.</p>
+        <p class="muted small-text">Log in with your Life Planner account, the same one you use for friends in the PC app. Make one in the PC app under Settings, Account if you don't have one yet.${ls.get(COPY) && ls.get(SERVER) !== 'fb' ? " Your planner moved to a new server: log in once more and this phone's changes are brought over." : ''}</p>
         <label>Username<input name="u" autocomplete="username" autocapitalize="none" required minlength="3" maxlength="20"></label>
         <label>Password<input name="p" type="password" autocomplete="current-password" required minlength="8" maxlength="72"></label>
         <p class="cloud-err" hidden></p><button class="btn primary">Log in</button></form>`;
@@ -67,21 +75,26 @@ if (!/^(127\.0\.0\.1|localhost)$/.test(location.hostname) && location.protocol !
         const u = f.u.value.trim().toLowerCase(), btn = f.querySelector('button');
         btn.disabled = true; err.hidden = true;
         try {
-          keep(await call('POST', '/auth/v1/token?grant_type=password', { email: u + '@' + MAIL, password: f.p.value }), u);
+          keep(await authPost('accounts:signInWithPassword', { email: u + '@' + MAIL, password: f.p.value, returnSecureToken: true }), u);
           el.remove(); done();
         } catch (x) {
-          err.textContent = x.status === 400 ? 'Wrong username or password.' : x.message; err.hidden = false; btn.disabled = false;
+          err.textContent = x.status === 400 ? "Wrong username or password. (If you haven't logged in on the PC app since 2.39, do that once first.)" : x.message; err.hidden = false; btn.disabled = false;
         }
       };
     });
   }
-  function logout() { sess = null; for (const k of [SESS, COPY, PENDING, BASE, BASE_AT]) ls.set(k, null); location.reload(); }
+  function logout() { sess = null; for (const k of [SESS, COPY, PENDING, BASE, BASE_AT, SERVER]) ls.set(k, null); location.reload(); }
 
+  // the planner document: { data, updated_at } (updated_at is its version, the
+  // document's update time); only the version when cols has no data
   async function fetchRow(cols) {
-    const rows = await call('GET', `/rest/v1/planner_data?select=${cols}&user_id=eq.${sess.user}`);
-    return rows && rows[0] || null;
+    let d;
+    try { d = await docCall('GET', `${DOCS}/${docPath()}${cols.includes('data') ? '' : '?mask.fieldPaths=device'}`); }
+    catch (e) { if (e.code === 'NOT_FOUND' || e.status === 404) return null; throw e; }
+    if (!cols.includes('data')) return { updated_at: d.updateTime };
+    return { updated_at: d.updateTime, data: JSON.parse(d.fields?.data?.stringValue || 'null') };
   }
-  const missingTable = e => e.status === 404 || /planner_data/.test(e.message || '');
+  const missingTable = () => false;
   const merge = (base, mine, theirs) => window.LPMerge.merge(base, mine, theirs);
   async function load() {
     if (!sess) await login();
@@ -89,6 +102,11 @@ if (!/^(127\.0\.0\.1|localhost)$/.test(location.hostname) && location.protocol !
       const row = await fetchRow('data,updated_at');
       // changes made offline last time go up now; if the PC saved since, the
       // two are merged so both sets of changes are kept
+      // a phone that last synced with the old server: its copy (with any
+      // changes made since the PC moved to Firebase) merges in, deleting nothing
+      const moved = ls.get(SERVER) !== 'fb';
+      if (moved && ls.get(COPY)) { ls.set(PENDING, 'old-server'); ls.set(BASE, null); ls.set(BASE_AT, null); }
+      ls.set(SERVER, 'fb');
       const base = ls.get(PENDING), copy = base && ls.get(COPY);
       if (copy) {
         let d = JSON.parse(copy);
@@ -131,18 +149,21 @@ if (!/^(127\.0\.0\.1|localhost)$/.test(location.hostname) && location.protocol !
   // uploads only over the server copy this phone last had: null means the PC
   // saved since and nothing was written
   async function put(json) {
-    const data = JSON.parse(json);
-    if (!lastAt) { // no server copy yet: only make one
-      try { return (await call('POST', '/rest/v1/planner_data?select=updated_at', { user_id: sess.user, data, device: 'phone' }, { Prefer: 'return=representation' }))?.[0] || null; }
-      catch (e) { if (e.status === 409) return null; throw e; }
+    const write = () => docCall('POST', `${DOCS}/projects/${FB_PROJECT}/databases/(default)/documents:commit`, { writes: [{
+      update: { name: docPath(), fields: { data: { stringValue: json }, device: { stringValue: 'phone' } } },
+      updateTransforms: [{ fieldPath: 'updated_at', setToServerValue: 'REQUEST_TIME' }],
+      currentDocument: lastAt ? { updateTime: lastAt } : { exists: false } }] });
+    for (let i = 0; ; i++) {
+      try { const r = await write(); return { updated_at: r.writeResults?.[0]?.updateTime || r.commitTime }; }
+      catch (e) {
+        if (['FAILED_PRECONDITION', 'ALREADY_EXISTS', 'NOT_FOUND', 'ABORTED'].includes(e.code)) return null;
+        if (e.code !== 'PERMISSION_DENIED' || i) throw e;
+        // the rules refuse a save within 2 seconds of the last one, and can refuse before the version is checked
+        const head = await fetchRow('updated_at');
+        if ((head?.updated_at || '') !== lastAt) return null;
+        await new Promise(r => setTimeout(r, 2500));
+      }
     }
-    const out = await call('PATCH', `/rest/v1/planner_data?select=updated_at&user_id=eq.${sess.user}&updated_at=eq.${encodeURIComponent(lastAt)}`, { data, device: 'phone' }, { Prefer: 'return=representation' });
-    if (out && out.length) return out[0];
-    // nothing matched: the PC saved since, unless the time just didn't match as text
-    const head = await fetchRow('updated_at');
-    if (!head || head.updated_at !== lastAt) return null;
-    return (await call('POST', '/rest/v1/planner_data?on_conflict=user_id&select=updated_at', { user_id: sess.user, data, device: 'phone' },
-      { Prefer: 'resolution=merge-duplicates,return=representation' }))?.[0] || null;
   }
   // the page is told whenever the PC's newer changes were merged in, so it
   // carries on from the merged copy (never from the one built on the old copy)
@@ -163,7 +184,7 @@ if (!/^(127\.0\.0\.1|localhost)$/.test(location.hostname) && location.protocol !
           if (out) { setLast(out.updated_at || lastAt, json); break; }
           const row = await fetchRow('data,updated_at');
           let base = null; try { base = lastJson ? JSON.parse(lastJson) : null; } catch { }
-          if (!row) { lastAt = ''; continue; }
+          if (!row) { if (!lastAt) throw new Error("Couldn't save, trying again."); lastAt = ''; continue; }
           const m = merge(base, JSON.parse(json), row.data);
           setLast(row.updated_at, JSON.stringify(row.data));
           json = JSON.stringify(m); merged = true;
