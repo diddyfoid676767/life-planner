@@ -7,11 +7,12 @@
 
 let boardFriends = [];
 // the overall board: each category scores up to 100 points for whoever leads it
-const OVERALL_CATS = [['📚', 'Study', r => r.study?.mins || 0], ['🏃', 'Training', r => r.work?.mins || 0], ['🔥', 'Streak', r => r.study?.streak || 0], ['🌳', 'Trees', r => r.study?.trees || 0], ['⚔️', 'Wins', r => r.work?.wins || 0], ['💪', 'Grit', r => r.work?.grit || 0]];
+// [icon, name, value, max points]: study counts double, arena half (2.34.1)
+const OVERALL_CATS = [['📚', 'Study', r => r.study?.mins || 0, 200], ['🏃', 'Training', r => r.work?.mins || 0, 100], ['🔥', 'Streak', r => r.study?.streak || 0, 100], ['🌳', 'Trees', r => r.study?.trees || 0, 100], ['⚔️', 'Wins', r => r.work?.wins || 0, 50], ['💪', 'Grit', r => r.work?.grit || 0, 50]];
 function overallScores(rows) {
   const max = OVERALL_CATS.map(([, , f]) => Math.max(0, ...rows.map(f)));
   return rows.map(r => {
-    const parts = OVERALL_CATS.map(([icon, name, f], i) => ({ icon, name, pts: max[i] ? Math.round(f(r) / max[i] * 100) : 0 }));
+    const parts = OVERALL_CATS.map(([icon, name, f, w], i) => ({ icon, name, pts: max[i] ? Math.round(f(r) / max[i] * w) : 0 }));
     return { ...r, v: parts.reduce((a, p) => a + p.pts, 0), parts };
   }).sort((a, b) => b.v - a.v);
 }
@@ -59,7 +60,7 @@ function viewBoard() {
       <span style="flex:1"></span>${kind === 'overall' ? '' : `<div class="catchips">${sorts.map(([k, l]) => `<button class="cchip ${key === k ? 'on' : ''}" data-act="boardSort" data-v="${k}">${l}</button>`).join('')}</div>`}</div>
     <div class="podium">${rows.slice(0, 3).map((r, i) => `<div class="pod p${i + 1} ${r.me ? 'me' : ''} ${r.ghost ? 'ghost' : ''}"><div class="podav">${safeBadge(r.av, i === 0 ? 120 : 96)}</div><b>${esc(r.name)}${badgeTags(r.me ? myBadges : r.badges, true)}</b><span>${sortDef[2](r.v)}</span><div class="podstep">${medal(i)}</div></div>`).join('')}</div>
     <ol class="boardlist">${rows.map((r, i) => `<li class="${r.me ? 'me' : ''} ${r.ghost ? 'ghost' : ''}"><span class="brank">${medal(i)}</span>${safeBadge(r.av, 44)}<b>${esc(r.name)}</b>${badgeTags(r.me ? myBadges : r.badges, true)}<span style="flex:1"></span>${r.parts ? `<span class="bparts">${r.parts.filter(x => x.pts).sort((a, b) => b.pts - a.pts).slice(0, 4).map(x => `<span title="${x.name}: ${x.pts} pts">${x.icon}${x.pts}</span>`).join('')}</span>` : ''}<span class="bval">${sortDef[2](r.v)}</span></li>`).join('')}</ol>
-    ${kind === 'overall' ? `<p class="muted small-text" style="margin:8px 0 0">Everyone gets up to 100 points in each of ${OVERALL_CATS.map(c => c[0] + ' ' + c[1].toLowerCase()).join(', ')} this week: 100 for the leader, and the rest in proportion.</p>` : ''}
+    ${kind === 'overall' ? `<p class="muted small-text" style="margin:8px 0 0">Points this week, with the leader in each getting the most and the rest in proportion: ${OVERALL_CATS.map(c => c[0] + ' ' + c[1].toLowerCase() + ' ' + c[3]).join(', ')}.</p>` : ''}
     </div>`;
 }
 // ---------- friend codes ----------
