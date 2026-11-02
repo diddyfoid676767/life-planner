@@ -9,6 +9,7 @@ import (
 	"runtime"
 	"strings"
 	"syscall"
+	"time"
 	"unsafe"
 
 	webview2 "github.com/jchv/go-webview2"
@@ -117,4 +118,22 @@ func setFullscreen(hwnd uintptr, on bool) {
 		setPos.Call(hwnd, 0, uintptr(r.l), uintptr(r.t), uintptr(r.r-r.l), uintptr(r.b-r.t), frameChanged|noZ)
 	}
 	fsOn = on
+}
+
+// focusExistingWindow brings an already-open planner window to the front.
+// It waits a few seconds, since the copy that is starting may not have
+// created its window yet. Returns false if there is none.
+func focusExistingWindow() bool {
+	find := user32.NewProc("FindWindowW")
+	cls, _ := syscall.UTF16PtrFromString("webview")
+	title, _ := syscall.UTF16PtrFromString("Life Planner")
+	for i := 0; i < 24; i++ {
+		if h, _, _ := find.Call(uintptr(unsafe.Pointer(cls)), uintptr(unsafe.Pointer(title))); h != 0 {
+			user32.NewProc("ShowWindow").Call(h, 9) // SW_RESTORE
+			user32.NewProc("SetForegroundWindow").Call(h)
+			return true
+		}
+		time.Sleep(250 * time.Millisecond)
+	}
+	return false
 }

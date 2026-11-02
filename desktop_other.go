@@ -21,3 +21,5 @@ func openClaude(path string) bool { return false }
 func runWindow(url string) bool { return false }
 
 func setTaskbarBadge(n int) {}
+
+func focusExistingWindow() bool { return false }
