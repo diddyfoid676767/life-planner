@@ -1,7 +1,7 @@
 package main
 
-// Phone sync: while you're logged in, the planner is also kept in your own row
-// of planner_data on Supabase (supabase-2.29-phone-sync.sql), so the phone app
+// Phone sync: while you're logged in, the planner is also kept in your own
+// document planner/<uid> on the friends server (firebase.go), so the phone app
 // (the same pages, hosted on GitHub Pages) opens the same planner. Each save
 // here is pushed a few seconds later, and the cloud copy is checked whenever
 // the page pings, so an edit made on the phone shows up here within about 20s.
@@ -12,9 +12,9 @@ package main
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"log"
 	"net/http"
-	"net/url"
 	"os"
 	"path/filepath"
 	"sync"
@@ -89,7 +89,62 @@ func cloudCheck() {
 
 type cloudRow struct {
 	Data      json.RawMessage `json:"data"`
-	UpdatedAt string          `json:"updated_at"`
+	UpdatedAt string          `json:"updated_at"` // the version: changes on every write
+}
+
+// plannerStore is where the cloud copy lives (fsPlanner; a fake in tests).
+type plannerStore interface {
+	meta(a *account) (at string, ok bool, err error)           // the cloud copy's version, if there is one
+	get(a *account) (row cloudRow, ok bool, err error)         // the cloud copy
+	create(a *account, data []byte) (at string, err error)     // errCloudChanged if one exists already
+	update(a *account, data []byte, at string) (string, error) // errCloudChanged unless the cloud is still at version at
+}
+
+var errCloudChanged = errors.New("the cloud copy changed")
+
+var cloud plannerStore = fsPlanner{}
+
+// fsPlanner keeps the planner in planner/<uid> as one JSON string; its
+// version is the document's update time.
+type fsPlanner struct{}
+
+func (fsPlanner) meta(a *account) (string, bool, error) {
+	d, err := fsGet(a.Access, "planner/"+a.UserID, "device")
+	if err != nil || d == nil {
+		return "", false, err
+	}
+	return d.Updated, true, nil
+}
+
+func (fsPlanner) get(a *account) (cloudRow, bool, error) {
+	d, err := fsGet(a.Access, "planner/"+a.UserID)
+	if err != nil || d == nil {
+		return cloudRow{}, false, err
+	}
+	return cloudRow{Data: json.RawMessage(str(d.Fields["data"])), UpdatedAt: d.Updated}, true, nil
+}
+
+func (p fsPlanner) write(a *account, data []byte, pre string) (string, error) {
+	t, err := fsCommit(a.Access, fsSet("planner/"+a.UserID, map[string]any{"data": string(data), "device": "pc"}, false, pre, "updated_at"))
+	st := fbStatus(err)
+	if st == "PERMISSION_DENIED" { // the rules can refuse before the version is checked
+		if at, ok, e := p.meta(a); e == nil && (pre == "new" && ok || pre != "new" && at != pre) {
+			st = "FAILED_PRECONDITION"
+		}
+	}
+	if st == "FAILED_PRECONDITION" || st == "ALREADY_EXISTS" || st == "NOT_FOUND" {
+		return "", errCloudChanged
+	}
+	if err != nil {
+		return "", err
+	}
+	return t[0], nil
+}
+
+func (p fsPlanner) create(a *account, data []byte) (string, error) { return p.write(a, data, "new") }
+
+func (p fsPlanner) update(a *account, data []byte, at string) (string, error) {
+	return p.write(a, data, at)
 }
 
 var syncRun sync.Mutex // one sync at a time
@@ -123,29 +178,31 @@ func cloudSync(push bool) {
 		}
 		syncMu.Unlock()
 	}
-	user := url.QueryEscape(a.UserID)
 	look := !push || first
 	for try := 0; try < 4; try++ {
 		if look {
-			var rows []cloudRow
-			if _, err := supa("GET", "/rest/v1/planner_data?select=updated_at&user_id=eq."+user, a.Access, nil, &rows); err != nil {
+			at, ok, err := cloud.meta(a)
+			if err != nil {
 				setErr(err)
 				return
 			}
 			syncMu.Lock()
 			seen := syncSt.CloudAt
+			if !ok && seen != "" { // the cloud copy is gone (or this PC last synced with the old server)
+				syncSt.CloudAt = ""
+			}
 			syncMu.Unlock()
-			if len(rows) > 0 && (rows[0].UpdatedAt != seen || first) {
-				rows = nil
-				if _, err := supa("GET", "/rest/v1/planner_data?select=data,updated_at&user_id=eq."+user, a.Access, nil, &rows); err != nil {
+			if ok && (at != seen || first) {
+				row, ok, err := cloud.get(a)
+				if err != nil {
 					setErr(err)
 					return
 				}
-				if len(rows) == 0 || !json.Valid(rows[0].Data) {
+				if !ok || !json.Valid(row.Data) {
 					setErr(nil)
 					return
 				}
-				if err := takeCloud(rows[0], first); err != nil {
+				if err := takeCloud(row, first); err != nil {
 					setErr(err)
 					return
 				}
@@ -250,43 +307,21 @@ func pushLocal(a *account, cloudAt string, gen int64) (bool, error) {
 	if err != nil || !json.Valid(b) {
 		return true, nil
 	}
-	user := url.QueryEscape(a.UserID)
-	body := map[string]any{"user_id": a.UserID, "data": json.RawMessage(b), "device": "pc"}
-	var out []cloudRow
+	var at string
 	if cloudAt == "" { // no cloud copy yet: only create one
-		code, err := supa("POST", "/rest/v1/planner_data?select=updated_at", a.Access, body, &out, "Prefer", "return=representation")
-		if code == http.StatusConflict {
-			return false, nil
-		}
-		if err != nil {
-			return false, err
-		}
+		at, err = cloud.create(a, b)
 	} else {
-		if _, err := supa("PATCH", "/rest/v1/planner_data?select=updated_at&user_id=eq."+user+"&updated_at=eq."+url.QueryEscape(cloudAt), a.Access,
-			map[string]any{"data": json.RawMessage(b), "device": "pc"}, &out, "Prefer", "return=representation"); err != nil {
-			return false, err
-		}
-		if len(out) == 0 {
-			// nothing matched: someone saved since, unless the time just didn't
-			// match as text, in which case the copy is still the one seen here
-			var rows []cloudRow
-			if _, err := supa("GET", "/rest/v1/planner_data?select=updated_at&user_id=eq."+user, a.Access, nil, &rows); err != nil {
-				return false, err
-			}
-			if len(rows) == 0 || rows[0].UpdatedAt != cloudAt {
-				return false, nil
-			}
-			if _, err := supa("POST", "/rest/v1/planner_data?on_conflict=user_id&select=updated_at", a.Access, body, &out,
-				"Prefer", "resolution=merge-duplicates,return=representation"); err != nil {
-				return false, err
-			}
-		}
+		at, err = cloud.update(a, b, cloudAt)
+	}
+	if err == errCloudChanged {
+		return false, nil
+	}
+	if err != nil {
+		return false, err
 	}
 	os.WriteFile(syncBasePath(), b, 0o644)
 	syncMu.Lock()
-	if len(out) > 0 {
-		syncSt.CloudAt = out[0].UpdatedAt
-	}
+	syncSt.CloudAt = at
 	syncSt.Pending = saveGen != gen // saved again while this went up: push that too
 	saveSyncState()
 	syncMu.Unlock()

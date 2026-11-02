@@ -53,8 +53,9 @@ function accountCard() {
   if (!acct.signedIn) return `<div class="card acctcard"><div class="acct-login">
       <div class="acct-hero">👥</div><h2>Log in to Life Planner</h2>
       <p class="muted small-text">Make an account to find friends by username and race them on the leaderboards. Only your username, avatar and leaderboard numbers are shared.</p>
+      ${acct.moved ? `<p class="small-text"><b>Life Planner moved to a new friends server.</b> Log in once more with your usual password and your account, friends and planner come with you.</p>` : ''}
       <form id="acctForm" autocomplete="on">
-        <label>Username<input name="username" autocomplete="username" required minlength="3" maxlength="20" pattern="[A-Za-z0-9_]+" placeholder="e.g. speedy_sam"></label>
+        <label>Username<input name="username" autocomplete="username" value="${esc(acct.moved || '')}" required minlength="3" maxlength="20" pattern="[A-Za-z0-9_]+" placeholder="e.g. speedy_sam"></label>
         <label>Password<input name="password" type="password" autocomplete="current-password" required minlength="8" maxlength="72" placeholder="8+ characters"></label>
         <div class="row"><button class="btn primary" data-acct="login" ${acctBusy ? 'disabled' : ''}>Log in</button><button class="btn" data-acct="signup" ${acctBusy ? 'disabled' : ''}>Create account</button></div>
         <p class="muted small-text">There's no email on the account, so write your password down somewhere safe.</p>

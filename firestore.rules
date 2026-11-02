@@ -1,0 +1,233 @@
+rules_version = '2';
+
+// Life Planner's friends server rules. Paste ALL of this into Firebase console
+// > Firestore Database > Rules, then press Publish.
+//
+// The app runs on each person's own PC, so anything it sends could have been
+// faked. These rules are checked by Google on every write, so they are where
+// cheating is stopped:
+//  - leaderboard numbers can only rise as fast as real time allows (you can't
+//    log more study minutes this week than minutes have passed, coins, trees,
+//    wins and ratings can only climb a little per minute), and have hard caps
+//  - nobody can give themselves the Dev badge or change their username
+//  - saves, messages, new chats and reports are rate limited
+//  - every text field has a size cap
+//  - you can only read your own planner and the chats you're in
+//
+// The numbers in riseOk() and lifeOk() are mirrored in clampStats() in
+// accounts.go, so an honest app never sends something these rules refuse.
+
+service cloud.firestore {
+  match /databases/{db}/documents {
+
+    // ---------- the developer: gets the Dev badge and everyone's feedback
+    function devName() { return 'foidkilla67'; }
+    function devUid() { return get(/databases/$(db)/documents/usernames/$(devName())).data.uid; }
+
+    function signedIn() { return request.auth != null; }
+    function me() { return request.auth.uid; }
+    function inc() { return request.resource.data; }
+    function cur() { return resource.data; }
+    function changed() { return request.resource.data.diff(resource.data).affectedKeys(); }
+    function stampedNow(k) { return getAfter(/databases/$(db)/documents/rl/$(me())).data.get(k, null) == request.time; }
+
+    // ---------- leaderboard numbers. A missing number counts as 0; one that
+    // isn't a number makes the comparison fail, so the save is refused.
+    function statsShape(s) {
+      return s is map
+        && s.keys().hasOnly(['week', 'study', 'work', 'health', 'chal', 'now', 'prev', 'pvp', 'fit', 'fr'])
+        && (!('fr' in s) || (s.fr is list && s.fr.size() <= 60))
+        && (!('chal' in s) || (s.chal is list && s.chal.size() <= 12));
+    }
+    // this week's minutes can't be more than the minutes the week has had
+    // (plus a day for time zones)
+    function weekOk(s) {
+      let st = s.get('study', {});
+      let wo = s.get('work', {});
+      return st.get('mins', 0) >= 0 && wo.get('mins', 0) >= 0 && st.get('coins', 0) >= 0
+        && (!('week' in s)
+          ? (st.get('mins', 0) == 0 && wo.get('mins', 0) == 0)
+          : weekMinsOk(s.week, st.get('mins', 0), wo.get('mins', 0)));
+    }
+    function weekMinsOk(w, a, b) {
+      let wm = (request.time.toMillis() - timestamp.date(int(w[0:4]), int(w[5:7]), int(w[8:10])).toMillis()) / 60000 + 1440;
+      return w.matches('[0-9]{4}-[0-9]{2}-[0-9]{2}') && wm > 0 && wm < 9 * 1440 && a <= wm && b <= wm;
+    }
+    // hard caps on lifetime numbers
+    function lifeOk(s) {
+      let st = s.get('study', {});
+      let wo = s.get('work', {});
+      let pv = s.get('pvp', {});
+      return st.get('coins', 0) <= 200000 && st.get('streak', 0) <= 1000 && st.get('trees', 0) <= 10000
+        && wo.get('wins', 0) <= 20000 && wo.get('surv', 0) <= 10000 && wo.get('ovr', 0) <= 200 && wo.get('grit', 0) <= 1000000
+        && pv.get('r', 0) <= 5000 && pv.get('w', 0) <= 20000 && pv.get('l', 0) <= 20000;
+    }
+    // how fast each number may climb between two saves (m = minutes between them)
+    function riseOk(n, o, m) {
+      let ns = n.get('study', {});
+      let os = o.get('study', {});
+      let nw = n.get('work', {});
+      let ow = o.get('work', {});
+      let np = n.get('pvp', {});
+      let op = o.get('pvp', {});
+      return (n.get('week', '') != o.get('week', '')
+              || (ns.get('mins', 0) <= os.get('mins', 0) + m + 5 && nw.get('mins', 0) <= ow.get('mins', 0) + m + 5))
+        && ns.get('coins', 0) <= os.get('coins', 0) + m * 10 + 300
+        && ns.get('trees', 0) <= os.get('trees', 0) + m * 0.2 + 3
+        && ns.get('streak', 0) <= os.get('streak', 0) + m * 0.001 + 1
+        && nw.get('wins', 0) <= ow.get('wins', 0) + m + 3
+        && nw.get('surv', 0) <= ow.get('surv', 0) + m + 5
+        && nw.get('grit', 0) <= ow.get('grit', 0) + m * 5 + 50
+        && nw.get('ovr', 0) <= ow.get('ovr', 0) + m * 0.1 + 2
+        && np.get('r', 0) <= op.get('r', 0) + m * 10 + 60
+        && np.get('w', 0) <= op.get('w', 0) + m * 0.5 + 2
+        && np.get('l', 0) <= op.get('l', 0) + m * 0.5 + 2;
+    }
+
+    // ---------- usernames: one document per name, so names are unique
+    match /usernames/{name} {
+      allow read: if true;
+      allow create: if signedIn() && name.matches('[a-z0-9_]{3,20}')
+        && inc().keys().hasOnly(['uid']) && inc().uid == me()
+        && request.auth.token.email == name + '@users.lifeplanner.app';
+      allow delete: if signedIn() && cur().uid == me();
+    }
+
+    // ---------- profiles: what friends and the leaderboard see
+    function profileOk() {
+      return inc().keys().hasOnly(['username', 'display', 'avatar', 'stats', 'badges', 'jersey', 'born', 'updated_at'])
+        && inc().display is string && inc().display.size() <= 30
+        && inc().avatar is string && inc().avatar.size() <= 6000
+        && statsShape(inc().stats) && weekOk(inc().stats) && lifeOk(inc().stats)
+        && inc().updated_at == request.time;
+    }
+    function jerseyOk() {
+      return inc().get('jersey', null) == null
+        || (inc().jersey is int && inc().jersey >= 0 && inc().jersey <= 99
+            && getAfter(/databases/$(db)/documents/jerseys/$(string(inc().jersey))).data.uid == me());
+    }
+    function badgesOk() {
+      return inc().badges == [] || inc().badges == ['beta']
+        || (inc().username == devName() && (inc().badges == ['dev'] || inc().badges == ['dev', 'beta']));
+    }
+    match /profiles/{uid} {
+      allow read: if true;
+      allow create: if signedIn() && uid == me() && profileOk() && badgesOk() && jerseyOk()
+        && getAfter(/databases/$(db)/documents/usernames/$(inc().username)).data.uid == me()
+        && inc().born == request.time;
+      // a jersey number on its own
+      allow update: if signedIn() && uid == me() && changed().hasOnly(['jersey']) && jerseyOk();
+      // a leaderboard save: at most every 20 seconds, numbers climbing no faster than riseOk
+      allow update: if signedIn() && uid == me() && profileOk()
+        && inc().username == cur().username && inc().badges == cur().badges && inc().born == cur().born
+        && (!('jersey' in changed()) || jerseyOk())
+        && request.time > cur().updated_at + duration.value(20, 's')
+        && riseOk(inc().stats, cur().stats, (request.time.toMillis() - cur().updated_at.toMillis()) / 60000);
+      allow delete: if signedIn() && uid == me();
+    }
+
+    match /jerseys/{n} {
+      allow read: if true;
+      allow create: if signedIn() && n.matches('[0-9]{1,2}') && inc().keys().hasOnly(['uid']) && inc().uid == me();
+      allow delete: if signedIn() && cur().uid == me();
+    }
+
+    // ---------- your planner, synced between your devices
+    match /planner/{uid} {
+      allow read, delete: if signedIn() && uid == me();
+      allow create, update: if signedIn() && uid == me()
+        && inc().keys().hasOnly(['data', 'device', 'updated_at'])
+        && inc().data is string && inc().data.size() < 1000000
+        && inc().device is string && inc().device.size() <= 20
+        && inc().updated_at == request.time
+        && (resource == null || request.time > cur().updated_at + duration.value(2, 's'));
+    }
+
+    // ---------- rate limits: when you last sent a message (m), started or
+    // changed a chat (c) and reported someone (r)
+    function stamp(k, secs) {
+      return !(k in inc())
+        || (resource != null && k in cur() && inc()[k] == cur()[k])
+        || (inc()[k] == request.time && (resource == null || !(k in cur()) || request.time > cur()[k] + duration.value(secs, 's')));
+    }
+    match /rl/{uid} {
+      allow read: if signedIn() && uid == me();
+      allow create, update: if signedIn() && uid == me() && inc().keys().hasOnly(['m', 'c', 'r'])
+        && stamp('m', 1) && stamp('c', 3) && stamp('r', 30);
+    }
+
+    // ---------- blocks: <blocker uid>_<blocked uid>
+    function blocked(a, b) {
+      return exists(/databases/$(db)/documents/blocks/$(a + '_' + b)) || exists(/databases/$(db)/documents/blocks/$(b + '_' + a));
+    }
+    match /blocks/{id} {
+      allow read, delete: if signedIn() && cur().by == me();
+      allow create: if signedIn() && inc().keys().hasOnly(['by', 'who', 'u']) && inc().by == me()
+        && inc().who is string && id == me() + '_' + inc().who && inc().u is string && inc().u.size() <= 20;
+    }
+
+    match /reports/{id} {
+      allow create: if signedIn() && inc().keys().hasOnly(['by', 'u', 'msg', 'why', 'at']) && inc().by == me()
+        && inc().u is string && inc().u.size() <= 20 && inc().why is string && inc().why.size() <= 500
+        && inc().at == request.time && stampedNow('r');
+    }
+
+    // ---------- chats. DMs are dm-<uid>-<uid> (lower uid first) so there's
+    // only ever one per pair; each person's feedback chat is fb-<their uid>.
+    function newChatOk(c) {
+      return inc().keys().hasOnly(['members', 'name', 'group', 'by', 'kind', 'last', 'read', 'at'])
+        && inc().by == me() && inc().members is list && me() in inc().members
+        && inc().members.size() >= 2 && inc().members.size() <= 50
+        && inc().name is string && inc().name.size() <= 40 && inc().group is bool
+        && inc().last == null && inc().read == {} && inc().at == request.time && stampedNow('c')
+        && (inc().kind == 'feedback'
+              ? (c == 'fb-' + me() && inc().members == [me(), devUid()] && inc().group == true)
+            : inc().kind == '' && (inc().group
+              ? c.matches('[0-9a-f-]{36}')
+              : (inc().members.size() == 2 && !blocked(inc().members[0], inc().members[1])
+                 && inc().members[0] < inc().members[1] && c == 'dm-' + inc().members[0] + '-' + inc().members[1])));
+    }
+    function membersOk(c) {
+      return inc().members is list && inc().members.size() <= 50 && (
+        // leaving
+        inc().members.toSet() == cur().members.toSet().difference([me()].toSet())
+        // adding people to a group
+        || (cur().group && cur().kind == '' && inc().members.hasAll(cur().members) && stampedNow('c'))
+        // bringing the developer back into your feedback chat
+        || (cur().kind == 'feedback' && c == 'fb-' + me() && inc().members.toSet() == cur().members.toSet().union([devUid()].toSet())));
+    }
+    function lastOk(c) {
+      return inc().last is map && inc().last.from == me()
+        && existsAfter(/databases/$(db)/documents/chats/$(c)/msgs/$(string(inc().last.id)))
+        && !exists(/databases/$(db)/documents/chats/$(c)/msgs/$(string(inc().last.id)));
+    }
+    match /chats/{c} {
+      allow read: if signedIn() && (resource == null || me() in resource.data.members);
+      allow create: if signedIn() && newChatOk(c);
+      allow update: if signedIn() && me() in cur().members
+        && changed().hasOnly(['members', 'name', 'last', 'read', 'at'])
+        && (!('name' in changed()) || (cur().group && cur().kind == '' && inc().name is string && inc().name.size() <= 40))
+        && (!('read' in changed()) || inc().read.diff(cur().read).affectedKeys().hasOnly([me()]))
+        && (!('last' in changed()) || lastOk(c))
+        && (!('at' in changed()) || inc().at == request.time)
+        && (!('members' in changed()) || membersOk(c));
+
+      match /msgs/{m} {
+        allow read: if signedIn() && me() in get(/databases/$(db)/documents/chats/$(c)).data.members;
+        allow create: if signedIn()
+          && inc().keys().hasOnly(['n', 'from', 'u', 'body', 'at'])
+          && inc().from == me() && inc().at == request.time
+          && inc().u == get(/databases/$(db)/documents/profiles/$(me())).data.username
+          && inc().body is string && inc().body.size() > 0 && inc().body.size() <= 2000
+          && inc().n is int && m == string(inc().n)
+          && inc().n > (request.time.toMillis() - 120000) * 1000 && inc().n < (request.time.toMillis() + 120000) * 1000
+          && stampedNow('m')
+          && dmOpen(get(/databases/$(db)/documents/chats/$(c)).data)
+          && getAfter(/databases/$(db)/documents/chats/$(c)).data.last.id == inc().n;
+      }
+    }
+    function dmOpen(ch) {
+      return me() in ch.members && (ch.group || ch.members.size() < 2 || !blocked(ch.members[0], ch.members[1]));
+    }
+  }
+}

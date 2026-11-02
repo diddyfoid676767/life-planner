@@ -27,6 +27,22 @@ jobs:
         if: steps.v.outputs.new == 'yes'
         with:
           go-version-file: go.mod
+      - uses: actions/setup-node@v4
+        if: steps.v.outputs.new == 'yes'
+        with:
+          node-version: 20
+      - name: Scramble the page scripts
+        # makes the app's code very hard to read or change; the source in
+        # this repo stays readable. The friends server's rules
+        # (firestore.rules) are what actually stop cheating.
+        if: steps.v.outputs.new == 'yes'
+        run: |
+          npm i --no-save --silent javascript-obfuscator@4.1.1
+          for f in web/*.js; do
+            npx javascript-obfuscator "$f" --output "$f" --compact true --simplify true \
+              --string-array true --string-array-encoding base64 --string-array-threshold 0.75 \
+              --identifier-names-generator hexadecimal --rename-globals false --self-defending false
+          done
       - name: Build
         if: steps.v.outputs.new == 'yes'
         run: |

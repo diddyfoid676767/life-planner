@@ -3,9 +3,6 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	"io"
-	"net/http"
-	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"strings"
@@ -22,7 +19,6 @@ type fakeCloud struct {
 	at      string
 	n       int
 	patches int
-	noMatch bool
 	before  func() // runs before each write, to change the row "meanwhile"
 }
 
@@ -32,62 +28,49 @@ func (f *fakeCloud) set(d string) {
 	f.at = fmt.Sprintf("2026-10-27T08:00:%02d.%06d+00:00", f.n%60, f.n)
 }
 
-func (f *fakeCloud) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+func (f *fakeCloud) meta(*account) (string, bool, error) {
 	f.Lock()
 	defer f.Unlock()
-	q := r.URL.Query()
-	row := func() []map[string]any {
-		if f.data == nil {
-			return []map[string]any{}
-		}
-		m := map[string]any{"updated_at": f.at}
-		if strings.Contains(q.Get("select"), "data") {
-			m["data"] = f.data
-		}
-		return []map[string]any{m}
+	return f.at, f.data != nil, nil
+}
+
+func (f *fakeCloud) get(*account) (cloudRow, bool, error) {
+	f.Lock()
+	defer f.Unlock()
+	return cloudRow{Data: f.data, UpdatedAt: f.at}, f.data != nil, nil
+}
+
+func (f *fakeCloud) write(data []byte, ok func() bool) (string, error) {
+	f.Lock()
+	defer f.Unlock()
+	if f.before != nil {
+		b := f.before
+		f.before = nil
+		b()
 	}
-	var body struct {
-		Data json.RawMessage `json:"data"`
+	if !ok() {
+		return "", errCloudChanged
 	}
-	if r.Method != "GET" {
-		if f.before != nil {
-			b := f.before
-			f.before = nil
-			b()
-		}
-		raw, _ := io.ReadAll(r.Body)
-		json.Unmarshal(raw, &body)
-	}
-	switch r.Method {
-	case "GET":
-		json.NewEncoder(w).Encode(row())
-	case "POST":
-		if f.data != nil && !strings.Contains(r.Header.Get("Prefer"), "merge-duplicates") {
-			w.WriteHeader(409)
-			w.Write([]byte(`{"message":"duplicate key"}`))
-			return
-		}
-		f.set(string(body.Data))
-		json.NewEncoder(w).Encode(row())
-	case "PATCH":
-		f.patches++
-		if f.data == nil || f.noMatch || q.Get("updated_at") != "eq."+f.at {
-			w.Write([]byte("[]"))
-			return
-		}
-		f.set(string(body.Data))
-		json.NewEncoder(w).Encode(row())
-	}
+	f.set(string(data))
+	return f.at, nil
+}
+
+func (f *fakeCloud) create(_ *account, data []byte) (string, error) {
+	return f.write(data, func() bool { return f.data == nil })
+}
+
+func (f *fakeCloud) update(_ *account, data []byte, at string) (string, error) {
+	f.patches++
+	return f.write(data, func() bool { return f.data != nil && f.at == at })
 }
 
 func setupSync(t *testing.T, local string, st *syncState, base string) *fakeCloud {
 	t.Helper()
 	f := &fakeCloud{}
-	srv := httptest.NewServer(f)
-	t.Cleanup(srv.Close)
-	supaURL, supaKey = srv.URL, "k"
+	cloud = f
+	t.Cleanup(func() { cloud = fsPlanner{} })
 	dataDir = t.TempDir()
-	saveAccount(&account{UserID: "u1", Username: "eli", Access: "a", Refresh: "r", Expires: time.Now().Unix() + 3600})
+	saveAccount(&account{Backend: "fb", UserID: "u1", Username: "eli", Access: "a", Refresh: "r", Expires: time.Now().Unix() + 3600})
 	if local != "" {
 		os.WriteFile(filepath.Join(dataDir, dataFileName), []byte(local), 0o644)
 	}
@@ -269,18 +252,5 @@ func TestSyncPlainPushAndPull(t *testing.T) {
 	cloudSync(false)
 	if ids(t, localPlanner(t)) != "z" || currentRev() == rev || syncSt.Pending {
 		t.Fatal("pull")
-	}
-}
-
-func TestSyncTimeTextMismatch(t *testing.T) {
-	// the update's time filter never matches (the time printed differently),
-	// but the copy is still the one seen here, so the push still goes through
-	f := setupSync(t, `{"todos":[{"id":"a"},{"id":"b"},{"id":"c"}]}`, nil, p0)
-	f.set(p0)
-	syncSt = syncState{User: "u1", CloudAt: f.at, Pending: true}
-	f.noMatch = true
-	cloudSync(true)
-	if cloudIDs(t, f) != "a,b,c" || syncSt.Pending {
-		t.Fatal("not pushed")
 	}
 }
