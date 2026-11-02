@@ -85,8 +85,9 @@ func main() {
 		// Already running (or port busy): if it's us, just open another tab.
 		if resp, err2 := http.Get(url + "api/ping"); err2 == nil {
 			resp.Body.Close()
-			if !runWindow(url) {
-				openBrowser(url)
+			u := url + "?k=" + readWindowKey()
+			if !runWindow(u) {
+				openBrowser(u)
 			}
 			return
 		}
@@ -96,12 +97,20 @@ func main() {
 	sub, _ := fs.Sub(webFS, "web")
 	mux := http.NewServeMux()
 	static := http.FileServer(http.FS(sub))
+	key := newWindowKey()
 	mux.Handle("/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if !windowAllowed(w, r, key) {
+			return
+		}
 		w.Header().Set("Cache-Control", "no-cache")
 		static.ServeHTTP(w, r)
 	}))
 	mux.HandleFunc("/api/ping", handlePing)
-	mux.HandleFunc("/api/data", handleData)
+	mux.HandleFunc("/api/data", func(w http.ResponseWriter, r *http.Request) {
+		if windowAllowed(w, r, key) {
+			handleData(w, r)
+		}
+	})
 	mux.HandleFunc("/api/backups", handleBackups)
 	mux.HandleFunc("/api/feed", handleFeed)
 	mux.HandleFunc("/api/inbox", handleInbox)
@@ -189,11 +198,11 @@ func main() {
 	// The planner's own window (WebView2) runs here on the main thread; the
 	// app quits when it is closed. Without WebView2, fall back to a browser
 	// window (a restart after an update leaves the existing one open).
-	if runWindow(url) {
+	if runWindow(url + "?k=" + key) {
 		os.Exit(0)
 	}
 	if !restarted {
-		openBrowser(url)
+		openBrowser(url + "?k=" + key)
 	}
 	select {}
 }
