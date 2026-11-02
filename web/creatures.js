@@ -84,6 +84,14 @@ function learnset(id) {
 }
 learnset.c = {};
 const knownAt = (id, lv) => learnset(id).filter(x => x.lv <= lv).map(x => x.id);
+// the four newest moves, but never a set of mostly stun/boost moves: keep at least two that hurt
+function startMoves(id, lv) {
+  const all = knownAt(id, lv), out = all.slice(-4), hurts = x => isDmg(moveById(x));
+  const spare = all.slice(0, -4).filter(hurts).reverse();
+  while (out.filter(hurts).length < 2 && spare.length) { const i = out.findIndex(x => !hurts(x)); if (i < 0) break; out[i] = spare.shift(); }
+  if (!out.some(hurts)) { if (out.length >= 4) out[0] = 'quick'; else out.push('quick'); }
+  return out;
+}
 
 // ---------- state ----------
 function CR() {
@@ -101,7 +109,7 @@ const monById = uid => CR().mons.find(m => m.uid === uid);
 const XP_AT = lv => lv <= 1 ? 0 : Math.round(Math.pow(lv, 3) * .8);
 function newMon(spId, lv = 5, how = 'egg') {
   const C = CR(), uid = 'm' + (C.next++);
-  const m = { uid, sp: spId, lv, xp: XP_AT(lv), how, at: today(), train: {}, moves: knownAt(spId, lv).slice(-4), item: null, iv: 8 + Math.floor(Math.random() * 8) };
+  const m = { uid, sp: spId, lv, xp: XP_AT(lv), how, at: today(), train: {}, moves: startMoves(spId, lv), item: null, iv: 8 + Math.floor(Math.random() * 8) };
   C.mons.push(m);
   if (C.team.length < teamSlots()) C.team.push(uid);
   return m;
@@ -204,7 +212,7 @@ function myTeamMons() {
 // a wild or rival creature
 function wildMon(spId, lv, o = {}) {
   const s = specOf(spId), r = rng(hashStr(spId + lv + (o.seed || '')));
-  const m = mkMon({ key: 'w:' + spId + (o.seed || '') + lv, sp: spId, name: o.name || s.name, icon: s.icon, types: s.types, lv, base: s.base, dv: o.boss ? 15 : 4 + Math.floor(r() * 10), sx: (o.boss ? 40 : 6) + Math.min(50, lv), moves: knownAt(spId, lv).slice(-4).map(moveById), hpMul: o.hpMul, boss: o.boss, giant: o.giant });
+  const m = mkMon({ key: 'w:' + spId + (o.seed || '') + lv, sp: spId, name: o.name || s.name, icon: s.icon, types: s.types, lv, base: s.base, dv: o.boss ? 15 : 4 + Math.floor(r() * 10), sx: (o.boss ? 40 : 6) + Math.min(50, lv), moves: startMoves(spId, lv).map(moveById), hpMul: o.hpMul, boss: o.boss, giant: o.giant });
   return m;
 }
 // what each rival trainer brings

@@ -446,9 +446,9 @@ function foodPage() {
 const defaultMeal = () => { const h = new Date().getHours(); return h < 10 ? 'b' : h < 15 ? 'l' : h < 21 ? 'd' : 's'; };
 
 // ---------- athletics ----------
-const TEST_CATS = [['sprint', '⚡ Sprints'], ['hurdle', '🚧 Hurdles'], ['dist', '🏃 Middle and distance'], ['jump', '🦘 Jumps'], ['throw', '🥏 Throws'], ['rm', '🏋️ Tested 1 rep maxes'], ['test', '📏 Fitness tests']];
+const TEST_CATS = [['sprint', '⚡ Sprints'], ['hurdle', '🚧 Hurdles'], ['dist', '🏃 Middle and distance'], ['jump', '🦘 Jumps'], ['rm', '🏋️ Tested 1 rep maxes'], ['test', '📏 Fitness tests']];
 // PRs in three sections, each with its own subsections
-const PR_SECS = [['run', '🏃 Running', ['sprint', 'hurdle', 'dist']], ['gym', '🏋️ Gym', ['lifts', 'rm']], ['other', '🤸 Other', ['jump', 'throw', 'test']]];
+const PR_SECS = [['run', '🏃 Running', ['sprint', 'hurdle', 'dist']], ['gym', '🏋️ Gym', ['lifts', 'rm']], ['other', '🤸 Other', ['jump', 'test']]];
 const PR_SUBS = Object.fromEntries([...TEST_CATS, ['lifts', '📈 Lift PRs from your gym log']]);
 const prSecOf = cat => (PR_SECS.find(x => x[2].includes(cat)) || PR_SECS[0])[0];
 function myBests() { const o = {}; for (const T of TESTS) { const b = pbHistory(T.id).best; if (b != null) o[T.id] = b; } return o; }
