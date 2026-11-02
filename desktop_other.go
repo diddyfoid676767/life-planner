@@ -17,3 +17,5 @@ func findBrainfm(custom string) string { return "" }
 func launchApp(target string) error { return errors.New("only available on Windows") }
 
 func openClaude(path string) bool { return false }
+
+func runWindow(url string) bool { return false }

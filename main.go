@@ -85,7 +85,9 @@ func main() {
 		// Already running (or port busy): if it's us, just open another tab.
 		if resp, err2 := http.Get(url + "api/ping"); err2 == nil {
 			resp.Body.Close()
-			openBrowser(url)
+			if !runWindow(url) {
+				openBrowser(url)
+			}
 			return
 		}
 		log.Fatalf("cannot listen on port %d: %v", port, err)
@@ -182,11 +184,18 @@ func main() {
 	go cleanupOld()
 	go watchGitHub()
 	go mailLoop()
-	if !restarted {
-		go func() { time.Sleep(200 * time.Millisecond); openBrowser(url) }()
-	}
 	log.Printf("Life Planner running at %s, data in %s", url, dataDir)
-	log.Fatal(http.Serve(ln, localOnly(mux)))
+	go func() { log.Fatal(http.Serve(ln, localOnly(mux))) }()
+	// The planner's own window (WebView2) runs here on the main thread; the
+	// app quits when it is closed. Without WebView2, fall back to a browser
+	// window (a restart after an update leaves the existing one open).
+	if runWindow(url) {
+		os.Exit(0)
+	}
+	if !restarted {
+		openBrowser(url)
+	}
+	select {}
 }
 
 // localOnly rejects requests whose Host isn't our loopback address, which

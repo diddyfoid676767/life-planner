@@ -1,0 +1,79 @@
+//go:build windows
+
+package main
+
+import (
+	"log"
+	"os/exec"
+	"path/filepath"
+	"runtime"
+	"strings"
+	"syscall"
+	"unsafe"
+
+	webview2 "github.com/jchv/go-webview2"
+)
+
+// WebView2 windows must be driven from the thread that created them, and
+// main() is where the window runs, so pin main to its OS thread.
+func init() { runtime.LockOSThread() }
+
+const externalLinksJS = `(function(){
+var own=location.origin;
+function ext(u){try{var x=new URL(u,location.href);return /^https?:$/.test(x.protocol)&&x.origin!==own}catch(e){return false}}
+document.addEventListener('click',function(e){var a=e.target&&e.target.closest&&e.target.closest('a[href]');
+ if(a&&ext(a.href)){e.preventDefault();window.lpOpenExternal(a.href)}},true);
+var wo=window.open;
+window.open=function(u){if(u&&ext(String(u))){window.lpOpenExternal(String(u));return null}return wo.apply(this,arguments)};
+})();`
+
+// runWindow shows the planner in its own native window (the WebView2 runtime
+// that ships with Windows 10/11 and Edge; no browser tabs or address bar) and
+// blocks until the window is closed. It returns false straight away if
+// WebView2 isn't available, so the caller can fall back to a browser window.
+func runWindow(url string) (shown bool) {
+	defer func() {
+		if r := recover(); r != nil {
+			log.Printf("webview: %v", r)
+			shown = false
+		}
+	}()
+	w := webview2.NewWithOptions(webview2.WebViewOptions{
+		AutoFocus: true,
+		DataPath:  filepath.Join(dataDir, "webview"),
+		WindowOptions: webview2.WindowOptions{
+			Title: "Life Planner", Width: 1320, Height: 880, Center: true,
+		},
+	})
+	if w == nil {
+		log.Printf("webview: WebView2 runtime not available, using a browser window")
+		return false
+	}
+	defer w.Destroy()
+	w.Bind("lpOpenExternal", func(u string) {
+		if strings.HasPrefix(u, "https://") || strings.HasPrefix(u, "http://") {
+			exec.Command("rundll32", "url.dll,FileProtocolHandler", u).Start()
+		}
+	})
+	w.Init(externalLinksJS)
+	hwnd := uintptr(w.Window())
+	setWindowIcon(hwnd)
+	setWindowAppID(hwnd, exePath())
+	w.Navigate(url)
+	w.Run()
+	return true
+}
+
+// setWindowIcon gives the window the icon embedded in LifePlanner.exe.
+func setWindowIcon(hwnd uintptr) {
+	h, _, _ := user32.NewProc("GetModuleHandleW").Call(0)
+	name, _ := syscall.UTF16PtrFromString("APP")
+	send := user32.NewProc("SendMessageW")
+	load := user32.NewProc("LoadImageW")
+	for i, size := range []uintptr{32, 16} { // big, small
+		ic, _, _ := load.Call(h, uintptr(unsafe.Pointer(name)), 1, size, size, 0)
+		if ic != 0 {
+			send.Call(hwnd, 0x80, uintptr(1-i), ic) // WM_SETICON: ICON_BIG=1, ICON_SMALL=0
+		}
+	}
+}
