@@ -369,6 +369,50 @@ function miniByDay(items, empty) {
 let view = 'today';
 const ui = { daySel: null, calMonth: null, calSel: null, calFilter: { study: true, training: true, personal: true, calendars: true }, studyAll: false, assessPast: false, evFilter: 'upcoming', evCat: '', showDoneTodos: false, studyWeek: 0, forestRange: 'all', trainWeek: 0, inboxCat: '', setTab: 'general' };
 
+// Update a page in place: elements that are the same stay (with their focus,
+// cursor, scroll, 3D canvases and running animations), and only what changed
+// is touched. This is what stops the flash and the "everything reloaded" feel.
+const MORPH_KEEP = new Set(['has3d', 'b3']);
+function morphHtml(el, html) { const t = document.createElement(el.tagName); t.innerHTML = html; morphKids(el, t); }
+function morphKeep(n) { return n.nodeName === 'CANVAS'; } // canvases are added by the 3D views, never by page markup
+function morphSame(a, b) { return a.nodeType === b.nodeType && a.nodeName === b.nodeName && (a.nodeType !== 1 || (a.id || '') === (b.id || '') && (a.getAttribute('data-ks') || '') === (b.getAttribute('data-ks') || '')); }
+function morphKids(from, to) {
+  let o = from.firstChild, n = to.firstChild;
+  while (n) {
+    const nn = n.nextSibling;
+    while (o && morphKeep(o)) o = o.nextSibling;
+    if (!o) from.appendChild(n);
+    else if (morphSame(o, n)) { morphNode(o, n); o = o.nextSibling; }
+    else { const on = o.nextSibling; from.replaceChild(n, o); o = on; }
+    n = nn;
+  }
+  while (o) { const on = o.nextSibling; if (!morphKeep(o)) from.removeChild(o); o = on; }
+}
+function morphNode(o, n) {
+  if (o.nodeType !== 1) { if (o.nodeValue !== n.nodeValue) o.nodeValue = n.nodeValue; return; }
+  const focused = o === document.activeElement, tag = o.nodeName;
+  for (const a of [...o.attributes]) if (!n.hasAttribute(a.name)) {
+    if (a.name === 'class' && [...o.classList].some(c => MORPH_KEEP.has(c))) continue;
+    if (a.name === 'open' && tag === 'DETAILS' || a.name === 'style' && tag === 'TEXTAREA') continue; // keep what you opened, and a grown message box
+    o.removeAttribute(a.name);
+  }
+  for (const a of n.attributes) {
+    let val = a.value;
+    if (a.name === 'class') { const k = [...o.classList].filter(c => MORPH_KEEP.has(c) && !n.classList.contains(c)); if (k.length) val += ' ' + k.join(' '); }
+    if (o.getAttribute(a.name) !== val) {
+      o.setAttribute(a.name, val);
+      if (a.name === 'value' && tag === 'INPUT' && o.type !== 'file') o.value = val; // the page changed the value itself
+    }
+  }
+  if (tag === 'INPUT') {
+    if (o.type === 'checkbox' || o.type === 'radio') o.checked = n.checked;
+    else if (!focused && o.type !== 'file' && o.value !== n.value) o.value = n.value;
+    return;
+  }
+  if (tag === 'TEXTAREA') { if (!focused && o.value !== n.value) o.value = n.value; return; }
+  morphKids(o, n);
+  if (tag === 'SELECT' && !focused) o.value = n.value;
+}
 function render() {
   applyTheme();
   applyNav();
@@ -378,8 +422,11 @@ function render() {
   const v = $('#view');
   const y = window.scrollY, ks = {}; // boxes that scroll by themselves keep their place
   v.querySelectorAll('[data-ks]').forEach(el => { ks[el.dataset.ks] = el.scrollTop; });
-  if (v.dataset.view !== view) { v.classList.remove('enter'); void v.offsetWidth; v.classList.add('enter'); v.dataset.view = view; }
-  v.innerHTML = ({ today: viewToday, calendar: viewCalendar, study: viewStudyHub, forest: viewForest, training: viewTraining, arena: viewArena, friends: viewFriends, board: viewLeaderboard, chats: () => { view = 'friends'; return viewFriends(); }, profile: viewProfile, school: viewSchool, health: () => { view = 'training'; ui.bodyPage = 'health'; return viewTraining(); }, personal: viewPersonal, todo: viewTodo, inbox: viewInbox, settings: viewSettings })[view]();
+  const fresh = v.dataset.view !== view;
+  if (fresh) { v.classList.remove('enter'); void v.offsetWidth; v.classList.add('enter'); v.dataset.view = view; }
+  else v.classList.remove('enter'); // staying on the same page: no entrance animation, only the parts that changed are updated
+  const html = ({ today: viewToday, calendar: viewCalendar, study: viewStudyHub, forest: viewForest, training: viewTraining, arena: viewArena, friends: viewFriends, board: viewLeaderboard, chats: () => { view = 'friends'; return viewFriends(); }, profile: viewProfile, school: viewSchool, health: () => { view = 'training'; ui.bodyPage = 'health'; return viewTraining(); }, personal: viewPersonal, todo: viewTodo, inbox: viewInbox, settings: viewSettings })[view]();
+  if (fresh || !v.firstChild) v.innerHTML = html; else morphHtml(v, html);
   updateInboxBadge();
   gameFeedback();
   window.scrollTo(0, y);
@@ -956,7 +1003,7 @@ function viewSettings() {
     <div class="card" data-sec="reminders"><h2>Reminders</h2>
       <p class="muted small-text" style="margin-top:0">Pop-up notifications: <b>${perm === 'granted' ? 'on' : perm === 'denied' ? 'blocked in browser settings' : perm === 'unsupported' ? 'not supported by this browser' : 'off'}</b>.
       Reminders appear while the planner tab is open (it can be in the background). Things you missed while it was closed pop up next time you open it.</p>
-      <div class="row"><button class="btn" data-act="askNotify">Turn on notifications</button><button class="btn" data-act="testNotify">Send a test reminder</button></div>
+      <div class="row"><button class="btn" data-act="askNotify">Turn on notifications</button><button class="btn" data-act="testNotify">Send a test reminder</button><button class="btn danger" data-act="clearReminders">Clear all reminders</button></div>
       <p class="muted small-text">Tip: export to your phone's calendar (below) for reminders even when your PC is off.</p></div>
     <div class="card" data-sec="reminders" style="grid-column:1/-1"><h2>Default reminders for new items</h2>
       <div style="overflow-x:auto"><table class="remtable"><thead><tr><th></th>${REMIND_OPTS.map(([, l]) => `<th>${l.replace(' before', '')}</th>`).join('')}</tr></thead><tbody>
@@ -1962,6 +2009,14 @@ document.addEventListener('click', e => {
     case 'planTraining': planTraining(id); break;
     case 'clearDone': if (confirm('Remove all completed tasks?')) { D.todos = D.todos.filter(x => !x.done); save(); render(); } break;
     case 'askNotify': askNotify(); break;
+    case 'clearReminders': {
+      const lists = [D.assessments, D.sessions, D.trainingEvents, D.workouts, D.events, D.todos];
+      const n = lists.reduce((a, l) => a + l.filter(x => x.remind?.length).length, 0);
+      if (!n) { toast('No reminders to clear', 'Nothing in your planner has a reminder set.'); break; }
+      if (!confirm(`Turn off the reminders on all ${n} item${n === 1 ? '' : 's'}? New items still get your default reminders.`)) break;
+      for (const l of lists) for (const x of l) if (x.remind?.length) x.remind = [];
+      save(); render(); toast('🔕 Reminders cleared', `${n} item${n === 1 ? '' : 's'} won't remind you any more.`); break;
+    }
     case 'testNotify': notify('Test reminder', 'This is what a reminder looks like.', 'test'); break;
     case 'showBackups': showBackups(); break;
     case 'backupNow': backupNow(); break;

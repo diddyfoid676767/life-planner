@@ -213,11 +213,13 @@ const basketHours = () => 8 + 4 * lupg('basket') + 8 * lupg('silo') + activeBuff
 const basketCap = () => Math.round(leafRate() * basketHours());
 function pendingLeaves() {
   const L = leafState(), h = Math.max(0, (Date.now() - L.last) / 36e5);
-  return Math.floor(Math.min(basketCap(), leafRate() * h + (L.carry || 0)));
+  return Math.floor(rawLeaves(L, h));
 }
+const rawLeaves = (L, h) => Math.min(basketCap(), leafRate() * h + (L.carry || 0));
+// collect whenever you like: part-grown leaves carry over to the next collect instead of being lost
 function collectLeaves(fromEl) {
-  const L = leafState(), n = Math.round(pendingLeaves() * (1 + .03 * lupg('press')));
-  L.bank += n; L.last = Date.now(); L.carry = 0; save();
+  const L = leafState(), raw = rawLeaves(L, Math.max(0, (Date.now() - L.last) / 36e5)), whole = Math.floor(raw), n = Math.round(whole * (1 + .03 * lupg('press')));
+  L.bank += n; L.last = Date.now(); L.carry = raw - whole; save();
   if (n > 0) leafBurst(fromEl, n);
   return n;
 }
@@ -254,7 +256,7 @@ function leafBar() {
   return `<div class="card leafbar ${full ? 'full' : ''}"><div class="leafbig">${LEAF}</div>
     <div class="main"><div class="leafnums"><b>${fmtLeaf(leaves())}</b> leaves <span class="muted small-text">· growing ${fmtLeaf(rate)} per hour from ${gardenLogs().length} garden trees</span></div>
       <div class="basket"><i style="width:${pct}%"></i></div><span class="muted small-text">🧺 ${fmtLeaf(p)} / ${fmtLeaf(cap)} in the basket${full ? ' · full, collect them so your trees keep growing leaves' : ` · full in ${fmtMins(Math.ceil((cap - p) / Math.max(rate, .01) * 60))}`}</span></div>
-    <button class="btn ${p > 0 ? 'primary' : ''}" data-act="collectLeaves" ${p > 0 ? '' : 'disabled'}>Collect ${p > 0 ? `+${fmtLeaf(p)}` : ''}</button></div>`;
+    <button class="btn ${p > 0 ? 'primary' : ''}" data-act="collectLeaves">Collect ${p > 0 ? `+${fmtLeaf(p)}` : ''}</button></div>`;
 }
 function leafShopView() {
   const have = leaves();

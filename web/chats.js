@@ -205,7 +205,8 @@ function chatPaneHtml(c) {
 function fbPaneHtml(c) {
   const to = chatList.find(x => x.id === fbTo), n = fbChats().length;
   return `<div class="chathead"><button class="iconbtn chatback" data-chat="back" title="Back">‹</button>${chatAvatar(c, 40)}<div class="main"><b>${esc(chatTitle(c))}</b><small>From ${n} ${n === 1 ? 'person' : 'people'}. Each of them only sees their own chat with you.</small></div>
-      <details class="chatmenu"><summary class="iconbtn" title="More">⋯</summary><div class="chatmenu-pop"><button data-chat="mute">${chatMuted(FB) ? '🔔 Unmute' : '🔕 Mute'} feedback</button></div></details></div>
+      <details class="chatmenu"><summary class="iconbtn" title="More">⋯</summary><div class="chatmenu-pop"><button data-chat="mute">${chatMuted(FB) ? '🔔 Unmute' : '🔕 Mute'} feedback</button><button data-chat="fbcopy">📋 Copy feedback since…</button></div></details></div>
+    <details class="fbideas" ${D.settings.fbIdeasOpen ? 'open' : ''}><summary>📝 My ideas <span class="muted small-text">only you see these, nothing is sent</span></summary><textarea id="fbIdeas" rows="6" maxlength="20000" placeholder="Jot down your own ideas and to-dos for the app…">${esc(D.settings.fbIdeas || '')}</textarea></details>
     <div class="chatmsgs" id="chatMsgs">${chatMsgsHtml(c)}</div>
     ${to ? `<div class="fbto small-text muted">Replying to <b>@${esc(fbSender(to))}</b>. Press ↩ on a message to reply to someone else.</div>
     <form class="chatsend" id="chatSend"><textarea id="chatInput" rows="1" maxlength="2000" placeholder="Reply to @${esc(fbSender(to))}…">${esc(chatDrafts[FB + fbTo] || '')}</textarea><button class="btn primary" data-chat="send">Send</button></form>` : ''}`;
@@ -278,6 +279,7 @@ async function chatAction(el) {
   if (a === 'open') return openChat(el.dataset.id);
   if (a === 'fbto') { fbTo = el.dataset.id; const y = document.getElementById('chatMsgs')?.scrollTop; render(); const b = document.getElementById('chatMsgs'); if (b && y != null) b.scrollTop = y; return; }
   if (a === 'back') { chatOpen = null; render(); return; }
+  if (a === 'fbcopy') return fbCopy();
   if (a === 'mute') { const m = D.settings.chatMute = D.settings.chatMute || {}; if (m[chatOpen]) delete m[chatOpen]; else m[chatOpen] = true; save(); updateChatBadge(); render(); toast(m[chatOpen] ? '🔕 Muted' : '🔔 Unmuted', m[chatOpen] ? 'No pop-ups or badge for this chat. New messages still show in the list.' : ''); return; }
   if (a === 'new') return chatPicker('new');
   if (a === 'add') { el.closest('details')?.removeAttribute('open'); return chatPicker('add'); }
@@ -335,7 +337,19 @@ document.addEventListener('submit', e => { if (e.target.id === 'chatSend') { e.p
 document.addEventListener('keydown', e => {
   if (e.target.id === 'chatInput' && e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendChat(); }
 });
+// copy everyone's feedback since a date, ready to paste into Claude
+function fbCopy() {
+  const def = new Date(Date.now() - 7 * 864e5).toISOString().slice(0, 10);
+  const from = prompt('Copy feedback sent since (YYYY-MM-DD):', def); if (!from) return;
+  const list = chatMsgs.filter(m => !m.pending && (m.created_at || '').slice(0, 10) >= from && m.p?.username !== acct.username);
+  if (!list.length) { toast('No feedback since then', 'Nothing was sent from ' + from + '.'); return; }
+  const txt = list.map(m => `[${(m.created_at || '').slice(0, 16).replace('T', ' ')}] @${m.p?.username || fbSender(chatList.find(x => x.id === m.chat)) || '?'}: ${m.body}`).join('\n');
+  navigator.clipboard.writeText(`Life Planner feedback since ${from} (${list.length} messages):\n\n${txt}`)
+    .then(() => toast('📋 Copied', `${list.length} feedback message${list.length === 1 ? '' : 's'}, ready to paste into Claude.`), () => toast("Couldn't copy", 'Your browser blocked the clipboard.', { cls: 'danger' }));
+}
+document.addEventListener('toggle', e => { if (e.target.classList?.contains('fbideas')) D.settings.fbIdeasOpen = e.target.open; }, true);
 document.addEventListener('input', e => {
+  if (e.target.id === 'fbIdeas') { D.settings.fbIdeas = e.target.value; save(); return; }
   if (e.target.id !== 'chatInput') return;
   chatDrafts[chatOpen === FB ? FB + fbTo : chatOpen] = e.target.value;
   e.target.style.height = ''; e.target.style.height = Math.min(140, e.target.scrollHeight) + 'px';

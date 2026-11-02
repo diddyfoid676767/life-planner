@@ -152,9 +152,10 @@ function g3build() {
   if (gfx('clouds')) for (let i = 0; i < 16; i++) {
     const c = new THREE.Group(), s = 2.4 + Math.random() * 3, col = night ? '#5c6a96' : '#ffffff';
     for (let k = 0; k < 6; k++) c.add(at(new THREE.Mesh(new THREE.SphereGeometry(s * (.55 + Math.random() * .45), 24, 16), new THREE.MeshStandardMaterial({ color: col, roughness: 1, transparent: true, opacity: .96 })), (k - 2.5) * s * .55, Math.sin(k * 2.1) * s * .25, (Math.random() - .5) * s * .5));
-    c.scale.y = .7; const a = Math.random() * Math.PI * 2, d = 25 + Math.random() * 120, below = i % 3 === 0;
-    c.position.set(Math.cos(a) * d, below ? -8 - Math.random() * 10 : 16 + Math.random() * 24, Math.sin(a) * d); W.add(c);
-    const sp = .3 + Math.random() * .5; G3.tickers.push((t, dt) => { c.position.x += sp * dt; if (c.position.x > 180) c.position.x = -180; });
+    // clouds circle round the island, never over it, so they don't hide the forest from above
+    c.scale.y = .7; let a = Math.random() * Math.PI * 2; const below = i % 3 === 0, d = (below ? half + 12 : half * 1.6 + 30) + Math.random() * 100;
+    const y = below ? -8 - Math.random() * 10 : 16 + Math.random() * 24; c.position.set(Math.cos(a) * d, y, Math.sin(a) * d); W.add(c);
+    const sp = (.3 + Math.random() * .5) / d; G3.tickers.push((t, dt) => { a += sp * dt; c.position.x = Math.cos(a) * d; c.position.z = Math.sin(a) * d; });
   }
   // the island: a soft lawn with rounded edges, a soil layer, and a rocky bottom hanging under it
   const top = shade(sc.g1, night && !sc.night ? -.38 : -.14), top2 = shade(sc.g2, night && !sc.night ? -.38 : -.14);

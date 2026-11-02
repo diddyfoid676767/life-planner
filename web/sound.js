@@ -152,8 +152,12 @@ document.addEventListener('pointerdown', () => sndCtx(), { capture: true, once: 
 document.addEventListener('keydown', () => sndCtx(), { capture: true, once: true });
 document.addEventListener('pointerover', e => {
   if (e.pointerType === 'touch') return;
-  const el = e.target.closest?.(SND_TARGET); if (!el || el === SND.hoverEl) return;
-  SND.hoverEl = el; if (el.disabled || el.closest('#battlefx .gbtext')) return;
+  const el = e.target.closest?.(SND_TARGET); if (!el || el === SND.hoverEl || SND.hoverEl?.contains(el)) return;
+  // the same button redrawn under a still mouse (or one nested in it) doesn't tick again
+  const key = el.nodeName + (el.dataset.act || '') + (el.dataset.id || '') + el.textContent.slice(0, 40);
+  const same = key === SND.hoverKey && Math.abs(e.clientX - (SND.hx || 0)) + Math.abs(e.clientY - (SND.hy || 0)) < 40;
+  SND.hoverEl = el; SND.hoverKey = key; SND.hx = e.clientX; SND.hy = e.clientY; if (same) return;
+  if (el.disabled || el.closest('#battlefx .gbtext')) return;
   if (sndCfg().hover !== false) sfx('hover', { gap: 45 });
 });
 document.addEventListener('pointerout', e => { if (SND.hoverEl && !SND.hoverEl.contains(e.relatedTarget)) SND.hoverEl = null; });

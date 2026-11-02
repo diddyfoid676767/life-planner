@@ -7,7 +7,7 @@
 
 let boardFriends = [];
 // the overall board: each category scores up to 100 points for whoever leads it
-const OVERALL_CATS = [['📚', 'Study', r => r.study?.mins || 0], ['🏃', 'Training', r => r.work?.mins || 0], ['🔥', 'Streak', r => r.study?.streak || 0], ['🌳', 'Trees', r => r.study?.trees || 0], ['🌙', 'Sleep', r => r.health?.sleep || 0], ['👟', 'Steps', r => r.health?.steps || 0], ['⚔️', 'Wins', r => r.work?.wins || 0], ['💪', 'Grit', r => r.work?.grit || 0]];
+const OVERALL_CATS = [['📚', 'Study', r => r.study?.mins || 0], ['🏃', 'Training', r => r.work?.mins || 0], ['🔥', 'Streak', r => r.study?.streak || 0], ['🌳', 'Trees', r => r.study?.trees || 0], ['⚔️', 'Wins', r => r.work?.wins || 0], ['💪', 'Grit', r => r.work?.grit || 0]];
 function overallScores(rows) {
   const max = OVERALL_CATS.map(([, , f]) => Math.max(0, ...rows.map(f)));
   return rows.map(r => {
@@ -46,7 +46,7 @@ function allFriendRows() { return [...(D.friends || []).filter(f => !friendRows.
 function viewBoard() {
   boardFriends = allFriendRows();
   publishMe(); refreshFriends();
-  const kind = ui.boardKind || 'overall', sorts = BOARD_SORTS[kind], key = ui.boardSort?.[kind] || sorts[0][0];
+  const kind = ui.boardKind && ui.boardKind !== 'health' ? ui.boardKind : 'overall', sorts = BOARD_SORTS[kind], key = ui.boardSort?.[kind] || sorts[0][0];
   const sortDef = sorts.find(s => s[0] === key) || sorts[0];
   const wk = mondayOf(today());
   // past weeks of your own as "ghost" rows until friends join
@@ -55,7 +55,7 @@ function viewBoard() {
     : [myBoardRow(), ...boardFriends.filter(f => f.week === wk || key !== 'mins'), ...(key === 'mins' ? ghosts : [])]
     .map(r => ({ ...r, v: (r[kind] || {})[key] ?? 0 })).sort((a, b) => b.v - a.v);
   const medal = i => ['🥇', '🥈', '🥉'][i] || `${i + 1}`;
-  return `<div class="card board"><div class="card-head"><div class="seg">${[['overall', '🏆 Overall'], ['study', '📚 Study'], ['work', '🏃 Training'], ['health', '🌙 Health']].map(([k, l]) => `<button class="${kind === k ? 'on' : ''}" data-act="boardKind" data-v="${k}">${l}</button>`).join('')}</div>
+  return `<div class="card board"><div class="card-head"><div class="seg">${[['overall', '🏆 Overall'], ['study', '📚 Study'], ['work', '🏃 Training']].map(([k, l]) => `<button class="${kind === k ? 'on' : ''}" data-act="boardKind" data-v="${k}">${l}</button>`).join('')}</div>
       <span style="flex:1"></span>${kind === 'overall' ? '' : `<div class="catchips">${sorts.map(([k, l]) => `<button class="cchip ${key === k ? 'on' : ''}" data-act="boardSort" data-v="${k}">${l}</button>`).join('')}</div>`}</div>
     <div class="podium">${rows.slice(0, 3).map((r, i) => `<div class="pod p${i + 1} ${r.me ? 'me' : ''} ${r.ghost ? 'ghost' : ''}"><div class="podav">${safeBadge(r.av, i === 0 ? 120 : 96)}</div><b>${esc(r.name)}${badgeTags(r.me ? myBadges : r.badges, true)}</b><span>${sortDef[2](r.v)}</span><div class="podstep">${medal(i)}</div></div>`).join('')}</div>
     <ol class="boardlist">${rows.map((r, i) => `<li class="${r.me ? 'me' : ''} ${r.ghost ? 'ghost' : ''}"><span class="brank">${medal(i)}</span>${safeBadge(r.av, 44)}<b>${esc(r.name)}</b>${badgeTags(r.me ? myBadges : r.badges, true)}<span style="flex:1"></span>${r.parts ? `<span class="bparts">${r.parts.filter(x => x.pts).sort((a, b) => b.pts - a.pts).slice(0, 4).map(x => `<span title="${x.name}: ${x.pts} pts">${x.icon}${x.pts}</span>`).join('')}</span>` : ''}<span class="bval">${sortDef[2](r.v)}</span></li>`).join('')}</ol>

@@ -98,8 +98,8 @@ function pickShroom(el) {
 function rainDance() {
   const L = leafState(); if (L.rainDay === today()) return;
   L.rainDay = today();
-  for (const l of D.focusLogs.filter(x => x.mins >= 10 && !x.withered)) { const r = treeRec(l.id); r.lastWater = today(); }
-  save(); toast('🌧️ Rain dance', 'Every tree is watered for today. No coins for this one, but they all grow ×1.5 leaves.');
+  for (const l of D.focusLogs.filter(x => x.mins >= 10 && !x.withered)) { const r = D.game.trees[l.id] = { ...treeRec(l.id) }; r.lastWater = today(); delete r.wilted; }
+  sfx('water'); save(); render(); toast('🌧️ Rain dance', 'Every tree is watered for today. No coins for this one, but they all grow ×1.5 leaves.');
 }
 const studiedLong = () => D.focusLogs.some(l => l.date === today() && l.mins >= 25);
 function harvestMoon() {
