@@ -78,7 +78,7 @@ func runWindow(url string) (shown bool) {
 
 // setWindowIcon gives the window the icon embedded in LifePlanner.exe.
 func setWindowIcon(hwnd uintptr) {
-	h, _, _ := user32.NewProc("GetModuleHandleW").Call(0)
+	h, _, _ := syscall.NewLazyDLL("kernel32.dll").NewProc("GetModuleHandleW").Call(0)
 	name, _ := syscall.UTF16PtrFromString("APP")
 	send := user32.NewProc("SendMessageW")
 	load := user32.NewProc("LoadImageW")
