@@ -39,6 +39,14 @@ func runWindow(url string) (shown bool) {
 			shown = false
 		}
 	}()
+	// only one copy may own a planner window; a second one waits briefly (an
+	// old copy may still be closing) and otherwise just brings the first forward
+	if !takeWindowLock() {
+		log.Printf("webview: another copy owns the planner window, bringing it forward")
+		focusExistingWindow()
+		return true
+	}
+	log.Printf("webview: opening the planner window")
 	w := webview2.NewWithOptions(webview2.WebViewOptions{
 		AutoFocus: true,
 		DataPath:  filepath.Join(dataDir, "webview"),
@@ -134,6 +142,23 @@ func focusExistingWindow() bool {
 			return true
 		}
 		time.Sleep(250 * time.Millisecond)
+	}
+	return false
+}
+
+var windowLock uintptr // held until the process exits
+
+func takeWindowLock() bool {
+	k := syscall.NewLazyDLL("kernel32.dll")
+	name, _ := syscall.UTF16PtrFromString(`Local\LifePlannerWindow`)
+	h, _, _ := k.NewProc("CreateMutexW").Call(0, 0, uintptr(unsafe.Pointer(name)))
+	if h == 0 {
+		return true // can't tell: don't block opening
+	}
+	r, _, _ := k.NewProc("WaitForSingleObject").Call(h, 10000)
+	if r == 0 || r == 0x80 { // WAIT_OBJECT_0, WAIT_ABANDONED
+		windowLock = h
+		return true
 	}
 	return false
 }
