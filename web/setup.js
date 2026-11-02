@@ -298,7 +298,7 @@ function drawTour() {
   const st = TOUR[tourAt];
   if (view !== st.v || !st.sel) { view = st.v; render(); }
   document.querySelectorAll('.tourlit').forEach(x => x.classList.remove('tourlit'));
-  const btn = document.querySelector(`#tabs button[data-view="${st.v}"]`);
+  const btn = (typeof placeBtn === 'function' && placeBtn(st.v)) || document.querySelector(`#tabs button[data-view="${st.v}"]`);
   let target = st.sel ? document.querySelector('#view ' + st.sel) : btn;
   if (!st.sel) { window.scrollTo(0, 0); if (btn) { btn.classList.add('tourlit'); btn.scrollIntoView({ block: 'nearest' }); } }
   else if (target) target.scrollIntoView({ block: target.offsetHeight > innerHeight * .7 ? 'start' : 'center' });

@@ -177,6 +177,7 @@ document.addEventListener('click', e => {
   if (/^(buyUpg|buyLeafUpg|storeBuy)$/.test(act)) return; // these play "buy" when they go through
   if (act === 'openBox') return; // the unboxing plays its own build-up
   if (act === 'gift') { sfx('box'); return; }
+  if (el.closest('#places, #subnav')) return; // the hidden tab it clicks plays the sound
   if (el.closest('.seg, .stabs, #tabs, .forest-tabs, .shoptabs, .revseg') || /Tab$|Page$|^goto$|^studyTab$/.test(act)) { sfx('tab'); return; }
   if (el.matches('summary')) { sfx(el.parentElement?.open ? 'close' : 'open'); return; }
   sfx('click', { gap: 30 });

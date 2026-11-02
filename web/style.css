@@ -2839,3 +2839,77 @@ body.wm-on #toasts { top: max(64px, env(safe-area-inset-top)); bottom: auto; }
 .trend { width: 100%; height: auto; max-height: 230px; display: block; overflow: visible; }
 .trend line { stroke: var(--muted); stroke-opacity: .3; }
 .trend text { font-size: 7px; fill: var(--muted); }
+/* ===== 2.41 calm layout: five places, tabs on top, quieter surfaces ===== */
+:root { --sb-w: 232px; --r-card: 12px; --ease: cubic-bezier(.2,.8,.2,1); }
+body { background: var(--bg) !important; }
+body.places-on #tabs, body.places-on .sidebar .navgroup, body.places-on .navh-add { display: none !important; }
+.sidebar { width: var(--sb-w); padding: 16px 12px 12px; gap: 4px; background: var(--panel); backdrop-filter: none; }
+.content { margin-left: var(--sb-w); }
+.sidebar .brand { padding: 0 8px 8px; font-size: 1.05rem; }
+#cmdkBtn { display: flex; align-items: center; gap: 9px; width: 100%; margin: 0 0 10px; padding: 7px 10px; border: 1px solid var(--border); border-radius: 9px;
+  background: var(--panel2); color: var(--muted); cursor: pointer; font-size: .88rem; text-align: left; }
+#cmdkBtn:hover { color: var(--text); border-color: color-mix(in srgb, var(--accent) 40%, var(--border)); }
+#cmdkBtn svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; }
+#cmdkBtn span { flex: 1; }
+#cmdkBtn kbd { font: 600 .7rem/1 inherit; padding: 3px 5px; border-radius: 5px; border: 1px solid var(--border); background: var(--panel); }
+#places { display: flex; flex-direction: column; gap: 2px; flex: 1; overflow-y: auto; scrollbar-width: none; }
+#places button { display: flex; align-items: center; gap: 11px; width: 100%; text-align: left; padding: 9px 12px; border: 0; border-radius: 9px; background: none;
+  color: var(--muted); font-weight: 600; font-size: .95rem; cursor: pointer; position: relative; transition: background .15s var(--ease), color .15s var(--ease); }
+#places button svg { width: 19px; height: 19px; flex: none; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+#places button span { flex: 1; }
+#places button:hover { background: var(--panel2); color: var(--text); }
+#places button.active { background: color-mix(in srgb, var(--accent) 12%, transparent); color: var(--accent); }
+#places button[hidden] { display: none; }
+#places button[data-badge]:not([data-badge=""])::after, #subnav button[data-badge]:not([data-badge=""])::after {
+  content: attr(data-badge); min-width: 18px; height: 18px; padding: 0 5px; border-radius: 9px; background: var(--danger); color: #fff;
+  font-size: .7rem; font-weight: 700; display: inline-flex; align-items: center; justify-content: center; line-height: 1; }
+#places button[data-badge="●"]::after, #subnav button[data-badge="●"]::after { min-width: 8px; width: 8px; height: 8px; padding: 0; font-size: 0; }
+.sidefoot { padding: 10px 4px 0; gap: 6px; }
+.sidefoot #sideStats [data-act="focusNew"] { display: none; }
+.sidefoot #feedbackBtn { border: 0; justify-content: flex-start; color: var(--muted); }
+.sstat-row span { background: none; border: 1px solid var(--border); font-weight: 600; }
+/* tabs for the pages inside a place */
+#subnav { display: flex; gap: 4px; padding: 14px 28px 0; max-width: 1280px; margin: 0 auto; border-bottom: 1px solid var(--border); }
+#subnav[hidden] { display: none; }
+#subnav button { position: relative; display: inline-flex; align-items: center; gap: 7px; border: 0; background: none; padding: 9px 12px 11px; margin-bottom: -1px;
+  color: var(--muted); font-weight: 600; font-size: .93rem; cursor: pointer; border-bottom: 2px solid transparent; }
+#subnav button:hover { color: var(--text); }
+#subnav button.active { color: var(--text); border-bottom-color: var(--accent); }
+main#view { max-width: 1280px; margin: 0 auto; }
+main#view[data-view="forest"], main#view[data-view="arena"] { max-width: none; }
+/* quieter surfaces: flat cards, one accent, colour only where it means something */
+.card, html[data-glass] .card { border-radius: var(--r-card); box-shadow: none; border: 1px solid var(--border); background: var(--panel); backdrop-filter: none; }
+.btn { border-radius: 8px; box-shadow: none; }
+.btn.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-text, #fff); box-shadow: none; }
+.btn.primary:hover { filter: brightness(1.06); }
+h1 { font-size: 1.6rem; letter-spacing: -.015em; }
+.hero, .hero.morning, .hero.afternoon, .hero.evening { background: var(--panel); color: var(--text); border: 1px solid var(--border); border-radius: var(--r-card); box-shadow: none; }
+.hero::after { display: none; }
+.hero h1 { color: var(--text); font-size: 1.5rem; }
+.hero .hero-date { color: var(--muted); }
+.hero .btn.white { background: var(--accent); color: var(--accent-text, #fff); border-color: var(--accent); }
+.hero .ring .rb { stroke: var(--panel2); }
+.hero .hstat { background: var(--panel2); color: var(--text); border: 0; box-shadow: none; }
+.hero input, .hero-qa .qa-row input { background: var(--panel); color: var(--text); border: 1px solid var(--border); }
+.hero input::placeholder, .hero-qa .qa-row input::placeholder { color: var(--muted); }
+.hero-qa .qa-row .btn.primary { background: var(--accent); color: var(--accent-text, #fff); border-color: var(--accent); }
+.hero .btn:not(.white):not(.primary) { background: var(--panel2); color: var(--text); border-color: var(--border); }
+.examcard { background: var(--panel) !important; border: 1px solid var(--border) !important; border-top: 3px solid var(--c) !important; box-shadow: none !important; }
+.toast, #toasts > * { box-shadow: 0 6px 24px rgba(15,20,40,.12); }
+/* Ctrl+K */
+#cmdk { position: fixed; inset: 0; z-index: 200; background: rgba(10,14,28,.35); display: flex; justify-content: center; align-items: flex-start; padding-top: 12vh; }
+#cmdk[hidden] { display: none; }
+.cmdk-in { width: min(600px, calc(100vw - 32px)); background: var(--panel); border: 1px solid var(--border); border-radius: 14px; box-shadow: 0 20px 60px rgba(0,0,0,.25); overflow: hidden; }
+#cmdkQ { width: 100%; border: 0; border-bottom: 1px solid var(--border); padding: 16px 18px; font-size: 1.05rem; background: none; outline: none; color: var(--text); border-radius: 0; }
+#cmdkList { list-style: none; margin: 0; padding: 6px; max-height: 50vh; overflow-y: auto; }
+#cmdkList li { display: flex; align-items: center; gap: 10px; padding: 9px 12px; border-radius: 8px; cursor: pointer; }
+#cmdkList li.on, #cmdkList li:hover { background: color-mix(in srgb, var(--accent) 12%, transparent); }
+.cmdk-k { flex: none; width: 86px; font-size: .75rem; font-weight: 600; color: var(--muted); }
+.cmdk-t { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cmdk-s { font-size: .8rem; color: var(--muted); }
+.cmdk-none { color: var(--muted); cursor: default !important; }
+.cmdk-foot { padding: 8px 16px; font-size: .75rem; color: var(--muted); border-top: 1px solid var(--border); }
+.navplace { display: flex; flex-wrap: wrap; gap: 6px 16px; align-items: center; padding: 8px 0; border-top: 1px solid var(--border); }
+.navplace b { width: 80px; }
+.navplace label { display: inline-flex; gap: 6px; align-items: center; font-size: .9rem; }
+@media (prefers-reduced-motion: reduce) { #places button, #subnav button { transition: none; } }

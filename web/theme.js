@@ -160,15 +160,11 @@ function navMove(v, n) {
   [o[i], o[j]] = [o[j], o[i]]; D.settings.navOrder = o;
 }
 function navCard() {
-  const o = navOrder(), hidden = D.settings.navHidden || [];
+  const hidden = D.settings.navHidden || [];
   const label = v => document.querySelector(`#tabs button[data-view="${v}"] span`)?.textContent || v;
-  return `<div class="card" data-sec="theme"><div class="card-head"><h2>Side tabs</h2>${D.settings.navOrder?.length || hidden.length ? '<button class="btn small" data-act="navReset">Reset</button>' : ''}</div>
-    <p class="muted small-text" style="margin-top:0">Drag tabs in the sidebar to reorder them, or use the arrows. Untick a tab to hide it. Add your own headings to group them.</p>
-    <div class="row" style="margin-bottom:8px"><input id="navHeadName" placeholder="New heading, e.g. School" maxlength="24" style="flex:1"><button class="btn small primary" data-act="navHeadAdd">+ Add heading</button></div>
-    <ul class="navlist">${o.map((v, i) => isNavHead(v) ? `<li class="navlist-h"><span>📂 ${esc(navHeadName(v))}</span>
-      <button class="iconbtn" data-act="navHeadRename" data-v="${esc(v)}" title="Rename">✎</button><button class="iconbtn" data-act="navHeadDel" data-v="${esc(v)}" title="Delete heading">✕</button>
-      <button class="iconbtn" data-act="navMove" data-v="${esc(v)}" data-n="-1" ${i ? '' : 'disabled'} title="Move up">↑</button><button class="iconbtn" data-act="navMove" data-v="${esc(v)}" data-n="1" ${i < o.length - 1 ? '' : 'disabled'} title="Move down">↓</button></li>` : `<li><input type="checkbox" data-change="navShow" data-v="${v}" ${hidden.includes(v) ? '' : 'checked'} ${NAV_FIXED.includes(v) ? 'disabled' : ''} style="width:auto"><span>${esc(label(v))}</span>
-      <button class="iconbtn" data-act="navMove" data-v="${v}" data-n="-1" ${i ? '' : 'disabled'} title="Move up">↑</button><button class="iconbtn" data-act="navMove" data-v="${v}" data-n="1" ${i < o.length - 1 ? '' : 'disabled'} title="Move down">↓</button></li>`).join('')}</ul></div>`;
+  return `<div class="card" data-sec="theme"><div class="card-head"><h2>Pages</h2>${hidden.length ? '<button class="btn small" data-act="navReset">Show all</button>' : ''}</div>
+    <p class="muted small-text" style="margin-top:0">Untick a page you don't use to hide it. A place with every page hidden leaves the sidebar.</p>
+    ${(typeof PLACES !== 'undefined' ? PLACES : []).map(p => `<div class="navplace"><b>${esc(p.label)}</b>${p.views.map(v => `<label><input type="checkbox" data-change="navShow" data-v="${v}" ${hidden.includes(v) ? '' : 'checked'} ${NAV_FIXED.includes(v) ? 'disabled' : ''} style="width:auto"> ${esc(label(v))}</label>`).join('')}</div>`).join('')}</div>`;
 }
 // drag to reorder in the sidebar
 let navDrag = null;
