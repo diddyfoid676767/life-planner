@@ -5,7 +5,7 @@
    birdsong by day and crickets at night) and battle sounds for every kind of
    move. Settings → Sound sets the volume or turns any of it off. */
 
-const sndCfg = () => Object.assign({ on: true, vol: .6, ui: true, garden: true, arena: true, ambience: true }, (window.D && D.settings && D.settings.sound) || {});
+const sndCfg = () => Object.assign({ on: true, vol: .6, ui: true, garden: true, arena: true, ambience: true }, ((typeof D !== 'undefined' && D) && D.settings && D.settings.sound) || {});
 const SND = { ctx: null, out: null, last: {}, noise: null, hoverEl: null };
 function sndCtx() {
   if (SND.ctx) { if (SND.ctx.state === 'suspended') SND.ctx.resume(); return SND.ctx; }
@@ -185,7 +185,7 @@ document.addEventListener('click', e => {
 let sndCoins = null, sndLevel = null;
 function soundFeedback() {
   try {
-    if (!window.D || !D.game) return;
+    if (!(typeof D !== 'undefined' && D) || !D.game) return;
     const c = coins(), lv = typeof levelInfo === 'function' ? levelInfo().n : null;
     if (sndCoins != null && c > sndCoins) sfx('coin', { gap: 120 });
     if (sndLevel != null && lv != null && lv > sndLevel) setTimeout(() => sfx('levelup'), 250);

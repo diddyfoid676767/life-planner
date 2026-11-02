@@ -59,6 +59,9 @@ func runWindow(url string) (shown bool) {
 	hwnd := uintptr(w.Window())
 	setWindowIcon(hwnd)
 	setWindowAppID(hwnd, exePath())
+	appHwnd = hwnd
+	// exam mode asks for full screen: the window covers the whole monitor
+	w.Bind("lpFullscreen", func(on bool) { w.Dispatch(func() { setFullscreen(hwnd, on) }) })
 	w.Navigate(url)
 	w.Run()
 	return true
@@ -76,4 +79,42 @@ func setWindowIcon(hwnd uintptr) {
 			send.Call(hwnd, 0x80, uintptr(1-i), ic) // WM_SETICON: ICON_BIG=1, ICON_SMALL=0
 		}
 	}
+}
+
+type winRect struct{ l, t, r, b int32 }
+
+var (
+	fsOn    bool
+	fsStyle uintptr
+	fsRect  winRect
+)
+
+// setFullscreen takes the window's border away and stretches it over its
+// monitor, or puts it back how it was.
+func setFullscreen(hwnd uintptr, on bool) {
+	getLong, setLong := user32.NewProc("GetWindowLongPtrW"), user32.NewProc("SetWindowLongPtrW")
+	setPos := user32.NewProc("SetWindowPos")
+	const gwlStyle, overlapped, frameChanged, noZ = ^uintptr(15), 0x00CF0000, 0x0020, 0x0004
+	if on == fsOn {
+		return
+	}
+	if on {
+		fsStyle, _, _ = getLong.Call(hwnd, gwlStyle)
+		user32.NewProc("GetWindowRect").Call(hwnd, uintptr(unsafe.Pointer(&fsRect)))
+		mon, _, _ := user32.NewProc("MonitorFromWindow").Call(hwnd, 2)
+		mi := struct {
+			size      uint32
+			mon, work winRect
+			flags     uint32
+		}{size: 40}
+		user32.NewProc("GetMonitorInfoW").Call(mon, uintptr(unsafe.Pointer(&mi)))
+		setLong.Call(hwnd, gwlStyle, fsStyle&^overlapped)
+		r := mi.mon
+		setPos.Call(hwnd, 0, uintptr(r.l), uintptr(r.t), uintptr(r.r-r.l), uintptr(r.b-r.t), frameChanged)
+	} else {
+		setLong.Call(hwnd, gwlStyle, fsStyle)
+		r := fsRect
+		setPos.Call(hwnd, 0, uintptr(r.l), uintptr(r.t), uintptr(r.r-r.l), uintptr(r.b-r.t), frameChanged|noZ)
+	}
+	fsOn = on
 }

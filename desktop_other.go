@@ -19,3 +19,5 @@ func launchApp(target string) error { return errors.New("only available on Windo
 func openClaude(path string) bool { return false }
 
 func runWindow(url string) bool { return false }
+
+func setTaskbarBadge(n int) {}

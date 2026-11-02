@@ -35,9 +35,22 @@ service cloud.firestore {
     // isn't a number makes the comparison fail, so the save is refused.
     function statsShape(s) {
       return s is map
-        && s.keys().hasOnly(['week', 'study', 'work', 'health', 'chal', 'now', 'prev', 'pvp', 'fit', 'fr'])
+        && s.keys().hasOnly(['week', 'study', 'work', 'health', 'chal', 'now', 'prev', 'pvp', 'fit', 'fr', 'st', 'ss', 'yr', 'cw', 'pw', 'gr', 'fo'])
         && (!('fr' in s) || (s.fr is list && s.fr.size() <= 60))
-        && (!('chal' in s) || (s.chal is list && s.chal.size() <= 12));
+        && (!('chal' in s) || (s.chal is list && s.chal.size() <= 12))
+        && newStatsOk(s);
+    }
+    // 2.40: studying status, term season and year boards, the weekly
+    // competition, grades (only when the person chooses to share them) and
+    // their biggest trees
+    function newStatsOk(s) {
+      return (!('st' in s) || (s.st is map && s.st.size() <= 5 && s.st.get('s', '').size() <= 30))
+        && (!('ss' in s) || (s.ss is map && s.ss.size() <= 4 && s.ss.get('s', 0) <= 200000 && s.ss.get('k', 0) <= 200000))
+        && (!('yr' in s) || (s.yr is map && s.yr.size() <= 3 && s.yr.get('tr', 0) <= 10000 && s.yr.get('w', 0) <= 20000))
+        && (!('cw' in s) || (s.cw is map && s.cw.size() <= 2))
+        && (!('pw' in s) || (s.pw is map && s.pw.size() <= 2))
+        && (!('gr' in s) || (s.gr is map && s.gr.size() <= 5 && s.gr.get('o', 0) <= 100 && s.gr.get('s', '').size() <= 480))
+        && (!('fo' in s) || (s.fo is map && s.fo.size() <= 2 && s.fo.get('t', '').size() <= 1200));
     }
     // this week's minutes can't be more than the minutes the week has had
     // (plus a day for time zones)
@@ -70,7 +83,15 @@ service cloud.firestore {
       let ow = o.get('work', {});
       let np = n.get('pvp', {});
       let op = o.get('pvp', {});
-      return (n.get('week', '') != o.get('week', '')
+      let nss = n.get('ss', {});
+      let oss = o.get('ss', {});
+      let ny = n.get('yr', {});
+      let oy = o.get('yr', {});
+      return (nss.get('id', '') != oss.get('id', '')
+              || (nss.get('s', 0) <= oss.get('s', 0) + m + 5 && nss.get('k', 0) <= oss.get('k', 0) + m + 5))
+        && (ny.get('y', 0) != oy.get('y', 0)
+              || (ny.get('tr', 0) <= oy.get('tr', 0) + m * 0.2 + 3 && ny.get('w', 0) <= oy.get('w', 0) + m + 3))
+        && (n.get('week', '') != o.get('week', '')
               || (ns.get('mins', 0) <= os.get('mins', 0) + m + 5 && nw.get('mins', 0) <= ow.get('mins', 0) + m + 5))
         && ns.get('coins', 0) <= os.get('coins', 0) + m * 10 + 300
         && ns.get('trees', 0) <= os.get('trees', 0) + m * 0.2 + 3

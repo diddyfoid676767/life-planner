@@ -18,8 +18,6 @@ const FRIEND_CATS = [
   ['📚', 'Most study', r => r.study?.mins || 0, v => fmtMins(v) || '0m'],
   ['🏃', 'Most training', r => r.work?.mins || 0, v => fmtMins(v) || '0m'],
   ['🔥', 'Longest streak', r => r.study?.streak || 0, v => `${v} days`],
-  ['🌙', 'Best sleep', r => r.health?.sleep || 0, v => v ? fmtHm(v) : '–'],
-  ['👟', 'Most steps', r => r.health?.steps || 0, v => (v || 0).toLocaleString()],
   ['⚔️', 'Battle wins', r => r.work?.wins || 0, v => `${v}`],
 ];
 function thisWeekRows() {
@@ -56,9 +54,9 @@ function friendCards() {
   const wk = mondayOf(today());
   return `<div class="fcards">${list.map(f => {
     const stale = f.week && f.week !== wk;
-    return `<div class="fcard"><div class="fcard-av">${safeBadge(f.av, 64)}</div><div class="main"><b>${esc(f.name)}${presStar(f)}</b>${badgeTags(f.badges, true)}<div class="muted small-text">${f.user ? '@' + esc(f.user) : 'friend code'}${f.updated ? ' · ' + esc(ago(new Date(f.updated).toISOString())) : ''}</div>
+    return `<div class="fcard"><div class="fcard-av">${safeBadge(f.av, 64)}</div><div class="main"><b>${esc(f.name)}${presStar(f)}</b>${badgeTags(f.badges, true)}<div class="muted small-text">${f.user ? '@' + esc(f.user) : 'friend code'}</div>${f.user ? statusLine(f) : ''}
       <div class="fcard-stats"><span>📚 ${fmtMins(stale ? 0 : f.study?.mins) || '0m'}</span><span>🏃 ${fmtMins(stale ? 0 : f.work?.mins) || '0m'}</span><span>🔥 ${f.study?.streak || 0}</span><span>⭐ ${f.work?.ovr || '–'}</span></div></div>
-      <div class="fcard-btns"><button class="btn small primary" data-act="friendCompare" data-id="${esc(f.id)}">Compare</button>${f.user && acct.signedIn ? `<button class="btn small" data-chat="dm" data-u="${esc(f.user)}" title="Message">💬</button>` : ''}${f.user ? `<button class="iconbtn" data-acct="unfriend" data-u="${esc(f.user)}" title="Remove">✕</button>` : `<button class="iconbtn" data-fact="remove" data-id="${esc(f.id)}" title="Remove">✕</button>`}</div></div>`;
+      <div class="fcard-btns"><button class="btn small primary" data-act="friendCompare" data-id="${esc(f.id)}">Compare</button>${f.user ? `<button class="btn small" data-s2="friendView" data-id="${esc(f.id)}" title="See their forest">🌳</button>` : ''}${f.user && acct.signedIn ? `<button class="btn small" data-chat="dm" data-u="${esc(f.user)}" title="Message">💬</button>` : ''}${f.user ? `<button class="iconbtn" data-acct="unfriend" data-u="${esc(f.user)}" title="Remove">✕</button>` : `<button class="iconbtn" data-fact="remove" data-id="${esc(f.id)}" title="Remove">✕</button>`}</div></div>`;
   }).join('')}</div>`;
 }
 function compareFriend(id) {
@@ -73,8 +71,6 @@ function compareFriend(id) {
     ['⭐ Rating', r => r.work?.ovr || 0, v => `${v}`],
     ['⚔️ Battle wins', r => r.work?.wins || 0, v => `${v}`],
     ['🌊 Survival best', r => r.work?.surv || 0, v => `${v}`],
-    ['🌙 Avg sleep', r => r.health?.sleep || 0, v => v ? fmtHm(v) : '–'],
-    ['👟 Steps this week', r => r.health?.steps || 0, v => (v || 0).toLocaleString(), true],
   ];
   let mine = 0, theirs = 0;
   const body = rows.map(([label, get, fmt, weekly]) => {
@@ -99,8 +95,8 @@ function viewLeaderboard() {
     <div class="friends-top">${myWeekCard()}${highlightsCard()}</div>
     ${acct.configured && !acct.signedIn ? accountCard() : ''}
     <div class="friends-main">
-      <div class="stack">${viewBoard()}${athleticsBoardCard()}</div>
-      <div class="stack">${racesCard()}${challengesFriendsCard()}${!n ? `<div class="card">${friendSuggestHtml(true) || '<p class="muted">Add friends on the Friends &amp; chats page to see them here.</p>'}</div>` : ''}</div>
+      <div class="stack">${viewBoard()}${seasonCard()}${athleticsBoardCard()}</div>
+      <div class="stack">${compCard()}${racesCard()}${gradeCard()}${challengesFriendsCard()}${!n ? `<div class="card">${friendSuggestHtml(true) || '<p class="muted">Add friends on the Friends &amp; chats page to see them here.</p>'}</div>` : ''}</div>
     </div>`;
 }
 // fastest / strongest among your friends for one event
@@ -131,7 +127,7 @@ function viewFriends() {
     <div class="social-grid">
       <div class="social-chats">${typeof viewChats === 'function' ? viewChats(true) : ''}</div>
       <div class="stack">
-        <div class="card"><div class="card-head"><h2>Friends</h2>${n ? `<span class="muted small-text">${n}</span>` : ''}</div>
+        <div class="card"><div class="card-head"><h2>Friends</h2>${n ? `<span class="muted small-text">${n}</span>` : ''}<span style="flex:1"></span>${onlineSummary()}</div>
           ${acct.signedIn ? friendSearchHtml().replace('<h3>👥 Friends', '<h3 hidden>').replace('class="friendbox"', 'class="friendbox flat"') : ''}
           ${friendSuggestHtml()}
           ${friendCards() || (friendNames().length ? '' : '<p class="muted small-text">No friends yet. Search for a username above, or swap friend codes below.</p>')}

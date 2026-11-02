@@ -90,12 +90,19 @@ func TestEmuEverything(t *testing.T) {
 	denied(t, "5000 coins in half a minute", err)
 	_, err = fsCommit(ann.Access, fsSet("profiles/"+ann.UserID, map[string]any{"display": "Ann", "avatar": "", "stats": map[string]any{"week": wk, "study": map[string]any{"mins": 30000.0}}}, true, "", "updated_at"))
 	denied(t, "500 hours studied this week", err)
-	if later, err := publishProfile(ann, "Ann", `{"c":1}`, map[string]any{"week": wk, "study": map[string]any{"mins": 30.0, "coins": 50000.0}}, time.Now()); err != nil || later {
+	if later, err := publishProfile(ann, "Ann", `{"c":1}`, map[string]any{"week": wk, "study": map[string]any{"mins": 30.0, "coins": 50000.0},
+		"st": map[string]any{"t": 1.0, "s": "Maths", "at": 1.0, "p": 0.0, "x": 1.0}, "ss": map[string]any{"id": "2026-4", "s": 30.0, "k": 0.0, "tr": 1.0},
+		"yr": map[string]any{"y": 2026.0, "tr": 5.0, "w": 2.0}, "cw": map[string]any{"wk": wk, "v": 3.0}, "pw": map[string]any{"wk": wk, "v": 1.0},
+		"gr": map[string]any{"m": 1.0, "r": 0.0, "y": 2026.0, "o": 81.5, "s": "Maths=88"},
+		"fo": map[string]any{"n": 1.0, "t": "oak:45:4dabf7:0"}}, time.Now()); err != nil || later {
 		t.Fatalf("publish: %v %v", later, err)
 	}
 	p, _ := fsGet("", "profiles/"+ann.UserID)
 	if c := getStat(p.Fields["stats"].(map[string]any), "study", "coins"); c <= 0 || c > 600 {
 		t.Fatalf("coins clamped to %v", c)
+	}
+	if gr, _ := p.Fields["stats"].(map[string]any)["gr"].(map[string]any); gr == nil || gr["o"] != 81.5 || p.Fields["stats"].(map[string]any)["fo"] == nil {
+		t.Fatalf("2.40 stats not saved: %v", p.Fields["stats"])
 	}
 
 	// ---- jersey

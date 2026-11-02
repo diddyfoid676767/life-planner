@@ -9,6 +9,11 @@ package main
 // Life Planner with its own icon.
 
 import (
+	"bytes"
+	"image"
+	"image/color"
+	"image/png"
+	"math"
 	"runtime"
 	"strings"
 	"syscall"
@@ -129,4 +134,91 @@ func claimTaskbarIdentity() {
 			time.Sleep(500 * time.Millisecond)
 		}
 	}()
+}
+
+// ---------- unread dot on the taskbar button ----------
+// ITaskbarList3::SetOverlayIcon puts a small icon over the planner's taskbar
+// button. The dot is a PNG drawn here and turned into an icon by Windows.
+var (
+	procCoCreateInstance         = ole32.NewProc("CoCreateInstance")
+	procCreateIconFromResourceEx = user32.NewProc("CreateIconFromResourceEx")
+	procDestroyIcon              = user32.NewProc("DestroyIcon")
+	clsidTaskbarList             = guid{0x56FDF344, 0xFD6D, 0x11d0, [8]byte{0x95, 0x8A, 0x00, 0x60, 0x97, 0xC9, 0xA0, 0x90}}
+	iidTaskbarList3              = guid{0xEA1AFB91, 0x9E28, 0x4B86, [8]byte{0x90, 0xE9, 0x9E, 0x9F, 0x8A, 0x5E, 0xEF, 0xAF}}
+	badgeCh                      = make(chan int, 8)
+	appHwnd                      uintptr // the WebView2 window, when the planner has one
+)
+
+func init() { go badgeLoop() }
+
+func setTaskbarBadge(n int) {
+	select {
+	case badgeCh <- n:
+	default:
+	}
+}
+
+// one COM thread owns the taskbar object; it reapplies the dot now and then
+// because a reopened window gets a fresh taskbar button.
+func badgeLoop() {
+	runtime.LockOSThread()
+	procCoInitializeEx.Call(0, 2)
+	var tb uintptr
+	if r, _, _ := procCoCreateInstance.Call(uintptr(unsafe.Pointer(&clsidTaskbarList)), 0, 1, uintptr(unsafe.Pointer(&iidTaskbarList3)), uintptr(unsafe.Pointer(&tb))); r != 0 || tb == 0 {
+		for range badgeCh {
+		}
+		return
+	}
+	vt := *(*[19]uintptr)(unsafe.Pointer(*(*uintptr)(unsafe.Pointer(tb))))
+	syscall.SyscallN(vt[3], tb) // HrInit
+	dot := badgeIcon()
+	n := 0
+	apply := func() {
+		var ic uintptr
+		if n > 0 {
+			ic = dot
+		}
+		desc, _ := syscall.UTF16PtrFromString("Unread messages")
+		wins := plannerWindows()
+		if appHwnd != 0 {
+			wins = append(wins, appHwnd)
+		}
+		for _, h := range wins {
+			syscall.SyscallN(vt[18], tb, h, ic, uintptr(unsafe.Pointer(desc))) // SetOverlayIcon
+		}
+	}
+	tick := time.NewTicker(20 * time.Second)
+	for {
+		select {
+		case n = <-badgeCh:
+		case <-tick.C:
+			if n == 0 {
+				continue
+			}
+		}
+		apply()
+	}
+}
+
+func badgeIcon() uintptr {
+	const s = 32
+	img := image.NewNRGBA(image.Rect(0, 0, s, s))
+	for y := 0; y < s; y++ {
+		for x := 0; x < s; x++ {
+			dx, dy := float64(x)-15.5, float64(y)-15.5
+			d := math.Sqrt(dx*dx + dy*dy)
+			switch {
+			case d <= 13:
+				img.Set(x, y, color.NRGBA{0xE0, 0x31, 0x31, 0xFF})
+			case d <= 15.5:
+				img.Set(x, y, color.NRGBA{0xFF, 0xFF, 0xFF, 0xFF})
+			}
+		}
+	}
+	var buf bytes.Buffer
+	png.Encode(&buf, img)
+	b := buf.Bytes()
+	h, _, _ := procCreateIconFromResourceEx.Call(uintptr(unsafe.Pointer(&b[0])), uintptr(len(b)), 1, 0x00030000, s, s, 0)
+	runtime.KeepAlive(b)
+	return h
 }

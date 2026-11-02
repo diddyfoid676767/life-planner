@@ -399,7 +399,7 @@ func claimJersey(a *account, n *int) error {
 // ---------- leaderboard numbers ----------
 
 // statKeys are the stats a profile may hold (statsShape in firestore.rules).
-var statKeys = map[string]bool{"week": true, "study": true, "work": true, "health": true, "chal": true, "now": true, "prev": true, "pvp": true, "fit": true, "fr": true}
+var statKeys = map[string]bool{"week": true, "study": true, "work": true, "health": true, "chal": true, "now": true, "prev": true, "pvp": true, "fit": true, "fr": true, "st": true, "ss": true, "yr": true, "cw": true, "pw": true, "gr": true, "fo": true}
 
 type statRule struct {
 	a, b         string
@@ -459,6 +459,7 @@ func clampStats(old, s map[string]any, mins float64, now time.Time) map[string]a
 			out[k] = v
 		}
 	}
+	cleanNewStats(out, old, math.Max(0, mins-2))
 	for _, k := range []string{"study", "work", "pvp"} {
 		if _, ok := out[k].(map[string]any); !ok {
 			delete(out, k)
@@ -582,7 +583,97 @@ func publishProfile(a *account, display, av string, stats map[string]any, now ti
 	old, _ := cur.Fields["stats"].(map[string]any)
 	body := map[string]any{"display": cut(display, 30), "avatar": av, "stats": clampStats(old, stats, mins, now)}
 	_, err = fsCommit(a.Access, fsSet("profiles/"+a.UserID, body, true, cur.Updated, "updated_at"))
+	// rules from before 2.40 don't know the season, grade and forest stats yet
+	if fe, ok := err.(*fbErr); ok && fe.Status == "PERMISSION_DENIED" && hasNewStats(body["stats"].(map[string]any)) {
+		st := body["stats"].(map[string]any)
+		for k := range newStatKeys {
+			delete(st, k)
+		}
+		_, err = fsCommit(a.Access, fsSet("profiles/"+a.UserID, body, true, cur.Updated, "updated_at"))
+	}
 	return false, err
+}
+
+// newStatKeys are the stats added in 2.40: online/studying status (st), the
+// term season (ss) and year (yr) boards, the weekly competition (cw, pw),
+// grades shared by choice (gr) and a picture of the forest (fo).
+var newStatKeys = map[string]bool{"st": true, "ss": true, "yr": true, "cw": true, "pw": true, "gr": true, "fo": true}
+
+func hasNewStats(s map[string]any) bool {
+	for k := range newStatKeys {
+		if _, ok := s[k]; ok {
+			return true
+		}
+	}
+	return false
+}
+
+// cleanNewStats keeps the 2.40 stats to the shapes firestore.rules accepts.
+func cleanNewStats(out map[string]any, old map[string]any, mins float64) {
+	num := func(m map[string]any, k string, max float64) {
+		f, ok := toF(m[k])
+		if !ok || f < 0 {
+			delete(m, k)
+			return
+		}
+		m[k] = math.Min(f, max)
+	}
+	only := func(k string, keys ...string) map[string]any {
+		m, ok := out[k].(map[string]any)
+		if !ok {
+			delete(out, k)
+			return nil
+		}
+		c := map[string]any{}
+		for _, kk := range keys {
+			if v, ok := m[kk]; ok {
+				c[kk] = v
+			}
+		}
+		out[k] = c
+		return c
+	}
+	if m := only("st", "t", "s", "at", "p", "x"); m != nil {
+		m["s"] = cut(str(m["s"]), 30)
+		for _, k := range []string{"t", "at", "p", "x"} {
+			num(m, k, 1e13)
+		}
+	}
+	if m := only("ss", "id", "s", "k", "tr"); m != nil {
+		m["id"] = cut(str(m["id"]), 10)
+		num(m, "s", 200000)
+		num(m, "k", 200000)
+		num(m, "tr", 10000)
+		if o, _ := old["ss"].(map[string]any); o != nil && str(o["id"]) == m["id"] {
+			for _, k := range []string{"s", "k"} {
+				if v, ok := m[k].(float64); ok {
+					m[k] = math.Min(v, getStat(old, "ss", k)+mins+5)
+				}
+			}
+		}
+	}
+	if m := only("yr", "y", "tr", "w"); m != nil {
+		num(m, "y", 3000)
+		num(m, "tr", 10000)
+		num(m, "w", 20000)
+	}
+	for _, k := range []string{"cw", "pw"} {
+		if m := only(k, "wk", "v"); m != nil {
+			m["wk"] = cut(str(m["wk"]), 10)
+			num(m, "v", 20000)
+		}
+	}
+	if m := only("gr", "m", "r", "y", "o", "s"); m != nil {
+		num(m, "m", 1)
+		num(m, "r", 1)
+		num(m, "y", 3000)
+		num(m, "o", 100)
+		m["s"] = cut(str(m["s"]), 480)
+	}
+	if m := only("fo", "n", "t"); m != nil {
+		num(m, "n", 10000)
+		m["t"] = cut(str(m["t"]), 1200)
+	}
 }
 
 // profileRow is a profile as the page wants it.

@@ -71,12 +71,12 @@ function checkCritters() {
   }
   if (found.length) { save(); setTimeout(() => critterArrives(found), 400); }
 }
-function celebrate({ icon, color = '#40c057', kicker, title, text }) {
+function celebrate({ icon, color = '#40c057', kicker, title, text, ok = 'Nice!' }) {
   const ov = document.createElement('div');
   ov.className = 'boxfx opened';
   ov.style.setProperty('--rc', color);
   ov.innerHTML = `<div class="boxstage"><div class="rays"></div><div class="reveal"><div class="prize">${icon}</div><div class="rar">${kicker}</div><h2>${title}</h2><p>${text}</p>
-    <div class="row" style="justify-content:center"><button class="btn primary" data-close>Nice!</button></div></div></div>`;
+    <div class="row" style="justify-content:center"><button class="btn primary" data-close>${ok}</button></div></div></div>`;
   document.body.appendChild(ov);
   ov.addEventListener('click', e => { if (e.target.closest('[data-close]') || e.target === ov) { ov.classList.add('out'); setTimeout(() => ov.remove(), 250); render(); } });
 }

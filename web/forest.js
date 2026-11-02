@@ -68,7 +68,7 @@ function checkTreeStages(quiet) {
   stageSfx(top[1]);
   toast(`${STAGE_ICON[top[1]]} ${treeName(top[0])} grew into ${/^[AEIOU]/.test(TREE_STAGES[top[1]][1]) ? 'an' : 'a'} ${TREE_STAGES[top[1]][1].toLowerCase()}`, grew.length > 1 ? `${grew.length - 1} other tree${grew.length === 2 ? '' : 's'} grew too.` : 'Merge two trees of the same kind and stage to grow them.');
 }
-setInterval(() => { if (window.D && !document.hidden) checkTreeStages(); }, 60000);
+setInterval(() => { if ((typeof D !== 'undefined' && D) && !document.hidden) checkTreeStages(); }, 60000);
 // Each subject gets its own tree type: picks first (in subject order, no two the
 // same), then the rest get the next unused standard tree.
 function speciesMap() {

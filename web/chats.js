@@ -7,7 +7,7 @@
 let myBadges = [], myJersey;
 let chatList = [], chatBlocks = [], chatSetup = false, chatLoadedAt = 0, chatOpen = null, chatMsgs = [], chatBusy = false, chatErr = '';
 const chatDrafts = {};
-const chatMuted = id => { const m = (window.D && D.settings.chatMute) || {}; return !!(m[id] || (m[FB] && isFbIn(chatList.find(c => c.id === id)))); };
+const chatMuted = id => { const m = (typeof D !== 'undefined' && D && D.settings.chatMute) || {}; return !!(m[id] || (m[FB] && isFbIn(chatList.find(c => c.id === id)))); };
 
 // ---------- badges ----------
 const BADGES = { dev: ['🛠️', 'DEV', 'Made Life Planner'], beta: ['🧪', 'BETA', 'Signed up during the beta'] };
@@ -77,6 +77,7 @@ function updateChatBadge() {
   const b = document.querySelector('#tabs button[data-view=friends]'); if (!b) return;
   const n = chatList.reduce((s, c) => s + (chatMuted(c.id) ? 0 : +c.unread || 0), 0);
   b.dataset.badge = n ? (n > 99 ? '99+' : n) : '';
+  if (typeof setAppBadge === 'function') setAppBadge(n);
 }
 setInterval(() => refreshChats(), 30000);
 setInterval(() => { if (view === 'friends' && chatOpen && document.visibilityState === 'visible') pollChat(); }, 3500);
@@ -104,7 +105,9 @@ const isFbIn = c => /^Feedback · @/.test(c?.name || '') && c.name !== 'Feedback
 let fbTo = null, fbAfter = {}; // the feedback chat a reply goes to; newest message seen in each
 const fbChats = () => chatList.filter(isFbIn);
 // the chat list as shown: feedback chats folded into one
-function shownChats() {
+const chatPinned = id => !!((typeof D !== 'undefined' && D && D.settings.chatPin) || {})[id];
+function shownChats() { const l = shownChats0(); return [...l.filter(c => chatPinned(c.id)), ...l.filter(c => !chatPinned(c.id))]; }
+function shownChats0() {
   const fb = fbChats(); if (!fb.length) return chatList;
   const last = fb.map(c => c.last).filter(Boolean).sort((a, b) => (b.at || '').localeCompare(a.at || ''))[0] || null;
   const members = [...new Map(fb.flatMap(c => c.members || []).map(m => [m.u, m])).values()];
@@ -179,7 +182,7 @@ function chatListHtml() {
     const l = c.last, blocked = l && chatBlocks.includes(l.u);
     return `<li class="${c.id === chatOpen ? 'on' : ''} ${c.unread ? 'unread' : ''}" data-chat="open" data-id="${esc(c.id)}">${chatAvatar(c, 40)}
       <div class="main"><b>${esc(chatTitle(c))}${!c.is_group ? badgeTags(others(c)[0]?.b, true) : ''}</b><small>${l ? (blocked ? 'Hidden message' : esc((l.u === acct.username ? 'You: ' : c.is_group ? l.u + ': ' : '') + l.body)) : c.is_group ? `${(c.members || []).length} people` : 'Say hi 👋'}</small></div>
-      <div class="chatmeta">${l ? `<small>${esc(chatWhen(l.at))}</small>` : ''}${chatMuted(c.id) ? '<span title="Muted">🔕</span>' : ''}${c.unread ? `<span class="chatunread ${chatMuted(c.id) ? 'muted' : ''}">${c.unread}</span>` : ''}</div></li>`;
+      <div class="chatmeta">${chatPinned(c.id) ? '<span title="Pinned">📌</span>' : ''}${l ? `<small>${esc(chatWhen(l.at))}</small>` : ''}${chatMuted(c.id) ? '<span title="Muted">🔕</span>' : ''}${c.unread ? `<span class="chatunread ${chatMuted(c.id) ? 'muted' : ''}">${c.unread}</span>` : ''}</div></li>`;
   }).join('');
 }
 function drawChatList() { const ul = document.getElementById('chatList'); if (ul) ul.innerHTML = chatListHtml(); }
@@ -196,6 +199,7 @@ function chatPaneHtml(c) {
   return `<div class="chathead"><button class="iconbtn chatback" data-chat="back" title="Back">‹</button>${chatAvatar(c, 40)}<div class="main"><b>${esc(chatTitle(c))}${!c.is_group ? badgeTags(o[0]?.b) : ''}</b><small>${esc(sub)}</small></div>
       <details class="chatmenu"><summary class="iconbtn" title="More">⋯</summary><div class="chatmenu-pop">
         ${c.is_group ? `<button data-chat="rename">✏️ Rename group</button><button data-chat="add">➕ Add people</button><button data-chat="members">👥 People</button>` : o[0] ? `<button data-chat="block" data-u="${esc(o[0].u)}">${chatBlocks.includes(o[0].u) ? '✅ Unblock' : '🚫 Block'} @${esc(o[0].u)}</button><button data-chat="report" data-u="${esc(o[0].u)}">🚩 Report @${esc(o[0].u)}</button>` : ''}
+        <button data-chat="pin">${chatPinned(c.id) ? '📌 Unpin' : '📌 Pin to top'}</button>
         <button data-chat="mute">${chatMuted(c.id) ? '🔔 Unmute' : '🔕 Mute'} ${c.is_group ? 'group' : 'chat'}</button>
         <button data-chat="leave" class="danger">🚪 ${c.is_group ? 'Leave group' : 'Delete chat'}</button></div></details></div>
     <div class="chatmsgs" id="chatMsgs">${chatMsgsHtml(c)}</div>
@@ -280,6 +284,7 @@ async function chatAction(el) {
   if (a === 'fbto') { fbTo = el.dataset.id; const y = document.getElementById('chatMsgs')?.scrollTop; render(); const b = document.getElementById('chatMsgs'); if (b && y != null) b.scrollTop = y; return; }
   if (a === 'back') { chatOpen = null; render(); return; }
   if (a === 'fbcopy') return fbCopy();
+  if (a === 'pin') { const m = D.settings.chatPin = D.settings.chatPin || {}; if (m[chatOpen]) delete m[chatOpen]; else m[chatOpen] = true; el.closest('details')?.removeAttribute('open'); save(); render(); return; }
   if (a === 'mute') { const m = D.settings.chatMute = D.settings.chatMute || {}; if (m[chatOpen]) delete m[chatOpen]; else m[chatOpen] = true; save(); updateChatBadge(); render(); toast(m[chatOpen] ? '🔕 Muted' : '🔔 Unmuted', m[chatOpen] ? 'No pop-ups or badge for this chat. New messages still show in the list.' : ''); return; }
   if (a === 'new') return chatPicker('new');
   if (a === 'add') { el.closest('details')?.removeAttribute('open'); return chatPicker('add'); }

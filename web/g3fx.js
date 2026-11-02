@@ -7,7 +7,7 @@
    the garden's Effects menu for slower computers. */
 
 if (window.THREE && THREE.ColorManagement) THREE.ColorManagement.legacyMode = false;
-const fxHQ = () => ((window.D && D.game && D.game.fx) || {}).hq ?? true;
+const fxHQ = () => (((typeof D !== 'undefined' && D) && D.game && D.game.fx) || {}).hq ?? true;
 const fxMix = (a, b, t) => '#' + new THREE.Color(a).lerp(new THREE.Color(b), t).getHexString();
 const srgb = t => { t.encoding = THREE.sRGBEncoding; return t; };
 

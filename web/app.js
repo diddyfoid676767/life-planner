@@ -661,7 +661,7 @@ function viewStudy() {
   const trees = D.focusLogs.filter(l => l.mins >= 10 && l.date >= tw).length;
   const subjects = D.subjects.map(s => `<span class="subj" style="--c:${s.color}"><span class="dot" style="background:${s.color}"></span>${esc(s.name)}<button class="iconbtn" data-act="edit" data-kind="subject" data-id="${s.id}" title="Edit subject">✎</button></span>`).join('');
 
-  return `<div class="study2">${pageHead('Study', `${fmtMins(sum(tw, twEnd)) || '0m'} studied this week · ${trees} tree${trees === 1 ? '' : 's'} planted`, `<button class="btn" data-act="planStudy">Plan study</button><button class="btn primary" data-act="focusNew">▶ Start studying</button>`)}
+  return `<div class="study2">${pageHead('Study', `${fmtMins(sum(tw, twEnd)) || '0m'} studied this week · ${trees} tree${trees === 1 ? '' : 's'} planted`, `<button class="btn" data-act="planStudy">Plan study</button><button class="btn" data-s2="examStart" title="Full screen; leaving the planner ends the timer with no reward">🔒 Exam mode</button><button class="btn primary" data-act="focusNew">▶ Start studying</button>`)}
   ${studyTabs()}
   <div class="upnext-row">${nextCard}${sacCard}${todayCard}</div>
   ${examHub()}
@@ -673,6 +673,8 @@ function viewStudy() {
       <div class="sday">${dueRows}${blockRows || (dueRows ? '' : `<div class="empty big">No study blocks ${sd === t ? 'today' : 'on this day'}.</div>`)}</div>
       <button class="btn" data-act="new" data-kind="session" data-date="${sd}" style="margin-top:10px">+ Add a study block</button></div>
   <div class="card subjcard"><div class="card-head"><h2>Subjects</h2></div><div class="subjects">${subjects || '<span class="empty">Add your subjects to get started.</span>'}<button class="btn small" data-act="new" data-kind="subject">+ Subject</button></div></div>
+  ${typeof studyPieCard === 'function' ? studyPieCard() : ''}
+  ${typeof studyTimeCard === 'function' ? studyTimeCard() : ''}
   ${linksHtml(['Study'], 'chips')}
     </div>
     <div class="study-side">
@@ -1357,14 +1359,15 @@ function planTraining(evId) {
 // ---------- focus timer & study log ----------
 // D.focus = running timer {subjectId, sessionId, startedAt, pausedAt, pausedMs}; saved so it syncs between devices.
 const focusElapsed = f => Math.max(0, ((f.pausedAt || Date.now()) - f.startedAt - (f.pausedMs || 0)) / 60000);
-function startFocus(subjectId, sessionId) {
+function startFocus(subjectId, sessionId, exam) {
   if (D.focus && !confirm('A focus timer is already running. Stop it and log that time first?')) return;
   if (D.focus) stopFocus(true, true);
   const sess = sessionId ? find('session', sessionId) : null;
   subjectId = subjectId || sess?.subjectId;
   if (!subjectId) { focusPicker(); return; }
-  D.focus = { subjectId, sessionId: sessionId || '', startedAt: Date.now(), pausedAt: 0, pausedMs: 0, planned: sess?.duration || 0 };
-  save(); renderFocusBar(); openFocusFull();
+  D.focus = { subjectId, sessionId: sessionId || '', startedAt: Date.now(), pausedAt: 0, pausedMs: 0, planned: sess?.duration || 0, ...(exam ? { exam: true } : {}) };
+  if (exam && typeof examFull === 'function') examFull();
+  save(); renderFocusBar(); openFocusFull(); if (typeof publishMe === 'function') publishMe(true);
   if (D.settings.focusBrainfm) openBrainfm();
 }
 // Brain.fm: open the desktop app when it's installed, otherwise the website.
@@ -1383,8 +1386,9 @@ function focusPicker() {
   if (!D.subjects.length) { alert('Add a subject first.'); return; }
   showForm({ title: 'Start studying', saveLabel: 'Start timer', fields: [
     { key: 'subjectId', label: 'Subject', type: 'select', options: subjOpts(), value: D.subjects[0].id },
-    { key: 'brain', label: 'Open Brain.fm too', type: 'bool', value: D.settings.focusBrainfm }],
-    onSave: v => { D.settings.focusBrainfm = v.brain; setTimeout(() => startFocus(v.subjectId, ''), 0); } });
+    { key: 'brain', label: 'Open Brain.fm too', type: 'bool', value: D.settings.focusBrainfm },
+    { key: 'exam', label: '🔒 Exam mode: full screen, and leaving the planner ends the timer with no reward', type: 'bool', value: false }],
+    onSave: v => { D.settings.focusBrainfm = v.brain; setTimeout(() => startFocus(v.subjectId, '', v.exam), 0); } });
 }
 function pauseFocus() {
   const f = D.focus; if (!f) return;
@@ -1395,6 +1399,8 @@ function stopFocus(log, quiet) {
   const f = D.focus; if (!f) return;
   const mins = Math.round(focusElapsed(f));
   D.focus = null; focusAskCancel = false;
+  if (f.exam && typeof examExitFull === 'function') examExitFull();
+  if (typeof publishMe === 'function') setTimeout(() => publishMe(true), 0);
   if (log && mins >= 1) {
     D.focusLogs.push({ id: uid(), subjectId: f.subjectId, species: speciesFor(f.subjectId), ...((f.distractions || 0) >= DISTRACT_LIMIT ? { withered: true } : {}), sessionId: f.sessionId, date: ymd(new Date(f.startedAt)), start: new Date(f.startedAt).toISOString(), mins });
     leafSessionBonus(D.focusLogs[D.focusLogs.length - 1]);
@@ -1417,6 +1423,7 @@ function renderFocusBar() {
     const pct = Math.min(100, m / focusTarget(f, m) * 100);
     bar.innerHTML = `<i class="fprog" style="width:${pct.toFixed(1)}%"></i><span class="ftree">${treeSvg(s.color, Math.max(10, f.planned || 45), Math.min(1, m / Math.max(10, f.planned || 45)), speciesFor(f.subjectId), 40)}</span><b>${esc(s.name)}</b> <span class="ftime">${time}</span>${f.planned ? `<span class="small-text"> / ${fmtMins(f.planned)}</span>` : ''}${f.pausedAt ? ' <span class="tag amber">Paused</span>' : ''}
       <span class="spacer"></span>${focusAskCancel ? `<span class="small-text"><b>Cancel without logging?</b> No time, coins or tree.</span><button class="btn small danger" data-act="focusCancelYes">Yes, cancel it</button><button class="btn small" data-act="focusCancelNo">Keep going</button>`
+        : f.exam ? `<span class="tag red">🔒 Exam mode</span><button class="btn small primary" data-act="focusStop">Stop &amp; log</button><button class="btn small" data-act="focusCancel" title="Stop without logging">Cancel</button><button class="btn small" data-act="focusMax" title="Big timer">⤢ Big timer</button>`
         : `<button class="btn small" data-act="focusPause">${f.pausedAt ? 'Resume' : 'Pause'}</button><button class="btn small primary" data-act="focusStop">Stop &amp; log</button><button class="btn small" data-act="focusCancel" title="Stop without logging">Cancel</button><button class="btn small" data-act="focusMax" title="Big timer">⤢ Big timer</button><button class="btn small" data-act="focusMini" title="A small player you can drag anywhere">▣ Mini player</button><button class="btn small" data-act="focusPop" title="A tiny window that stays on top of other apps">⧉ Pop out</button>`}`;
     updateFocusFull();
     updateMini(f, s, m, time, pct);

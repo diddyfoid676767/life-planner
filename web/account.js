@@ -22,10 +22,10 @@ async function acctPost(body) {
 
 function myStatsRow() {
   const r = myBoardRow();
-  return { display: (D.settings.name || '').slice(0, 30), avatar: r.av, stats: { week: r.week, study: r.study, work: r.work, health: r.health, ...chalPublish(), pvp: typeof pvpPublish === 'function' ? pvpPublish() : undefined, fit: typeof fitPublish === 'function' ? fitPublish() : undefined, fr: friendNames().slice(0, 60) } };
+  return { display: (D.settings.name || '').slice(0, 30), avatar: r.av, stats: { week: r.week, study: r.study, work: r.work, health: r.health, ...chalPublish(), pvp: typeof pvpPublish === 'function' ? pvpPublish() : undefined, fit: typeof fitPublish === 'function' ? fitPublish() : undefined, fr: friendNames().slice(0, 60), ...(typeof myStatus === 'function' ? { st: myStatus(), ...seasonStats(), ...compPublish(), gr: gradePublish(), fo: forestPublish() } : {}) } };
 }
 async function publishMe(force) {
-  if (!acct.signedIn || (!force && Date.now() - acctPublishedAt < 10 * 60000)) return;
+  if (!acct.signedIn || (!force && Date.now() - acctPublishedAt < 4.5 * 60000)) return;
   acctPublishedAt = Date.now();
   try { await fetch('/api/account/profile', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(myStatsRow()) }); } catch { }
 }
@@ -40,7 +40,7 @@ async function refreshFriends(force) {
   friendRowsAt = Date.now();
   try {
     const list = await (await fetch('/api/account/people?u=' + encodeURIComponent(names.join(',')), { cache: 'no-store' })).json();
-    if (Array.isArray(list)) { friendRows = list.map(toBoardRow); if (view === 'friends' && !modal.open) render(); }
+    if (Array.isArray(list)) { friendRows = list.map(toBoardRow); if (typeof settleComp === 'function') settleComp(); if ((view === 'friends' || view === 'board') && !modal.open) render(); }
   } catch { }
 }
 setInterval(() => { if (acct.signedIn) { publishMe(); refreshFriends(); } }, 5 * 60000);

@@ -40,3 +40,30 @@ func TestClampStats(t *testing.T) {
 		t.Fatalf("stale: %v", out)
 	}
 }
+
+func TestCleanNewStats(t *testing.T) {
+	now := time.Date(2026, 11, 4, 12, 0, 0, 0, time.UTC)
+	s := map[string]any{"week": "2026-11-02",
+		"st": map[string]any{"t": 1.0, "s": "Maths Methods and a very long subject name here", "evil": 1.0},
+		"ss": map[string]any{"id": "2026-4", "s": 99999.0, "k": -5.0, "tr": 3.0},
+		"gr": map[string]any{"m": 1.0, "r": 1.0, "y": 2026.0, "o": 140.0, "s": "Maths=88"},
+		"fo": map[string]any{"n": 3.0, "t": "oak:600:4dabf7:0"},
+		"cw": "nope"}
+	old := map[string]any{"ss": map[string]any{"id": "2026-4", "s": 100.0}}
+	out := clampStats(old, s, 10, now)
+	st := out["st"].(map[string]any)
+	if st["evil"] != nil || len(str(st["s"])) > 30 {
+		t.Fatalf("st: %v", st)
+	}
+	ss := out["ss"].(map[string]any)
+	if ss["s"] != 113.0 || ss["k"] != nil {
+		t.Fatalf("ss: %v", ss)
+	}
+	gr := out["gr"].(map[string]any)
+	if gr["o"] != 100.0 || gr["s"] != "Maths=88" {
+		t.Fatalf("gr: %v", gr)
+	}
+	if out["fo"].(map[string]any)["t"] != "oak:600:4dabf7:0" || out["cw"] != nil {
+		t.Fatalf("fo/cw: %v", out)
+	}
+}

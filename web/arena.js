@@ -55,6 +55,43 @@ const TESTS = [
   { id: 'plank', name: 'Plank hold', unit: 'm:ss', stat: 'str', time: true, cat: 'test', std: [30, 300] },
   { id: 'sit', name: 'Sit-and-reach', unit: 'cm', stat: 'agi', cat: 'test', std: [0, 35] },
   { id: 'swim50', name: '50m swim', unit: 's', lower: true, stat: 'end', cat: 'test', std: [60, 26] },
+  // 2.40: more lifts and events from the PR ranking doc (Strength Level and VDOT tables mapped onto Rookie to Legend)
+  { id: 'row', name: 'Barbell row 1RM', unit: 'kg', stat: 'str', cat: 'rm', bw: [0.3, 2.27], doc: 1 },
+  { id: 'incl', name: 'Incline bench 1RM', unit: 'kg', stat: 'str', cat: 'rm', bw: [0.35, 2.15], doc: 1 },
+  { id: 'cgb', name: 'Close-grip bench 1RM', unit: 'kg', stat: 'str', cat: 'rm', bw: [0.41, 2.23], doc: 1 },
+  { id: 'dbb', name: 'Dumbbell bench 1RM (per hand)', unit: 'kg', stat: 'str', cat: 'rm', bw: [0.08, 1.12], doc: 1 },
+  { id: 'latpd', name: 'Lat pulldown 1RM', unit: 'kg', stat: 'str', cat: 'rm', bw: [0.32, 2.13], doc: 1 },
+  { id: 'bbcurl', name: 'Barbell curl 1RM', unit: 'kg', stat: 'str', cat: 'rm', bw: [0.09, 1.32], doc: 1 },
+  { id: 'dbcurl', name: 'Dumbbell curl 1RM (per hand)', unit: 'kg', stat: 'str', cat: 'rm', bw: [0, 0.72], doc: 1 },
+  { id: 'ppress', name: 'Push press 1RM', unit: 'kg', stat: 'pow', cat: 'rm', bw: [0.25, 2.06], doc: 1 },
+  { id: 'dbsp', name: 'Dumbbell shoulder press 1RM (per hand)', unit: 'kg', stat: 'str', cat: 'rm', bw: [0.06, 0.88], doc: 1 },
+  { id: 'legp', name: 'Leg press 1RM', unit: 'kg', stat: 'str', cat: 'rm', bw: [0.45, 6.52], doc: 1 },
+  { id: 'gob', name: 'Goblet squat 1RM', unit: 'kg', stat: 'str', cat: 'rm', bw: [0, 1.36], doc: 1 },
+  { id: 'sumo', name: 'Sumo deadlift 1RM', unit: 'kg', stat: 'str', cat: 'rm', bw: [0.76, 4.21], doc: 1 },
+  { id: 'hexdl', name: 'Hex / trap bar deadlift 1RM', unit: 'kg', stat: 'str', cat: 'rm', bw: [0.75, 3.98], doc: 1 },
+  { id: 'rdl', name: 'Romanian deadlift 1RM', unit: 'kg', stat: 'str', cat: 'rm', bw: [0.37, 3.3], doc: 1 },
+  { id: 'snatch', name: 'Snatch 1RM', unit: 'kg', stat: 'pow', cat: 'rm', bw: [0.19, 2.03], doc: 1 },
+  { id: 'cj', name: 'Clean and jerk 1RM', unit: 'kg', stat: 'pow', cat: 'rm', bw: [0.27, 2.41], doc: 1 },
+  { id: 'bss', name: 'Bulgarian split squat 1RM', unit: 'kg', stat: 'str', cat: 'rm', bw: [0, 2.46], doc: 1 },
+  { id: 'bblunge', name: 'Barbell lunge 1RM', unit: 'kg', stat: 'str', cat: 'rm', bw: [0.05, 2.57], doc: 1 },
+  { id: 'dbrow', name: 'Dumbbell row 1RM (per hand)', unit: 'kg', stat: 'str', cat: 'rm', bw: [0.06, 1.26], doc: 1 },
+  { id: 'hack', name: 'Hack squat 1RM', unit: 'kg', stat: 'str', cat: 'rm', bw: [0.1, 4.7], doc: 1 },
+  { id: 'legx', name: 'Leg extension 1RM', unit: 'kg', stat: 'str', cat: 'rm', bw: [0.18, 2.98], doc: 1 },
+  { id: 'legc', name: 'Lying leg curl 1RM', unit: 'kg', stat: 'str', cat: 'rm', bw: [0.1, 1.92], doc: 1 },
+  { id: 'shrug', name: 'Barbell shrug 1RM', unit: 'kg', stat: 'str', cat: 'rm', bw: [0.1, 3.85], doc: 1 },
+  { id: 'tpush', name: 'Tricep pushdown 1RM', unit: 'kg', stat: 'str', cat: 'rm', bw: [0, 1.81], doc: 1 },
+  { id: 's300', name: '300m', unit: 's', lower: true, stat: 'spd', cat: 'sprint', std: [65.1, 32.97], doc: 1 },
+  { id: 's600', name: '600m', unit: 'm:ss', lower: true, stat: 'end', time: true, cat: 'dist', std: [171.5, 74.79], doc: 1 },
+  { id: 'tt2mi', name: '2 miles', unit: 'm:ss', lower: true, stat: 'end', time: true, cat: 'dist', std: [1110.5, 494], doc: 1 },
+  { id: 'tt15k', name: '15km', unit: 'm:ss', lower: true, stat: 'end', time: true, cat: 'dist', std: [5646, 2546], doc: 1 },
+  { id: 'tt10mi', name: '10 miles', unit: 'm:ss', lower: true, stat: 'end', time: true, cat: 'dist', std: [6086.5, 2743], doc: 1 },
+  { id: 'half', name: 'Half marathon', unit: 'm:ss', lower: true, stat: 'end', time: true, cat: 'dist', std: [7965.9, 3660], doc: 1 },
+  { id: 'mara', name: 'Marathon', unit: 'm:ss', lower: true, stat: 'end', time: true, cat: 'dist', std: [16720.6, 7650], doc: 1 },
+  { id: 'steep3', name: '3000m steeplechase', unit: 'm:ss', lower: true, stat: 'end', time: true, cat: 'dist', std: [1111.3, 493.1], doc: 1 },
+  { id: 'chin', name: 'Chin-ups (max reps)', unit: 'reps', stat: 'str', cat: 'test', std: [0, 41.3], doc: 1 },
+  { id: 'dips', name: 'Dips (max reps)', unit: 'reps', stat: 'str', cat: 'test', std: [0, 59.2], doc: 1 },
+  { id: 'pistol', name: 'Pistol squats (max reps, per leg)', unit: 'reps', stat: 'str', cat: 'test', std: [0, 48.8], doc: 1 },
+  { id: 'farmer', name: "Farmer's walk (kg per hand)", unit: 'kg', stat: 'str', cat: 'test', std: [0, 112.7], doc: 1 },
 ];
 const GEAR = [
   { id: 'b_run', slot: 'boots', icon: '👟', name: 'Training runners', bonus: { spd: 2 }, price: 80 },
@@ -304,10 +341,10 @@ function spark(vals, lower) {
   const pts = vals.map((v, i) => `${(i / (vals.length - 1) * w).toFixed(1)},${(max === min ? h / 2 : lower ? (v - min) / (max - min) * h : h - (v - min) / (max - min) * h).toFixed(1)}`).join(' ');
   return `<svg class="spark" viewBox="-3 -3 ${w + 6} ${h + 6}" width="${w}" height="${h}"><polyline points="${pts}" fill="none" stroke="var(--accent)" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/></svg>`;
 }
-const fmtTest = (T, v) => v == null ? '–' : T.time ? `${Math.floor(v / 60)}:${(v % 60 < 10 ? '0' : '') + +(v % 60).toFixed(v % 1 ? 1 : 0)}` : `${+(+v).toFixed(2)} ${T.unit}`;
+const fmtTest = (T, v) => v == null ? '–' : T.time && v >= 3600 ? `${Math.floor(v / 3600)}:${String(Math.floor(v % 3600 / 60)).padStart(2, '0')}:${String(Math.round(v % 60)).padStart(2, '0')}` : T.time ? `${Math.floor(v / 60)}:${(v % 60 < 10 ? '0' : '') + +(v % 60).toFixed(v % 1 ? 1 : 0)}` : `${+(+v).toFixed(2)} ${T.unit}`;
 function parseTest(T, s) {
   s = String(s || '').trim(); if (!s) return null;
-  if (T.time) { const m = s.match(/^(\d+):(\d{1,2}(?:\.\d+)?)$/); return m ? +m[1] * 60 + +m[2] : (isFinite(+s) ? +s * 60 : null); }
+  if (T.time) { const h = s.match(/^(\d+):(\d{1,2}):(\d{1,2}(?:\.\d+)?)$/); if (h) return +h[1] * 3600 + +h[2] * 60 + +h[3]; const m = s.match(/^(\d+):(\d{1,2}(?:\.\d+)?)$/); return m ? +m[1] * 60 + +m[2] : (isFinite(+s) ? +s * 60 : null); }
   return isFinite(+s) && +s > 0 ? +s : null;
 }
 // "don't know when": an old best with no date. It sorts as your earliest result.

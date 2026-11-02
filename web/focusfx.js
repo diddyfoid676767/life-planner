@@ -25,7 +25,7 @@ function openFocusFull() {
   el.style.setProperty('--c', s.color);
   el.innerHTML = `<div class="ff-bg"></div>
     <div class="ff-top"><span class="ff-subj"><i style="background:${s.color}"></i>${esc(s.name)}</span>${sess?.topic ? `<span class="ff-topic">${esc(sess.topic)}</span>` : ''}
-      <span class="spacer"></span><button class="btn small ghostlight" data-act="focusMin" title="Back to the planner (the timer keeps going)">Minimise ↘</button></div>
+      <span class="spacer"></span>${f.exam ? '' : '<button class="btn small ghostlight" data-act="focusMin" title="Back to the planner (the timer keeps going)">Minimise ↘</button>'}</div>
     <div class="ff-center">
       <div class="ff-ring"><svg viewBox="0 0 300 300"><circle cx="150" cy="150" r="132" class="ring-bg"/><circle cx="150" cy="150" r="132" class="ring-fg" pathLength="1000" stroke-dasharray="1000" stroke-dashoffset="1000"/></svg>
         <div class="ff-tree"></div></div>
@@ -63,7 +63,8 @@ function updateFocusFull() {
   }
   el.querySelector('.ff-actions').innerHTML = focusAskCancel
     ? `<span><b>Cancel without logging?</b> No time, coins or tree.</span><button class="btn danger" data-act="focusCancelYes">Yes, cancel it</button><button class="btn ghostlight" data-act="focusCancelNo">Keep going</button>`
+    : f.exam ? `<span class="ff-exam">🔒 Exam mode: switching windows, Esc or leaving full screen ends it with no reward</span><button class="btn primary big" data-act="focusStop">■ Stop &amp; log</button><button class="btn ghostlight" data-act="focusCancel">Cancel</button>`
     : `<button class="btn ghostlight big" data-act="focusPause">${f.pausedAt ? '▶ Resume' : '❚❚ Pause'}</button><button class="btn primary big" data-act="focusStop">■ Stop &amp; log</button><button class="btn ghostlight" data-act="focusCancel">Cancel</button>
        ${typeof openBrainfm === 'function' ? '<button class="btn ghostlight" data-act="brainfmOpen" title="Open Brain.fm">♫ Brain.fm</button>' : ''}`;
 }
-document.addEventListener('keydown', e => { if (e.key === 'Escape' && focusFullOpen) closeFocusFull(); });
+document.addEventListener('keydown', e => { if (e.key === 'Escape' && focusFullOpen && !D.focus?.exam) closeFocusFull(); });

@@ -2816,3 +2816,26 @@ body.wm-on #toasts { top: max(64px, env(safe-area-inset-top)); bottom: auto; }
 .fshroom.pick, .fshroom.miss { font-size: 0; animation: none; cursor: default; } .fshroom.pick .fprize, .fshroom.miss .fprize { display: flex; }
 .fshroom.pick { border: 2px solid #e64980; box-shadow: 0 0 18px rgba(230,73,128,.4); } .fshroom.miss { opacity: .45; }
 @keyframes fbob { 50% { transform: translateY(-6px); } }
+
+/* 2.36 friends and competition */
+.fstatus { display: inline-flex; align-items: center; gap: 6px; font-size: .8rem; color: var(--muted); }
+.fstatus i { width: 8px; height: 8px; border-radius: 50%; background: #adb5bd; flex: none; }
+.fstatus.on i { background: #40c057; box-shadow: 0 0 0 3px #40c05733; }
+.fstatus.study { color: var(--text); font-weight: 600; }
+.fstatus.study i { background: #4dabf7; box-shadow: 0 0 0 3px #4dabf733; animation: fpulse 2s infinite; }
+@keyframes fpulse { 50% { box-shadow: 0 0 0 6px #4dabf700; } }
+.fcard .fstatus { display: flex; margin-top: 2px; }
+.ffor { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 2px 6px; padding: 14px 12px 10px; border-radius: 14px; background: linear-gradient(#e7f5ff00 0, #d3f9d8 60%, #b2f2bb); margin: 6px 0 12px; max-height: 320px; overflow: auto; }
+.ffor span { display: inline-flex; line-height: 0; }
+.ff-exam { color: #ffc9c9; font-weight: 600; font-size: .9rem; flex-basis: 100%; text-align: center; }
+.pierow { display: flex; gap: 18px; align-items: center; flex-wrap: wrap; }
+.piewrap { position: relative; display: grid; place-items: center; flex: none; }
+.piewrap b { position: absolute; font-size: 1rem; }
+.pie { transform: rotate(0deg); }
+.pieleg { list-style: none; margin: 0; padding: 0; flex: 1; min-width: 160px; display: grid; gap: 6px; }
+.pieleg li { display: flex; align-items: center; gap: 8px; font-size: .9rem; }
+.pieleg i { width: 10px; height: 10px; border-radius: 3px; flex: none; }
+.pieleg small { color: var(--muted); width: 36px; text-align: right; }
+.trend { width: 100%; height: auto; max-height: 230px; display: block; overflow: visible; }
+.trend line { stroke: var(--muted); stroke-opacity: .3; }
+.trend text { font-size: 7px; fill: var(--muted); }
