@@ -26,6 +26,8 @@ function g3init() {
   G3.ray = new THREE.Raycaster(); G3.clock = new THREE.Clock();
   g3events();
   new ResizeObserver(() => g3resize()).observe(document.body);
+  // nothing to draw while the garden is scrolled out of view
+  if (window.IntersectionObserver) new IntersectionObserver(es => { G3.offscreen = !es[es.length - 1].isIntersecting; }).observe(G3.canvas);
 }
 function g3resize() {
   const host = G3.canvas?.parentNode; if (!host || !host.clientWidth) return;
@@ -46,29 +48,52 @@ function mountGarden3D() {
   if (moved) host.prepend(G3.canvas);
   const sz = G3.sz; g3resize();
   const sig = g3signature(), rebuilt = sig !== G3.sig;
-  if (rebuilt) { G3.sig = sig; g3build(); g3resize(); }
+  if (rebuilt) { G3.sig = sig; g3build(); g3resize(); } else g3syncBubbles();
   // draw straight away so the page never shows an empty (black) canvas between frames
   if ((moved || rebuilt || sz !== G3.sz) && G3.camera.aspect) try { G3.comp ? G3.comp.c.render() : G3.renderer.render(G3.scene, G3.camera); } catch (e) { console.error(e); }
+  g3emptyTrash();
   if (!G3.raf) { G3.clock.getDelta(); G3.raf = requestAnimationFrame(g3loop); }
 }
 // collecting leaves pops the bubbles in place instead of rebuilding the island
 function g3popBubbles() {
   sfx('pop');
-  for (const b of G3.bubbles.splice(0)) { b.material.transparent = true; const s0 = b.scale.x, t0 = G3.clock.elapsedTime;
+  for (const b of G3.bubbles.splice(0)) { b.material.transparent = true; const s0 = b.scale.x, t0 = G3.clock.elapsedTime, bob = G3.tickers.indexOf(b.userData.tick); if (bob >= 0) G3.tickers.splice(bob, 1);
     const f = t => { const p = Math.min(1, (t - t0) / .35); b.scale.setScalar(s0 * (1 + p * .8)); b.material.opacity = 1 - p; if (p >= 1) { b.parent?.remove(b); b.material.dispose(); G3.tickers.splice(G3.tickers.indexOf(f), 1); } };
     G3.tickers.push(f); }
 }
+// leaf bubbles over the trees, one more for each sixth of the basket: added
+// and taken away in place (this used to rebuild the whole island each time)
+function g3syncBubbles() {
+  if (!G3.world || !G3.bubbles) return;
+  const want = gfx('bubbles') && pendingLeaves() > 0 ? Math.min(6, 1 + Math.floor(pendingLeaves() / Math.max(1, basketCap()) * 6)) : 0;
+  while (G3.bubbles.length > want) { const b = G3.bubbles.pop(); b.parent?.remove(b); b.material.dispose(); const i = G3.tickers.indexOf(b.userData.tick); if (i >= 0) G3.tickers.splice(i, 1); }
+  if (G3.bubbles.length >= want) return;
+  const used = new Set(G3.bubbles.map(b => b.userData.on)), spots = G3.objs.filter((o, i) => o.userData.tree && i % 2 === 0 && !used.has(o));
+  for (const obj of spots.slice(0, want - G3.bubbles.length)) {
+    const b = new THREE.Sprite(new THREE.SpriteMaterial({ map: bubbleTex(), depthTest: true })); b.scale.setScalar(.75); b.position.set(obj.position.x, obj.userData.h + .3, obj.position.z);
+    const ph = Math.random() * 6; b.userData = { bubble: true, on: obj, tick: tt => { b.position.y += Math.sin(tt * 2 + ph) * .002; } };
+    G3.world.add(b); G3.bubbles.push(b); G3.tickers.push(b.userData.tick);
+  }
+}
+function g3emptyTrash() { for (const f of (G3.trash || []).splice(0)) try { f(); } catch (e) { console.error(e); } }
 function g3stop() { if (G3.raf) cancelAnimationFrame(G3.raf); G3.raf = 0; }
 function g3signature() {
   const hr = new Date().getHours(), night = hr >= 20 || hr < 6;
   return JSON.stringify([G3.logs?.map(l => [l.id, treeStageOf(l), l.withered, speciesFor(l.subjectId), subj(l.subjectId).color, treeRec(l.id).wilted]), visitorsToday(), D.game.gridPos, D.game.scene, D.game.fx, night,
-    ITEMS.filter(i => owned(i.id) && !D.game.hidden[i.id]).map(i => i.id), Object.keys(D.game.critters || {}), Math.min(6, Math.ceil(pendingLeaves() / Math.max(1, basketCap()) * 6))]);
+    ITEMS.filter(i => owned(i.id) && !D.game.hidden[i.id]).map(i => i.id), Object.keys(D.game.critters || {})]);
 }
 
 // ---------- building the world ----------
+// The old island's materials are let go only after the new one has been drawn:
+// the new materials then reuse the already-compiled shaders instead of the
+// graphics driver compiling them all again (which froze the page for a second
+// or more every time the garden changed).
 function g3dispose() {
-  G3.world.traverse(o => { if (o.geometry) o.geometry.dispose(); });
-  G3.world.clear(); m3clear(); G3.objs = []; G3.tickers = []; G3.roam = []; G3.fliers = []; G3.lights = []; G3.weather = null; G3.bubbles = [];
+  const mats = new Set(M3.mats.values()), keep = new Set([G3.bubTex, G3.dotTex, G3.dropTex, G3.glowTex, G3.leafTex, G3.lawnTex?.t, typeof fxBlobTex === 'function' ? fxBlobTex.t : null]);
+  G3.world.traverse(o => { if (o.geometry) o.geometry.dispose(); for (const m of [o.material].flat()) if (m) mats.add(m); });
+  M3.mats.clear();
+  (G3.trash = G3.trash || []).push(() => { for (const m of mats) { if (m.map && !keep.has(m.map) && m.map.isCanvasTexture) m.map.dispose(); m.dispose(); } });
+  G3.world.clear(); G3.objs = []; G3.tickers = []; G3.roam = []; G3.fliers = []; G3.lights = []; G3.weather = null; G3.bubbles = [];
 }
 function skyTex(top, bottom) {
   const c = document.createElement('canvas'); c.width = 2; c.height = 256; const x = c.getContext('2d'), g = x.createLinearGradient(0, 0, 0, 256);
@@ -138,8 +163,9 @@ function g3build() {
   const sea = new THREE.Mesh(new THREE.CircleGeometry(700, 64).rotateX(-Math.PI / 2), new THREE.MeshPhysicalMaterial({ color: seaCol, roughness: .12, metalness: 0, clearcoat: 1, clearcoatRoughness: .08, envMapIntensity: 1.3 }));
   sea.position.y = GY; W.add(sea);
   const hillCol = night ? '#1f3350' : shade(sc.hills, -.32), hillCol2 = night ? '#2a3f63' : shade(sc.hills, -.22);
+  const hillMats = [hillCol2, hillCol].map(color => new THREE.MeshStandardMaterial({ color, roughness: 1 }));
   for (let i = 0; i < 18; i++) { const a = i / 18 * Math.PI * 2 + Math.sin(i * 7.3) * .15, d = 430 + (i % 3) * 50, r = 80 + (i * 37 % 50);
-    const h = new THREE.Mesh(new THREE.SphereGeometry(r, 32, 16, 0, Math.PI * 2, 0, Math.PI / 2), new THREE.MeshStandardMaterial({ color: i % 2 ? hillCol : hillCol2, roughness: 1 }));
+    const h = new THREE.Mesh(new THREE.SphereGeometry(r, 32, 16, 0, Math.PI * 2, 0, Math.PI / 2), hillMats[i % 2]);
     h.scale.y = .28 + (i * 13 % 7) / 40; h.position.set(Math.cos(a) * d, GY - 2, Math.sin(a) * d); W.add(h); }
   // little floating islands drifting in the distance
   for (let i = 0; i < 5; i++) { const a = i * 1.3 + 2.2, d = 90 + i * 25, g = new THREE.Group();
@@ -150,8 +176,8 @@ function g3build() {
     G3.tickers.push(t => { g.position.y = -18 + ph * 2 + Math.sin(t * .3 + ph) * .6; }); }
   // soft clouds, some above and some drifting below the island
   if (gfx('clouds')) for (let i = 0; i < 16; i++) {
-    const c = new THREE.Group(), s = 2.4 + Math.random() * 3, col = night ? '#5c6a96' : '#ffffff';
-    for (let k = 0; k < 6; k++) c.add(at(new THREE.Mesh(new THREE.SphereGeometry(s * (.55 + Math.random() * .45), 24, 16), new THREE.MeshStandardMaterial({ color: col, roughness: 1, transparent: true, opacity: .96 })), (k - 2.5) * s * .55, Math.sin(k * 2.1) * s * .25, (Math.random() - .5) * s * .5));
+    const c = new THREE.Group(), s = 2.4 + Math.random() * 3, col = night ? '#5c6a96' : '#ffffff', cm = new THREE.MeshStandardMaterial({ color: col, roughness: 1, transparent: true, opacity: .96 });
+    for (let k = 0; k < 6; k++) c.add(at(new THREE.Mesh(new THREE.SphereGeometry(s * (.55 + Math.random() * .45), 24, 16), cm), (k - 2.5) * s * .55, Math.sin(k * 2.1) * s * .25, (Math.random() - .5) * s * .5));
     // clouds circle round the island, never over it, so they don't hide the forest from above
     c.scale.y = .7; let a = Math.random() * Math.PI * 2; const below = i % 3 === 0, d = (below ? half + 12 : half * 1.6 + 30) + Math.random() * 100;
     const y = below ? -8 - Math.random() * 10 : 16 + Math.random() * 24; c.position.set(Math.cos(a) * d, y, Math.sin(a) * d); W.add(c);
@@ -161,12 +187,14 @@ function g3build() {
   const top = shade(sc.g1, night && !sc.night ? -.38 : -.14), top2 = shade(sc.g2, night && !sc.night ? -.38 : -.14);
   const L = N * T3D, rr = Math.min(1.4, L * .08);
   const rounded = (w, r) => { const sh = new THREE.Shape(), h = w / 2; sh.moveTo(-h + r, -h); sh.lineTo(h - r, -h); sh.quadraticCurveTo(h, -h, h, -h + r); sh.lineTo(h, h - r); sh.quadraticCurveTo(h, h, h - r, h); sh.lineTo(-h + r, h); sh.quadraticCurveTo(-h, h, -h, h - r); sh.lineTo(-h, -h + r); sh.quadraticCurveTo(-h, -h, -h + r, -h); return sh; };
-  const lawnTex = (() => { const px = 64 * N, c = document.createElement('canvas'); c.width = c.height = px; const x = c.getContext('2d'), rn = seeded('lawn' + N);
+  const lawnKey = [N, top, top2].join('|');
+  if (G3.lawnTex?.k !== lawnKey) { G3.lawnTex?.t.dispose(); G3.lawnTex = null; } // made once per look, not on every rebuild
+  const lawnTex = G3.lawnTex?.t || (G3.lawnTex = { k: lawnKey, t: (() => { const px = 64 * N, c = document.createElement('canvas'); c.width = c.height = px; const x = c.getContext('2d'), rn = seeded('lawn' + N);
     x.fillStyle = top; x.fillRect(0, 0, px, px);
     for (let r = 0; r < N; r++) for (let q = 0; q < N; q++) { x.fillStyle = (r + q) % 2 ? shade(top, .04) : shade(top2, .02); x.globalAlpha = .35; x.fillRect(q * 64, r * 64, 64, 64); } // mowed stripes in a soft checker
     x.globalAlpha = 1;
     for (let i = 0; i < px * px / 18; i++) { x.fillStyle = rn() < .5 ? shade(top, -.12) : shade(top, .12); x.globalAlpha = .25 + rn() * .3; const X = rn() * px, Y = rn() * px; x.fillRect(X, Y, 1.2, 2.5 + rn() * 3); }
-    x.globalAlpha = 1; const t = srgb(new THREE.CanvasTexture(c)); t.anisotropy = 8; return t; })();
+    x.globalAlpha = 1; const t = srgb(new THREE.CanvasTexture(c)); t.anisotropy = 8; return t; })() }).t;
   const lawnGeo = new THREE.ExtrudeGeometry(rounded(L, rr), { depth: .3, bevelEnabled: true, bevelThickness: .12, bevelSize: .12, bevelSegments: 4, curveSegments: 10 }).rotateX(-Math.PI / 2);
   { const uv = lawnGeo.attributes.uv, pos = lawnGeo.attributes.position; for (let i = 0; i < uv.count; i++) uv.setXY(i, pos.getX(i) / L + .5, .5 - pos.getZ(i) / L); }
   const lawn = new THREE.Mesh(lawnGeo, [new THREE.MeshStandardMaterial({ map: lawnTex, roughness: .95 }), new THREE.MeshStandardMaterial({ color: shade(top2, -.12), roughness: .95 })]);
@@ -184,7 +212,6 @@ function g3build() {
   if (gfx('flowers')) { const fr = seeded('fl'), n = Math.round(N * N * .35), fl = new THREE.InstancedMesh(new THREE.SphereGeometry(.06, 12, 8), new THREE.MeshStandardMaterial({ roughness: .6 }), n), cols = ['#ffffff', '#ffd43b', '#f783ac', '#b197fc', '#ff8787'];
     for (let i = 0; i < n; i++) { mt.makeTranslation((fr() - .5) * (L - .8), .06, (fr() - .5) * (L - .8)); fl.setMatrixAt(i, mt); tc.set(cols[i % 5]); fl.setColorAt(i, tc); } W.add(fl); }
   // trees and decorations on their tiles
-  let bubbles = gfx('bubbles') && pendingLeaves() > 0 ? Math.min(6, 1 + Math.floor(pendingLeaves() / Math.max(1, basketCap()) * 6)) : 0;
   things.forEach((t, i) => {
     const [x, z] = tileXZ(t.r, t.c, N);
     let obj;
@@ -193,9 +220,8 @@ function g3build() {
       const l = t.l, s = subj(l.subjectId);
       obj = tree3(speciesFor(l.subjectId), s.color, treeStageOf(l), l.id);
       obj.rotation.y = seeded('rot' + l.id)() * Math.PI * 2;
-      if (l.withered || treeRec(l.id).wilted) obj.traverse(o => { if (o.material && o.material.color) { o.material = o.material.clone(); o.material.color.offsetHSL(0, -.5, -.1); } });
+      if (l.withered || treeRec(l.id).wilted) { const faded = new Map(); obj.traverse(o => { if (o.material && o.material.color) { let m = faded.get(o.material); if (!m) { m = o.material.clone(); m.color.offsetHSL(0, -.5, -.1); faded.set(o.material, m); } o.material = m; } }); }
       obj.userData.tree = l; obj.userData.h = new THREE.Box3().setFromObject(obj).max.y;
-      if (bubbles > 0 && i % 2 === 0) { bubbles--; const b = new THREE.Sprite(new THREE.SpriteMaterial({ map: bubbleTex(), depthTest: true })); b.scale.setScalar(.75); b.position.set(x, obj.userData.h + .3, z); b.userData.bubble = true; W.add(b); G3.bubbles.push(b); const ph = Math.random() * 6; G3.tickers.push(tt => { b.position.y += Math.sin(tt * 2 + ph) * .002; }); }
     }
     obj.position.set(x, 0, z); obj.userData.key = t.key; obj.userData.bend = { x: 0, z: 0, vx: 0, vz: 0 };
     obj.traverse(o => { if (o.isMesh) { o.castShadow = o.castShadow !== false; o.receiveShadow = true; } });
@@ -234,6 +260,28 @@ function g3build() {
   // the tile highlight shown while dragging
   G3.hl = at(new THREE.Mesh(new THREE.PlaneGeometry(T3D * .96, T3D * .96).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: '#ffffff', transparent: true, opacity: .35, depthWrite: false })), 0, .02, 0);
   G3.hl.visible = false; W.add(G3.hl);
+  g3join();
+  g3syncBubbles();
+}
+const g3matSig = o => [o.material].flat().map(m => m ? [m.color?.getHexString(), m.emissive?.getHexString(), m.opacity, m.emissiveIntensity, m.visible].join() : '').join(';');
+// join the parts that never move (see fxMergeStatic): the island used to be
+// about 1,000 separate draws a frame. What moves is found by running every
+// animation once and seeing what changed.
+function g3join() {
+  const W = G3.world, dyn = new Set(), snap = new Map();
+  W.traverse(o => snap.set(o, [o.position.clone(), o.quaternion.clone(), o.scale.clone(), o.visible, o.geometry ? Object.values(o.geometry.attributes).map(a => a.version).join() : '', g3matSig(o)]));
+  const run = t => { for (const f of [...G3.tickers]) try { f(t, 1 / 60); } catch (e) { } for (const fl of G3.fliers) fl.o.userData.flap?.(t); };
+  run(1.37); run(2.91);
+  W.traverse(o => { const s = snap.get(o); if (!s) return;
+    if (!o.position.equals(s[0]) || !o.quaternion.equals(s[1]) || !o.scale.equals(s[2]) || o.visible !== s[3] || (o.geometry && Object.values(o.geometry.attributes).map(a => a.version).join() !== s[4]) || g3matSig(o) !== s[5]) dyn.add(o);
+    o.position.copy(s[0]); o.quaternion.copy(s[1]); o.scale.copy(s[2]); o.visible = s[3]; });
+  // things moved by hand or by the frame loop: trees and decorations (dragged, brushed), animals and birds
+  for (const o of G3.objs) { dyn.add(o); if (o.children[0]) dyn.add(o.children[0]); }
+  for (const a of G3.roam) { dyn.add(a.o); (a.o.userData.legs || []).forEach(l => dyn.add(l)); }
+  for (const f of G3.fliers) dyn.add(f.o);
+  for (const b of G3.bubbles) dyn.add(b);
+  dyn.add(G3.hl); dyn.add(G3.tiles);
+  try { fxMergeStatic(W, dyn); } catch (e) { console.error('garden join', e); }
 }
 function g3flier(o, rad = 10, h = 7, ph = 0, flutter = false) {
   o.traverse(m => { if (m.isMesh) m.castShadow = true; }); G3.world.add(o);
@@ -245,7 +293,7 @@ function g3loop() {
   G3.raf = 0;
   if (!G3.canvas.isConnected) return;
   G3.raf = requestAnimationFrame(g3loop);
-  if (document.hidden) return;
+  if (document.hidden || G3.offscreen) return;
   const dt = Math.min(.05, G3.clock.getDelta()), t = G3.clock.elapsedTime;
   if (G3.targetYaw != null) { G3.yaw += (G3.targetYaw - G3.yaw) * Math.min(1, dt * 6); if (Math.abs(G3.targetYaw - G3.yaw) < .002) G3.targetYaw = null; }
   if (G3.targetPitch != null) { G3.pitch += (G3.targetPitch - G3.pitch) * Math.min(1, dt * 6); if (Math.abs(G3.targetPitch - G3.pitch) < .002) G3.targetPitch = null; }

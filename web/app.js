@@ -121,14 +121,36 @@ function tookMerge(res) {
   if (!modal.open) render(); renderFocusBar();
 }
 const STASH = 'lpUnsaved';
+// Kept in three parts so a save doesn't rewrite (and re-escape) the whole
+// planner twice: the planner as it is now, the copy it was built on (only
+// written again when that copy changes, and tagged with its hash so a
+// half-written pair is never mixed up), and a small note saying when.
+let stashedBase = null;
 function stash(body) {
   // with the copy it was built on, so it can be merged into a newer one later
-  try { localStorage.setItem(STASH, JSON.stringify({ at: Date.now(), d: body, base: baseHash, bj: baseJson })); }
-  catch { try { localStorage.setItem(STASH, JSON.stringify({ at: Date.now(), d: body, base: baseHash })); } catch { } }
+  let bj = 0;
+  try { if (stashedBase !== baseHash) { stashedBase = null; localStorage.setItem(STASH + 'B', baseHash + '\n' + baseJson); stashedBase = baseHash; } bj = 1; }
+  catch { try { localStorage.removeItem(STASH + 'B'); } catch { } }
+  try { localStorage.setItem(STASH + 'D', body); localStorage.setItem(STASH, JSON.stringify({ at: Date.now(), base: baseHash, split: 1, bj })); }
+  catch { // out of room: at least keep the changes themselves
+    try { localStorage.removeItem(STASH + 'B'); stashedBase = null; localStorage.setItem(STASH + 'D', body); localStorage.setItem(STASH, JSON.stringify({ at: Date.now(), base: baseHash, split: 1 })); } catch { }
+  }
 }
-function unstash() { try { localStorage.removeItem(STASH); } catch { } }
+function unstash() { try { localStorage.removeItem(STASH); localStorage.removeItem(STASH + 'D'); } catch { } }
+// what this browser kept, put back together (also reads the one-piece copies older versions kept)
+function readStash() {
+  try {
+    const x = JSON.parse(localStorage.getItem(STASH) || 'null'); if (!x || !x.base) return null;
+    if (x.split) {
+      x.d = localStorage.getItem(STASH + 'D'); if (!x.d) return null;
+      const b = x.bj ? localStorage.getItem(STASH + 'B') || '' : '', nl = b.indexOf('\n');
+      x.bj = nl >= 0 && b.slice(0, nl) === x.base ? b.slice(nl + 1) : '';
+    }
+    return x;
+  } catch { return null; }
+}
 // unsaved changes kept in this browser from a loaded planner (not older than 30 days)
-function stashed() { try { const x = JSON.parse(localStorage.getItem(STASH) || 'null'); return x && x.base && Date.now() - x.at < 30 * 86400e3 ? x : null; } catch { return null; } }
+function stashed() { const x = readStash(); return x && Date.now() - x.at < 30 * 86400e3 ? x : null; }
 // the kept changes merged into the planner the app has now (built on it: as they are)
 function fromStash(x, hash, cur) {
   const d = JSON.parse(x.d);
@@ -1839,7 +1861,7 @@ async function restoreBackup(name) {
     const r = await fetch('/api/backups', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name }) });
     if (!r.ok) throw new Error((await r.text()).trim());
   } catch (e) { toast("Couldn't restore", e.message || 'Is Life Planner still running?'); return; }
-  try { localStorage.removeItem('lpUnsaved'); } catch { }
+  unstash();
   await pullData(true);
   ui.backups = null; await showBackups();
   toast('✅ Restored', `Your planner is back to how it was on ${bkWhen(b.at)}.`, { timeout: 10000 });
@@ -2200,7 +2222,7 @@ function bootDone(skip) {
   } catch (e) {
     // the app isn't running: open what this browser kept, and save it once it's back
     // (only a copy that came from a loaded planner; until then nothing is saved)
-    let x = null; try { x = JSON.parse(localStorage.getItem(STASH) || 'null'); if (x && !x.base) x = null; } catch { }
+    const x = readStash();
     bootId = '';
     D = migrate(x ? JSON.parse(x.d) : defaultData()); setOffline(true); if (x) { loaded = true; baseHash = x.base; baseJson = x.bj || ''; dirty = true; userEdited = true; }
   }

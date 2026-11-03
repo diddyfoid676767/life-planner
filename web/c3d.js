@@ -253,7 +253,7 @@ function c3viewInit() {
   if (typeof webglOK !== 'function' || !webglOK()) return (C3V.R = null);
   try {
     const R = new THREE.WebGLRenderer({ antialias: true, alpha: true });
-    R.setPixelRatio(1); R.setSize(320, 320, false); R.outputEncoding = THREE.sRGBEncoding; R.toneMapping = THREE.ACESFilmicToneMapping; R.setClearColor(0x000000, 0);
+    R.debug.checkShaderErrors = false; R.setPixelRatio(1); R.setSize(320, 320, false); R.outputEncoding = THREE.sRGBEncoding; R.toneMapping = THREE.ACESFilmicToneMapping; R.setClearColor(0x000000, 0);
     const scene = new THREE.Scene(), cam = new THREE.PerspectiveCamera(30, 1, .1, 50);
     fxEnv(R, scene, '#9ec5ff', '#fff4e0', '#5a4a3a', new THREE.Vector3(.4, .8, .5), '#fff3d6', '#6b5a4a');
     scene.add(new THREE.HemisphereLight('#ffffff', '#8a7a6a', .7));
@@ -289,7 +289,10 @@ function c3loop() {
   if (!C3V.slots.length) { C3V.on = false; return; }
   C3V.raf = requestAnimationFrame(c3loop);
   const dt = Math.min(.05, C3V.clock.getDelta()), t = C3V.clock.elapsedTime, { R, scene, cam } = C3V;
+  const vh = innerHeight, vw = innerWidth;
   for (const s of C3V.slots) {
+    if (document.hidden) break;
+    const rc = s.cv.getBoundingClientRect(); if (rc.bottom < 0 || rc.top > vh || rc.right < 0 || rc.left > vw || !rc.width) continue; // scrolled out of sight: nothing to draw
     const P = s.P, b = Math.sin(t * 2.6 + s.cv.width);
     s.pop = Math.max(0, s.pop - dt * 2); const k = Math.sin((1 - s.pop) * Math.PI) * (s.pop > 0 ? 1 : 0);
     const pose = { ...POSE0, crouch: .03 + b * .02, headY: Math.sin(t * .7) * .25, headX: -k * .3, y: k * .35, shL: POSE0.shL - k * 1.2, shR: POSE0.shR - k * 1.2 };

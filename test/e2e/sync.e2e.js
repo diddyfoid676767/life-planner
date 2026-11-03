@@ -45,7 +45,7 @@ function fresh(withAccount) {
   await sleep(500);
   const browser = await chromium.launch({ args: ['--host-resolver-rules=MAP phone.test 127.0.0.1'] });
   const pcCtx = await browser.newContext();
-  const pcPage = async () => { const p = await pcCtx.newPage(); p.on('pageerror', e => console.log('  pc page error', e.message)); await p.goto('http://127.0.0.1:47900/'); await p.waitForFunction(() => typeof D === 'object' && D && loaded && baseHash); return p; };
+  const pcPage = async () => { const p = await pcCtx.newPage(); p.on('pageerror', e => console.log('  pc page error', e.message)); await p.goto('http://127.0.0.1:47900/?k=' + fs.readFileSync(path.join(PC, 'data', 'window.key'), 'utf8').trim()); await p.waitForFunction(() => typeof D === 'object' && D && loaded && baseHash); return p; };
   dbg = async () => { try { const r = await row(); console.log('   cloud', ids(r.data).slice(-6).join(','), r.updated_at, '\n   file ', ids(file()).slice(-6).join(','), '\n   first', REAL.todos[0].id); } catch (e) { console.log(e.message); } };
   const firstTodo = REAL.todos[0].id, secondTodo = REAL.todos[1].id;
 

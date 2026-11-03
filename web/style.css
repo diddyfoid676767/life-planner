@@ -566,7 +566,7 @@ details.overdue[open] summary { margin-bottom: 10px; }
 .dpill .dn { font-size: .72rem; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); font-weight: 700; }
 .dpill b { font-size: 1.25rem; }
 .dpill .dots { display: flex; gap: 3px; height: 7px; }
-.dpill .dots i { width: 7px; height: 7px; border-radius: 50%; }
+.dpill .dots i { width: 7px; height: 7px; border-radius: 50%; animation: none; opacity: 1; } /* calendar dots, not the blinking "thinking" dots */
 .dpill .dbar { width: 60%; height: 4px; border-radius: 4px; background: var(--panel2); overflow: hidden; }
 .dpill .dbar i { display: block; height: 100%; background: #40c057; }
 .dpill:hover { transform: translateY(-2px); box-shadow: var(--shadow); }

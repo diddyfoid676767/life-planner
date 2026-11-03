@@ -255,7 +255,7 @@ function pfMount() {
     if (typeof webglOK !== 'function' || !webglOK()) return;
     try {
       const R = new THREE.WebGLRenderer({ antialias: true, alpha: true });
-      R.setPixelRatio(Math.min(devicePixelRatio || 1, 2)); R.outputEncoding = THREE.sRGBEncoding; R.toneMapping = THREE.ACESFilmicToneMapping;
+      R.debug.checkShaderErrors = false; R.setPixelRatio(Math.min(devicePixelRatio || 1, 2)); R.outputEncoding = THREE.sRGBEncoding; R.toneMapping = THREE.ACESFilmicToneMapping;
       R.shadowMap.enabled = true; R.shadowMap.type = THREE.PCFSoftShadowMap; R.setClearColor(0x000000, 0);
       const scene = new THREE.Scene(), cam = new THREE.PerspectiveCamera(30, 1, .1, 50);
       fxEnv(R, scene, '#9ec5ff', '#fff4e0', '#5a4a3a', new THREE.Vector3(.4, .8, .5), '#fff3d6', '#6b5a4a');
@@ -324,6 +324,8 @@ function pfLoop() {
   const cv = PF.R.domElement;
   if (!cv.isConnected || view !== 'profile') { PF.on = false; return; }
   PF.raf = requestAnimationFrame(pfLoop);
+  if (document.hidden) return;
+  { const rc = cv.getBoundingClientRect(); if (rc.bottom < 0 || rc.top > innerHeight) return; } // scrolled out of sight: nothing to draw
   const dt = Math.min(.05, PF.clock.getDelta()), t = PF.clock.elapsedTime, P = PF.P; if (!P) return;
   // spin: slow turn, or the flick you gave it, easing back to the front while dancing
   if (!PF.drag) {
