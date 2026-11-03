@@ -447,7 +447,7 @@ function render() {
   const fresh = v.dataset.view !== view;
   if (fresh) { v.classList.remove('enter'); void v.offsetWidth; v.classList.add('enter'); v.dataset.view = view; }
   else v.classList.remove('enter'); // staying on the same page: no entrance animation, only the parts that changed are updated
-  const html = ({ today: viewToday, calendar: viewCalendar, study: viewStudyHub, forest: viewForest, training: viewTraining, arena: viewArena, friends: viewFriends, board: viewLeaderboard, chats: () => { view = 'friends'; return viewFriends(); }, profile: viewProfile, school: viewSchool, health: () => { view = 'training'; ui.bodyPage = 'health'; return viewTraining(); }, personal: viewPersonal, todo: viewTodo, inbox: viewInbox, settings: viewSettings })[view]();
+  const html = ({ today: viewToday, calendar: viewCalendar, study: viewStudyHub, forest: viewForest, training: viewTraining, arena: viewArena, house: viewHouse, friends: viewFriends, board: viewLeaderboard, chats: () => { view = 'friends'; return viewFriends(); }, profile: viewProfile, school: viewSchool, health: () => { view = 'training'; ui.bodyPage = 'health'; return viewTraining(); }, personal: viewPersonal, todo: viewTodo, inbox: viewInbox, settings: viewSettings })[view]();
   if (fresh || !v.firstChild) v.innerHTML = html; else morphHtml(v, html);
   updateInboxBadge();
   gameFeedback();
@@ -514,7 +514,7 @@ function viewToday() {
       <span class="dots">${list.slice(0, 6).map(e => `<i style="background:${e.color}"></i>`).join('')}</span>
       <span class="dbar"><i style="width:${ck.length ? dn / ck.length * 100 : 0}%"></i></span></button>`;
   }).join('');
-  return `<div class="tpage">${welcome}${typeof todayRivals === 'function' ? todayRivals() : ''}
+  return `<div class="tpage">${welcome}${typeof hsTodayStrip === 'function' ? hsTodayStrip() : ''}${typeof todayRivals === 'function' ? todayRivals() : ''}
   <div class="hero slim thero ${tod}">
     <div class="hero-text"><div class="hero-date">${fullDate(t)} ${now.getFullYear()}</div>
       <h1>${greet}${D.settings.name ? ', ' + esc(D.settings.name) : ''}</h1><p>${summary}</p>

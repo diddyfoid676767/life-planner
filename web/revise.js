@@ -143,6 +143,7 @@ function fcAnswer(sid, good) {
   const st = revState(sid), q = fcQueue(sid), k = ui.fc.order.find(k => q.some(c => cKey(c) === k)); if (!k) return;
   const cur = st.box[k]?.b || 0, b = good ? Math.min(5, cur + 1) : 1;
   st.box[k] = { b, due: good ? addDays(today(), LEITNER[b]) : today() };
+  if (typeof hsRev === 'function') hsRev();
   ui.fc.order = ui.fc.order.filter(x => x !== k); if (!good) ui.fc.order.push(k); else ui.fc.done++;
   if (ui.fcAll && good) ui.fc.order = ui.fc.order.filter(x => x !== k);
   save();
@@ -160,7 +161,7 @@ function revAct(el) {
     case 'cardsTopic': ui.revSec = 'cards'; ui.fcTopic = v; ui.fcAll = false; render(); break;
     case 'qTopic': ui.revQTopic = v; render(); break;
     case 'reveal': el.closest('.rq').classList.add('show'); break;
-    case 'mark': { st.qs[el.dataset.k] = v; save(); const li = el.closest('.rq'); li.classList.remove('got', 'miss', 'show'); li.classList.add(v, 'marked'); li.querySelector('.rq-top').insertAdjacentHTML('beforeend', `<span class="rq-mark ${v === 'miss' ? 'miss' : ''}">${v === 'got' ? '✓' : '↺'}</span>`); if (v === 'miss') retopic(sid) && save(); break; }
+    case 'mark': { if (!st.qs[el.dataset.k] && typeof hsRev === 'function') hsRev(); st.qs[el.dataset.k] = v; save(); const li = el.closest('.rq'); li.classList.remove('got', 'miss', 'show'); li.classList.add(v, 'marked'); li.querySelector('.rq-top').insertAdjacentHTML('beforeend', `<span class="rq-mark ${v === 'miss' ? 'miss' : ''}">${v === 'got' ? '✓' : '↺'}</span>`); if (v === 'miss') retopic(sid) && save(); break; }
     case 'resetQs': if (confirm('Clear your marks on these questions?')) { st.qs = {}; save(); render(); } break;
     case 'flip': el.classList.toggle('flipped'); break;
     case 'fcAns': fcAnswer(sid, v === '1'); break;

@@ -38,6 +38,7 @@ function critterComeBack() {
 }
 
 function checkMissedDays() {
+  return; // 2.44: missed days no longer cost anything (houses rework)
   const g = D.game, t = today(), y = addDays(t, -1);
   g.restUsed = g.restUsed || {}; g.away = g.away || {};
   if (!g.penaltiesFrom) { g.penaltiesFrom = t; g.checkedTo = y; save(); return; }
@@ -78,7 +79,7 @@ function showSetbacks(events) {
 let leftAt = 0;
 function focusLeft() { if (D?.focus && !D.focus.pausedAt && D.settings.strictFocus && !leftAt) leftAt = Date.now(); }
 function focusBack() {
-  if (!leftAt) return;
+  leftAt = 0; return; // 2.44: no penalty for leaving a focus session
   const gone = (Date.now() - leftAt) / 1000; leftAt = 0;
   const f = D?.focus;
   if (!f || f.pausedAt || !D.settings.strictFocus || gone < AWAY_SECS) return;

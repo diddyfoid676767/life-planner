@@ -399,7 +399,7 @@ func claimJersey(a *account, n *int) error {
 // ---------- leaderboard numbers ----------
 
 // statKeys are the stats a profile may hold (statsShape in firestore.rules).
-var statKeys = map[string]bool{"week": true, "study": true, "work": true, "health": true, "chal": true, "now": true, "prev": true, "pvp": true, "fit": true, "fr": true, "st": true, "ss": true, "yr": true, "cw": true, "pw": true, "gr": true, "fo": true}
+var statKeys = map[string]bool{"week": true, "study": true, "work": true, "health": true, "chal": true, "now": true, "prev": true, "pvp": true, "fit": true, "fr": true, "st": true, "ss": true, "yr": true, "cw": true, "pw": true, "gr": true, "fo": true, "hs": true}
 
 type statRule struct {
 	a, b         string
@@ -583,6 +583,11 @@ func publishProfile(a *account, display, av string, stats map[string]any, now ti
 	old, _ := cur.Fields["stats"].(map[string]any)
 	body := map[string]any{"display": cut(display, 30), "avatar": av, "stats": clampStats(old, stats, mins, now)}
 	_, err = fsCommit(a.Access, fsSet("profiles/"+a.UserID, body, true, cur.Updated, "updated_at"))
+	// rules from before 2.44 don't know the house stats yet
+	if fe, ok := err.(*fbErr); ok && fe.Status == "PERMISSION_DENIED" && body["stats"].(map[string]any)["hs"] != nil {
+		delete(body["stats"].(map[string]any), "hs")
+		_, err = fsCommit(a.Access, fsSet("profiles/"+a.UserID, body, true, cur.Updated, "updated_at"))
+	}
 	// rules from before 2.40 don't know the season, grade and forest stats yet
 	if fe, ok := err.(*fbErr); ok && fe.Status == "PERMISSION_DENIED" && hasNewStats(body["stats"].(map[string]any)) {
 		st := body["stats"].(map[string]any)
@@ -597,6 +602,8 @@ func publishProfile(a *account, display, av string, stats map[string]any, now ti
 // newStatKeys are the stats added in 2.40: online/studying status (st), the
 // term season (ss) and year (yr) boards, the weekly competition (cw, pw),
 // grades shared by choice (gr) and a picture of the forest (fo).
+var houseIDs = map[string]bool{"pascoe": true, "molland": true, "flinders": true, "derrimut": true, "strathmore": true, "hudson": true}
+
 var newStatKeys = map[string]bool{"st": true, "ss": true, "yr": true, "cw": true, "pw": true, "gr": true, "fo": true}
 
 func hasNewStats(s map[string]any) bool {
@@ -670,6 +677,20 @@ func cleanNewStats(out map[string]any, old map[string]any, mins float64) {
 		num(m, "o", 100)
 		m["s"] = cut(str(m["s"]), 480)
 	}
+	// 2.44 houses: house id, week, damage this week (d) and last week (p),
+	// average of the three weeks before (a), effort points (e), card ratings (m, b)
+	if m := only("hs", "h", "wk", "d", "p", "a", "e", "m", "b"); m != nil {
+		if !houseIDs[str(m["h"])] {
+			delete(out, "hs")
+		} else {
+			m["wk"] = cut(str(m["wk"]), 10)
+			for _, k := range []string{"d", "p", "a", "e"} {
+				num(m, k, 20000)
+			}
+			num(m, "m", 99)
+			num(m, "b", 99)
+		}
+	}
 	if m := only("fo", "n", "t"); m != nil {
 		num(m, "n", 10000)
 		m["t"] = cut(str(m["t"]), 1200)
@@ -700,7 +721,14 @@ func handleAccountPeople(w http.ResponseWriter, r *http.Request) {
 	from := []map[string]string{{"collectionId": "profiles"}}
 	var docs []*fsDoc
 	var err error
-	if r.URL.Query().Get("suggest") != "" {
+	if wk := r.URL.Query().Get("houseweek"); wk != "" {
+		// everyone in a house who has played this week, for the house bosses
+		if !regexp.MustCompile(`^[0-9]{4}-[0-9]{2}-[0-9]{2}$`).MatchString(wk) {
+			w.Write([]byte("[]"))
+			return
+		}
+		docs, err = fsQuery("", "", map[string]any{"from": from, "limit": 400, "where": fsWhere("stats.hs.wk", "EQUAL", wk)})
+	} else if r.URL.Query().Get("suggest") != "" {
 		// people who were on most recently, for "people you might know"
 		docs, err = fsQuery("", "", map[string]any{"from": from, "limit": 24,
 			"orderBy": []any{map[string]any{"field": map[string]string{"fieldPath": "updated_at"}, "direction": "DESCENDING"}}})
@@ -735,6 +763,11 @@ func handleAccountPeople(w http.ResponseWriter, r *http.Request) {
 	}
 	out := []map[string]any{}
 	for _, d := range docs {
+		if r.URL.Query().Get("houseweek") != "" { // just what the house page needs
+			st, _ := d.Fields["stats"].(map[string]any)
+			out = append(out, map[string]any{"username": d.Fields["username"], "display": d.Fields["display"], "hs": st["hs"], "updated_at": d.Fields["updated_at"]})
+			continue
+		}
 		out = append(out, profileRow(d))
 	}
 	json.NewEncoder(w).Encode(out)

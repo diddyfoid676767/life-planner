@@ -35,7 +35,7 @@ service cloud.firestore {
     // isn't a number makes the comparison fail, so the save is refused.
     function statsShape(s) {
       return s is map
-        && s.keys().hasOnly(['week', 'study', 'work', 'health', 'chal', 'now', 'prev', 'pvp', 'fit', 'fr', 'st', 'ss', 'yr', 'cw', 'pw', 'gr', 'fo'])
+        && s.keys().hasOnly(['week', 'study', 'work', 'health', 'chal', 'now', 'prev', 'pvp', 'fit', 'fr', 'st', 'ss', 'yr', 'cw', 'pw', 'gr', 'fo', 'hs'])
         && (!('fr' in s) || (s.fr is list && s.fr.size() <= 60))
         && (!('chal' in s) || (s.chal is list && s.chal.size() <= 12))
         && newStatsOk(s);
@@ -50,7 +50,12 @@ service cloud.firestore {
         && (!('cw' in s) || (s.cw is map && s.cw.size() <= 2))
         && (!('pw' in s) || (s.pw is map && s.pw.size() <= 2))
         && (!('gr' in s) || (s.gr is map && s.gr.size() <= 5 && s.gr.get('o', 0) <= 100 && s.gr.get('s', '').size() <= 480))
-        && (!('fo' in s) || (s.fo is map && s.fo.size() <= 2 && s.fo.get('t', '').size() <= 1200));
+        && (!('fo' in s) || (s.fo is map && s.fo.size() <= 2 && s.fo.get('t', '').size() <= 1200))
+        // 2.44: house and weekly boss damage
+        && (!('hs' in s) || (s.hs is map && s.hs.size() <= 8
+          && s.hs.get('h', '') in ['pascoe', 'molland', 'flinders', 'derrimut', 'strathmore', 'hudson']
+          && s.hs.get('wk', '').size() <= 10 && s.hs.get('d', 0) <= 20000 && s.hs.get('p', 0) <= 20000
+          && s.hs.get('a', 0) <= 20000 && s.hs.get('e', 0) <= 20000 && s.hs.get('m', 0) <= 99 && s.hs.get('b', 0) <= 99));
     }
     // this week's minutes can't be more than the minutes the week has had
     // (plus a day for time zones)

@@ -7,8 +7,9 @@
 const PLACES = [
   { id: 'today', label: 'Today', views: ['today'] },
   { id: 'plan', label: 'Plan', views: ['calendar', 'todo', 'inbox'] },
-  { id: 'study', label: 'Study', views: ['study', 'school', 'forest'] },
-  { id: 'fitness', label: 'Fitness', views: ['training', 'arena'] },
+  { id: 'study', label: 'Study', views: ['study', 'school'] },
+  { id: 'fitness', label: 'Fitness', views: ['training'] },
+  { id: 'house', label: 'House', views: ['house'] },
   { id: 'friends', label: 'Friends', views: ['friends', 'board', 'profile'] },
 ];
 const PLACE_ICON = {
@@ -16,6 +17,7 @@ const PLACE_ICON = {
   plan: '<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/>',
   study: '<path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20V3H6.5A2.5 2.5 0 0 0 4 5.5z"/><path d="M4 19.5A2.5 2.5 0 0 0 6.5 22H20v-5"/>',
   fitness: '<path d="M22 12h-4l-3 8L9 4l-3 8H2"/>',
+  house: '<path d="M4 21V9l8-6 8 6v12"/><path d="M9 21v-6h6v6"/>',
   friends: '<circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0"/><path d="M16 4.5a3.5 3.5 0 0 1 0 7M18 14a6 6 0 0 1 4 6"/>',
 };
 const SUB_LABEL = { friends: 'Chats', training: 'Training & Health', inbox: 'Missed info', school: 'Class mode', board: 'Leaderboard' };

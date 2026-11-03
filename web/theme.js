@@ -136,7 +136,7 @@ function applyNav() {
     }
     const add = document.createElement('div'); add.className = 'navh-add'; add.dataset.act = 'navHeadNew'; add.textContent = '+ Section'; add.title = 'Add a section heading'; nav.insertBefore(add, spacer);
   }
-  nav.querySelectorAll('button[data-view]').forEach(b => { b.hidden = hidden.includes(b.dataset.view) && !NAV_FIXED.includes(b.dataset.view) && b.dataset.view !== view; b.draggable = b.dataset.view !== 'settings'; });
+  nav.querySelectorAll('button[data-view]').forEach(b => { b.hidden = (['forest', 'arena'].includes(b.dataset.view) && b.dataset.view !== view) || (hidden.includes(b.dataset.view) && !NAV_FIXED.includes(b.dataset.view) && b.dataset.view !== view); b.draggable = b.dataset.view !== 'settings'; });
 }
 function navHead(act, v) {
   const o = navOrder();
