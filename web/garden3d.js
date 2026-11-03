@@ -7,7 +7,7 @@
 
 const ISO_W = 128, ISO_H = 64, ISO_D = 26;
 const isoXY = (r, c) => [(c - r) * ISO_W / 2, (c + r) * ISO_H / 2];
-const GARDEN_FX = [['hq', '💡 Fancy lighting and glow (switch off if it\'s slow)'], ['clouds', '☁️ Clouds'], ['weather', '🍂 Falling leaves and weather'], ['rays', '🌤️ Sun rays'], ['fireflies', '✨ Fireflies at night'], ['critters', '🐾 Roaming animals'], ['flowers', '🌼 Flowers in the grass'], ['bubbles', '🍃 Leaf bubbles on trees']];
+const GARDEN_FX = [['smooth', '🏃 Keep it smooth: turn effects down only while this computer can\'t keep up'], ['hq', '💡 Fancy lighting and glow (switch off if it\'s slow)'], ['clouds', '☁️ Clouds'], ['weather', '🍂 Falling leaves and weather'], ['rays', '🌤️ Sun rays'], ['fireflies', '✨ Fireflies at night'], ['critters', '🐾 Roaming animals'], ['flowers', '🌼 Flowers in the grass'], ['bubbles', '🍃 Leaf bubbles on trees']];
 const gfx = k => ((D.game.fx || {})[k] ?? true);
 
 function gardenLayout(logs) {
@@ -153,7 +153,7 @@ function forestGrid(logs) {
     <g class="board" transform="translate(${ox} ${oy})">${tiles.join('')}<g class="gdetail" pointer-events="none">${details}</g><g class="gitems">${items}${roam}</g>${flyers}${air}</g>${weather}${ff}</svg>`;
 }
 function gardenFxPanel() {
-  return `<details class="gfxpanel" ${ui.gfxOpen ? 'open' : ''}><summary class="btn small">✨ Effects</summary><div class="gfxlist">${GARDEN_FX.map(([k, l]) => `<label><input type="checkbox" data-change="gardenFx" data-v="${k}" ${gfx(k) ? 'checked' : ''}> ${l}</label>`).join('')}</div></details>`;
+  return `<details class="gfxpanel" ${ui.gfxOpen ? 'open' : ''}><summary class="btn small">✨ Effects</summary><div class="gfxlist">${GARDEN_FX.map(([k, l]) => `<label><input type="checkbox" data-change="gardenFx" data-v="${k}" ${gfx(k) ? 'checked' : ''}> ${l}</label>`).join('')}${gfx('smooth') && typeof G3 !== 'undefined' && G3.lvl > 0 ? `<span class="muted small-text">Turned down ${G3.lvl} step${G3.lvl > 1 ? 's' : ''} right now so it stays smooth on this computer.</span>` : ''}</div></details>`;
 }
 
 // keep roamers in the right depth order among the trees
