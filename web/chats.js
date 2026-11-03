@@ -366,7 +366,17 @@ setTimeout(async () => { if (ONLINE) return; await loadAccount(); if (acct.signe
 // They land in a chat between you and the developer (supabase-2.32-feedback.sql),
 // so any reply shows up in Friends & chats like any other message.
 const FB_KINDS = [['bug', '🐞 Something\'s broken'], ['idea', '💡 An idea or improvement'], ['other', '💬 Something else']];
+const DEV_NAME = 'foidkilla67'; // must match devName in accounts.go
+// The developer can't send feedback to themselves, so the same button opens
+// their ideas notebook instead (the same notes as "My ideas" in the Feedback inbox).
+function openIdeas() {
+  mform.innerHTML = `<h2>📝 My ideas</h2><p class="muted small-text">Your own notebook for improvements to the app. Only you see it, nothing is sent. It saves as you type.</p>
+    <textarea id="fbIdeas" rows="14" maxlength="20000" style="width:100%;line-height:1.45" placeholder="One idea per line…">${esc(D.settings.fbIdeas || '')}</textarea>
+    <div class="modal-actions"><button type="button" class="btn" data-act="ideasCopy">📋 Copy</button><button type="button" class="btn primary" data-mact="cancel">Done</button></div>`;
+  formCtx = { fields: [], onSave() { } }; modal.showModal();
+}
 function openFeedback() {
+  if (!ONLINE && acct.signedIn && acct.username === DEV_NAME) return openIdeas();
   if (ONLINE) { toast('Send feedback from the PC app', 'Feedback goes through your chats, which are on the PC for now.'); return; }
   if (!acct.signedIn) {
     mform.innerHTML = `<h2>💬 Send feedback</h2><p>Bug reports and ideas go straight to the developer as a chat, so you'll see their reply. Log in (or make an account) first, under Settings, Account.</p>
@@ -392,6 +402,7 @@ async function sendFeedback(v) {
     toast('✅ Feedback sent', "Thanks! The developer's reply will show up in Friends & chats.", { actions: [['Open chat', () => { view = 'friends'; refreshChats(true).then(() => openChat(c)); }]] });
   } catch (e) {
     if (btn) { btn.disabled = false; btn.textContent = 'Send'; }
+    if (/You're the developer/.test(e.message || '')) { modal.close(); return openIdeas(); }
     toast("Couldn't send it", chatSetup ? "Feedback isn't switched on yet. Try again soon." : e.message, { cls: 'danger' });
   }
 }

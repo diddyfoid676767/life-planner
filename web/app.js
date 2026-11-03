@@ -2073,6 +2073,7 @@ document.addEventListener('click', e => {
     case 'applyUpdate': applyUpdate(); break;
     case 'restartApp': applyUpdate(true); break;
     case 'feedback': openFeedback(); break;
+    case 'ideasCopy': navigator.clipboard.writeText(D.settings.fbIdeas || '').then(() => toast('📋 Copied', 'Your ideas are on the clipboard.'), () => toast("Couldn't copy", 'Your browser blocked the clipboard.', { cls: 'danger' })); break;
     case 'fbLogin': modal.close(); ui.setTab = 'account'; view = 'settings'; render(); break;
     case 'examPlan': buildExamPlan(); break;
     case 'logPaper': logPaper({ assessmentId: el.dataset.id }); break;
