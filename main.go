@@ -55,6 +55,9 @@ func main() {
 		log.Fatal(err)
 	}
 	exe, _ = filepath.EvalSymlinks(exe)
+	if handOverToSolis(exe) {
+		return
+	}
 	dataDir = pickDataDir(exe)
 	if err := os.MkdirAll(dataDir, 0o755); err != nil {
 		log.Fatal(err)

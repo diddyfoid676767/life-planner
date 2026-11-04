@@ -102,7 +102,7 @@ func findOldPlanner() string {
 	}
 	var found []string
 	for _, base := range []string{"Downloads", "Desktop", "Documents", "OneDrive/Desktop", "OneDrive/Documents", ""} {
-		for _, pat := range []string{"LifePlanner*/data", "LifePlanner*/*/data", "*/LifePlanner*/data"} {
+		for _, pat := range []string{"Solis*/data", "Solis*/*/data", "*/Solis*/data", "LifePlanner*/data", "LifePlanner*/*/data", "*/LifePlanner*/data"} {
 			m, _ := filepath.Glob(filepath.Join(home, base, pat))
 			found = append(found, m...)
 		}

@@ -46,12 +46,15 @@ jobs:
       - name: Build
         if: steps.v.outputs.new == 'yes'
         run: |
-          mkdir -p out/LifePlanner
-          GOOS=windows GOARCH=amd64 go build -tags noseed -trimpath -ldflags "-s -w -H windowsgui" -o out/LifePlanner/LifePlanner.exe .
+          mkdir -p out/Solis
+          GOOS=windows GOARCH=amd64 go build -tags noseed -trimpath -ldflags "-s -w -H windowsgui" -o out/Solis/Solis.exe .
           cd out
-          cp LifePlanner/LifePlanner.exe .
+          cp Solis/Solis.exe .
+          # LifePlanner.exe is the same app under its old name: installs before 2.46 only look for that name
+          cp Solis.exe LifePlanner.exe
+          sha256sum Solis.exe > Solis.exe.sha256
           sha256sum LifePlanner.exe > LifePlanner.exe.sha256
-          zip -qr LifePlanner.zip LifePlanner
+          zip -qr Solis.zip Solis
       - name: Publish release
         if: steps.v.outputs.new == 'yes'
         env:
@@ -59,4 +62,4 @@ jobs:
           TAG: ${{ steps.v.outputs.tag }}
         run: |
           gh release create "$TAG" --target "$GITHUB_SHA" --title "Solis ${TAG#v}" --generate-notes \
-            out/LifePlanner.zip out/LifePlanner.exe out/LifePlanner.exe.sha256
+            out/Solis.zip out/Solis.exe out/Solis.exe.sha256 out/LifePlanner.exe out/LifePlanner.exe.sha256

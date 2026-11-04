@@ -82,16 +82,20 @@ func checkGitHub() error {
 			continue
 		}
 		switch strings.ToLower(a.Name) {
-		case "lifeplanner.exe":
-			exeURL = a.URL
-		case "lifeplanner.exe.sha256":
-			sumURL = a.URL
+		case "solis.exe", "lifeplanner.exe":
+			if exeURL == "" || strings.EqualFold(a.Name, "solis.exe") {
+				exeURL = a.URL
+			}
+		case "solis.exe.sha256", "lifeplanner.exe.sha256":
+			if sumURL == "" || strings.EqualFold(a.Name, "solis.exe.sha256") {
+				sumURL = a.URL
+			}
 		}
 	}
 	if exeURL == "" {
 		return nil
 	}
-	dest := filepath.Join(filepath.Dir(exePath()), "LifePlanner.new.exe")
+	dest := filepath.Join(filepath.Dir(exePath()), "Solis.new.exe")
 	if c := findUpdate(); c != nil && c.path == dest {
 		return nil // already downloaded
 	}

@@ -1009,7 +1009,7 @@ function viewSettings() {
     <div class="card" data-sec="general" style="grid-column:1/-1"><div class="card-head"><h2>Setup and guide</h2><button class="btn small" data-act="tourStart">🧭 Take the tour</button><button class="btn small primary" data-act="setupOpen">Change my setup</button></div>
       <p class="muted small-text" style="margin:0">Change your name, classes, bell times and timetable, or add a training week. Nothing else is touched.</p>
       ${ONLINE ? '' : `<details style="margin-top:10px"><summary><b>Share the planner with a friend</b></summary><div class="small-text"><p>Send them <b>LifePlanner-share.zip</b>. It's the same app with none of your data in it. When they first open it, they get the setup and the tour, then everything they add is saved only on their PC.</p>
-        <p>Don't send your own LifePlanner folder: its <b>data</b> folder holds your planner. Missed info is linked to your Claude account, so on their copy those pages only work once they set up their own.</p></div></details>`}</div>
+        <p>Don't send your own Solis folder: its <b>data</b> folder holds your planner. Missed info is linked to your Claude account, so on their copy those pages only work once they set up their own.</p></div></details>`}</div>
     <div class="card" data-sec="general"><h2>You</h2>
       <div class="field"><label>Your name (for the greeting)</label><input type="text" data-setting="name" value="${esc(D.settings.name)}" maxlength="40"></div>
       <label class="row"><input type="checkbox" data-setting="sound" ${D.settings.sound ? 'checked' : ''}> Play a sound with reminders</label>
@@ -1034,7 +1034,7 @@ function viewSettings() {
       ${remindRow('assessment', 'SACs &amp; exams')}${remindRow('session', 'Study sessions')}${remindRow('tevent', 'Training events')}${remindRow('workout', 'Workouts')}${remindRow('event', 'Personal events')}${remindRow('todo', 'Tasks with a due date')}</tbody></table></div>
       <p class="muted small-text">Columns are how long before each item you get reminded.</p></div>
     <div class="card" data-sec="backup"><h2>Backup &amp; sync</h2>
-      <p class="muted small-text" style="margin-top:0">${ONLINE ? 'Your planner is saved to your account and to this device. Backups are kept by the PC app.' : 'Your data is in <code>data\\planner-data.json</code> next to LifePlanner.exe. Backups are kept in <code>data\\backups</code>: every hour for two days, every day for two weeks, and a copy of your planner whenever something replaces it.'}</p>
+      <p class="muted small-text" style="margin-top:0">${ONLINE ? 'Your planner is saved to your account and to this device. Backups are kept by the PC app.' : 'Your data is in <code>data\\planner-data.json</code> next to Solis.exe. Backups are kept in <code>data\\backups</code>: every hour for two days, every day for two weeks, and a copy of your planner whenever something replaces it.'}</p>
       <div class="row"><button class="btn" data-act="exportJson">Export backup (.json)</button><label class="btn">Import backup<input type="file" accept=".json,application/json" data-change="importJson" hidden></label></div>
       ${ONLINE ? '' : backupList()}
       <div class="row" style="margin-top:8px"><button class="btn" data-act="exportIcs">Export to calendar (.ics)</button></div>
@@ -1046,7 +1046,7 @@ function viewSettings() {
         <label><input type="checkbox" data-shortcut="startmenu"> Start menu</label>
         <label><input type="checkbox" data-shortcut="startup"> Open Solis when Windows starts (so reminders always work)</label>
       </div>
-      <p class="muted small-text">If you move the LifePlanner folder, untick and tick these again.</p></div>
+      <p class="muted small-text">If you move the Solis folder, untick and tick these again.</p></div>
     ${phoneCard()}
     ${aiSettingsCard()}
     <div class="card" data-sec="app" style="${ONLINE ? 'display:none' : ''}"><h2>App</h2>
@@ -1055,7 +1055,7 @@ function viewSettings() {
       <button class="btn small" data-act="restartApp">🔄 Save and restart</button> <button class="btn small" data-act="feedback">💬 Report a bug or suggest an idea</button>
       <p class="small-text"><b>Brain.fm:</b> <span id="brainfmState">${brainfmApp ? 'opens the app (' + esc(brainfmApp.split(/[\\/]/).pop()) + ')' : 'app not found, so it opens the website'}</span></p>
       <div class="row" style="margin-bottom:10px"><input type="text" placeholder="Brain.fm app path (optional, e.g. C:\\Users\\you\\AppData\\Local\\brain\\Brain.fm.exe)" data-setting="brainfmPath" value="${esc(D.settings.brainfmPath || '')}" style="flex:1;min-width:220px"><button class="btn small" data-act="brainfmTest">Test</button></div>
-      <p class="muted small-text" style="margin-top:0">Closing this tab is fine: the planner shuts itself down a few minutes after the last tab is closed. To reopen it, double-click LifePlanner.exe.</p>
+      <p class="muted small-text" style="margin-top:0">Closing this tab is fine: the planner shuts itself down a few minutes after the last tab is closed. To reopen it, double-click Solis.exe.</p>
       <p class="small-text" style="margin-top:14px"><b>Instant email check:</b> <span id="claudeLinkState">${claudeLinked ? 'on. <b>Check email now</b> starts the check straight away.' : 'off. <b>Check email now</b> opens Claude instead.'}</span></p>
       <p class="muted small-text" style="margin-top:0">To turn it on: in the Claude app open <b>Routines</b> in the left sidebar, open <b>Missed info email check</b>, click <b>⋯</b> then <b>Edit</b>, click <b>+</b> next to Trigger, pick <b>API</b>, then <b>Generate token</b> and paste it here. It's saved only on this PC.</p>
       <div class="row" style="margin-bottom:10px"><input type="password" id="claudeToken" placeholder="${claudeLinked ? 'Token saved (paste a new one to replace it)' : 'Paste the token (starts with sk-ant-)'}" autocomplete="off" style="flex:1;min-width:220px"><button class="btn small" data-act="claudeTokenSave">Save</button>${claudeLinked ? '<button class="btn small" data-act="claudeTokenClear">Remove</button>' : ''}</div>
@@ -1783,7 +1783,7 @@ async function applyUpdate(restartOnly) {
     try { const r = await fetch('/api/ping', { cache: 'no-store' }); if (r.ok) { location.reload(); return; } } catch { }
     await new Promise(r => setTimeout(r, 750));
   }
-  bar.textContent = 'Solis closed but didn\'t open again. Double-click LifePlanner.exe to open it. Your work was saved.';
+  bar.textContent = 'Solis closed but didn\'t open again. Double-click Solis.exe to open it. Your work was saved.';
 }
 
 // ---------- starter plan ----------
@@ -1871,7 +1871,7 @@ async function checkTempFolder() {
   try {
     const inf = await (await fetch('/api/info')).json();
     const b = $('#tempWarn');
-    if (inf.temp && b) { b.hidden = false; b.innerHTML = "You opened Solis from inside the zip. Your planner is still saved, but updates can't install like this. Close it, right-click the zip, choose <b>Extract All</b>, then open LifePlanner.exe from the extracted folder."; }
+    if (inf.temp && b) { b.hidden = false; b.innerHTML = "You opened Solis from inside the zip. Your planner is still saved, but updates can't install like this. Close it, right-click the zip, choose <b>Extract All</b>, then open Solis.exe from the extracted folder."; }
     let seen = ''; try { seen = localStorage.getItem('lpCarried') || ''; localStorage.setItem('lpCarried', inf.carried || ''); } catch { }
     if (inf.recovered) { let said = ''; try { said = sessionStorage.getItem('lpRecovered') || ''; sessionStorage.setItem('lpRecovered', inf.recovered); } catch { } if (said !== inf.recovered) toast('🛟 Your planner was put back', `The planner file couldn't be read, so Solis opened your newest backup instead. Settings, Backup & sync lists every backup.`, { timeout: 15000 }); }
     if (inf.carried && seen !== inf.carried) toast('📦 Your planner came with you', `This copy of Solis started empty, so it brought over your planner from ${inf.carried}.`, { timeout: 15000 });
@@ -2091,7 +2091,7 @@ document.addEventListener('click', e => {
     case 'inboxCheck': inboxCheckNow(); break;
     case 'inboxRead': for (const x of D.inbox?.items || []) if (!D.inboxSeen[x.id]) D.inboxSeen[x.id] = 'read'; save(); render(); break;
     case 'inboxTask': { const x = D.inbox.items.find(i => i.id === id); D.inboxAdded = D.inboxAdded || {}; D.inboxAdded[id] = 't'; D.todos.push({ id: uid(), text: x.subject + (x.from ? ' (' + x.from + ')' : ''), due: x.due, done: false, notes: x.summary || '', remind: D.settings.remind.todo }); D.inboxSeen[id] = D.inboxSeen[id] || 'read'; save(); render(); toast('Added to To-do', x.subject); break; }
-    case 'quit': if (confirm('Quit the planner? Your data is saved.')) { flush().finally(() => fetch('/api/quit', { method: 'POST' }).catch(() => { }).finally(() => { document.body.innerHTML = '<main><h1>Planner closed</h1><p>You can close this tab. Double-click LifePlanner.exe to open it again.</p></main>'; })); } break;
+    case 'quit': if (confirm('Quit the planner? Your data is saved.')) { flush().finally(() => fetch('/api/quit', { method: 'POST' }).catch(() => { }).finally(() => { document.body.innerHTML = '<main><h1>Planner closed</h1><p>You can close this tab. Double-click Solis.exe to open it again.</p></main>'; })); } break;
     case 'reset': if (prompt('This deletes ALL your planner data. Type DELETE to confirm.') === 'DELETE') { D = migrate(freshData()); save(); render(); openSetup(true); } break;
   }
 });

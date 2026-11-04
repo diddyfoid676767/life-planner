@@ -24,7 +24,7 @@ import (
 	"time"
 )
 
-const version = "2.45.2"
+const version = "2.46.0"
 
 var (
 	selfHashOnce sync.Once
@@ -63,7 +63,7 @@ func readCandidate(path string) ([]byte, error) {
 	}
 	defer zr.Close()
 	for _, f := range zr.File {
-		if strings.EqualFold(filepath.Base(f.Name), "LifePlanner.exe") {
+		if n := filepath.Base(f.Name); strings.EqualFold(n, "Solis.exe") || strings.EqualFold(n, "LifePlanner.exe") {
 			rc, err := f.Open()
 			if err != nil {
 				return nil, err
@@ -89,10 +89,10 @@ func findUpdate() *updateCandidate {
 		return nil
 	}
 	selfMod := st.ModTime()
-	cands := []string{filepath.Join(filepath.Dir(self), "LifePlanner.new.exe")}
+	cands := []string{filepath.Join(filepath.Dir(self), "Solis.new.exe"), filepath.Join(filepath.Dir(self), "LifePlanner.new.exe")}
 	if home, err := os.UserHomeDir(); err == nil {
 		dl := filepath.Join(home, "Downloads")
-		for _, pat := range []string{"LifePlanner*.zip", "LifePlanner*.exe"} {
+		for _, pat := range []string{"Solis*.zip", "Solis*.exe", "LifePlanner*.zip", "LifePlanner*.exe"} {
 			m, _ := filepath.Glob(filepath.Join(dl, pat))
 			sort.Slice(m, func(i, j int) bool { return modTime(m[i]).After(modTime(m[j])) })
 			for _, p := range m {
@@ -148,8 +148,8 @@ func handleUpdate(w http.ResponseWriter, r *http.Request) {
 	}
 	self := exePath()
 	dir := filepath.Dir(self)
-	staged := filepath.Join(dir, "LifePlanner.staged.exe")
-	old := filepath.Join(dir, "LifePlanner.old.exe")
+	staged := filepath.Join(dir, "Solis.staged.exe")
+	old := filepath.Join(dir, "Solis.old.exe")
 	if err := os.WriteFile(staged, c.data, 0o755); err != nil {
 		http.Error(w, "could not write update: "+err.Error(), http.StatusInternalServerError)
 		return
@@ -165,7 +165,7 @@ func handleUpdate(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "could not install update: "+err.Error(), http.StatusInternalServerError)
 		return
 	}
-	if strings.EqualFold(filepath.Base(c.path), "LifePlanner.new.exe") {
+	if b := filepath.Base(c.path); strings.EqualFold(b, "LifePlanner.new.exe") || strings.EqualFold(b, "Solis.new.exe") {
 		os.Remove(c.path)
 	}
 	log.Printf("updated from %s", c.path)
@@ -201,7 +201,7 @@ func handleRestart(w http.ResponseWriter, r *http.Request) {
 
 // cleanupOld removes the previous exe left behind by an update.
 func cleanupOld() {
-	old := filepath.Join(filepath.Dir(exePath()), "LifePlanner.old.exe")
+	old := filepath.Join(filepath.Dir(exePath()), "Solis.old.exe")
 	for i := 0; i < 10; i++ {
 		if err := os.Remove(old); err == nil || os.IsNotExist(err) {
 			return
