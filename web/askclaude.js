@@ -138,7 +138,7 @@ async function aiSend(text) {
 // No API key: copy the question with the page to the clipboard and open the Claude app (or claude.ai).
 async function aiHandoff(q) {
   const where = document.querySelector('#tabs button.active span')?.textContent || 'my planner';
-  const prompt = `I'm using my Cinder app (I'm a Year ${D.settings.yearLevel || 11} student in Melbourne). This is the ${where} page I'm looking at right now:\n\n<page>\n${aiPageText()}\n</page>\n\n${q}`;
+  const prompt = `I'm using my Solis app (I'm a Year ${D.settings.yearLevel || 11} student in Melbourne). This is the ${where} page I'm looking at right now:\n\n<page>\n${aiPageText()}\n</page>\n\n${q}`;
   let copied = true;
   try { await navigator.clipboard.writeText(prompt); } catch { copied = false; }
   const app = await openClaudeApp('/new');

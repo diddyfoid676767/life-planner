@@ -114,7 +114,7 @@ function pvpReset(msg = '') {
   pvpRedraw();
 }
 const every = (ms, fn) => { fn(); PV.timers.push(setInterval(fn, ms)); };
-function sameVer(card) { if (card?.ver === PVP_VER) return true; PV.msg = 'Your friend has a different version of Cinder. Both of you need the latest update.'; pvpRedraw(); return false; }
+function sameVer(card) { if (card?.ver === PVP_VER) return true; PV.msg = 'Your friend has a different version of Solis. Both of you need the latest update.'; pvpRedraw(); return false; }
 
 async function pvpHost(code = newCode(), quiet) {
   pvpReset(); PV.st = 'hosting'; PV.code = code; PV.msg = 'Connecting…'; pvpRedraw();
@@ -291,7 +291,7 @@ function pvpResultHtml(B) {
 function pvpGhost(user) {
   const f = friendRows.find(x => x.user === user), s = f?.raw?.pvp;
   if (!s?.team?.length) { toast('No saved team yet', 'They need to open the Arena on the latest version first.'); return; }
-  if (s.ver !== PVP_VER) { toast('Different version', 'One of you needs to update Cinder first.'); return; }
+  if (s.ver !== PVP_VER) { toast('Different version', 'One of you needs to update Solis first.'); return; }
   startPvpBattle('ghost', pvpTeamSnap(), { name: f.name, user: f.user, r: s.r, team: s.team, av: f.av }, null, 0);
 }
 // what goes up with your leaderboard row
@@ -306,7 +306,7 @@ function arenaPvp() {
     ...friendRows.filter(f => f.raw?.pvp).map(f => ({ name: f.name, user: f.user, r: f.raw.pvp.r || PVP_START, w: f.raw.pvp.w || 0, l: f.raw.pvp.l || 0, av: f.av, team: !!f.raw.pvp.team?.length, ver: f.raw.pvp.ver }))].sort((a, b) => b.r - a.r);
   const noPvp = friendRows.filter(f => !f.raw?.pvp);
   const busy = PV.st !== 'idle' && PV.st !== 'battle';
-  const live = !acct.rt ? '<p class="muted">Live battles need the latest Cinder with friend accounts turned on.</p>'
+  const live = !acct.rt ? '<p class="muted">Live battles need the latest Solis with friend accounts turned on.</p>'
     : busy ? `<div class="pvpwait"><div class="gbwait"><i></i><i></i><i></i></div><div class="main">${PV.st === 'hosting' ? `<div class="unlabel">Your battle code</div><div class="pvpcode">${esc(PV.code)}</div><p class="muted small-text">Send this code to a friend. They tap <b>Join</b> and type it in.</p>` : ''}
         <b>${esc(PV.msg || (PV.st === 'seeking' ? 'Looking for someone to battle…' : PV.st === 'joining' ? 'Joining…' : 'Waiting for someone to join…'))}</b></div><button class="btn" data-pvp="cancel">Cancel</button></div>`
     : `<div class="pvpbtns"><button class="btn primary big" data-pvp="seek">⚡ Quick match</button><button class="btn big" data-pvp="host">🔑 Host with a code</button></div>

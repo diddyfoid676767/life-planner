@@ -1,5 +1,5 @@
 'use strict';
-/* Online (claude.ai) storage for Cinder: the same app, saved in the
+/* Online (claude.ai) storage for Solis: the same app, saved in the
    artifact's private database so the phone and PC see the same planner.
    Only included in the online build; app.js checks for window.OL. */
 window.OL = (() => {

@@ -119,7 +119,7 @@ function todayRivals() {
 }
 
 function viewFriends() {
-  if (ONLINE) return `${pageHead('Friends & chats', '')}<div class="card"><p>Friends live in the PC app. Open Cinder on your computer to see them.</p></div>`;
+  if (ONLINE) return `${pageHead('Friends & chats', '')}<div class="card"><p>Friends live in the PC app. Open Solis on your computer to see them.</p></div>`;
   if (!acctLoaded) loadAccount().then(() => { if (view === 'friends') render(); });
   const n = friendsCount();
   if (acct.configured && !acct.signedIn) return `${pageHead('👥 Friends & chats', 'Log in to add friends and message them')}${accountCard()}`;

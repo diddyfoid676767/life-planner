@@ -64,7 +64,7 @@ function drawSetup() {
   const dots = st < 0 ? '' : `<div class="wizdots">${keys.map((k, i) => `<span class="${i === st ? 'on' : i < st ? 'done' : ''}">${i < st ? '✓' : i + 1} ${WIZ_ALL.find(x => x[0] === k)[1]}</span>`).join('')}</div>`;
   let body = '';
   if (st === -1) {
-    body = `<div class="wizhero">📅</div><h2>Welcome to Cinder</h2>
+    body = `<div class="wizhero">📅</div><h2>Welcome to Solis</h2>
       <p>Your study, classes, training and tasks in one place, with a forest that grows while you study and an arena that gets tougher as you train.</p>
       <p class="muted">A few quick questions set it up for you. You can change everything later in Settings.</p>
       <div class="row wizbtns"><button class="btn primary big" data-w="next">Set up my planner →</button></div>
@@ -78,8 +78,8 @@ function drawSetup() {
       <p class="muted small-text">Year level and house are used to hide school calendar events meant for other years and houses.</p>`;
   } else if (key === 'account') {
     if (!acctLoaded) loadAccount().then(() => { if (wiz) drawSetup(); });
-    body = !acctLoaded ? '<h2>Your account</h2><p class="muted">Loading…</p>' : !acct.configured ? '<h2>Your account</h2><p class="muted">Accounts aren\'t switched on for this copy of Cinder, so friends and chats are off. Press Next to carry on.</p>' : acct.signedIn ? `<h2>You're signed in</h2><p class="muted">You're <b>@${esc(acct.username)}</b>. Add some friends so you can race them on the leaderboards. You can always add more on the Friends page.</p>${friendSuggestHtml(true)}`
-      : `<h2>Make your account</h2><p class="muted">Cinder is better with friends: race them on the leaderboards, battle them in the Arena and chat. Pick a username (no email needed) or log in if you already have one.</p>${accountCard().replace('<h2>Log in to Cinder</h2>', '').replace('<div class="acct-hero">👥</div>', '')}`;
+    body = !acctLoaded ? '<h2>Your account</h2><p class="muted">Loading…</p>' : !acct.configured ? '<h2>Your account</h2><p class="muted">Accounts aren\'t switched on for this copy of Solis, so friends and chats are off. Press Next to carry on.</p>' : acct.signedIn ? `<h2>You're signed in</h2><p class="muted">You're <b>@${esc(acct.username)}</b>. Add some friends so you can race them on the leaderboards. You can always add more on the Friends page.</p>${friendSuggestHtml(true)}`
+      : `<h2>Make your account</h2><p class="muted">Solis is better with friends: race them on the leaderboards, battle them in the Arena and chat. Pick a username (no email needed) or log in if you already have one.</p>${accountCard().replace('<h2>Log in to Solis</h2>', '').replace('<div class="acct-hero">👥</div>', '')}`;
   } else if (key === 'calendar') {
     body = `<h2>Your calendars</h2><p class="muted">Paste a private iCal (.ics) link from Google Calendar, Outlook or your school portal and its events show up in Today and Calendar. You can skip this and add them later in Settings.</p>
       <div class="wizlist">${W.feeds.map((f, i) => `<div class="row"><span>📅</span><input type="text" data-wf="feeds.${i}.name" value="${esc(f.name)}" placeholder="Name, e.g. School" style="max-width:180px"><input type="text" data-wf="feeds.${i}.url" value="${esc(f.url || '')}" placeholder="https://…/basic.ics" ${f.id && !f.url ? 'disabled' : ''}><button class="iconbtn" data-w="feedDel" data-i="${i}" title="Remove">✕</button></div>`).join('') || '<p class="muted small-text">No calendars yet.</p>'}</div>

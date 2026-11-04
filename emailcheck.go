@@ -90,7 +90,7 @@ func handleClaudeLink(w http.ResponseWriter, r *http.Request) {
 			writeErr(w, http.StatusNotFound, "not set up")
 			return
 		}
-		msg := "EMAIL CHECK: Check email now was pressed in the Cinder. Run the Missed info check now."
+		msg := "EMAIL CHECK: Check email now was pressed in the Solis. Run the Missed info check now."
 		body, _ := json.Marshal(map[string]string{"text": msg})
 		req, _ := http.NewRequest(http.MethodPost, "https://api.anthropic.com/v1/claude_code/routines/"+conf.Task+"/fire", bytes.NewReader(body))
 		req.Header.Set("Authorization", "Bearer "+conf.Token)

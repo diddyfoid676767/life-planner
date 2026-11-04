@@ -58,5 +58,5 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           TAG: ${{ steps.v.outputs.tag }}
         run: |
-          gh release create "$TAG" --target "$GITHUB_SHA" --title "Cinder ${TAG#v}" --generate-notes \
+          gh release create "$TAG" --target "$GITHUB_SHA" --title "Solis ${TAG#v}" --generate-notes \
             out/LifePlanner.zip out/LifePlanner.exe out/LifePlanner.exe.sha256

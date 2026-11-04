@@ -51,7 +51,7 @@ func runWindow(url string) (shown bool) {
 		AutoFocus: true,
 		DataPath:  filepath.Join(dataDir, "webview"),
 		WindowOptions: webview2.WindowOptions{
-			Title: "Cinder", Width: 1320, Height: 880, Center: true,
+			Title: "Solis", Width: 1320, Height: 880, Center: true,
 		},
 	})
 	if w == nil {
@@ -134,7 +134,7 @@ func setFullscreen(hwnd uintptr, on bool) {
 func focusExistingWindow() bool {
 	find := user32.NewProc("FindWindowW")
 	cls, _ := syscall.UTF16PtrFromString("webview")
-	title, _ := syscall.UTF16PtrFromString("Cinder")
+	title, _ := syscall.UTF16PtrFromString("Solis")
 	for i := 0; i < 24; i++ {
 		if h, _, _ := find.Call(uintptr(unsafe.Pointer(cls)), uintptr(unsafe.Pointer(title))); h != 0 {
 			user32.NewProc("ShowWindow").Call(h, 9) // SW_RESTORE

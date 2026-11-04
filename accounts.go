@@ -126,7 +126,7 @@ func session() (*account, error) {
 		return nil, fmt.Errorf("not logged in")
 	}
 	if a.Backend != "fb" {
-		return nil, fmt.Errorf("Cinder moved to a new friends server. Log in once more to bring your account over.")
+		return nil, fmt.Errorf("Solis moved to a new friends server. Log in once more to bring your account over.")
 	}
 	if time.Now().Unix() < a.Expires-60 {
 		return a, nil

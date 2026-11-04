@@ -6,7 +6,7 @@ package main
 // group it with the browser and pin the browser's icon. Giving the window its
 // own taskbar identity (an AppUserModelID) with a relaunch command pointing
 // at LifePlanner.exe makes it a separate taskbar button, and pinning it pins
-// Cinder with its own icon.
+// Solis with its own icon.
 
 import (
 	"bytes"
@@ -21,7 +21,7 @@ import (
 	"unsafe"
 )
 
-const appUserModelID = "Cinder.App"
+const appUserModelID = "Solis.App"
 
 var (
 	user32  = syscall.NewLazyDLL("user32.dll")
@@ -81,7 +81,7 @@ func setWindowAppID(hwnd uintptr, exe string) bool {
 	// relaunch details first: Windows reads them when the ID is set
 	set(2, `"`+exe+`"`)              // RelaunchCommand
 	set(3, exe+",0")                 // RelaunchIconResource
-	set(4, "Cinder")           // RelaunchDisplayNameResource
+	set(4, "Solis")           // RelaunchDisplayNameResource
 	set(5, appUserModelID)           // ID
 	syscall.SyscallN(vtbl[7], store) // Commit
 	syscall.SyscallN(vtbl[2], store) // Release
@@ -103,7 +103,7 @@ var (
 		}
 		buf := make([]uint16, 256)
 		procGetWindowTextW.Call(hwnd, uintptr(unsafe.Pointer(&buf[0])), 256)
-		if strings.Contains(syscall.UTF16ToString(buf), "Cinder") {
+		if strings.Contains(syscall.UTF16ToString(buf), "Solis") {
 			foundWindows = append(foundWindows, hwnd)
 		}
 		return 1

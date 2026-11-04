@@ -2,11 +2,11 @@
   "RT_GROUP_ICON": { "APP": { "0000": ["icon.png"] } },
   "RT_MANIFEST": { "#1": { "0409": {
     "identity": {"name": "LifePlanner", "version": "1.0.0.0"},
-    "description": "Cinder", "minimum-os": "win7", "execution-level": "as invoker",
+    "description": "Solis", "minimum-os": "win7", "execution-level": "as invoker",
     "dpi-awareness": "system", "use-common-controls-v6": false
   } } },
   "RT_VERSION": { "#1": { "0000": {
     "fixed": {"file_version": "1.0.0.0", "product_version": "1.0.0.0"},
-    "info": {"0409": {"FileDescription": "Cinder", "ProductName": "Cinder", "ProductVersion": "1.0", "FileVersion": "1.0", "OriginalFilename": "LifePlanner.exe"}}
+    "info": {"0409": {"FileDescription": "Solis", "ProductName": "Solis", "ProductVersion": "1.0", "FileVersion": "1.0", "OriginalFilename": "LifePlanner.exe"}}
   } } }
 }
