@@ -21,7 +21,7 @@ import (
 	"unsafe"
 )
 
-const appUserModelID = "LifePlanner.App"
+const appUserModelID = "Cinder.App"
 
 var (
 	user32  = syscall.NewLazyDLL("user32.dll")
