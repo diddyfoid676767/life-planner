@@ -1,6 +1,6 @@
 {
-  "name": "Life Planner",
-  "short_name": "Planner",
+  "name": "Cinder",
+  "short_name": "Cinder",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",

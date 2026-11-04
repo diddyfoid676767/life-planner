@@ -2,7 +2,7 @@
 const ONLINE = !!window.OL;
 const CLOUD = ONLINE && !!window.OL.cloud; // the phone app (cloud.js)
 const PHONE_URL = 'https://diddyfoid676767.github.io/life-planner/';
-/* Life Planner front end. All data lives in one object (D) that is saved to
+/* Cinder front end. All data lives in one object (D) that is saved to
    data/planner-data.json next to the exe through the local server. */
 
 // ---------- utilities ----------
@@ -185,7 +185,7 @@ async function ping() {
     if (bootId && inf.boot !== bootId) {
       if (!dirty && !stashed()) { location.reload(); return; }
       dirty = true; // the save merges into whatever the app has now
-      if (await saveNow()) toast('✅ Back up and running', 'Life Planner opened again and saved the changes you made while it was closed.');
+      if (await saveNow()) toast('✅ Back up and running', 'Cinder opened again and saved the changes you made while it was closed.');
       return;
     }
     if ((inf.rev || 0) !== dataRev && !dirty && !saving) { await pullData(); return; }
@@ -493,7 +493,7 @@ function viewToday() {
   const studyMins = items.filter(e => e.kind === 'session').reduce((a, e) => a + (+e.mins || 0), 0);
   const trainMins = items.filter(e => e.kind === 'workout').reduce((a, e) => a + (+e.mins || 0), 0);
 
-  const welcome = D.settings.welcomed ? '' : `<div class="card welcome twelcome"><b>👋 Welcome to your Life Planner.</b> <span class="muted">Type anything into Quick add, tick things off as you go, and press ▶ to grow a tree while you study.</span><button class="btn small" data-act="dismissWelcome">Got it</button></div>`;
+  const welcome = D.settings.welcomed ? '' : `<div class="card welcome twelcome"><b>👋 Welcome to Cinder.</b> <span class="muted">Type anything into Quick add, tick things off as you go, and press ▶ to grow a tree while you study.</span><button class="btn small" data-act="dismissWelcome">Got it</button></div>`;
   const apps = D.links.filter(l => l.group === 'Apps').map(l => l.url
     ? `<a class="appchip" href="${esc(safeUrl(l.url))}" target="_blank" rel="noopener noreferrer"><i style="background:${appColor(l.title)}">${esc(l.title[0] || '?')}</i>${esc(l.title)}</a>`
     : `<button class="appchip" data-act="edit" data-kind="link" data-id="${l.id}" title="Click to add its web address"><i>?</i>${esc(l.title)} (set link)</button>`).join('');
@@ -1040,11 +1040,11 @@ function viewSettings() {
       <div class="row" style="margin-top:8px"><button class="btn" data-act="exportIcs">Export to calendar (.ics)</button></div>
       <p class="muted small-text">The .ics file can be imported into Google Calendar, Outlook or your phone's calendar. It includes your reminders.</p></div>
     <div class="card" data-sec="app" style="${ONLINE ? 'display:none' : ''}"><h2>Use it like a normal app</h2>
-      <p class="muted small-text" style="margin-top:0">Life Planner opens in its own window. Add shortcuts so you can open it like any other app (or pin it: right-click its icon on the taskbar → Pin to taskbar).</p>
+      <p class="muted small-text" style="margin-top:0">Cinder opens in its own window. Add shortcuts so you can open it like any other app (or pin it: right-click its icon on the taskbar → Pin to taskbar).</p>
       <div class="checks" id="shortcuts" style="flex-direction:column;gap:8px">
         <label><input type="checkbox" data-shortcut="desktop"> Desktop shortcut</label>
         <label><input type="checkbox" data-shortcut="startmenu"> Start menu</label>
-        <label><input type="checkbox" data-shortcut="startup"> Open Life Planner when Windows starts (so reminders always work)</label>
+        <label><input type="checkbox" data-shortcut="startup"> Open Cinder when Windows starts (so reminders always work)</label>
       </div>
       <p class="muted small-text">If you move the LifePlanner folder, untick and tick these again.</p></div>
     ${phoneCard()}
@@ -1437,7 +1437,7 @@ let focusTick = null, focusAskCancel = false;
 function renderFocusBar() {
   const bar = $('#focusBar'); const f = D && D.focus;
   if (D && D.game) gameFeedback();
-  if (!f) { bar.hidden = true; clearInterval(focusTick); focusTick = null; document.title = 'Life Planner'; closeFocusFull(); updateMini(null); return; }
+  if (!f) { bar.hidden = true; clearInterval(focusTick); focusTick = null; document.title = 'Cinder'; closeFocusFull(); updateMini(null); return; }
   const s = subj(f.subjectId);
   const draw = () => {
     const m = focusElapsed(f), mm = Math.floor(m), ss = Math.floor((m - mm) * 60);
@@ -1741,7 +1741,7 @@ async function checkUpdate() {
     const u = await (await fetch('/api/update', { cache: 'no-store' })).json();
     if (appVersion !== u.version) { // just updated: say so once
       let prev = ''; try { prev = localStorage.getItem('lpVer') || ''; localStorage.setItem('lpVer', u.version); } catch { }
-      if (prev && prev !== u.version) toast(`✨ Updated to ${u.version}`, 'Life Planner installed the new version by itself.');
+      if (prev && prev !== u.version) toast(`✨ Updated to ${u.version}`, 'Cinder installed the new version by itself.');
     }
     appVersion = u.version;
     const bar = $('#updateBar');
@@ -1761,7 +1761,7 @@ function updateTick() {
   const busy = modal.open ? 'as soon as you close this window' : ui.wmode ? 'when you finish or hide your workout' : '';
   if (!left && !busy) { applyUpdate(); return; }
   bar.hidden = false;
-  if (!bar.querySelector('#updLeft')) bar.innerHTML = `<b>A new version of Life Planner is ready.</b> <span id="updLeft"></span> Everything is saved first. <button class="btn small primary" data-act="applyUpdate">🔄 Save and restart now</button>`;
+  if (!bar.querySelector('#updLeft')) bar.innerHTML = `<b>A new version of Cinder is ready.</b> <span id="updLeft"></span> Everything is saved first. <button class="btn small primary" data-act="applyUpdate">🔄 Save and restart now</button>`;
   bar.querySelector('#updLeft').textContent = busy ? `It restarts ${busy}.` : `Restarting in ${left}s.`;
   autoUpdateTimer = setTimeout(updateTick, 1000);
 }
@@ -1772,7 +1772,7 @@ async function applyUpdate(restartOnly) {
   const bar = $('#updateBar'); bar.hidden = false;
   bar.textContent = 'Saving your work…';
   if (!(await saveNow())) {
-    updating = false; bar.textContent = "Couldn't save yet, so Life Planner didn't restart. Trying again in a few seconds…";
+    updating = false; bar.textContent = "Couldn't save yet, so Cinder didn't restart. Trying again in a few seconds…";
     updateAt = Date.now() + 5000; autoUpdateTimer = setTimeout(restartOnly ? () => applyUpdate(true) : updateTick, 5000); return;
   }
   bar.textContent = restartOnly ? 'Restarting… the planner reloads in a few seconds.' : 'Updating… the planner reloads in a few seconds.';
@@ -1783,7 +1783,7 @@ async function applyUpdate(restartOnly) {
     try { const r = await fetch('/api/ping', { cache: 'no-store' }); if (r.ok) { location.reload(); return; } } catch { }
     await new Promise(r => setTimeout(r, 750));
   }
-  bar.textContent = 'Life Planner closed but didn\'t open again. Double-click LifePlanner.exe to open it. Your work was saved.';
+  bar.textContent = 'Cinder closed but didn\'t open again. Double-click LifePlanner.exe to open it. Your work was saved.';
 }
 
 // ---------- starter plan ----------
@@ -1845,11 +1845,11 @@ async function showBackups() {
 }
 // a backup of the planner as it is right now, on top of the automatic ones
 async function backupNow() {
-  if (!(await saveNow())) { toast("Couldn't back up yet", 'Your latest changes haven\'t saved. Is Life Planner still running?', { cls: 'danger' }); return; }
+  if (!(await saveNow())) { toast("Couldn't back up yet", 'Your latest changes haven\'t saved. Is Cinder still running?', { cls: 'danger' }); return; }
   try {
     const r = await fetch('/api/backups', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ snapshot: 'manual' }) });
     if (!r.ok) throw new Error((await r.text()).trim());
-  } catch (e) { toast("Couldn't back up", e.message || 'Is Life Planner still running?', { cls: 'danger' }); return; }
+  } catch (e) { toast("Couldn't back up", e.message || 'Is Cinder still running?', { cls: 'danger' }); return; }
   toast('💾 Backed up', 'Your planner as it is right now is saved. Find it under Restore a backup.');
   if (ui.backups) { ui.backups = null; await showBackups(); }
 }
@@ -1860,7 +1860,7 @@ async function restoreBackup(name) {
   try {
     const r = await fetch('/api/backups', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name }) });
     if (!r.ok) throw new Error((await r.text()).trim());
-  } catch (e) { toast("Couldn't restore", e.message || 'Is Life Planner still running?'); return; }
+  } catch (e) { toast("Couldn't restore", e.message || 'Is Cinder still running?'); return; }
   unstash();
   await pullData(true);
   ui.backups = null; await showBackups();
@@ -1871,10 +1871,10 @@ async function checkTempFolder() {
   try {
     const inf = await (await fetch('/api/info')).json();
     const b = $('#tempWarn');
-    if (inf.temp && b) { b.hidden = false; b.innerHTML = "You opened Life Planner from inside the zip. Your planner is still saved, but updates can't install like this. Close it, right-click the zip, choose <b>Extract All</b>, then open LifePlanner.exe from the extracted folder."; }
+    if (inf.temp && b) { b.hidden = false; b.innerHTML = "You opened Cinder from inside the zip. Your planner is still saved, but updates can't install like this. Close it, right-click the zip, choose <b>Extract All</b>, then open LifePlanner.exe from the extracted folder."; }
     let seen = ''; try { seen = localStorage.getItem('lpCarried') || ''; localStorage.setItem('lpCarried', inf.carried || ''); } catch { }
-    if (inf.recovered) { let said = ''; try { said = sessionStorage.getItem('lpRecovered') || ''; sessionStorage.setItem('lpRecovered', inf.recovered); } catch { } if (said !== inf.recovered) toast('🛟 Your planner was put back', `The planner file couldn't be read, so Life Planner opened your newest backup instead. Settings, Backup & sync lists every backup.`, { timeout: 15000 }); }
-    if (inf.carried && seen !== inf.carried) toast('📦 Your planner came with you', `This copy of Life Planner started empty, so it brought over your planner from ${inf.carried}.`, { timeout: 15000 });
+    if (inf.recovered) { let said = ''; try { said = sessionStorage.getItem('lpRecovered') || ''; sessionStorage.setItem('lpRecovered', inf.recovered); } catch { } if (said !== inf.recovered) toast('🛟 Your planner was put back', `The planner file couldn't be read, so Cinder opened your newest backup instead. Settings, Backup & sync lists every backup.`, { timeout: 15000 }); }
+    if (inf.carried && seen !== inf.carried) toast('📦 Your planner came with you', `This copy of Cinder started empty, so it brought over your planner from ${inf.carried}.`, { timeout: 15000 });
   } catch { }
 }
 
@@ -1888,7 +1888,7 @@ function download(name, text, type) {
 }
 function icsEscape(s) { return String(s || '').replace(/\\/g, '\\\\').replace(/\n/g, '\\n').replace(/[,;]/g, m => '\\' + m); }
 function exportIcs() {
-  const L = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//Life Planner//EN', 'CALSCALE:GREGORIAN'];
+  const L = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//Cinder//EN', 'CALSCALE:GREGORIAN'];
   const stamp = new Date().toISOString().replace(/[-:]/g, '').replace(/\.\d+/, '');
   const dt = (d, t) => d.replace(/-/g, '') + (t ? 'T' + t.replace(':', '') + '00' : '');
   const addMin = (d, t, m) => { const x = parseYmd(d); const [h, mi] = t.split(':').map(Number); x.setHours(h, mi + m); return [ymd(x), `${pad(x.getHours())}:${pad(x.getMinutes())}`]; };
@@ -2134,7 +2134,7 @@ document.addEventListener('change', e => {
   if (el.dataset.change === 'importJson' && el.files[0]) {
     el.files[0].text().then(txt => {
       let d; try { d = JSON.parse(txt); } catch { alert('That file is not valid JSON.'); return; }
-      if (!d || !Array.isArray(d.subjects)) { alert("That doesn't look like a Life Planner backup."); return; }
+      if (!d || !Array.isArray(d.subjects)) { alert("That doesn't look like a Cinder backup."); return; }
       if (!confirm('Replace ALL current planner data with this backup?' + (ONLINE ? '' : ' Your planner as it is now is kept in Settings, Restore a backup, so you can undo this.'))) return;
       const done = () => { D = migrate(d); save(); render(); toast('Backup imported', ''); };
       if (ONLINE) return done();
@@ -2195,7 +2195,7 @@ function bootDone(skip) {
   if (skip) return go();
   const hello = document.getElementById('bootHello'), hr = new Date().getHours();
   if (hello && D?.settings?.name) hello.textContent = `Good ${hr < 12 ? 'morning' : hr < 18 ? 'afternoon' : 'evening'}, ${D.settings.name}`;
-  setTimeout(go, Math.max(0, (matchMedia('(prefers-reduced-motion: reduce)').matches ? 300 : 2100) - (performance.now() - bootStart)));
+  setTimeout(go, Math.max(0, (matchMedia('(prefers-reduced-motion: reduce)').matches ? 300 : 2600) - (performance.now() - bootStart)));
 }
 {
   const skip = () => bootDone(true);
@@ -2219,7 +2219,7 @@ function bootDone(skip) {
     D = migrate(kept || d || freshData());
     if (!d || kept) save();
     if (kept) userEdited = true;
-    if (kept) setTimeout(() => toast('✅ Unsaved changes restored', "Life Planner closed before it could save your last changes, so they were kept here and are saved now."), 1500);
+    if (kept) setTimeout(() => toast('✅ Unsaved changes restored', "Cinder closed before it could save your last changes, so they were kept here and are saved now."), 1500);
   } catch (e) {
     // the app isn't running: open what this browser kept, and save it once it's back
     // (only a copy that came from a loaded planner; until then nothing is saved)

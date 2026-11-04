@@ -51,9 +51,9 @@ function accountCard() {
   if (!acctLoaded) { loadAccount().then(() => render()); return '<div class="card acctcard"><p class="muted">Loading your account…</p></div>'; }
   if (!acct.configured) return '';
   if (!acct.signedIn) return `<div class="card acctcard"><div class="acct-login">
-      <div class="acct-hero">👥</div><h2>Log in to Life Planner</h2>
+      <div class="acct-hero">👥</div><h2>Log in to Cinder</h2>
       <p class="muted small-text">Make an account to find friends by username and race them on the leaderboards. Only your username, avatar and leaderboard numbers are shared.</p>
-      ${acct.moved ? `<p class="small-text"><b>Life Planner moved to a new friends server.</b> Log in once more with your usual password and your account, friends and planner come with you.</p>` : ''}
+      ${acct.moved ? `<p class="small-text"><b>Cinder moved to a new friends server.</b> Log in once more with your usual password and your account, friends and planner come with you.</p>` : ''}
       <form id="acctForm" autocomplete="on">
         <label>Username<input name="username" autocomplete="username" value="${esc(acct.moved || '')}" required minlength="3" maxlength="20" pattern="[A-Za-z0-9_]+" placeholder="e.g. speedy_sam"></label>
         <label>Password<input name="password" type="password" autocomplete="current-password" required minlength="8" maxlength="72" placeholder="8+ characters"></label>
@@ -131,7 +131,7 @@ document.addEventListener('click', async e => {
     } catch (err) { acctBusy = false; toast(a === 'login' ? "Couldn't log in" : "Couldn't create the account", err.message, { cls: 'danger' }); }
     render(); if (typeof wiz !== 'undefined' && wiz) drawSetup();
   } else if (a === 'logout') {
-    if (!confirm('Log out of your Life Planner account?')) return;
+    if (!confirm('Log out of your Cinder account?')) return;
     await acctPost({ action: 'logout' }).catch(() => { }); await loadAccount(); friendRows = []; render(); toast('Logged out', '');
   } else if (a === 'delete') {
     if (prompt(`This removes @${acct.username} so friends can't see you any more. Type DELETE to confirm.`) !== 'DELETE') return;

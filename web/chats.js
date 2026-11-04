@@ -10,7 +10,7 @@ const chatDrafts = {};
 const chatMuted = id => { const m = (typeof D !== 'undefined' && D && D.settings.chatMute) || {}; return !!(m[id] || (m[FB] && isFbIn(chatList.find(c => c.id === id)))); };
 
 // ---------- badges ----------
-const BADGES = { dev: ['🛠️', 'DEV', 'Made Life Planner'], beta: ['🧪', 'BETA', 'Signed up during the beta'] };
+const BADGES = { dev: ['🛠️', 'DEV', 'Made Cinder'], beta: ['🧪', 'BETA', 'Signed up during the beta'] };
 function badgeTags(list, small) {
   return (Array.isArray(list) ? list : []).filter(b => BADGES[b]).map(b => `<span class="ubadge ${b} ${small ? 'sm' : ''}" title="${esc(BADGES[b][2])}">${BADGES[b][0]} ${BADGES[b][1]}</span>`).join('');
 }
@@ -349,7 +349,7 @@ function fbCopy() {
   const list = chatMsgs.filter(m => !m.pending && (m.created_at || '').slice(0, 10) >= from && m.p?.username !== acct.username);
   if (!list.length) { toast('No feedback since then', 'Nothing was sent from ' + from + '.'); return; }
   const txt = list.map(m => `[${(m.created_at || '').slice(0, 16).replace('T', ' ')}] @${m.p?.username || fbSender(chatList.find(x => x.id === m.chat)) || '?'}: ${m.body}`).join('\n');
-  navigator.clipboard.writeText(`Life Planner feedback since ${from} (${list.length} messages):\n\n${txt}`)
+  navigator.clipboard.writeText(`Cinder feedback since ${from} (${list.length} messages):\n\n${txt}`)
     .then(() => toast('📋 Copied', `${list.length} feedback message${list.length === 1 ? '' : 's'}, ready to paste into Claude.`), () => toast("Couldn't copy", 'Your browser blocked the clipboard.', { cls: 'danger' }));
 }
 document.addEventListener('toggle', e => { if (e.target.classList?.contains('fbideas')) D.settings.fbIdeasOpen = e.target.open; }, true);
@@ -386,7 +386,7 @@ function openFeedback() {
   showForm({
     title: '💬 Send feedback',
     fields: [{ key: 'kind', label: 'What is it?', type: 'select', options: FB_KINDS, value: 'bug' },
-      { key: 'body', label: 'Tell the developer', type: 'textarea', value: '', required: true, placeholder: "What happened, or what would make Life Planner better? For a bug, say what you were doing when it went wrong." }],
+      { key: 'body', label: 'Tell the developer', type: 'textarea', value: '', required: true, placeholder: "What happened, or what would make Cinder better? For a bug, say what you were doing when it went wrong." }],
     saveLabel: 'Send',
     onSave: v => { sendFeedback(v); return false; },
   });

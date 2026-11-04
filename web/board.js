@@ -89,7 +89,7 @@ function boardSetupHtml() {
   const friends = D.friends || [];
   myFriendCode().then(c => { friendCode = c; const el = document.getElementById('myFriendCode'); if (el) el.value = c; }).catch(() => { });
   return `<div class="friendbox"><h3>👥 Friends</h3>
-    <p class="muted small-text">Send your code to friends who use Life Planner, and paste theirs below. Codes hold this week's numbers, so swap new ones each week to keep the board fresh. Nothing goes online.</p>
+    <p class="muted small-text">Send your code to friends who use Cinder, and paste theirs below. Codes hold this week's numbers, so swap new ones each week to keep the board fresh. Nothing goes online.</p>
     <div class="row"><input id="myFriendCode" readonly value="${esc(friendCode)}" style="flex:1;min-width:200px;font-family:monospace;font-size:.8rem"><button class="btn primary" data-fact="copy">Copy my code</button></div>
     <div class="row" style="margin-top:8px"><input id="friendCodeIn" placeholder="Paste a friend's code (LP1.…)" style="flex:1;min-width:200px"><button class="btn" data-fact="add">Add friend</button></div>
     ${friends.length ? `<ul class="friendlist">${friends.map(f => `<li>${safeBadge(f.av, 28)}<b>${esc(f.name)}</b><span class="muted small-text">code from ${esc(ago(new Date(f.updated).toISOString()))}${f.week && f.week !== mondayOf(today()) ? ' · last week\'s numbers' : ''}</span><span style="flex:1"></span><button class="iconbtn" data-fact="remove" data-id="${esc(f.id)}" title="Remove">✕</button></li>`).join('')}</ul>` : ''}</div>`;

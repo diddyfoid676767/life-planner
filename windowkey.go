@@ -53,11 +53,11 @@ func windowAllowed(w http.ResponseWriter, r *http.Request, key string) bool {
 		return true
 	}
 	if strings.HasPrefix(r.URL.Path, "/api/") {
-		http.Error(w, `{"error":"Open Life Planner from its icon."}`, http.StatusForbidden)
+		http.Error(w, `{"error":"Open Cinder from its icon."}`, http.StatusForbidden)
 		return false
 	}
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	w.WriteHeader(http.StatusForbidden)
-	w.Write([]byte(`<!doctype html><meta charset="utf-8"><title>Life Planner</title><body style="font:16px system-ui;padding:40px;text-align:center"><h2>Life Planner runs in its own window</h2><p>Close this tab and open Life Planner from its icon.</p></body>`))
+	w.Write([]byte(`<!doctype html><meta charset="utf-8"><title>Cinder</title><body style="font:16px system-ui;padding:40px;text-align:center"><h2>Cinder runs in its own window</h2><p>Close this tab and open Cinder from its icon.</p></body>`))
 	return false
 }

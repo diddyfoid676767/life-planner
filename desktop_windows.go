@@ -60,8 +60,9 @@ func shortcutDirs() map[string]string {
 func shortcutStatus() map[string]bool {
 	out := map[string]bool{}
 	for k, d := range shortcutDirs() {
-		_, err := os.Stat(filepath.Join(d, "Life Planner.lnk"))
-		out[k] = err == nil
+		_, err := os.Stat(filepath.Join(d, "Cinder.lnk"))
+		_, err2 := os.Stat(filepath.Join(d, "Life Planner.lnk")) // before the rename
+		out[k] = err == nil || err2 == nil
 	}
 	return out
 }
@@ -71,7 +72,8 @@ func setShortcut(where string, on bool) error {
 	if !ok {
 		return os.ErrInvalid
 	}
-	lnk := filepath.Join(dir, "Life Planner.lnk")
+	lnk := filepath.Join(dir, "Cinder.lnk")
+	os.Remove(filepath.Join(dir, "Life Planner.lnk")) // the old name
 	if !on {
 		err := os.Remove(lnk)
 		if os.IsNotExist(err) {
@@ -83,7 +85,7 @@ func setShortcut(where string, on bool) error {
 	q := func(s string) string { return "'" + strings.ReplaceAll(s, "'", "''") + "'" }
 	ps := "$s=(New-Object -ComObject WScript.Shell).CreateShortcut(" + q(lnk) + ");" +
 		"$s.TargetPath=" + q(exe) + ";$s.WorkingDirectory=" + q(filepath.Dir(exe)) + ";" +
-		"$s.IconLocation=" + q(exe+",0") + ";$s.Description='Life Planner';$s.Save()"
+		"$s.IconLocation=" + q(exe+",0") + ";$s.Description='Cinder';$s.Save()"
 	return hiddenCmd("powershell", "-NoProfile", "-NonInteractive", "-Command", ps).Run()
 }
 

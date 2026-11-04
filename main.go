@@ -1,4 +1,4 @@
-// Life Planner: a portable, single-exe planner. It serves an embedded web UI on
+// Cinder: a portable, single-exe planner. It serves an embedded web UI on
 // localhost, opens it in the default browser, and stores everything in a JSON
 // file next to the executable so the whole folder can live on a USB stick.
 package main
@@ -194,7 +194,7 @@ func main() {
 	go cleanupOld()
 	go watchGitHub()
 	go mailLoop()
-	log.Printf("Life Planner running at %s, data in %s", url, dataDir)
+	log.Printf("Cinder running at %s, data in %s", url, dataDir)
 	go func() { log.Fatal(http.Serve(ln, localOnly(mux))) }()
 	// The planner's own window (WebView2) runs here on the main thread; the
 	// app quits when it is closed. Without WebView2, fall back to a browser

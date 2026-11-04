@@ -1,7 +1,7 @@
 'use strict';
 /* The phone app: these same pages, hosted on GitHub Pages and added to the
    home screen. There's no LifePlanner.exe behind them, so this file stands in
-   for it: you log in with your Life Planner account and the planner is saved
+   for it: you log in with your Cinder account and the planner is saved
    to your own row on the friends server (planner_data), which the PC app
    keeps in sync while you're logged in there. A copy stays on the phone so it
    opens without internet. Does nothing when the PC app serves the page. */
@@ -62,8 +62,8 @@ if (!/^(127\.0\.0\.1|localhost)$/.test(location.hostname) && location.protocol !
     return new Promise(done => {
       const el = document.createElement('div');
       el.className = 'cloud-login';
-      el.innerHTML = `<form class="card"><img src="icon.svg" alt="" width="64" height="64"><h2>Life Planner</h2>
-        <p class="muted small-text">Log in with your Life Planner account, the same one you use for friends in the PC app. Make one in the PC app under Settings, Account if you don't have one yet.${ls.get(COPY) && ls.get(SERVER) !== 'fb' ? " Your planner moved to a new server: log in once more and this phone's changes are brought over." : ''}</p>
+      el.innerHTML = `<form class="card"><img src="icon.svg" alt="" width="64" height="64"><h2>Cinder</h2>
+        <p class="muted small-text">Log in with your Cinder account, the same one you use for friends in the PC app. Make one in the PC app under Settings, Account if you don't have one yet.${ls.get(COPY) && ls.get(SERVER) !== 'fb' ? " Your planner moved to a new server: log in once more and this phone's changes are brought over." : ''}</p>
         <label>Username<input name="u" autocomplete="username" autocapitalize="none" required minlength="3" maxlength="20"></label>
         <label>Password<input name="p" type="password" autocomplete="current-password" required minlength="8" maxlength="72"></label>
         <p class="cloud-err" hidden></p><button class="btn primary">Log in</button></form>`;
