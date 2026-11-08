@@ -107,6 +107,7 @@ function ftAttempts() {
 function ftGearBuffs(st = ftState()) {
   const g = {};
   for (const id of Object.values(st.wear)) { const p = st.gear.find(x => x.id === id); if (p) for (const [k, v] of Object.entries(p.b)) g[k] = (g[k] || 0) + v; }
+  if (typeof islBuffs === 'function') for (const [k, v] of Object.entries(islBuffs())) g[k] = (g[k] || 0) + v; // 2.49: island perks
   return g;
 }
 function ftAddCurrency(l, e) { const s = cdState(); s.got = s.got || { l: 0, e: 0 }; s.got.l += l; s.got.e += e; }

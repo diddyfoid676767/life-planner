@@ -156,7 +156,8 @@ function cdDay(d) {
 }
 function cdWallet() {
   const st = cdState(); let l = 0, e = 0;
-  for (let d = st.since; d <= today(); d = addDays(d, 1)) { const x = cdDay(d); l += x.lumen; e += x.ember; }
+  for (let d = st.since; d <= today(); d = addDays(d, 1)) { const x = cdDay(d), ib = typeof islEarn === 'function'; l += x.lumen * (1 + (ib ? islEarn('lp', d) : 0)); e += x.ember * (1 + (ib ? islEarn('ep', d) : 0)); } // 2.49: island perks
+  l = Math.round(l); e = Math.round(e);
   const sp = st.spent || {}, got = st.got || {}; // 2.48: spent on spells/moves and lost stakes; won in battles and scrapped gear
   return { lumen: Math.max(0, l + (got.l || 0) - (sp.l || 0)), ember: Math.max(0, e + (got.e || 0) - (sp.e || 0)), today: cdDay(today()) };
 }
