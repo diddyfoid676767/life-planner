@@ -19,7 +19,6 @@ function overallScores(rows) {
 const BOARD_SORTS = {
   overall: [['score', 'Overall', v => `${v} pts`]],
   study: [['mins', 'Study this week', v => fmtMins(v) || '0m'], ['coins', 'Coins', v => `${v} ${COIN}`], ['streak', 'Study streak', v => `🔥 ${v}`], ['trees', 'Trees', v => `🌳 ${v}`]],
-  health: [['sleep', 'Avg sleep', v => v ? fmtHm(v) : '–'], ['steps', 'Steps this week', v => (v || 0).toLocaleString()]],
   work: [['mins', 'Training this week', v => fmtMins(v) || '0m'], ['grit', 'Grit', v => `${v} ${GRIT}`], ['ovr', 'Rating', v => `⭐ ${v}`], ['wins', 'Battle wins', v => `⚔️ ${v}`], ['surv', 'Survival best', v => `🌊 ${v}`]],
 };
 function weekStats(from = mondayOf(today())) {
@@ -33,15 +32,9 @@ function myBoardRow() {
     id: 'me', name: D.settings.name || 'You', me: true, av: avatarSpec(),
     study: { mins: w.study, coins: coins(), streak: studyStreak(), trees: D.focusLogs.filter(l => !l.withered).length, pres: typeof presN === 'function' ? presN() : 0 },
     work: { mins: w.work, grit: grit(), ovr: a.ovr, wins: (D.arena.battles || []).filter(b => b.win).length, surv: D.arena.survivalBest || 0 },
-    health: healthWeek(),
+    health: {},
     week: mondayOf(today()),
   };
-}
-function healthWeek(from = mondayOf(today())) {
-  if (typeof healthCfg !== 'function') return {};
-  const days = Array.from({ length: 7 }, (_, i) => hday(addDays(from, i)));
-  const slept = days.filter(d => d.sleep);
-  return { sleep: slept.length ? Math.round(slept.reduce((a, d) => a + d.sleep, 0) / slept.length) : 0, steps: days.reduce((a, d) => a + (d.steps || 0), 0) };
 }
 function allFriendRows() { return [...(D.friends || []).filter(f => !friendRows.some(r => r.name === f.name)), ...friendRows]; }
 function viewBoard() {

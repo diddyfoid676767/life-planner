@@ -539,9 +539,6 @@ function bestRecords() {
   const runs = ws.filter(w => /run|jog/i.test(w.sport + ' ' + w.title) && km(w) > 0);
   const paced = runs.filter(w => +w.duration > 0 && km(w) >= 1).map(w => ({ w, pace: +w.duration / km(w) }));
   const fastest = paced.sort((a, b) => a.pace - b.pace)[0];
-  const H = typeof healthCfg === 'function' ? healthCfg().days : {};
-  const hd = Object.entries(H);
-  const hbest = (k, low) => hd.filter(([, v]) => v[k]).reduce((b, [d, v]) => (b == null || (low ? v[k] < b.v : v[k] > b.v)) ? { v: v[k], d } : b, null);
   const studyDay = {}; for (const l of D.focusLogs) studyDay[l.date] = (studyDay[l.date] || 0) + l.mins;
   const sd = Object.entries(studyDay).reduce((b, [d, m]) => m > (b?.v || 0) ? { v: m, d } : b, null);
   const longS = best(D.focusLogs, l => l.mins);
@@ -550,7 +547,6 @@ function bestRecords() {
   const lw = best(ws, w => +w.duration || 0), lr = best(runs, km);
   const totalKm = ws.reduce((a, w) => a + km(w), 0), totalH = ws.reduce((a, w) => a + (+w.duration || 0), 0);
   const ww = wk(v => v.mins), wn = wk(v => v.n), wkm = wk(v => v.km);
-  const sl = hbest('sleep'), st = hbest('steps'), rhr = hbest('rhr', true), ss = hbest('score');
   return [
     ['🏃', 'Training', [
       ['⏱️', 'Longest workout', lw ? fmtMins(lw.v) : null, lw && `${esc(lw.x.title || lw.x.sport)} · ${fmtDate(lw.x.date)}`],
@@ -563,11 +559,6 @@ function bestRecords() {
       ['⚡', 'Fastest pace (1km+)', fastest ? `${Math.floor(fastest.pace)}:${String(Math.round(fastest.pace % 1 * 60)).padStart(2, '0')} /km` : null, fastest && `${+km(fastest.w).toFixed(2)} km · ${fmtDate(fastest.w.date)}`],
       ['📈', 'Most km in a week', wkm?.v ? `${+wkm.v.toFixed(1)} km` : null, wkm && `week of ${fmtDate(wkm.k)}`],
       ['🌏', 'All-time distance', totalKm ? `${+totalKm.toFixed(1)} km` : null, 'from workouts with a distance']]],
-    ['🌙', 'Health', [
-      ['😴', 'Longest sleep', sl ? fmtHm(sl.v) : null, sl && fmtDate(sl.d)],
-      ['💯', 'Best sleep score', ss?.v || null, ss && fmtDate(ss.d)],
-      ['👟', 'Most steps in a day', st ? st.v.toLocaleString() : null, st && fmtDate(st.d)],
-      ['❤️', 'Lowest resting HR', rhr ? `${rhr.v} bpm` : null, rhr && fmtDate(rhr.d)]]],
     ['📚', 'Study & Arena', [
       ['🎯', 'Longest focus session', longS ? fmtMins(longS.v) : null, longS && `${esc(subj(longS.x.subjectId).name)} · ${fmtDate(longS.x.date)}`],
       ['📖', 'Most study in a day', sd ? fmtMins(sd.v) : null, sd && fmtDate(sd.d)],

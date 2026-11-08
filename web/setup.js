@@ -247,10 +247,9 @@ const TOUR_PAGES = {
     ['.forest-tabs', 'Trees, critters and the shop', 'Choose each subject\'s tree, meet your critters, and spend coins on scenes, decorations and upgrades.'],
     ['.forest-cols > .stack:first-child', 'Challenges', 'New challenges every day and week. Claim the coins when you finish one.'],
     ['.forest-cols > .stack:last-child', 'Milestones and your trees', 'Big goals with bigger rewards, plus which tree each subject grows.']]],
-  training: ['💪 Training & Health', 'Your physical profile. Everything here powers your Arena athlete.', [
-    ['.btiles', 'This week at a glance', 'Training time, sessions done, your combo, sleep, steps and resting heart rate.'],
-    ['.rdcard', 'Readiness', 'Freshness, last night\'s sleep and your heart rate make a readiness score. A high score gives your athlete bonus HP in Arena battles.'],
-    ['.bodytabs', 'Training, sleep and bests', '<b>Training</b> has your plan and Garmin or Strava imports, <b>Sleep &amp; health</b> has your sleep log and trends, and <b>Bests</b> tracks personal records.']]],
+  training: ['💪 Fitness', 'Train, track your bests and grow your Body card.', [
+    ['.btiles', 'This week at a glance', 'Ember earned, training time, sessions done and your day streak. Start a workout from here.'],
+    ['.bodytabs', 'Train, Progress and Body', '<b>Train</b> has your plan, events and recent workouts, <b>Progress</b> tracks personal records and charts, and <b>Body</b> shows your Body card stats and heat map.']]],
   arena: ['⚔️ Arena', 'Battle with the athlete your workouts built.', [
     ['.ahero', 'Your athlete', 'Your stats, today\'s readiness bonus, 💪 Grit, combo and battles left today.'],
     ['.arenatabs', 'Arena tabs', 'Battle gym leaders and bosses, check quests, unlock and upgrade moves, and spend Grit on gear and outfits.']]],

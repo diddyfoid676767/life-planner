@@ -438,7 +438,6 @@ function morphNode(o, n) {
 function render() {
   applyTheme();
   applyNav();
-  if (view === 'health') { view = 'training'; ui.bodyPage = 'health'; }
   if (view === 'day') view = 'today';
   if (view === 'character') view = 'profile'; // 2.51: Character is part of Profile now
   document.querySelectorAll('#tabs button').forEach(b => b.classList.toggle('active', b.dataset.view === view));
@@ -448,7 +447,7 @@ function render() {
   const fresh = v.dataset.view !== view;
   if (fresh) { v.classList.remove('enter'); void v.offsetWidth; v.classList.add('enter'); v.dataset.view = view; }
   else v.classList.remove('enter'); // staying on the same page: no entrance animation, only the parts that changed are updated
-  const html = ({ today: viewToday, calendar: viewCalendar, study: viewStudyHub, forest: viewForest, training: viewTraining, arena: viewArena, house: viewHouse, islands: viewIslands, friends: viewFriends, board: viewLeaderboard, chats: () => { view = 'friends'; return viewFriends(); }, profile: viewProfile, school: viewSchool, health: () => { view = 'training'; ui.bodyPage = 'health'; return viewTraining(); }, personal: viewPersonal, todo: viewTodo, inbox: viewInbox, settings: viewSettings })[view]();
+  const html = ({ today: viewToday, calendar: viewCalendar, study: viewStudyHub, forest: viewForest, training: viewTraining, arena: viewArena, house: viewHouse, islands: viewIslands, friends: viewFriends, board: viewLeaderboard, chats: () => { view = 'friends'; return viewFriends(); }, profile: viewProfile, school: viewSchool, personal: viewPersonal, todo: viewTodo, inbox: viewInbox, settings: viewSettings })[view]();
   if (fresh || !v.firstChild) v.innerHTML = html; else morphHtml(v, html);
   updateInboxBadge();
   gameFeedback();
