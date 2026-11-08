@@ -295,7 +295,7 @@ function pvpGhost(user) {
   startPvpBattle('ghost', pvpTeamSnap(), { name: f.name, user: f.user, r: s.r, team: s.team, av: f.av }, null, 0);
 }
 // what goes up with your leaderboard row
-function pvpPublish() { const p = pvpState(); return { ver: PVP_VER, r: p.r, w: p.w, l: p.l, best: p.best || p.r, team: pvpTeamSnap() }; }
+function pvpPublish() { const p = pvpState(); return { ver: PVP_VER, r: p.r, w: p.w, l: p.l, best: p.best || p.r, team: pvpTeamSnap(), ch: typeof ftPublish === 'function' ? ftPublish() : undefined }; }
 
 // ---------- the PvP page ----------
 function arenaPvp() {

@@ -3015,3 +3015,47 @@ h1 { font-size: 1.6rem; letter-spacing: -.015em; }
 .cdsport input[type=number] { width: 70px; }
 .cdlog { list-style: none; padding: 0; margin: 10px 0 0; }
 .cdlog li { display: grid; grid-template-columns: 90px 1fr auto auto; gap: 8px; align-items: center; padding: 4px 0; font-size: .9rem; }
+
+/* 2.48 battles: build, shop, gear and the fight overlay */
+.ftlbl { font-size: .78rem; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); margin: 6px 0; }
+.ftslots { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; }
+@media (max-width: 700px) { .ftslots { grid-template-columns: 1fr; } }
+.ftslot { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; width: 100%; min-height: 54px; margin-bottom: 6px; padding: 7px 10px; border-radius: 10px; border: 1px dashed var(--border); background: var(--panel2); color: inherit; text-align: left; cursor: pointer; }
+.ftslot.spell { border-color: #748ffc; } .ftslot.move { border-color: #f76707; } .ftslot.cl { border: 1px solid #f59f00; cursor: default; }
+.ftslot span { font-size: 1.1rem; }
+.ftgear6 { display: grid; grid-template-columns: repeat(6, 1fr); gap: 8px; }
+@media (max-width: 860px) { .ftgear6 { grid-template-columns: repeat(3, 1fr); } }
+.ftgslot { position: relative; display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 8px 4px; border-radius: 10px; border: 2px solid var(--rc, var(--border)); background: var(--panel2); text-align: center; font-size: .8rem; }
+.ftgslot span { font-size: 1.4rem; } .ftgslot .iconbtn { position: absolute; top: 2px; right: 2px; }
+.ftgear { font-weight: 700; color: var(--rc); }
+.ftbag summary { cursor: pointer; margin: 8px 0; font-weight: 600; }
+.ftbagrow { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; padding: 4px 0; border-bottom: 1px solid var(--border); }
+.ftshop { display: flex; flex-direction: column; gap: 6px; margin-top: 8px; max-height: 420px; overflow: auto; }
+.ftitem { display: grid; grid-template-columns: 34px 1fr auto; gap: 10px; align-items: center; padding: 8px 10px; border-radius: 10px; border: 1px solid var(--border); border-left: 4px solid var(--rc); }
+.ftitem.own { opacity: .85; } .fti-e { font-size: 1.5rem; text-align: center; }
+.ftrar { font-size: .7rem; font-weight: 800; color: var(--rc); text-transform: uppercase; }
+.ftbosses { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
+.ftbossbtn { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 8px 4px; border-radius: 10px; border: 1px solid var(--border); background: var(--panel2); color: inherit; cursor: pointer; font-size: .75rem; }
+.ftbossbtn span { font-size: 1.6rem; } .ftbossbtn:hover { border-color: var(--accent); }
+.ftbossinfo { margin: 14px 0; border-left: 4px solid var(--hc, var(--accent)); }
+#ftov { position: fixed; inset: 0; z-index: 900; display: flex; align-items: center; justify-content: center; padding: 16px; background: rgba(8, 10, 20, .72); }
+.ftbox { width: min(720px, 100%); max-height: calc(100vh - 32px); overflow: auto; display: flex; flex-direction: column; gap: 12px; padding: 18px; border-radius: 16px; background: var(--panel); color: var(--text); box-shadow: 0 20px 60px rgba(0, 0, 0, .4); }
+.ftfoe { display: flex; gap: 16px; align-items: center; }
+.fte { font-size: 4rem; line-height: 1; animation: ftbob 2.4s ease-in-out infinite; }
+@keyframes ftbob { 50% { transform: translateY(-6px); } }
+.ftmain { flex: 1; min-width: 0; } .ftmain h2 { margin: 2px 0 6px; }
+.ftbar { position: relative; height: 18px; border-radius: 9px; background: var(--panel2); overflow: hidden; }
+.ftbar i { position: absolute; inset: 0 auto 0 0; background: #e03131; transition: width .35s; }
+.ftbar.me i { background: #2f9e44; }
+.ftbar span { position: relative; display: block; text-align: center; font-size: .75rem; font-weight: 700; line-height: 18px; }
+.ftdealt { font-size: 1.05rem; } .ftdealt b { color: #e8590c; font-size: 1.3rem; }
+.ftchips { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; }
+.ftchip { font-size: .72rem; padding: 2px 7px; border-radius: 9px; background: var(--panel2); border: 1px solid var(--border); }
+.ftlog { height: 150px; overflow: auto; padding: 8px 10px; border-radius: 10px; background: var(--panel2); font-size: .85rem; display: flex; flex-direction: column; gap: 2px; }
+.ftlog .good { color: var(--ok); } .ftlog .bad { color: var(--danger); } .ftlog .hint { color: var(--warn); }
+.ftsks { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 8px; }
+.ftsk { display: flex; flex-direction: column; align-items: flex-start; gap: 1px; padding: 8px 10px; border-radius: 10px; border: 1px solid var(--border); border-left: 4px solid #748ffc; background: var(--panel2); color: inherit; cursor: pointer; text-align: left; }
+.ftsk.ftmv { border-left-color: #f76707; } .ftsk.ftcl { border-left-color: #f59f00; }
+.ftsk:hover:not(:disabled) { border-color: var(--accent); transform: translateY(-1px); }
+.ftsk:disabled { opacity: .45; cursor: default; } .ftsk span { font-size: 1.2rem; } .ftsk small { color: var(--muted); font-size: .72rem; }
+.ftres { text-align: center; } .ftres h3 { font-size: 1.4rem; margin: 4px 0; }

@@ -157,8 +157,8 @@ function cdDay(d) {
 function cdWallet() {
   const st = cdState(); let l = 0, e = 0;
   for (let d = st.since; d <= today(); d = addDays(d, 1)) { const x = cdDay(d); l += x.lumen; e += x.ember; }
-  const sp = st.spent || {};
-  return { lumen: Math.max(0, l - (sp.l || 0)), ember: Math.max(0, e - (sp.e || 0)), today: cdDay(today()) };
+  const sp = st.spent || {}, got = st.got || {}; // 2.48: spent on spells/moves and lost stakes; won in battles and scrapped gear
+  return { lumen: Math.max(0, l + (got.l || 0) - (sp.l || 0)), ember: Math.max(0, e + (got.e || 0) - (sp.e || 0)), today: cdDay(today()) };
 }
 
 // ---------- page ----------
@@ -185,15 +185,16 @@ function viewCharacter() {
       <div class="card cdcoin cd-l"><div class="cdbig">${LUMEN} ${w.lumen.toLocaleString()}</div><div><b>Lumen</b><div class="muted small-text">From study. Today ${t.lumen} (${fmtMins(Math.min(t.study, CD_CAP_STUDY)) || '0m'} of ${CD_CAP_STUDY / 60}h study${t.lockMins ? `, ${fmtMins(t.lockMins)} class lock-in` : ''})</div></div></div>
       <div class="card cdcoin cd-e"><div class="cdbig">${EMBER} ${w.ember.toLocaleString()}</div><div><b>Ember</b><div class="muted small-text">From training. Today ${t.ember} (${fmtMins(t.train) || '0m'} of ${CD_CAP_TRAIN / 60}h)</div></div></div>
     </div>
-    <p class="muted small-text">Sessions count from ${CD_MIN} minutes and pay by the minute (training pays more when it's hard). Class mode's lock-in pays about a third as much, scaled by your effort rating. Spending comes with spells, moves and islands.</p>
+    <p class="muted small-text">Sessions count from ${CD_MIN} minutes and pay by the minute (training pays more when it's hard). Class mode's lock-in pays about a third as much, scaled by your effort rating. Spend them on spells and moves in the Build below.</p>
     ${fresh ? `<div class="card banner"><b>You're on a starter card.</b> <span class="muted">Add your subject scores below and log a few PRs on Training → Athletics to build your real card.</span></div>` : ''}
     <div class="cdcards">
       <div class="card cdcard cd-m"><div class="cdhead"><span>🧠 MIND</span><b>${ch.mind}</b></div>${cdBars(MIND_STATS, ch.m)}</div>
       <div class="card cdcard cd-ovr"><div class="cdcls">${cls ? cls.e : '❔'}</div><div class="cdovr">${ch.ovr}</div><div>${cls ? `<b>${cls.n}</b>` : '<span class="muted">No class yet</span>'}</div><div class="muted small-text">${esc(D.settings.name || 'You')}</div></div>
       <div class="card cdcard cd-b"><div class="cdhead"><span>💪 BODY</span><b>${ch.body}</b></div>${cdBars(BODY_STATS, ch.b)}</div>
     </div>
-    <div class="card"><h3>Class</h3><p class="muted small-text">Pick the class you want to play. ⭐ marks your best matches from your top stats. Classes change your battle abilities when battles are updated.</p>
+    <div class="card"><h3>Class</h3><p class="muted small-text">Pick the class you want to play. ⭐ marks your best matches from your top stats. Your class gives you a passive and its own skill in battles.</p>
       <div class="cdclasses">${CD_CLASSES.map(c => `<button type="button" class="cdclass ${st.cls === c.id ? 'on' : ''}" data-cd="cls" data-id="${c.id}"><span class="cdce">${c.e}</span><b>${c.n}${sug.includes(c.id) ? ' ⭐' : ''}</b><small>${c.s.map(k => CD_STAT[k][1]).join(' · ')}</small><small class="muted">${c.d}</small></button>`).join('')}</div></div>
+    ${typeof ftBuildHtml === 'function' ? `<div class="friends-main"><div class="stack">${ftBuildHtml()}</div><div class="stack">${ftBattlesHtml()}</div></div>` : ''}
     <div class="friends-main">
       <div class="stack"><div class="card"><h3>🧠 Subject scores, ${cdTermName(term)}</h3>
         <p class="muted small-text">Your average result in each subject this term, as a percentage. Each subject feeds Mind by the weights shown, scaled roughly like VCE scaling. Empty boxes use your last term's score. These will come from MyWestbourne once the app can read it.</p>

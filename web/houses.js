@@ -75,9 +75,10 @@ function hsWeek(wk, c = hsCards()) {
 }
 function housePublish() {
   const st = hsState(); if (!st.id) return undefined;
-  const wk = mondayOf(today()), c = hsCards(), w = hsWeek(wk, c), p = hsWeek(addDays(wk, -7), c);
-  const prev = [7, 14, 21].map(n => hsWeek(addDays(wk, -n), c).dmg);
-  return { h: st.id, wk, d: Math.min(w.dmg, 20000), p: Math.min(p.dmg, 20000), a: Math.min(Math.round(prev.reduce((x, y) => x + y, 0) / 3), 20000), e: Math.min(w.e, 20000), m: c.m, b: c.b };
+  const wk = mondayOf(today()), c = hsCards(), bd = x => typeof ftWeekDmg === 'function' ? ftWeekDmg(x) : 0; // 2.48: turn-based fight damage adds on top
+  const w = hsWeek(wk, c), p = hsWeek(addDays(wk, -7), c).dmg + bd(addDays(wk, -7));
+  const prev = [7, 14, 21].map(n => hsWeek(addDays(wk, -n), c).dmg + bd(addDays(wk, -n)));
+  return { h: st.id, wk, d: Math.min(w.dmg + bd(wk), 20000), p: Math.min(p, 20000), a: Math.min(Math.round(prev.reduce((x, y) => x + y, 0) / 3), 20000), e: Math.min(w.e, 20000), m: c.m, b: c.b };
 }
 
 // everyone's rows this week, from the friends server
@@ -146,13 +147,15 @@ function viewHouse() {
       </div>
       <div class="hscards">${hsCardHtml('m', c.m)}${hsCardHtml('b', c.b)}</div>
     </div>
+    ${typeof ftHouseHtml === 'function' ? ftHouseHtml() : ''}
     <div class="friends-main">
       <div class="stack">
-        <div class="card"><h3>⚔️ Your hits this week: ${w.dmg.toLocaleString()}</h3>
+        <div class="card"><h3>⚔️ Your hits this week: ${(w.dmg + (typeof ftWeekDmg === 'function' ? ftWeekDmg(wk) : 0)).toLocaleString()}</h3>
           <table class="hstable"><tr><td>📚 Focus sessions</td><td>${w.study} pts${w.deep ? ` · ⚡ Deep Focus ×${w.deep}` : ''}</td></tr>
           <tr><td>🃏 Revision</td><td>${w.rev} pts</td></tr>
           <tr><td>🏃 Workouts</td><td>${w.w} pts · ${w.trainDays} day${w.trainDays === 1 ? '' : 's'}${w.combo ? ' · ⚡ Combo' : ''}</td></tr>
           <tr><td>🏅 PBs</td><td>${w.pb} pts${w.pbs ? ` · ${w.pbs} new` : ''}</td></tr>
+          <tr><td>⚔️ Boss fights</td><td>${typeof ftWeekDmg === 'function' ? ftWeekDmg(wk).toLocaleString() : 0} damage</td></tr>
           <tr><td>✨ All-rounder</td><td>${w.both ? '+10% on' : 'Study and train this week for +10%'}</td></tr></table>
           <p class="muted small-text">Points come from focus sessions (▶ on Study), revision cards and quizzes, and finished workouts (minutes × how hard). Daily caps stop farming. Your Mind and Body ratings multiply it into damage.</p>
           ${!w.dmg ? `<div class="row" style="gap:8px"><button class="btn" data-act="goto" data-v="study">📚 Start a focus session</button><button class="btn ghost" data-act="goto" data-v="training">🏃 Log a workout</button></div>` : ''}
@@ -175,7 +178,7 @@ function hsRecord(f) {
   const st = hsState(), me = f.rows.findIndex(x => x.me), was = st.seen[f.wk];
   const hr = HS_HOUSES.map(x => hsFight(x.id)).sort((a, b) => b.dealt / b.hp - a.dealt / a.hp).findIndex(x => x.hid === f.hid) + 1;
   const rec = { boss: hsBoss(f.wk).n, hp: f.hp, dealt: f.dealt, me: f.rows[me]?.d || 0, rank: me + 1, hr: hsRows.length ? hr : 0, won: f.dead };
-  if (f.dead && !was?.won) { st.wins++; toast(`${hsBoss(f.wk).e} Boss defeated!`, `${hsHouse(f.hid).name} took down ${rec.boss}.`); }
+  if (f.dead && !was?.won) { st.wins++; if (typeof ftHouseKill === 'function') ftHouseKill(f.wk); toast(`${hsBoss(f.wk).e} Boss defeated!`, `${hsHouse(f.hid).name} took down ${rec.boss}.`); }
   if (rec.rank && rec.rank <= 3 && f.rows.length >= 3 && !(was?.rank <= 3)) st.mvp++;
   if (!f.dead && f.left < f.hp * .1 && !was?.low) { rec.low = 1; toast('🔥 Boss under 10%', 'The last hit is up for grabs. One focus session or workout could finish it.'); }
   else if (was?.low) rec.low = 1;
