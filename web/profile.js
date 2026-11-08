@@ -17,18 +17,21 @@ function pfSpec() {
 }
 function viewProfile() {
   const av = myAv(), spec = pfSpec(), lv = levelInfo(), cat = ui.pfCat || 'look';
+  const C = typeof cdParts === 'function' ? cdParts() : null, SL = typeof solisLevel === 'function' ? solisLevel() : null; // 2.51: Character merged in
   const owned = COSMETICS.filter(c => ownsCos(c.id)).length, tryC = ui.pfTry && cos(ui.pfTry);
   const user = acct.signedIn ? `@${esc(acct.username)}` : acct.configured && !ONLINE ? '<a href="#" data-pf="login">Log in to show friends</a>' : '';
   const stage = `<div class="pfstage" id="pfStage" style="background:${BG_CSS[spec.bg] || 'radial-gradient(ellipse at 50% 30%,var(--panel),var(--panel2))'}">
       <div class="pf3d" id="pf3d"></div><div class="pf2d">${avatarFull(spec, { size: 300, cls: 'idle' })}${petHtml(spec.pet, 60)}</div>
       <div class="pfstage-btns"><button class="btn small" data-pf="dance" title="Play your victory dance">💃 Dance</button><button class="btn small" data-pf="turnL" title="Turn left">⟲</button><button class="btn small" data-pf="turnR" title="Turn right">⟳</button><button class="btn small ${PF.spin ? 'on' : ''}" data-pf="spin" title="Spin on its own">🔄</button></div>
       ${tryC ? `<div class="pftry"><span>Trying on <b>${esc(tryC.name)}</b></span>${pfBuyBtn(tryC)}<button class="btn small" data-pf="untry">Take off</button></div>` : '<div class="pfhint">Drag to turn your athlete</div>'}</div>`;
-  return `${pageHead('👤 Profile', 'Your avatar, your badges and your number')}
+  return `${pageHead('🜂 Character', 'You, your cards, class, build and battles, all in one place')}
+    ${C ? C.wallet + C.banner + C.cards : ''}
     <div class="pfwrap">
       <div class="card pfcard">${stage}
         <div class="pfname"><h2>${esc(D.settings.name || 'You')}${typeof presStar === 'function' ? presStar({ me: true }) : ''}${typeof badgeTags === 'function' ? badgeTags(myBadges) : ''}</h2>
-          <div class="muted">${user}${user ? ' · ' : ''}Level ${lv.n} ${esc(lv.title)} · #${esc(D.settings.jerseyNo ?? 11)}</div></div>
-        <div class="pfstats"><span>${COIN} <b>${coins()}</b></span><span>${GRIT} <b>${grit()}</b></span><span>🔥 <b>${studyStreak()}</b> day streak</span><span>👕 <b>${owned}</b>/${COSMETICS.length} styles</span></div>
+          <div class="muted">${user}${user ? ' · ' : ''}${SL ? `Level ${SL.n}` : `Level ${lv.n} ${esc(lv.title)}`} · #${esc(D.settings.jerseyNo ?? 11)}</div>
+          ${SL ? `<div class="pflv" title="Level XP is every Lumen and Ember you have earned. New spells, moves, gear and buildings unlock as you level up."><div class="cdtrack"><i style="width:${SL.max ? 100 : Math.round(SL.into / SL.need * 100)}%;background:linear-gradient(90deg,#f59f00,#4dabf7)"></i></div><small class="muted">${SL.max ? 'Max level' : `${SL.into.toLocaleString()} / ${SL.need.toLocaleString()} XP to level ${SL.n + 1}`}</small></div>` : ''}</div>
+        <div class="pfstats"><span>${COIN} <b>${coins()}</b></span><span>${GRIT} <b>${grit()}</b></span><span>🔥 <b>${studyStreak()}</b> day streak</span><span>👕 <b>${owned}</b>/${COSMETICS.length} styles</span>${SL ? `<span title="Your old XP level, still used to unlock some styles">🎨 Style level <b>${lv.n}</b></span>` : ''}</div>
       </div>
       <div class="stack pfright">
     <div class="card pfedit"><div class="pfcats">${PF_CATS.map(([k, l]) => `<button class="${cat === k ? 'on' : ''}" data-pf="cat" data-v="${k}">${l}</button>`).join('')}</div>
@@ -40,7 +43,8 @@ function viewProfile() {
         ${typeof myBadges !== 'undefined' && myBadges.length ? `<div class="pfbadges">${myBadges.filter(b => BADGES[b]).map(b => `<div class="pfbadge ${b}"><span>${BADGES[b][0]}</span><div><b>${BADGES[b][1]}</b><small>${esc(BADGES[b][2])}</small></div></div>`).join('')}</div>` : ''}
       </div>
       ${accountCard()}
-    </div></div>`;
+    </div></div>
+    ${C ? C.cls + C.build + C.stats : ''}`;
 }
 function pfBuyBtn(c) {
   if (ownsCos(c.id)) return `<button class="btn small primary" data-act="wearCos" data-id="${c.id}">Wear it</button>`;

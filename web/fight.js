@@ -96,6 +96,10 @@ const FT_STAT_ORDER = ['log', 'kno', 'exp', 'foc', 'spd', 'end', 'str', 'agi'];
 const ftState = () => { const c = cdState(); return (c.ft = Object.assign({ own: ['spark', 'jab'], eq: { spell: ['spark'], move: ['jab'] }, gear: [], wear: {}, att: {}, dmg: {}, leg: {}, kill: {}, r: 1000, w: 0, l: 0 }, c.ft || {})); };
 const ftSkill = id => FT_SKILLS.find(s => s.id === id) || Object.values(FT_CLASS).map(c => c.sk).find(s => s.id === id);
 const ftRar = r => FT_RAR.find(x => x[0] === r) || FT_RAR[0];
+// 2.51: spells and moves unlock by player level (level.js), cheaper ones first; gear above common needs a level to wear
+const ftSkillLv = s => s.lv || (!s.c ? 1 : s.r === 'legendary' ? 18 : s.r === 'epic' ? 12 : s.c <= 120 ? 2 : s.c <= 160 ? 3 : s.c <= 200 ? 4 : s.c <= 240 ? 6 : 8);
+const FT_GEAR_LV = { common: 1, rare: 3, epic: 6, legendary: 10 };
+const ftGearLv = p => FT_GEAR_LV[p.r] || 1;
 const ftWeekDmg = wk => Math.min(FT_WEEK_CAP, Math.round(ftState().dmg[wk] || 0));
 function ftAttempts() {
   const st = ftState(), wk = mondayOf(today()); let week = 0;
@@ -356,7 +360,10 @@ function ftBuildHtml() {
   const st = ftState(), w = cdWallet(), cls = cdState().cls, me = ftMe(), g = ftGearBuffs(st), tab = ui.ftTab || 'spell';
   const slot = (k, i) => { const id = st.eq[k][i], s = id && ftSkill(id); return `<button class="ftslot ${k}" data-ft="unequip" data-k="${k}" data-i="${i}" title="${s ? esc(s.d) + ' (click to take off)' : 'Empty: equip one from your collection below'}">${s ? `<span>${s.e}</span><b>${esc(s.n)}</b><small>${CD_STAT[s.st][1]}</small>` : '<span class="muted">+</span><small class="muted">Empty</small>'}</button>`; };
   const csk = FT_CLASS[cls]?.sk;
-  const shop = FT_SKILLS.filter(s => s.k === tab).map(s => {
+  const lvN = solisLevel(w).n;
+  const shop = FT_SKILLS.filter(s => s.k === tab).sort((a, b) => ftSkillLv(a) - ftSkillLv(b) || a.c - b.c).map(s => {
+    const need = ftSkillLv(s);
+    if (lvN < need && !st.own.includes(s.id)) return `<div class="ftitem locked"><span class="fti-e">🔒</span><div><b>???</b><div class="muted small-text">A ${s.k === 'spell' ? 'Mind spell' : 'Body move'}${s.r ? ' · ' + ftRar(s.r)[1] : ''}. What it does stays hidden until you unlock it.</div></div><span class="tag">Level ${need}</span></div>`;
     const own = st.own.includes(s.id), on = st.eq[s.k].includes(s.id), cur = s.k === 'spell' ? LUMEN : EMBER, bal = s.k === 'spell' ? w.lumen : w.ember, R = ftRar(s.r);
     const legGone = s.r === 'legendary' && !own && st.leg[cdTerm()];
     return `<div class="ftitem ${own ? 'own' : ''}" style="--rc:${R[3]}"><span class="fti-e">${s.e}</span><div><b>${esc(s.n)}</b>${s.r ? ` <span class="ftrar">${R[1]}</span>` : ''}<div class="muted small-text">${CD_STAT[s.st][1]} · ${s.pw ? `power ${s.pw}${s.hits ? '×' + s.hits : ''}` : ''}${s.cd ? ` · cooldown ${s.cd}` : ''}${s.t ? ` · ${s.t}` : ''}</div><div class="small-text">${esc(s.d)}</div></div>
@@ -365,11 +372,12 @@ function ftBuildHtml() {
   const bag = [...st.gear].sort((a, b) => FT_RAR.findIndex(x => x[0] === b.r) - FT_RAR.findIndex(x => x[0] === a.r));
   const gearSlots = FT_GEAR_SLOTS.map(([k, n, e]) => { const p = st.gear.find(x => x.id === st.wear[k]); return `<div class="ftgslot" ${p ? `style="--rc:${ftRar(p.r)[3]}" title="${esc(ftBuffText(p.b))}"` : ''}><small class="muted">${n}</small>${p ? `<span>${p.e}</span><b>${esc(p.n)}</b><button class="iconbtn" data-ft="unwear" data-k="${k}" title="Take off">✕</button>` : `<span class="muted">${e}</span><small class="muted">Empty</small>`}</div>`; }).join('');
   return `<div class="card ftbuild"><div class="row" style="justify-content:space-between"><h3>⚔️ Build</h3><span class="muted small-text">❤️ ${me.max} health${Object.keys(g).length ? ' · ' + ftBuffText(Object.fromEntries(Object.entries(g).filter(([k]) => k !== 'hp'))) : ''}</span></div>
-    <p class="muted small-text">Equip up to ${FT_SPELLS} spells (Mind) and ${FT_MOVES} moves (Body). Each one scales with the stat shown, so your cards matter. Your class skill is always in. Change your build any time outside a fight.</p>
+    <p class="muted small-text">New spells and moves unlock as you level up (what they do is hidden until then), and rare, epic and legendary gear can be worn from levels ${FT_GEAR_LV.rare}, ${FT_GEAR_LV.epic} and ${FT_GEAR_LV.legendary}. Equip up to ${FT_SPELLS} spells (Mind) and ${FT_MOVES} moves (Body). Each one scales with the stat shown, so your cards matter. Your class skill is always in. Change your build any time outside a fight.</p>
     <div class="ftslots"><div><div class="ftlbl">🧠 Spells</div>${[0, 1, 2].map(i => slot('spell', i)).join('')}</div><div><div class="ftlbl">💪 Moves</div>${[0, 1, 2].map(i => slot('move', i)).join('')}</div>
       <div><div class="ftlbl">Class</div>${csk ? `<div class="ftslot cl" title="${esc(csk.d)}"><span>${csk.e}</span><b>${csk.n}</b><small>${esc(FT_CLASS[cls].p)}</small></div>` : '<div class="ftslot"><small class="muted">Pick a class above to get its skill</small></div>'}</div></div>
     <div class="ftlbl" style="margin-top:12px">🛡️ Gear</div><div class="ftgear6">${gearSlots}</div>
-    ${bag.length ? `<details class="ftbag"><summary>Gear bag (${bag.length})</summary>${bag.map(p => { const on = st.wear[p.slot] === p.id; return `<div class="ftbagrow">${ftGearChip(p)} <small class="muted">${FT_GEAR_SLOTS.find(s => s[0] === p.slot)[1]}</small>${on ? '<span class="tag">Wearing</span>' : `<button class="btn small" data-ft="wear" data-id="${p.id}">Wear</button><button class="iconbtn" data-ft="scrap" data-id="${p.id}" title="Scrap for ${ftScrap(p)} ${LUMEN} and ${EMBER}">♻️</button>`}</div>`; }).join('')}</details>` : '<p class="muted small-text">Gear drops from house boss fights, spars and duels. Beating the weekly boss as a house gives everyone who fought a rare or better piece.</p>'}
+    ${bag.length ? `<details class="ftbag"><summary>Gear bag (${bag.length})</summary>${bag.map(p => { const on = st.wear[p.slot] === p.id; const gl = ftGearLv(p); if (!on && lvN < gl) return `<div class="ftbagrow"><span class="ftgear" style="--rc:${ftRar(p.r)[3]}">${p.e} ${ftRar(p.r)[1]} ${FT_GEAR_SLOTS.find(s => s[0] === p.slot)[1].toLowerCase()} piece</span> <span class="muted small-text">buffs hidden</span><span class="tag">🔒 Wear at level ${gl}</span><button class="iconbtn" data-ft="scrap" data-id="${p.id}" title="Scrap for ${ftScrap(p)} ${LUMEN} and ${EMBER}">♻️</button></div>`;
+      return `<div class="ftbagrow">${ftGearChip(p)} <small class="muted">${FT_GEAR_SLOTS.find(s => s[0] === p.slot)[1]}</small>${on ? '<span class="tag">Wearing</span>' : `<button class="btn small" data-ft="wear" data-id="${p.id}">Wear</button><button class="iconbtn" data-ft="scrap" data-id="${p.id}" title="Scrap for ${ftScrap(p)} ${LUMEN} and ${EMBER}">♻️</button>`}</div>`; }).join('')}</details>` : '<p class="muted small-text">Gear drops from house boss fights, spars and duels. Beating the weekly boss as a house gives everyone who fought a rare or better piece.</p>'}
     <div class="ftlbl" style="margin-top:12px">🛒 Shop</div>
     <div class="seg"><button class="${tab === 'spell' ? 'on' : ''}" data-ft="tab" data-v="spell">Spells (${LUMEN} Lumen)</button><button class="${tab === 'move' ? 'on' : ''}" data-ft="tab" data-v="move">Moves (${EMBER} Ember)</button></div>
     <div class="ftshop">${shop}</div></div>`;
@@ -413,6 +421,7 @@ document.addEventListener('click', e => {
     case 'tab': ui.ftTab = v.v; render(); return;
     case 'buy': {
       const s = ftSkill(v.id), w = cdWallet(); if (!s || st.own.includes(s.id)) return;
+      if (solisLevel(w).n < ftSkillLv(s)) { toast('🔒 Locked', `Reach level ${ftSkillLv(s)} to unlock this.`); return; }
       if (s.r === 'legendary' && st.leg[cdTerm()]) return;
       if ((s.k === 'spell' ? w.lumen : w.ember) < s.c) return;
       if (!confirm(`Buy ${s.n} for ${s.c} ${s.k === 'spell' ? 'Lumen' : 'Ember'}?`)) return;
@@ -423,7 +432,7 @@ document.addEventListener('click', e => {
     }
     case 'equip': { const s = ftSkill(v.id); if (!s || !st.own.includes(s.id) || st.eq[s.k].includes(s.id)) return; const max = s.k === 'spell' ? FT_SPELLS : FT_MOVES; if (st.eq[s.k].length >= max) { toast('Slots full', `Click one of your equipped ${s.k}s to take it off first.`); return; } st.eq[s.k].push(s.id); save(); render(); return; }
     case 'unequip': { const arr = st.eq[v.k]; if (!arr?.[+v.i]) return; if (arr.length === 1 && st.eq[v.k === 'spell' ? 'move' : 'spell'].length === 0) return; arr.splice(+v.i, 1); save(); render(); return; }
-    case 'wear': { const p = st.gear.find(x => x.id === v.id); if (p) { st.wear[p.slot] = p.id; save(); render(); } return; }
+    case 'wear': { const p = st.gear.find(x => x.id === v.id); if (p && solisLevel().n < ftGearLv(p)) { toast('🔒 Too heavy for now', `Reach level ${ftGearLv(p)} to wear ${ftRar(p.r)[1].toLowerCase()} gear.`); return; } if (p) { st.wear[p.slot] = p.id; save(); render(); } return; }
     case 'unwear': delete st.wear[v.k]; save(); render(); return;
     case 'scrap': { const p = st.gear.find(x => x.id === v.id); if (!p || Object.values(st.wear).includes(p.id)) return; const n = ftScrap(p); if (!confirm(`Scrap ${p.n} for ${n} Lumen and ${n} Ember?`)) return; st.gear = st.gear.filter(x => x !== p); ftAddCurrency(n, n); save(); render(); return; }
   }

@@ -3076,3 +3076,17 @@ h1 { font-size: 1.6rem; letter-spacing: -.015em; }
 .isrow .main { flex: 1; min-width: 0; }
 .isrow .ise { font-size: 1.5rem; width: 34px; text-align: center; }
 .isrow.worn .ise, .isrow.broken .ise { filter: grayscale(.7); }
+
+/* 2.51: Character merged into Profile, results one at a time, level locks */
+.pfwrap + .card { margin-top: 16px; }
+.pflv { margin-top: 6px; display: grid; gap: 3px; }
+.pflv .cdtrack { height: 8px; }
+.cdsubj .dot { display: inline-block; width: 9px; height: 9px; border-radius: 50%; }
+.cdsubjrow { padding: 8px 0; border-bottom: 1px solid var(--line, rgba(127, 127, 127, .15)); display: grid; gap: 4px; }
+.cdsubjtop { display: flex; justify-content: space-between; gap: 8px; align-items: baseline; }
+.cdreslist { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.cdres { display: inline-flex; align-items: center; gap: 4px; padding: 2px 4px 2px 9px; border-radius: 999px; background: var(--panel2); font-size: .85em; }
+.cdres .iconbtn { padding: 0 4px; }
+.cdreslist input.cdresn { width: 160px; flex: none; }
+.cdreslist input.cdpct { width: 80px; flex: none; }
+.ftitem.locked { opacity: .65; filter: grayscale(.6); }

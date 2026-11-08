@@ -9,8 +9,8 @@ const PLACES = [
   { id: 'plan', label: 'Plan', views: ['calendar', 'todo', 'inbox'] },
   { id: 'study', label: 'Study', views: ['study', 'school'] },
   { id: 'fitness', label: 'Fitness', views: ['training'] },
-  { id: 'house', label: 'House', views: ['house', 'character', 'islands'] },
-  { id: 'friends', label: 'Friends', views: ['friends', 'board', 'profile'] },
+  { id: 'house', label: 'House', views: ['house', 'profile', 'islands'] },
+  { id: 'friends', label: 'Friends', views: ['friends', 'board'] },
 ];
 const PLACE_ICON = {
   today: '<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>',
@@ -20,7 +20,7 @@ const PLACE_ICON = {
   house: '<path d="M4 21V9l8-6 8 6v12"/><path d="M9 21v-6h6v6"/>',
   friends: '<circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0"/><path d="M16 4.5a3.5 3.5 0 0 1 0 7M18 14a6 6 0 0 1 4 6"/>',
 };
-const SUB_LABEL = { friends: 'Chats', training: 'Training & Health', inbox: 'Missed info', school: 'Class mode', board: 'Leaderboard' };
+const SUB_LABEL = { profile: 'Character', friends: 'Chats', training: 'Training & Health', inbox: 'Missed info', school: 'Class mode', board: 'Leaderboard' };
 const placeOf = v => PLACES.find(p => p.views.includes(v));
 // the sidebar button for a page, for the setup tour to point at
 function placeBtn(v) { const p = placeOf(v); return p ? document.querySelector(`#places [data-place="${p.id}"]`) : document.querySelector(`#places [data-go="${v}"]`); }

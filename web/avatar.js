@@ -114,7 +114,7 @@ const COSMETICS = [
 // unlocked by doing things: a level, a study streak, or a badge
 function cosReq(c) {
   const r = c?.req; if (!r) return null;
-  if (r.level) { const n = typeof levelInfo === 'function' ? levelInfo().n : 0; return { ok: n >= r.level, label: `Reach level ${r.level}`, prog: `${Math.min(n, r.level)}/${r.level}` }; }
+  if (r.level) { const n = typeof levelInfo === 'function' ? levelInfo().n : 0; return { ok: n >= r.level, label: `Reach style level ${r.level}`, prog: `${Math.min(n, r.level)}/${r.level}` }; }
   if (r.streak) { const n = typeof studyStreak === 'function' ? studyStreak() : 0; return { ok: n >= r.streak, label: `${r.streak}-day study streak`, prog: `${Math.min(n, r.streak)}/${r.streak}` }; }
   if (r.badge) { const has = typeof myBadges !== 'undefined' && myBadges.includes(r.badge); return { ok: has, label: r.badge === 'beta' ? 'Beta testers only' : 'Developer only', prog: '' }; }
   return null;

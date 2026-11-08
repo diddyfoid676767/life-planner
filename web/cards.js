@@ -66,8 +66,12 @@ const cdAvg = o => { const v = Object.values(o); return v.length ? Math.round(v.
 // ---------- Mind ----------
 // latest score you entered for each subject (this term first, then earlier terms)
 function cdScores() {
-  const sc = cdState().scores, terms = Object.keys(sc).sort().reverse(), out = {};
-  for (const s of D.subjects) for (const t of terms) { const v = sc[t]?.[s.id]; if (v !== '' && v != null && !isNaN(+v)) { out[s.id] = { pct: +v, term: t }; break; } }
+  const st = cdState(), sc = st.scores, rs = st.res || {}, terms = [...new Set([...Object.keys(sc), ...Object.keys(rs)])].sort().reverse(), out = {};
+  for (const s of D.subjects) for (const t of terms) {
+    const list = rs[t]?.[s.id]; // 2.51: single results (SACs, tests) entered one at a time, averaged
+    if (list?.length) { out[s.id] = { pct: Math.round(list.reduce((a, r) => a + r.v, 0) / list.length), term: t, n: list.length }; break; }
+    const v = sc[t]?.[s.id]; if (v !== '' && v != null && !isNaN(+v)) { out[s.id] = { pct: +v, term: t }; break; }
+  }
   return out;
 }
 function cdMind() {
@@ -158,49 +162,60 @@ function cdWallet() {
   const st = cdState(), hf = typeof hiFrom === 'function' ? hiFrom() : ''; let l = 0, e = 0, hl = 0, he = 0;
   for (let d = st.since; d <= today(); d = addDays(d, 1)) { const x = cdDay(d), ib = typeof islEarn === 'function', dl = x.lumen * (1 + (ib ? islEarn('lp', d) : 0)), de = x.ember * (1 + (ib ? islEarn('ep', d) : 0)); l += dl; e += de; if (hf && d >= hf) { hl += dl; he += de; } } // 2.49: island perks
   // 2.50: a fixed share of what you earn after joining the house island goes to the house pool
+  const earnL = l, earnE = e; // 2.51: lifetime earnings drive the player level (level.js)
   hl = hf ? Math.round(hl * HI_SHARE) : 0; he = hf ? Math.round(he * HI_SHARE) : 0; l = Math.round(l) - hl; e = Math.round(e) - he;
   const sp = st.spent || {}, got = st.got || {}; // 2.48: spent on spells/moves and lost stakes; won in battles and scrapped gear
-  return { lumen: Math.max(0, l + (got.l || 0) - (sp.l || 0)), ember: Math.max(0, e + (got.e || 0) - (sp.e || 0)), today: cdDay(today()), hl, he };
+  return { lumen: Math.max(0, l + (got.l || 0) - (sp.l || 0)), ember: Math.max(0, e + (got.e || 0) - (sp.e || 0)), today: cdDay(today()), hl, he, earnL, earnE };
 }
 
 // ---------- page ----------
 function cdBars(stats, vals) {
   return stats.map(([k, n, c]) => `<div class="cdstat"><span>${n}</span><div class="cdtrack"><i style="width:${vals[k]}%;background:${c}"></i></div><b>${vals[k]}</b></div>`).join('');
 }
-function viewCharacter() {
+// 2.51: the Character page is now part of Profile (profile.js puts these pieces together)
+function cdParts() {
   const st = cdState(), ch = cdChar(), w = cdWallet(), t = w.today, term = cdTerm();
   const cls = CD_CLASSES.find(c => c.id === st.cls), sug = ch.fit.slice(0, 3).map(x => x.c.id);
   const fresh = ch.ovr <= 6;
   const sc = st.scores[term] || {}, latest = cdScores();
+  const rs = (st.res || {})[term] || {};
   const subjRows = D.subjects.map(s => {
-    const [wts, scale] = cdSubjInfo(s.name), prev = latest[s.id] && latest[s.id].term !== term ? latest[s.id] : null;
-    return `<tr><td><span class="dot" style="background:${s.color}"></span> ${esc(s.name)}</td>
-      <td class="muted small-text">${Object.entries(wts).sort((a, b) => b[1] - a[1]).map(([k, v]) => `${CD_STAT[k][1]} ${Math.round(v * 100)}%`).join(' · ')}${scale !== 1 ? ` · scaled ×${scale}` : ''}</td>
-      <td><input type="number" min="0" max="100" step="1" class="cdpct" data-cd="score" data-id="${s.id}" value="${esc(sc[s.id] ?? '')}" placeholder="${prev ? prev.pct : '%'}"></td></tr>`;
+    const [wts, scale] = cdSubjInfo(s.name), cur = latest[s.id], list = rs[s.id] || [], old = !list.length && sc[s.id] != null;
+    const chips = list.map(r => `<span class="cdres">${esc(r.n || 'Result')} <b>${r.v}%</b><button class="iconbtn" data-cd="delRes" data-s="${s.id}" data-id="${r.id}" title="Remove">✕</button></span>`).join('')
+      + (old ? `<span class="cdres">Term average <b>${sc[s.id]}%</b><button class="iconbtn" data-cd="delOld" data-s="${s.id}" title="Remove">✕</button></span>` : '');
+    return `<div class="cdsubjrow"><div class="cdsubjtop"><span><span class="dot" style="background:${s.color}"></span> <b>${esc(s.name)}</b></span>
+        <span class="muted small-text">${cur ? `${cur.pct}%${cur.term !== term ? ` (from ${cdTermName(cur.term)})` : cur.n ? ` average of ${cur.n}` : ''}` : 'No score yet'}</span></div>
+      <div class="muted small-text">${Object.entries(wts).sort((a, b) => b[1] - a[1]).map(([k, v]) => `${CD_STAT[k][1]} ${Math.round(v * 100)}%`).join(' · ')}${scale !== 1 ? ` · scaled ×${scale}` : ''}</div>
+      <div class="cdreslist">${chips}<input type="text" class="cdresn" id="cdn-${s.id}" maxlength="30" placeholder="What (e.g. SAC 1)"><input type="number" min="0" max="100" step="1" class="cdpct" id="cdr-${s.id}" data-cdadd="${s.id}" placeholder="%"><button class="btn small" data-cd="addRes" data-s="${s.id}">Add</button></div></div>`;
   }).join('');
   const src = cdBodySources(), hrs = cdSportHours();
   const srcList = BODY_STATS.map(([k, n, c]) => { const top = src.filter(s => s.k === k).sort((a, b) => b.v - a.v).slice(0, 3);
     return `<div class="cdsrc"><b style="color:${c}">${n}</b>${top.length ? top.map(s => `<span>${esc(s.label)}${s.big ? ' <span class="tag" title="Very strong result: it will be checked once approvals are switched on">to be checked</span>' : ''}</span>`).join('') : '<span class="muted">No results yet</span>'}</div>`; }).join('');
   const sportsLog = D.workouts.filter(x => x.teamSport).sort((a, b) => b.date.localeCompare(a.date)).slice(0, 6);
-  return `${pageHead('🜂 Character', 'Your Mind and Body cards, class, Lumen and Ember')}
-    <div class="cdwallet">
+  return {
+    wallet: `    <div class="cdwallet">
       <div class="card cdcoin cd-l"><div class="cdbig">${LUMEN} ${w.lumen.toLocaleString()}</div><div><b>Lumen</b><div class="muted small-text">From study. Today ${t.lumen} (${fmtMins(Math.min(t.study, CD_CAP_STUDY)) || '0m'} of ${CD_CAP_STUDY / 60}h study${t.lockMins ? `, ${fmtMins(t.lockMins)} class lock-in` : ''})</div></div></div>
       <div class="card cdcoin cd-e"><div class="cdbig">${EMBER} ${w.ember.toLocaleString()}</div><div><b>Ember</b><div class="muted small-text">From training. Today ${t.ember} (${fmtMins(t.train) || '0m'} of ${CD_CAP_TRAIN / 60}h)</div></div></div>
     </div>
     <p class="muted small-text">Sessions count from ${CD_MIN} minutes and pay by the minute (training pays more when it's hard). Class mode's lock-in pays about a third as much, scaled by your effort rating. Spend them on spells and moves in the Build below.</p>
-    ${fresh ? `<div class="card banner"><b>You're on a starter card.</b> <span class="muted">Add your subject scores below and log a few PRs on Training → Athletics to build your real card.</span></div>` : ''}
-    <div class="cdcards">
+`,
+    banner: `    ${fresh ? `<div class="card banner"><b>You're on a starter card.</b> <span class="muted">Add your subject scores below and log a few PRs on Training → Athletics to build your real card.</span></div>` : ''}
+`,
+    cards: `    <div class="cdcards">
       <div class="card cdcard cd-m"><div class="cdhead"><span>🧠 MIND</span><b>${ch.mind}</b></div>${cdBars(MIND_STATS, ch.m)}</div>
       <div class="card cdcard cd-ovr"><div class="cdcls">${cls ? cls.e : '❔'}</div><div class="cdovr">${ch.ovr}</div><div>${cls ? `<b>${cls.n}</b>` : '<span class="muted">No class yet</span>'}</div><div class="muted small-text">${esc(D.settings.name || 'You')}</div></div>
       <div class="card cdcard cd-b"><div class="cdhead"><span>💪 BODY</span><b>${ch.body}</b></div>${cdBars(BODY_STATS, ch.b)}</div>
     </div>
-    <div class="card"><h3>Class</h3><p class="muted small-text">Pick the class you want to play. ⭐ marks your best matches from your top stats. Your class gives you a passive and its own skill in battles.</p>
+`,
+    cls: `    <div class="card"><h3>Class</h3><p class="muted small-text">Pick the class you want to play. ⭐ marks your best matches from your top stats. Your class gives you a passive and its own skill in battles.</p>
       <div class="cdclasses">${CD_CLASSES.map(c => `<button type="button" class="cdclass ${st.cls === c.id ? 'on' : ''}" data-cd="cls" data-id="${c.id}"><span class="cdce">${c.e}</span><b>${c.n}${sug.includes(c.id) ? ' ⭐' : ''}</b><small>${c.s.map(k => CD_STAT[k][1]).join(' · ')}</small><small class="muted">${c.d}</small></button>`).join('')}</div></div>
-    ${typeof ftBuildHtml === 'function' ? `<div class="friends-main"><div class="stack">${ftBuildHtml()}</div><div class="stack">${ftBattlesHtml()}</div></div>` : ''}
-    <div class="friends-main">
+`,
+    build: `    ${typeof ftBuildHtml === 'function' ? `<div class="friends-main"><div class="stack">${ftBuildHtml()}</div><div class="stack">${ftBattlesHtml()}</div></div>` : ''}
+`,
+    stats: `    <div class="friends-main">
       <div class="stack"><div class="card"><h3>🧠 Subject scores, ${cdTermName(term)}</h3>
-        <p class="muted small-text">Your average result in each subject this term, as a percentage. Each subject feeds Mind by the weights shown, scaled roughly like VCE scaling. Empty boxes use your last term's score. These will come from MyWestbourne once the app can read it.</p>
-        ${D.subjects.length ? `<table class="cdsubj">${subjRows}</table>` : '<p class="empty">Add your subjects on the Study page first.</p>'}</div></div>
+        <p class="muted small-text">Add each result as you get it back (SACs, tests, exams), one at a time, as a percentage. Each subject uses the average of this term's results and feeds Mind by the weights shown, scaled roughly like VCE scaling. A subject with nothing this term uses last term's score. These will come from MyWestbourne once the app can read it.</p>
+        ${D.subjects.length ? `<div class="cdsubj">${subjRows}</div>` : '<p class="empty">Add your subjects on the Study page first.</p>'}</div></div>
       <div class="stack"><div class="card"><h3>💪 What builds your Body</h3>${srcList}
         <p class="muted small-text">Your best three results for each stat count. PRs come from Training → Athletics, your gym log (estimated 1RM from any set, 12+ rep sets help Endurance), swimming by stroke, logged runs and team sports.</p>
         <button class="btn small" data-act="goto" data-v="training">Log a PR</button></div>
@@ -213,7 +228,7 @@ function viewCharacter() {
           ${sportsLog.length ? `<ul class="cdlog">${sportsLog.map(x => `<li><span>${fmtDate(x.date)}</span><b>${esc(x.title)}</b><span class="muted">${fmtMins(+x.duration)} · ${x.intensity}</span><button class="iconbtn" data-cd="delSport" data-id="${x.id}" title="Delete">✕</button></li>`).join('')}</ul>` : ''}
           <p class="muted small-text">Hours over the last 90 days add to your Body stats (up to 40 hours per sport), and each session earns Ember like a workout. ${Object.keys(hrs).length ? 'Last 90 days: ' + Object.entries(hrs).map(([id, h]) => `${CD_SPORTS.find(s => s[0] === id)?.[1] || id} ${r1(h)}h`).join(', ') : ''}</p></div>
       </div>
-    </div>`;
+    </div>` };
 }
 
 document.addEventListener('click', e => {
@@ -229,13 +244,20 @@ document.addEventListener('click', e => {
       save(); render(); toast(`🏉 ${sp[1]} logged`, mins >= CD_MIN ? `+${Math.round(Math.min(mins, CD_CAP_TRAIN) * (CD_INT[int] || 1))} ${EMBER} if under today's cap` : `Sessions under ${CD_MIN} minutes don't earn Ember.`);
       break;
     }
+    case 'addRes': cdAddRes(el.dataset.s); break;
+    case 'delRes': { const t = cdTerm(), r = (st.res || {})[t]; if (!r?.[el.dataset.s]) return; r[el.dataset.s] = r[el.dataset.s].filter(x => x.id !== el.dataset.id); if (!r[el.dataset.s].length) delete r[el.dataset.s]; save(); render(); break; }
+    case 'delOld': { const s = st.scores[cdTerm()]; if (s) { delete s[el.dataset.s]; save(); render(); } break; }
     case 'delSport': if (confirm('Delete this session?')) { D.workouts = D.workouts.filter(w => w.id !== el.dataset.id); save(); render(); } break;
   }
 });
-document.addEventListener('change', e => {
-  const el = e.target.closest('[data-cd="score"]'); if (!el) return;
-  const st = cdState(), t = cdTerm(), v = el.value.trim();
-  const s = st.scores[t] = st.scores[t] || {};
-  if (v === '') delete s[el.dataset.id]; else s[el.dataset.id] = Math.max(0, Math.min(100, Math.round(+v)));
-  save(); render();
-});
+// 2.51: add one result at a time (Enter in the % box works too)
+function cdAddRes(sid) {
+  const inp = document.getElementById('cdr-' + sid), nm = document.getElementById('cdn-' + sid), raw = (inp?.value || '').trim();
+  if (raw === '' || isNaN(+raw)) { inp?.focus(); return; }
+  const st = cdState(), t = cdTerm(), r = st.res = st.res || {}, T = r[t] = r[t] || {};
+  (T[sid] = T[sid] || []).push({ id: uid(), v: Math.max(0, Math.min(100, Math.round(+raw))), n: (nm?.value || '').trim().slice(0, 30), d: today() });
+  inp.value = ''; if (nm) nm.value = '';
+  save(); render(); toast('🧠 Result added', `${D.subjects.find(x => x.id === sid)?.name || 'Subject'}: ${Math.round(+raw)}%`);
+  setTimeout(() => document.getElementById('cdr-' + sid)?.focus(), 0);
+}
+document.addEventListener('keydown', e => { const el = e.target.closest?.('[data-cdadd]'); if (el && e.key === 'Enter') { e.preventDefault(); cdAddRes(el.dataset.cdadd); } });
