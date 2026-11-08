@@ -120,9 +120,9 @@ function hiProp(d = HI.doc || {}) {
 function hiCond(id, d = today(), doc = HI.doc || {}) {
   const s = doc.b?.[id]; if (!s || d < s.s) return null;
   if (d < s.r) return 'build';
-  const reps = new Set(hiRepsOn(s, d)), paused = isPaused(); let act = 0;
-  for (let x = s.r; x < d; x = addDays(x, 1)) { if (reps.has(x)) act = 0; if (!paused(x)) act++; }
-  if (reps.has(d)) act = 0;
+  const reps = new Set(hiRepsOn(s, d)), hits = new Set(s.hit || []), paused = isPaused(); let act = 0;
+  for (let x = s.r; x < d; x = addDays(x, 1)) { if (reps.has(x)) act = 0; if (hits.has(x)) act = hiSmash(act); if (!paused(x)) act++; }
+  if (reps.has(d)) act = 0; else if (hits.has(d)) act = hiSmash(act); // 2.53: a boss raid knocks it down one stage
   return act >= HI_BREAK ? 'broken' : act >= HI_WEAR ? 'worn' : 'ok';
 }
 function hiActDays(id) { const s = HI.doc?.b?.[id]; if (!s) return 0; const reps = new Set(hiRepsOn(s)), p = isPaused(); let a = 0; for (let x = s.r; x <= today(); x = addDays(x, 1)) { if (reps.has(x)) a = 0; if (!p(x)) a++; } return a; }
@@ -144,6 +144,7 @@ const hiTotal = (d = HI.doc || {}) => Object.values(d.c || {}).reduce((a, x) => 
 const hiLevel = (d = HI.doc || {}) => { const t = hiTotal(d); return HI_LVT.filter(x => t >= x).length; };
 const hiNeedLv = (it, lv) => it.u + (lv - 1) * 2;
 const hiLvOn = (s, d = today()) => s ? (s.up && d >= s.up.r ? s.up.lv : s.lv || 1) : 0;
+const hiSmash = act => act >= HI_WEAR ? Math.max(act, HI_BREAK) : HI_WEAR;
 const hiRepsOn = (s, d = today()) => [...(s.reps || []), ...(s.up && d >= s.up.r ? [s.up.r] : [])];
 const hiBusy = (d, now = today()) => HI_ITEMS.filter(x => { const s = d.b?.[x.id]; return s && (now < s.r || (s.up && now < s.up.r)); }).length;
 const hiUpDays = (it, lv) => Math.ceil(HI_LEN[it.t] * HI_UPD[lv - 1]);
@@ -168,7 +169,7 @@ function viewHouseIsland() {
   const P = ui.isPlace?.h ? ui.isPlace : null;
   const bubs = HI_ITEMS.filter(it => d.b?.[it.id]).map(it => {
     const s = d.b[it.id], c = hiCond(it.id);
-    const t = c === 'build' ? `⏳ ${isTimeLeft(s.r)}` : s.up && today() < s.up.r ? `⬆️ ${isTimeLeft(s.up.r)}` : c === 'broken' ? '🔴 Repair' : c === 'worn' ? '🟠 Worn' : '';
+    const t = c === 'build' ? `⏳ ${isTimeLeft(s.r)}` : s.up && today() < s.up.r ? `⬆️ ${isTimeLeft(s.up.r)}` : (c === 'broken' || c === 'worn') && (s.hit || []).some(x => x >= addDays(today(), -7)) ? '💥 Smashed' : c === 'broken' ? '🔴 Repair' : c === 'worn' ? '🟠 Worn' : '';
     return t ? `<button class="isbub" data-b="${it.id}" data-is="sel" data-id="${it.id}">${t}</button>` : '';
   }).join('');
   const hud = `<div class="ishud is-tl"><div class="islvl house" style="--hc:${h.col}"><b>${hl}</b><div><span>${h.e} ${esc(h.name)} · house level ${hl}</span>${nextT ? `<i style="width:${Math.round((tot - prevT) / (nextT - prevT) * 100)}%"></i>` : ''}</div></div>

@@ -149,10 +149,7 @@ const isPlaceBar = (n, ok) => `<div class="ishud is-bc isplace"><span>Tap a spot
 function viewIslands() {
   const tab = ui.isTab || 'personal';
   if (tab === 'house') return viewHouseIsland();
-  if (tab === 'boss') {
-    const b = typeof hsBoss === 'function' ? hsBoss(mondayOf(today())) : null;
-    return isFrame(tab, '', `<div class="ispanel iscentre"><div class="ispanel-h"><h3>${b ? b.e + ' ' + esc(b.n) : '💀 Boss island'}</h3></div><div class="ispanel-b"><p class="muted">${b ? esc(b.s) + ' ' : ''}Visiting the boss on its own island comes in a later update. You can already fight this week's boss with your build from the House page.</p><button class="btn primary" data-act="goto" data-v="house">Fight on the House page</button></div></div>`);
-  }
+  if (tab === 'boss') return viewBossIsland();
   const st = isState(), w = cdWallet(), lv = isLv(), L = isLayout(), sto = isStore();
   for (const s of Object.values(st.items)) isFold(s);
   const busy = IS_ITEMS.filter(it => isBusy(st.items[it.id])).length;
@@ -214,7 +211,7 @@ document.addEventListener('click', e => {
   const el = e.target.closest('[data-is]'); if (!el) return;
   const st = isState(), it = isItem(el.dataset.id), w = cdWallet();
   switch (el.dataset.is) {
-    case 'tab': Object.assign(ui, { isTab: el.dataset.v, isSel: null, isPanel: null, isPlace: null }); render(); break;
+    case 'tab': Object.assign(ui, { isTab: el.dataset.v, isSel: null, isPanel: null, isPlace: null }); if (view !== 'islands') { view = 'islands'; window.scrollTo(0, 0); } render(); break;
     case 'view': is3view(el.dataset.v); break;
     case 'panel': Object.assign(ui, { isPanel: el.dataset.v, isSel: null }); render(); break;
     case 'close': Object.assign(ui, { isPanel: null, isSel: null }); render(); break;
@@ -267,10 +264,10 @@ function isPlaceStart(P) {
 
 // ---------- 3D (three.js, rotate and zoom only, drawn on demand) ----------
 const IS3 = { yaw: Math.PI / 4, pitch: .62, dist: 34, sig: '' };
-const is3home = house => ({ yaw: Math.PI / 4, pitch: .62, dist: house ? 50 : 34 });
+const is3home = house => ({ yaw: Math.PI / 4, pitch: house === 'boss' ? .42 : .62, dist: house === 'boss' ? 30 : house ? 50 : 34 });
 function is3init() {
   if (IS3.R) return;
-  const R = IS3.R = fxRenderer(); R.shadowMap.type = THREE.PCFShadowMap;
+  const R = IS3.R = fxRenderer(); R.shadowMap.type = THREE.PCFSoftShadowMap;
   IS3.canvas = R.domElement; IS3.canvas.className = 'g3canvas';
   const S = IS3.scene = new THREE.Scene();
   // deep space: a soft gradient with two nebula glows, and one points cloud of stars
@@ -355,6 +352,7 @@ function is3tap(e) {
     P.at = at; P.ok = isFits(P.L, P.id, P.sz, ...at); is3ghost(at, P.sz, P.ok); is3draw();
     const b = document.getElementById('isPlaceOk'); if (b) b.disabled = !P.ok; return;
   }
+  if (IS3.house === 'boss') { ui.isPanel = ui.isPanel ? null : 'binfo'; render(); return; }
   const L = IS3.layout; if (!L || !t) { if (ui.isSel) { ui.isSel = null; render(); } return; }
   const o = L.items.find(o => o.at && t[0] >= o.at[0] && t[0] < o.at[0] + o.sz && t[1] >= o.at[1] && t[1] < o.at[1] + o.sz);
   const [cx, cz, cs] = L.centre, centre = t[0] >= cx && t[0] < cx + cs && t[1] >= cz && t[1] < cz + cs;
@@ -368,9 +366,15 @@ function mountIsland3D() {
   is3init();
   if (IS3.canvas.parentNode !== host) { host.prepend(IS3.canvas); IS3.sz = ''; }
   is3resize();
+  if (ui.isTab === 'boss') {
+    if (IS3.house !== 'boss') { IS3.house = 'boss'; Object.assign(IS3, is3home('boss')); }
+    IS3.layout = null; IS3.grid = null; const sig = 'b' + biSig();
+    if (sig !== IS3.sig) { IS3.sig = sig; is3bossBuild(); }
+    is3ghost(null); is3draw(); return;
+  }
   const house = ui.isTab === 'house' && typeof hiLayout === 'function' && HI.doc, L = house ? hiLayout() : isLayout();
   const cond = house ? hiCond : isCond, lvOf = house ? (id => hiLvOn(HI.doc.b?.[id])) : (id => isLvOn(isState().items[id]));
-  const sig = (house ? 'h' + hsState().id + hiLevel() : 'p' + isLv()) + L.items.map(o => o.id + ':' + (cond(o.id) || '') + lvOf(o.id) + (o.at || []).join('.')).join();
+  const sig = (house ? 'h' + hsState().id + hiLevel() + 't' + biTrophies().length : 'p' + isLv()) + L.items.map(o => o.id + ':' + (cond(o.id) || '') + lvOf(o.id) + (o.at || []).join('.')).join();
   if (!!house !== IS3.house) { IS3.house = !!house; Object.assign(IS3, is3home(IS3.house)); }
   IS3.layout = L;
   if (sig !== IS3.sig) { IS3.sig = sig; is3build(!!house, L); }
@@ -382,7 +386,17 @@ const is3mat = (col, glow) => { const k = col + (glow ? '*' : ''); return (IS3.m
 function is3mesh(geo, col, x = 0, y = 0, z = 0, g, glow) { const m = new THREE.Mesh(geo, is3mat(col, glow)); m.position.set(x, y, z); m.castShadow = m.receiveShadow = !glow; if (g) g.add(m); return m; }
 const is3shade = (col, f) => '#' + new THREE.Color(col).multiplyScalar(f).getHexString();
 // a low-poly rock: a solid with its corners pushed about a bit
-function is3rock(geo, rnd, amt) { const p = geo.attributes.position; for (let i = 0; i < p.count; i++) p.setXYZ(i, p.getX(i) * (1 + (rnd() - .5) * amt), p.getY(i) * (1 + (rnd() - .5) * amt), p.getZ(i) * (1 + (rnd() - .5) * amt)); geo.computeVertexNormals(); return geo; }
+// (2.53: corners that share a spot move together, so the faces stay joined and you can't see through the seams;
+// keep = how much of the bottom (before flipping) stays flat so it meets the island)
+function is3rock(geo, rnd, amt, keep = 0) {
+  const p = geo.attributes.position, moved = new Map(); geo.computeBoundingBox(); const y0 = geo.boundingBox.min.y, h = geo.boundingBox.max.y - y0 || 1;
+  for (let i = 0; i < p.count; i++) {
+    const x = p.getX(i), y = p.getY(i), z = p.getZ(i), k = `${x.toFixed(3)},${y.toFixed(3)},${z.toFixed(3)}`;
+    if (!moved.has(k)) { const t = keep ? Math.min(1, Math.max(0, (y - y0) / h - keep) / (1 - keep)) : 1; moved.set(k, [1 + (rnd() - .5) * amt * t, 1 + (rnd() - .5) * amt * t, 1 + (rnd() - .5) * amt * t]); }
+    const m = moved.get(k); p.setXYZ(i, x * m[0], y * m[1], z * m[2]);
+  }
+  geo.computeVertexNormals(); return geo;
+}
 // the lawn: a checked grid texture, one tile per unit
 function is3gridTex(N) {
   const c = document.createElement('canvas'); c.width = c.height = 128; const x = c.getContext('2d');
@@ -390,38 +404,34 @@ function is3gridTex(N) {
   x.strokeStyle = 'rgba(30,60,20,.22)'; x.lineWidth = 2; for (let i = 0; i <= 2; i++) { x.beginPath(); x.moveTo(i * 64, 0); x.lineTo(i * 64, 128); x.stroke(); x.beginPath(); x.moveTo(0, i * 64); x.lineTo(128, i * 64); x.stroke(); }
   const t = new THREE.CanvasTexture(c); t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(N / 2, N / 2); t.encoding = THREE.sRGBEncoding; t.anisotropy = 4; return t;
 }
+function is3clear() { IS3.world.traverse(o => { if (o.geometry) o.geometry.dispose(); if (o.material?.map) o.material.map.dispose(); }); IS3.world.clear(); IS3.marks = {}; }
 function is3build(house, L) {
+  if (house === 'boss') return is3bossBuild();
   const W = IS3.world, N = L.N, M = house ? 3 : 2, S = N + M * 2, top = IS3.top = .3;
   const ITEMS = house ? HI_ITEMS : IS_ITEMS, cond = house ? hiCond : isCond;
-  W.traverse(o => { if (o.geometry) o.geometry.dispose(); if (o.material?.map) o.material.map.dispose(); });
-  W.clear(); IS3.N = N; IS3.marks = {};
+  is3clear(); IS3.N = N;
   const rnd = seeded(house ? 'solis-house-' + hsState().id : 'solis-island');
   Object.assign(IS3.sun.shadow.camera, { left: -S * .75, right: S * .75, top: S * .75, bottom: -S * .75 }); IS3.sun.shadow.camera.updateProjectionMatrix();
-  // floating island: grass slab, dirt band, and a craggy rock underside with glowing crystals
-  is3mesh(new THREE.BoxGeometry(S, .5, S), '#5fae43', 0, top - .25, 0, W);
-  is3mesh(new THREE.BoxGeometry(S - .2, 1.1, S - .2), '#8a6744', 0, top - 1.05, 0, W);
-  const und = is3mesh(is3rock(new THREE.ConeGeometry(S * .7, S * .75, 4, 4), rnd, .22), '#6d5f73', 0, top - 1.6 - S * .375, 0, W); und.rotation.set(Math.PI, Math.PI / 4, 0);
-  for (let i = 0; i < (house ? 14 : 8); i++) { const a = rnd() * 6.28, r = S * (.15 + rnd() * .3), s = .8 + rnd() * 1.6; const k = is3mesh(is3rock(new THREE.DodecahedronGeometry(s, 0), rnd, .4), rnd() < .5 ? '#5d5066' : '#7a6c7e', Math.cos(a) * r, top - 2 - rnd() * S * .4, Math.sin(a) * r, W); k.scale.y = 1.6; }
-  for (let i = 0; i < (house ? 12 : 7); i++) { const a = rnd() * 6.28, r = S * (.12 + rnd() * .25), h = .8 + rnd() * 1.8; const cr = is3mesh(new THREE.ConeGeometry(.25 + rnd() * .25, h, 5), rnd() < .5 ? '#4ee6ff' : '#ffb347', Math.cos(a) * r, top - 2.4 - rnd() * S * .3, Math.sin(a) * r, W, true); cr.rotation.x = Math.PI; }
-  // little rocks drifting around the island
-  for (let i = 0; i < (house ? 10 : 6); i++) {
-    const a = i / (house ? 10 : 6) * 6.28 + rnd(), r = S * (.85 + rnd() * .5), y = -3 + rnd() * 6, s = .5 + rnd() * (house ? 1.6 : 1), g = new THREE.Group(); g.position.set(Math.cos(a) * r, y, Math.sin(a) * r);
-    is3mesh(is3rock(new THREE.ConeGeometry(s, s * 1.8, 5, 2), rnd, .3), '#6d5f73', 0, -s * .9, 0, g).rotation.x = Math.PI; is3mesh(new THREE.CylinderGeometry(s * 1.02, s * 1.02, .25, 5), '#5fae43', 0, 0, 0, g);
-    if (rnd() < .6) is3tree(g, rnd, 0, 0, .7); W.add(g);
-  }
+  is3base(W, S, top, rnd, house ? 1.6 : 1);
   // the grid itself (also what taps land on)
   const grid = IS3.grid = new THREE.Mesh(new THREE.PlaneGeometry(N, N), new THREE.MeshStandardMaterial({ map: is3gridTex(N), roughness: 1 }));
   grid.rotation.x = -Math.PI / 2; grid.position.y = top + .005; grid.receiveShadow = true; W.add(grid);
   // the border: trees, rocks, flowers and lamps, so the edge doesn't feel empty
   const edge = [];
   for (let i = 0; i < (house ? 70 : 34); i++) { const sd = Math.floor(rnd() * 4), t = (rnd() - .5) * (S - .8), d = S / 2 - .3 - rnd() * (M - .5); edge.push(sd === 0 ? [t, d] : sd === 1 ? [t, -d] : sd === 2 ? [d, t] : [-d, t]); }
-  for (const [x, z] of edge) { const k = rnd(), g = new THREE.Group(); g.position.set(x, top, z);
+  const tro = house && typeof biTrophies === 'function' ? biTrophies().slice(0, 12) : [], troZ = N / 2 + M / 2;
+  for (const [x, z] of edge) { if (tro.length && z > N / 2 + .3 && Math.abs(x) < tro.length * .9 + .6) continue; // leave the trophy row clear
+    const k = rnd(), g = new THREE.Group(); g.position.set(x, top, z);
     if (k < .45) is3tree(g, rnd, 0, 0, .8 + rnd() * .5);
     else if (k < .65) is3mesh(is3rock(new THREE.DodecahedronGeometry(.3 + rnd() * .35, 0), rnd, .3), '#909aa3', 0, .15, 0, g);
     else if (k < .85) is3mesh(new THREE.IcosahedronGeometry(.3 + rnd() * .25, 0), rnd() < .5 ? '#40a447' : '#2b8a3e', 0, .2, 0, g);
     else { is3mesh(new THREE.CylinderGeometry(.03, .03, .35, 3), '#2b8a3e', 0, .17, 0, g); is3mesh(new THREE.OctahedronGeometry(.12, 0), ['#ffd43b', '#f783ac', '#ffffff'][Math.floor(rnd() * 3)], 0, .4, 0, g); }
     W.add(g); }
   for (const [sx, sz] of [[1, 1], [1, -1], [-1, 1], [-1, -1]]) { const g = new THREE.Group(); g.position.set(sx * (S / 2 - M / 2), top, sz * (S / 2 - M / 2)); is3mesh(new THREE.CylinderGeometry(.08, .1, 1.6, 5), '#4a4458', 0, .8, 0, g); is3mesh(new THREE.OctahedronGeometry(.22, 0), '#ffd86b', 0, 1.75, 0, g, true); W.add(g); }
+  // grass tufts scattered over the lawn's margin
+  for (let i = 0; i < (house ? 60 : 30); i++) { const sd = Math.floor(rnd() * 4), t = (rnd() - .5) * (S - .6), d = S / 2 - .2 - rnd() * (M - .3), [x, z] = sd === 0 ? [t, d] : sd === 1 ? [t, -d] : sd === 2 ? [d, t] : [-d, t]; is3mesh(new THREE.ConeGeometry(.07, .22 + rnd() * .15, 3), rnd() < .5 ? '#4f9a37' : '#7cc95a', x, top + .1, z, W).castShadow = false; }
+  // trophies: every boss the house has beaten, in gold on a plinth along the front
+  tro.forEach((t, i) => { const g = new THREE.Group(); g.position.set((i - (tro.length - 1) / 2) * 1.8, top, troZ); is3mesh(new THREE.BoxGeometry(1.1, .45, 1.1), '#c9c2b5', 0, .22, 0, g); is3mesh(new THREE.BoxGeometry(1.2, .08, 1.2), '#ffd43b', 0, .47, 0, g, true); const m = new THREE.Group(); m.position.y = .5; m.scale.setScalar(.28); m.rotation.y = (i % 3 - 1) * .25; is3bossModel(m, t.n, 'gold'); g.add(m); W.add(g); });
   // the middle: the Solis orb on your island, the house hall on the house island
   const [cx, cz, cs] = L.centre, cg = new THREE.Group(); cg.position.set(cx + cs / 2 - N / 2, top, cz + cs / 2 - N / 2); W.add(cg);
   if (house) is3hall(cg, hsHouse(hsState().id), hiLevel()); else is3orb(cg, isLv());
@@ -438,8 +448,35 @@ function is3build(house, L) {
     is3model(it, b, f);
     // level flag: none at 1, silver at 2, gold at 3
     if (lv > 1) { is3mesh(new THREE.CylinderGeometry(.03, .03, 1, 4), '#dee2e6', o.sz / 2 - .25, .6, o.sz / 2 - .25, g); is3mesh(new THREE.BoxGeometry(.32, .2, .03), lv >= 3 ? '#ffd43b' : '#ced4da', o.sz / 2 - .08, 1, o.sz / 2 - .25, g, lv >= 3); }
-    if (c !== 'ok') b.rotation.z = c === 'worn' ? .06 : .16;
+    if (c !== 'ok') { b.rotation.z = c === 'worn' ? .06 : .16; b.position.y = .12 - Math.sin(b.rotation.z) * .85 * k; } // sink the low side in, so the tilt doesn't open a gap underneath
     if (c === 'broken') for (let j = 0; j < 4; j++) is3mesh(new THREE.DodecahedronGeometry(.18, 0), is3shade(it.col, .5), (rnd() - .5) * 2, .1, (rnd() - .5) * 2, b);
+    W.add(g);
+  }
+}
+// the floating rock every island sits on: turf lip, grass, layered earth, a craggy underside with glowing
+// crystals and hanging roots, and little islets drifting round it. pal changes the colours (the boss island is stone).
+function is3base(W, S, top, rnd, big = 1, pal = {}) {
+  const P = Object.assign({ turf: '#5fae43', lip: '#4f9a37', dirt: '#8a6744', dirt2: '#74563a', rock: '#6d5f73', rock2: '#5d5066', rock3: '#7a6c7e', crys: ['#4ee6ff', '#ffb347'], root: '#4a6b2f', tree: true }, pal);
+  is3mesh(new THREE.BoxGeometry(S, .5, S), P.turf, 0, top - .25, 0, W);
+  is3mesh(new THREE.BoxGeometry(S + .14, .16, S + .14), P.lip, 0, top - .42, 0, W); // a slightly wider turf lip, so the edge reads
+  is3mesh(new THREE.BoxGeometry(S - .1, .7, S - .1), P.dirt, 0, top - .85, 0, W);
+  is3mesh(new THREE.BoxGeometry(S - .3, .6, S - .3), P.dirt2, 0, top - 1.45, 0, W);
+  // the underside: a square craggy point whose top stays flat under the earth (no gaps where they meet)
+  const H = S * .75, und = is3mesh(is3rock(new THREE.ConeGeometry(S * .69, H, 4, 6), rnd, .26, .12), P.rock, 0, top - 1.7 - H / 2, 0, W); und.rotation.set(Math.PI, Math.PI / 4, 0);
+  for (let i = 0; i < Math.round(8 * big); i++) { const a = rnd() * 6.28, r = S * (.12 + rnd() * .26), s = .8 + rnd() * 1.6; const k = is3mesh(is3rock(new THREE.DodecahedronGeometry(s, 0), rnd, .35), rnd() < .5 ? P.rock2 : P.rock3, Math.cos(a) * r, top - 2.2 - rnd() * S * .38, Math.sin(a) * r, W); k.scale.y = 1.6; }
+  for (let i = 0; i < Math.round(7 * big); i++) { const a = rnd() * 6.28, r = S * (.1 + rnd() * .22), h = .8 + rnd() * 1.8; const cr = is3mesh(new THREE.ConeGeometry(.25 + rnd() * .25, h, 5), P.crys[i % P.crys.length], Math.cos(a) * r, top - 2.6 - rnd() * S * .3, Math.sin(a) * r, W, true); cr.rotation.z = Math.PI; }
+  // roots and vines hanging over the edge
+  for (let i = 0; i < Math.round(14 * big); i++) {
+    const sd = i % 4, t = (rnd() - .5) * (S - 1), d = S / 2 - .12, h = .6 + rnd() * 1.6, x = sd === 0 ? t : sd === 1 ? t : sd === 2 ? d : -d, z = sd === 0 ? d : sd === 1 ? -d : t;
+    const v = is3mesh(new THREE.BoxGeometry(sd > 1 ? .08 : .12, h, sd > 1 ? .12 : .08), P.root, x, top - .4 - h / 2, z, W); v.rotation[sd > 1 ? 'x' : 'z'] = (rnd() - .5) * .3;
+  }
+  // little rocks drifting around the island
+  const n = Math.round(6 * big);
+  for (let i = 0; i < n; i++) {
+    const a = i / n * 6.28 + rnd(), r = S * (.85 + rnd() * .5), y = -3 + rnd() * 6, s = .5 + rnd() * big, g = new THREE.Group(); g.position.set(Math.cos(a) * r, y, Math.sin(a) * r);
+    // flipped round z so its corners line up with the cap on top
+    is3mesh(is3rock(new THREE.ConeGeometry(s, s * 1.8, 5, 2), rnd, .3, .3), P.rock, 0, -s * .9 - .12, 0, g).rotation.z = Math.PI; is3mesh(new THREE.CylinderGeometry(s * 1.04, s, .25, 5), P.turf, 0, 0, 0, g);
+    if (P.tree && rnd() < .6) is3tree(g, rnd, 0, 0, .7); else if (!P.tree) is3mesh(new THREE.ConeGeometry(.12 + s * .15, .5 + s * .4, 5), P.crys[i % P.crys.length], 0, .3, 0, g, true);
     W.add(g);
   }
 }

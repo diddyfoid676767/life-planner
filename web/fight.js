@@ -396,7 +396,7 @@ function ftBattlesHtml() {
 // the boss panel on the House page
 function ftHouseHtml() {
   const b = hsBoss(mondayOf(today())), B = FT_BOSS[b.n], a = ftAttempts(), wk = mondayOf(today());
-  return `<div class="card ftbossinfo"><div class="row" style="justify-content:space-between"><h3>⚔️ Fight ${esc(b.n)}</h3><button class="btn primary" data-ft="house" ${a.left ? '' : 'disabled'}>${a.left ? `Fight (${a.left} left)` : 'No fights left'}</button></div>
+  return `<div class="card ftbossinfo"><div class="row" style="justify-content:space-between"><h3>⚔️ Fight ${esc(b.n)}</h3><div class="row" style="gap:8px"><button class="btn" data-is="tab" data-v="boss">🏝️ Boss island</button><button class="btn primary" data-ft="house" ${a.left ? '' : 'disabled'}>${a.left ? `Fight (${a.left} left)` : 'No fights left'}</button></div></div>
     <p class="small-text"><b>Weak to:</b> ${B.wn} · <b>Special:</b> ${esc(B.sp)}</p>
     <p class="small-text"><b>Attacks:</b> ${[...B.atk, ...(B.big ? [B.big] : [])].map(x => esc(x[0])).join(', ')}</p>
     <p class="muted small-text">${FT_WEEK_ATT + a.extra} fights a week${a.extra ? ' (house island perk included)' : ''}, up to ${FT_DAY_ATT} a day, ${FT_ROUNDS} rounds each. It hits back lightly. Your fights this week: ${a.week}, ${ftWeekDmg(wk).toLocaleString()} damage on the shared bar. Set your build on the <a href="#" data-act="goto" data-v="character">Character</a> page.</p></div>`;

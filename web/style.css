@@ -3163,3 +3163,15 @@ main#view[data-view="islands"] { max-width: none; padding: 10px 14px 12px; }
 .ishelp { padding-left: 18px; line-height: 1.55; }
 .isfull .btn.ghost { background: rgba(255, 255, 255, .1); color: #f1f3f5; border-color: rgba(255, 255, 255, .22); }
 .isfull .ispop { bottom: 84px; }
+
+/* 2.53 boss island */
+.islvl.boss > b { background: radial-gradient(circle at 35% 30%, #ffc9c9, #e03131 62%, #5c0b0b); box-shadow: 0 0 14px rgba(224, 49, 49, .55); font-size: 1.2rem; }
+.islvl.boss.dead > b { background: radial-gradient(circle at 35% 30%, #fff, #adb5bd 65%); box-shadow: none; filter: grayscale(1); }
+.islvl.boss div { min-width: 190px; }
+.islvl.boss small { display: block; font-size: .72rem; opacity: .8; }
+.islvl i.bihp { background: linear-gradient(90deg, #ff6b6b, #c92a2a); }
+.isbtn.big.fight { width: auto; min-width: 96px; padding: 0 14px; background: linear-gradient(160deg, #ff8787, #c92a2a); border-color: #ffc9c9; color: #fff; }
+.isbtn.big.fight span { font-size: .74rem; }
+.isbtn:disabled { opacity: .5; cursor: default; filter: grayscale(.6); }
+.biwarn { padding: 8px 14px; border-radius: 12px; background: rgba(60, 12, 12, .78); border: 1px solid rgba(255, 135, 135, .4); font-size: .82rem; font-weight: 600; max-width: min(560px, 80%); text-align: center; backdrop-filter: blur(8px); }
+.ispanel .hsbar { margin: 6px 0 10px; }

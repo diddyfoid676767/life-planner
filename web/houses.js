@@ -96,7 +96,7 @@ async function hsLoad(force) {
     }
   } catch { }
   hsRowsAt = Date.now(); hsLoading = false;
-  if (view === 'house' || view === 'today') render();
+  if (view === 'house' || view === 'today' || (view === 'islands' && ui.isTab === 'boss')) render();
 }
 // the boss fight for one house this week
 function hsFight(hid) {
