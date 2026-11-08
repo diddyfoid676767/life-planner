@@ -160,7 +160,7 @@ function cdDay(d) {
 }
 function cdWallet() {
   const st = cdState(), hf = typeof hiFrom === 'function' ? hiFrom() : ''; let l = 0, e = 0, hl = 0, he = 0;
-  for (let d = st.since; d <= today(); d = addDays(d, 1)) { const x = cdDay(d), ib = typeof islEarn === 'function', dl = x.lumen * (1 + (ib ? islEarn('lp', d) : 0)), de = x.ember * (1 + (ib ? islEarn('ep', d) : 0)); l += dl; e += de; if (hf && d >= hf) { hl += dl; he += de; } } // 2.49: island perks
+  for (let d = st.since; d <= today(); d = addDays(d, 1)) { const x = cdDay(d), dl = x.lumen, de = x.ember; l += dl; e += de; if (hf && d >= hf) { hl += dl; he += de; } } // 2.51: island collector bonuses are collected by hand (islands.js), not added here
   // 2.50: a fixed share of what you earn after joining the house island goes to the house pool
   const earnL = l, earnE = e; // 2.51: lifetime earnings drive the player level (level.js)
   hl = hf ? Math.round(hl * HI_SHARE) : 0; he = hf ? Math.round(he * HI_SHARE) : 0; l = Math.round(l) - hl; e = Math.round(e) - he;
