@@ -101,7 +101,8 @@ function ftAttempts() {
   const st = ftState(), wk = mondayOf(today()); let week = 0;
   for (const [d, n] of Object.entries(st.att)) { if (d >= wk) week += n; else if (d < addDays(wk, -14)) delete st.att[d]; }
   const day = st.att[today()] || 0;
-  return { left: Math.max(0, Math.min(FT_WEEK_ATT - week, FT_DAY_ATT - day)), week, day };
+  const extra = typeof hiPerks === 'function' ? hiPerks().at || 0 : 0; // 2.50: house island perks
+  return { left: Math.max(0, Math.min(FT_WEEK_ATT + extra - week, FT_DAY_ATT - day)), week, day, extra };
 }
 // total buffs from what you're wearing
 function ftGearBuffs(st = ftState()) {
@@ -133,10 +134,10 @@ function ftFighter({ n, e, stats, cls, skills, g }) {
   const max = ftMaxHp(stats, g);
   return { n, e, s: stats, cls, g, hp: max, max, sk: skills.map(s => ({ ...s, cdl: 0 })), shield: 0, stun: 0, blind: 0, confuse: 0, slow: 0, dot: [], buff: 1, rally: 0, mark: 0, reveal: 0, chain: 0, lastSt: '' };
 }
-function ftMe() {
+function ftMe(house) {
   const st = ftState(), ch = cdChar(), cls = cdState().cls, ids = [...st.eq.spell, ...st.eq.move].filter(id => st.own.includes(id));
   if (FT_CLASS[cls]) ids.push(FT_CLASS[cls].sk.id);
-  return ftFighter({ n: D.settings.name || 'You', e: CD_CLASSES.find(c => c.id === cls)?.e || '🙂', stats: ch.all, cls, skills: ids.map(ftSkill).filter(Boolean), g: ftGearBuffs(st) });
+  return ftFighter({ n: D.settings.name || 'You', e: CD_CLASSES.find(c => c.id === cls)?.e || '🙂', stats: ch.all, cls, skills: ids.map(ftSkill).filter(Boolean), g: house && typeof hiFightBuffs === 'function' ? hiFightBuffs(ftGearBuffs(st)) : ftGearBuffs(st) });
 }
 function ftPublish() {
   const st = ftState(), ch = cdChar(), cls = cdState().cls, g = ftGearBuffs(st);
@@ -163,7 +164,7 @@ function ftHitBoss(F, n, label) {
 }
 function ftStart(kind, opt = {}) {
   if (FT) return;
-  const P = ftMe(); let E, bossDef = null, name;
+  const P = ftMe(kind === 'house'); let E, bossDef = null, name;
   if (kind === 'duel') { E = ftGhost(opt.row); if (!E) return; }
   else {
     const b = opt.boss || hsBoss(mondayOf(today())); name = b.n; bossDef = FT_BOSS[b.n];
@@ -390,7 +391,7 @@ function ftHouseHtml() {
   return `<div class="card ftbossinfo"><div class="row" style="justify-content:space-between"><h3>⚔️ Fight ${esc(b.n)}</h3><button class="btn primary" data-ft="house" ${a.left ? '' : 'disabled'}>${a.left ? `Fight (${a.left} left)` : 'No fights left'}</button></div>
     <p class="small-text"><b>Weak to:</b> ${B.wn} · <b>Special:</b> ${esc(B.sp)}</p>
     <p class="small-text"><b>Attacks:</b> ${[...B.atk, ...(B.big ? [B.big] : [])].map(x => esc(x[0])).join(', ')}</p>
-    <p class="muted small-text">${FT_WEEK_ATT} fights a week, up to ${FT_DAY_ATT} a day, ${FT_ROUNDS} rounds each. It hits back lightly. Your fights this week: ${a.week}, ${ftWeekDmg(wk).toLocaleString()} damage on the shared bar. Set your build on the <a href="#" data-act="goto" data-v="character">Character</a> page.</p></div>`;
+    <p class="muted small-text">${FT_WEEK_ATT + a.extra} fights a week${a.extra ? ' (house island perk included)' : ''}, up to ${FT_DAY_ATT} a day, ${FT_ROUNDS} rounds each. It hits back lightly. Your fights this week: ${a.week}, ${ftWeekDmg(wk).toLocaleString()} damage on the shared bar. Set your build on the <a href="#" data-act="goto" data-v="character">Character</a> page.</p></div>`;
 }
 // called when your house takes the boss down
 function ftHouseKill(wk) {

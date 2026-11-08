@@ -784,3 +784,75 @@ func realtimeConfig() map[string]string {
 	}
 	return map[string]string{"ws": ws, "key": supaKey}
 }
+
+// GET /api/account/house?h=id reads your house's shared island (stage 4 of
+// the islands update); PUT {h, ut, doc} writes it back, but only if nobody
+// else saved it since ut (the page reloads and retries on 409). The page does
+// the game logic; firestore.rules checks you're in that house and only touch
+// your own contribution and votes.
+func handleAccountHouse(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Cache-Control", "no-store")
+	if !fbOn() {
+		writeErr(w, http.StatusServiceUnavailable, "no friends server")
+		return
+	}
+	a, err := session()
+	if err != nil {
+		writeErr(w, http.StatusUnauthorized, err.Error())
+		return
+	}
+	if r.Method == http.MethodGet {
+		h := r.URL.Query().Get("h")
+		if !houseIDs[h] {
+			writeErr(w, http.StatusBadRequest, "unknown house")
+			return
+		}
+		d, err := fsGet(a.Access, "houses/"+h)
+		if err != nil {
+			writeErr(w, http.StatusBadGateway, err.Error())
+			return
+		}
+		out := map[string]any{"uid": a.UserID, "user": a.Username, "doc": map[string]any{}, "ut": ""}
+		if d != nil {
+			out["doc"], out["ut"] = d.Fields, d.Updated
+		}
+		json.NewEncoder(w).Encode(out)
+		return
+	}
+	if r.Method != http.MethodPut {
+		writeErr(w, http.StatusMethodNotAllowed, "method")
+		return
+	}
+	var in struct {
+		H   string         `json:"h"`
+		Ut  string         `json:"ut"`
+		Doc map[string]any `json:"doc"`
+	}
+	if json.NewDecoder(io.LimitReader(r.Body, 600000)).Decode(&in) != nil || !houseIDs[in.H] || in.Doc == nil {
+		writeErr(w, http.StatusBadRequest, "bad request")
+		return
+	}
+	delete(in.Doc, "at")
+	pre := in.Ut
+	if pre == "" {
+		pre = "new"
+	}
+	ts, err := fsCommit(a.Access, fsSet("houses/"+in.H, in.Doc, false, pre, "at"))
+	if err != nil {
+		st := fbStatus(err)
+		if st == "PERMISSION_DENIED" { // the rules run before the precondition, so a stale save can be refused by them
+			if d, _ := fsGet(a.Access, "houses/"+in.H, "at"); (d == nil) != (in.Ut == "") || (d != nil && d.Updated != in.Ut) {
+				st = "ABORTED"
+			}
+		}
+		switch st {
+		case "FAILED_PRECONDITION", "ALREADY_EXISTS", "ABORTED", "NOT_FOUND":
+			writeErr(w, http.StatusConflict, "changed")
+		default:
+			writeErr(w, http.StatusBadGateway, err.Error())
+		}
+		return
+	}
+	json.NewEncoder(w).Encode(map[string]any{"ut": ts[0]})
+}

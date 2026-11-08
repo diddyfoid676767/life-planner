@@ -155,11 +155,12 @@ function cdDay(d) {
   return { study, lockMins, lumen, train, ember: Math.round(ember) };
 }
 function cdWallet() {
-  const st = cdState(); let l = 0, e = 0;
-  for (let d = st.since; d <= today(); d = addDays(d, 1)) { const x = cdDay(d), ib = typeof islEarn === 'function'; l += x.lumen * (1 + (ib ? islEarn('lp', d) : 0)); e += x.ember * (1 + (ib ? islEarn('ep', d) : 0)); } // 2.49: island perks
-  l = Math.round(l); e = Math.round(e);
+  const st = cdState(), hf = typeof hiFrom === 'function' ? hiFrom() : ''; let l = 0, e = 0, hl = 0, he = 0;
+  for (let d = st.since; d <= today(); d = addDays(d, 1)) { const x = cdDay(d), ib = typeof islEarn === 'function', dl = x.lumen * (1 + (ib ? islEarn('lp', d) : 0)), de = x.ember * (1 + (ib ? islEarn('ep', d) : 0)); l += dl; e += de; if (hf && d >= hf) { hl += dl; he += de; } } // 2.49: island perks
+  // 2.50: a fixed share of what you earn after joining the house island goes to the house pool
+  hl = hf ? Math.round(hl * HI_SHARE) : 0; he = hf ? Math.round(he * HI_SHARE) : 0; l = Math.round(l) - hl; e = Math.round(e) - he;
   const sp = st.spent || {}, got = st.got || {}; // 2.48: spent on spells/moves and lost stakes; won in battles and scrapped gear
-  return { lumen: Math.max(0, l + (got.l || 0) - (sp.l || 0)), ember: Math.max(0, e + (got.e || 0) - (sp.e || 0)), today: cdDay(today()) };
+  return { lumen: Math.max(0, l + (got.l || 0) - (sp.l || 0)), ember: Math.max(0, e + (got.e || 0) - (sp.e || 0)), today: cdDay(today()), hl, he };
 }
 
 // ---------- page ----------

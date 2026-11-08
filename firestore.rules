@@ -158,6 +158,43 @@ service cloud.firestore {
       allow delete: if signedIn() && cur().uid == me();
     }
 
+    // ---------- 2.50 house islands: one shared document per house. Only
+    // people whose profile says they're in that house can write it, and each
+    // person can only change their own contribution (c) and votes (v), with
+    // contributions only going up. The pool spend (sp) can only go up too.
+    // Who is a leader is worked out by the app from the votes.
+    function inHouse(h) {
+      return get(/databases/$(db)/documents/profiles/$(me())).data.stats.get('hs', {}).get('h', '') == h;
+    }
+    function ownOnly(k) {
+      return resource == null
+        ? inc().get(k, {}).keys().hasOnly([me()])
+        : inc().get(k, {}).diff(cur().get(k, {})).affectedKeys().hasOnly([me()]);
+    }
+    function houseDocOk() {
+      return inc().keys().hasOnly(['c', 'sp', 'b', 'v', 'pr', 'ld', 'at'])
+        && inc().at == request.time
+        && inc().get('c', {}) is map && inc().get('c', {}).size() <= 400
+        && inc().get('v', {}) is map && inc().get('v', {}).size() <= 400
+        && inc().get('b', {}) is map && inc().get('b', {}).size() <= 40
+        && inc().get('sp', {}) is map && inc().get('sp', {}).size() <= 2
+        && inc().get('sp', {}).get('l', 0) <= 100000000 && inc().get('sp', {}).get('e', 0) <= 100000000
+        && ownOnly('c') && ownOnly('v')
+        && (!(me() in inc().get('c', {})) || (inc().c[me()] is map && inc().c[me()].size() <= 3
+          && inc().c[me()].get('n', '').size() <= 20 && inc().c[me()].get('l', 0) <= 10000000 && inc().c[me()].get('e', 0) <= 10000000))
+        && (!(me() in inc().get('v', {})) || (inc().v[me()] is map && inc().v[me()].size() <= 4))
+        && (resource == null || (
+          inc().get('sp', {}).get('l', 0) >= cur().get('sp', {}).get('l', 0)
+          && inc().get('sp', {}).get('e', 0) >= cur().get('sp', {}).get('e', 0)
+          && (!(me() in cur().get('c', {})) || (me() in inc().get('c', {})
+            && inc().c[me()].get('l', 0) >= cur().c[me()].get('l', 0) && inc().c[me()].get('e', 0) >= cur().c[me()].get('e', 0)))));
+    }
+    match /houses/{h} {
+      allow read: if signedIn();
+      allow create, update: if signedIn() && h in ['pascoe', 'molland', 'flinders', 'derrimut', 'strathmore', 'hudson']
+        && inHouse(h) && houseDocOk();
+    }
+
     // ---------- your planner, synced between your devices
     match /planner/{uid} {
       allow read, delete: if signedIn() && uid == me();

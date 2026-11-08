@@ -76,7 +76,7 @@ function isMapHtml(tab) {
   const isle = (id, x, y, r, col, e, n, sub) => `<g class="ismap-i ${tab === id ? 'on' : ''}" data-is="tab" data-v="${id}" role="button" tabindex="0"><ellipse cx="${x}" cy="${y + r * .35}" rx="${r * 1.25}" ry="${r * .45}" fill="#0b3d5c" opacity=".35"/><ellipse cx="${x}" cy="${y}" rx="${r * 1.2}" ry="${r * .55}" fill="#f2d7a0"/><ellipse cx="${x}" cy="${y - 3}" rx="${r}" ry="${r * .42}" fill="${col}"/><text x="${x}" y="${y + 2}" text-anchor="middle" font-size="${r * .7}">${e}</text><text x="${x}" y="${y + r * .55 + 18}" text-anchor="middle" class="ismap-n">${n}</text><text x="${x}" y="${y + r * .55 + 33}" text-anchor="middle" class="ismap-s">${sub}</text></g>`;
   return `<svg class="ismap" viewBox="0 0 600 210" role="img" aria-label="Travel map"><rect width="600" height="210" rx="14" fill="url(#isSea)"/><defs><linearGradient id="isSea" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#4dabf7"/><stop offset="1" stop-color="#1864ab"/></linearGradient></defs>
     <path d="M120 100 Q210 40 300 92 M300 92 Q390 150 480 96" stroke="#fff" stroke-width="2.5" stroke-dasharray="6 8" fill="none" opacity=".7"/>
-    ${isle('personal', 120, 96, 44, '#69db7c', '🏝️', 'Your island', 'Personal perks')}${isle('house', 300, 86, 56, '#51cf66', '🏰', 'House island', 'Coming in stage 4')}${isle('boss', 480, 92, 42, '#868e96', typeof hsBoss === 'function' ? hsBoss(mondayOf(today())).e : '💀', 'Boss island', 'Coming in stage 5')}</svg>`;
+    ${isle('personal', 120, 96, 44, '#69db7c', '🏝️', 'Your island', 'Personal perks')}${isle('house', 300, 86, 56, '#51cf66', '🏰', 'House island', 'Shared builds')}${isle('boss', 480, 92, 42, '#868e96', typeof hsBoss === 'function' ? hsBoss(mondayOf(today())).e : '💀', 'Boss island', 'Coming in stage 5')}</svg>`;
 }
 function viewIslands() {
   const tab = ui.isTab || 'personal', w = cdWallet();
@@ -84,7 +84,7 @@ function viewIslands() {
     <div class="cdwallet"><div class="card cdcoin cd-l"><div class="cdbig">${LUMEN} ${w.lumen.toLocaleString()}</div><div><b>Lumen</b><div class="muted small-text">From study</div></div></div>
       <div class="card cdcoin cd-e"><div class="cdbig">${EMBER} ${w.ember.toLocaleString()}</div><div><b>Ember</b><div class="muted small-text">From training</div></div></div></div>
     <div class="card ismapcard">${isMapHtml(tab)}</div>`;
-  if (tab === 'house') return `${head}<div class="card"><h3>🏰 House island</h3><p class="muted">Big shared builds paid from the house pool (House Lumen and House Ember), voted on by your house, arrive in the next update. For now your house fights the weekly boss on the House page.</p><button class="btn" data-act="goto" data-v="house">Go to House</button></div>`;
+  if (tab === 'house') return viewHouseIsland(head);
   if (tab === 'boss') { const b = typeof hsBoss === 'function' ? hsBoss(mondayOf(today())) : null;
     return `${head}<div class="card"><h3>${b ? b.e + ' ' + esc(b.n) : '💀 Boss island'}</h3><p class="muted">${b ? esc(b.s) + ' ' : ''}Visiting the boss on its own island comes in a later update. You can already fight this week's boss with your build from the House page.</p><button class="btn" data-act="goto" data-v="house">Fight on the House page</button></div>`; }
   const st = isState(), g = islBuffs(), earn = { lp: islEarn('lp', today()), ep: islEarn('ep', today()) };
@@ -145,7 +145,7 @@ function is3init() {
   c.addEventListener('pointerdown', e => { drag = [e.clientX, e.clientY]; c.setPointerCapture(e.pointerId); });
   c.addEventListener('pointermove', e => { if (!drag) return; IS3.yaw -= (e.clientX - drag[0]) * .008; IS3.pitch = Math.max(.15, Math.min(1.25, IS3.pitch + (e.clientY - drag[1]) * .006)); drag = [e.clientX, e.clientY]; is3draw(); });
   c.addEventListener('pointerup', () => { drag = null; });
-  c.addEventListener('wheel', e => { e.preventDefault(); IS3.dist = Math.max(14, Math.min(70, IS3.dist * (e.deltaY > 0 ? 1.1 : .9))); is3draw(); }, { passive: false });
+  c.addEventListener('wheel', e => { e.preventDefault(); IS3.dist = Math.max(14, Math.min(90, IS3.dist * (e.deltaY > 0 ? 1.1 : .9))); is3draw(); }, { passive: false });
   new ResizeObserver(() => { if (is3resize()) is3draw(); }).observe(document.body);
 }
 function is3resize() {
@@ -163,8 +163,8 @@ function is3draw() {
 }
 function is3view(v) {
   if (v === 'left') IS3.yaw += Math.PI / 4; if (v === 'right') IS3.yaw -= Math.PI / 4;
-  if (v === 'in') IS3.dist = Math.max(14, IS3.dist * .82); if (v === 'out') IS3.dist = Math.min(70, IS3.dist * 1.2);
-  if (v === 'reset') Object.assign(IS3, { yaw: -.6, pitch: .55, dist: 34 });
+  if (v === 'in') IS3.dist = Math.max(14, IS3.dist * .82); if (v === 'out') IS3.dist = Math.min(90, IS3.dist * 1.2);
+  if (v === 'reset') Object.assign(IS3, { yaw: -.6, pitch: .55, dist: IS3.house ? 46 : 34 });
   is3draw();
 }
 function mountIsland3D() {
@@ -173,42 +173,46 @@ function mountIsland3D() {
   is3init();
   if (IS3.canvas.parentNode !== host) host.prepend(IS3.canvas);
   is3resize();
-  const st = isState(), sig = IS_ITEMS.map(it => it.id + ':' + (isCond(it.id) || '')).join();
-  if (sig !== IS3.sig) { IS3.sig = sig; is3build(st); }
+  const house = ui.isTab === 'house', sig = house ? 'h' + hsState().id + HI_ITEMS.map(it => it.id + ':' + (hiCond(it.id) || '')).join() : IS_ITEMS.map(it => it.id + ':' + (isCond(it.id) || '')).join();
+  if (house !== IS3.house) { IS3.house = house; Object.assign(IS3, { yaw: -.6, pitch: .55, dist: house ? 46 : 34 }); }
+  if (sig !== IS3.sig) { IS3.sig = sig; is3build(house); }
   is3draw();
 }
 // shared low-poly materials, made once
 const is3mat = col => (IS3.mats = IS3.mats || {})[col] || (IS3.mats[col] = new THREE.MeshStandardMaterial({ color: col, flatShading: true, roughness: .9 }));
 function is3mesh(geo, col, x = 0, y = 0, z = 0, g) { const m = new THREE.Mesh(geo, is3mat(col)); m.position.set(x, y, z); m.castShadow = m.receiveShadow = true; if (g) g.add(m); return m; }
 const is3shade = (col, f) => '#' + new THREE.Color(col).multiplyScalar(f).getHexString();
-function is3build() {
-  const W = IS3.world;
+// 2.50: the house island is the same island, bigger (K), with its own plots, buildings and a house flag
+const HI_PLOTS = [[0, 0], ...[0, 1, 2, 3, 4].map(i => [5, i * 72 + 36]), ...[0, 1, 2, 3, 4, 5].map(i => [10, i * 60])].map(([r, a]) => [r * Math.cos(a * Math.PI / 180), r * Math.sin(a * Math.PI / 180)]);
+function is3build(house) {
+  const W = IS3.world, K = house ? 1.45 : 1, PL = house ? HI_PLOTS : IS_PLOTS, ITEMS = house ? HI_ITEMS : IS_ITEMS, cond = house ? hiCond : isCond;
   W.traverse(o => { if (o.geometry) o.geometry.dispose(); });
   W.clear();
-  const rnd = seeded('solis-island');
+  const rnd = seeded(house ? 'solis-house-' + hsState().id : 'solis-island');
   // sea, sand, grass and rocky underside
   const sea = new THREE.Mesh(new THREE.CircleGeometry(120, 24), new THREE.MeshStandardMaterial({ color: '#3b9ad9', roughness: .4, flatShading: true }));
   sea.rotation.x = -Math.PI / 2; sea.position.y = -.6; sea.receiveShadow = true; W.add(sea);
-  is3mesh(new THREE.CylinderGeometry(11.5, 12.5, 1.2, 11), '#e2b86e', 0, -.4, 0, W);
-  is3mesh(new THREE.CylinderGeometry(10, 10.8, .9, 11), '#69b34c', 0, .25, 0, W);
-  is3mesh(new THREE.CylinderGeometry(12.4, 5, 5, 11), '#7a6a58', 0, -3.4, 0, W);
+  is3mesh(new THREE.CylinderGeometry(11.5 * K, 12.5 * K, 1.2, 13), '#e2b86e', 0, -.4, 0, W);
+  is3mesh(new THREE.CylinderGeometry(10 * K, 10.8 * K, .9, 13), '#69b34c', 0, .25, 0, W);
+  is3mesh(new THREE.CylinderGeometry(12.4 * K, 5 * K, 5 * K, 13), '#7a6a58', 0, -3.4 * K, 0, W);
   // props so it doesn't feel empty: palms, rocks, bushes, a dock and clouds
-  const free = (x, z) => IS_PLOTS.every(([px, pz]) => Math.hypot(px - x, pz - z) > 2.1);
-  for (let i = 0; i < 40; i++) {
-    const a = rnd() * Math.PI * 2, r = 2 + rnd() * 9, x = Math.cos(a) * r, z = Math.sin(a) * r; if (!free(x, z)) continue;
+  const free = (x, z) => PL.every(([px, pz]) => Math.hypot(px - x, pz - z) > 2.1 * K);
+  for (let i = 0; i < 40 * K; i++) {
+    const a = rnd() * Math.PI * 2, r = 2 + rnd() * 9 * K, x = Math.cos(a) * r, z = Math.sin(a) * r; if (!free(x, z)) continue;
     const k = rnd(), g = new THREE.Group(); g.position.set(x, .7, z); g.rotation.y = rnd() * 6;
-    if (r > 8.6 && k < .5) { is3mesh(new THREE.CylinderGeometry(.12, .18, 2.6, 5), '#8b5e3c', 0, 1.3, 0, g).rotation.z = .15; for (let j = 0; j < 5; j++) { const lf = is3mesh(new THREE.ConeGeometry(.35, 1.8, 4), '#2f9e44', 0, 2.6, 0, g); lf.rotation.set(1.2, j * 1.26, 0, 'YXZ'); } }
+    if (r > 8.6 * K && k < .5) { is3mesh(new THREE.CylinderGeometry(.12, .18, 2.6, 5), '#8b5e3c', 0, 1.3, 0, g).rotation.z = .15; for (let j = 0; j < 5; j++) { const lf = is3mesh(new THREE.ConeGeometry(.35, 1.8, 4), '#2f9e44', 0, 2.6, 0, g); lf.rotation.set(1.2, j * 1.26, 0, 'YXZ'); } }
     else if (k < .4) is3mesh(new THREE.DodecahedronGeometry(.3 + rnd() * .5, 0), '#909aa3', 0, .1, 0, g);
     else if (k < .8) is3mesh(new THREE.IcosahedronGeometry(.35 + rnd() * .35, 0), rnd() < .5 ? '#40a447' : '#2b8a3e', 0, .25, 0, g);
     else { is3mesh(new THREE.CylinderGeometry(.03, .03, .4, 3), '#2b8a3e', 0, .2, 0, g); is3mesh(new THREE.OctahedronGeometry(.13, 0), ['#ffd43b', '#f783ac', '#ffffff'][Math.floor(rnd() * 3)], 0, .45, 0, g); }
     W.add(g);
   }
-  const dock = new THREE.Group(); dock.position.set(0, -.15, 12.3); is3mesh(new THREE.BoxGeometry(1.6, .15, 3.4), '#a0785a', 0, 0, 0, dock);
+  const dock = new THREE.Group(); dock.position.set(0, -.15, 12.3 * K); is3mesh(new THREE.BoxGeometry(1.6, .15, 3.4), '#a0785a', 0, 0, 0, dock);
   for (const [dx, dz] of [[-.7, 1.5], [.7, 1.5], [-.7, -.2], [.7, -.2]]) is3mesh(new THREE.CylinderGeometry(.1, .1, 1, 5), '#6b4c33', dx, -.4, dz, dock); W.add(dock);
-  for (let i = 0; i < 6; i++) { const cl = new THREE.Group(), a = i / 6 * Math.PI * 2; cl.position.set(Math.cos(a) * 30, 12 + rnd() * 6, Math.sin(a) * 30); for (let j = 0; j < 3; j++) { const s = new THREE.Mesh(new THREE.IcosahedronGeometry(1.4 + rnd(), 0), is3mat('#ffffff')); s.position.set(j * 1.6 - 1.6, rnd() * .6, rnd()); cl.add(s); } W.add(cl); }
+  for (let i = 0; i < 6; i++) { const cl = new THREE.Group(), a = i / 6 * Math.PI * 2; cl.position.set(Math.cos(a) * 30 * K, 12 + rnd() * 6, Math.sin(a) * 30); for (let j = 0; j < 3; j++) { const s = new THREE.Mesh(new THREE.IcosahedronGeometry(1.4 + rnd(), 0), is3mat('#ffffff')); s.position.set(j * 1.6 - 1.6, rnd() * .6, rnd()); cl.add(s); } W.add(cl); }
   // buildings on their plots; empty plots get a small dirt patch
-  IS_ITEMS.forEach((it, i) => {
-    const [x, z] = IS_PLOTS[i], c = isCond(it.id), g = new THREE.Group(); g.position.set(x, .7, z); g.rotation.y = Math.atan2(x, z);
+  if (house) { const h = hsHouse(hsState().id), fl = new THREE.Group(); fl.position.set(1.6, .7, 2.2); is3mesh(new THREE.CylinderGeometry(.07, .07, 4, 5), '#dee2e6', 0, 2, 0, fl); is3mesh(new THREE.BoxGeometry(1.4, .8, .05), h?.col || '#ffd43b', .72, 3.5, 0, fl); W.add(fl); }
+  ITEMS.forEach((it, i) => {
+    const [x, z] = PL[i], c = cond(it.id), g = new THREE.Group(); g.position.set(x, .7, z); g.rotation.y = Math.atan2(x, z); if (house) g.scale.setScalar(1.35);
     if (!c) { is3mesh(new THREE.CylinderGeometry(1, 1.05, .08, 7), '#8d6e4c', 0, .02, 0, g); W.add(g); return; }
     if (c === 'build') { is3mesh(new THREE.CylinderGeometry(1.1, 1.1, .08, 7), '#8d6e4c', 0, .02, 0, g); const sc = new THREE.Mesh(new THREE.BoxGeometry(1.8, 2, 1.8), new THREE.MeshBasicMaterial({ color: '#c08a52', wireframe: true })); sc.position.y = 1; g.add(sc); is3mesh(new THREE.BoxGeometry(.6, .6, .6), '#b07d48', .5, .3, .5, g); W.add(g); return; }
     const f = c === 'ok' ? 1 : c === 'worn' ? .72 : .5;
