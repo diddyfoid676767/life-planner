@@ -56,6 +56,17 @@ const TESTS = [
   { id: 'sit', name: 'Sit-and-reach', unit: 'cm', stat: 'agi', cat: 'test', std: [0, 35] },
   { id: 'swim50', name: '50m swim', unit: 's', lower: true, stat: 'end', cat: 'test', std: [60, 26] },
   // 2.40: more lifts and events from the PR ranking doc (Strength Level and VDOT tables mapped onto Rookie to Legend)
+  // 2.47: swimming by stroke and distance (seconds, short course)
+  { id: 'free100', name: '100m freestyle', unit: 'm:ss', lower: true, time: true, stat: 'end', cat: 'swim', std: [130, 52] },
+  { id: 'free200', name: '200m freestyle', unit: 'm:ss', lower: true, time: true, stat: 'end', cat: 'swim', std: [290, 115] },
+  { id: 'free400', name: '400m freestyle', unit: 'm:ss', lower: true, time: true, stat: 'end', cat: 'swim', std: [600, 245] },
+  { id: 'back50', name: '50m backstroke', unit: 's', lower: true, stat: 'end', cat: 'swim', std: [70, 28] },
+  { id: 'back100', name: '100m backstroke', unit: 'm:ss', lower: true, time: true, stat: 'end', cat: 'swim', std: [150, 58] },
+  { id: 'breast50', name: '50m breaststroke', unit: 's', lower: true, stat: 'end', cat: 'swim', std: [75, 30] },
+  { id: 'breast100', name: '100m breaststroke', unit: 'm:ss', lower: true, time: true, stat: 'end', cat: 'swim', std: [160, 63] },
+  { id: 'fly50', name: '50m butterfly', unit: 's', lower: true, stat: 'end', cat: 'swim', std: [75, 26] },
+  { id: 'fly100', name: '100m butterfly', unit: 'm:ss', lower: true, time: true, stat: 'end', cat: 'swim', std: [165, 56] },
+  { id: 'im200', name: '200m individual medley', unit: 'm:ss', lower: true, time: true, stat: 'end', cat: 'swim', std: [330, 125] },
   { id: 'row', name: 'Barbell row 1RM', unit: 'kg', stat: 'str', cat: 'rm', bw: [0.3, 2.27], doc: 1 },
   { id: 'incl', name: 'Incline bench 1RM', unit: 'kg', stat: 'str', cat: 'rm', bw: [0.35, 2.15], doc: 1 },
   { id: 'cgb', name: 'Close-grip bench 1RM', unit: 'kg', stat: 'str', cat: 'rm', bw: [0.41, 2.23], doc: 1 },

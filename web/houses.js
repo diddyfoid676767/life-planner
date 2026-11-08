@@ -110,7 +110,7 @@ function hsFight(hid) {
 function hsBar(f) { const pct = Math.min(100, Math.round(f.dealt / f.hp * 100)); return `<div class="hsbar"><i style="width:${100 - pct}%"></i><span>${f.dead ? 'Defeated!' : `${f.left.toLocaleString()} / ${f.hp.toLocaleString()} HP`}</span></div>`; }
 function hsCardHtml(kind, r, c) {
   const moves = HS_MOVES.filter(m => m.c === kind);
-  return `<div class="hscard hs-${kind}"><div class="hsr">${r}</div><div class="hsk">${kind === 'm' ? '🧠 MIND' : '💪 BODY'}</div>
+  return `<div class="hscard hs-${kind}"><div class="hsr">${r}</div><div class="hsk">${kind === 'm' ? '🧠 MIND FORM' : '💪 BODY FORM'}</div>
     <div class="hsx">×${hsMult(r).toFixed(2)} damage</div>
     <ul>${moves.map(m => `<li class="${r >= m.at ? 'on' : ''}" title="${esc(m.d)}">${r >= m.at ? '⚡' : '🔒'} ${m.n}${r >= m.at ? '' : ` <small>at ${m.at}</small>`}</li>`).join('')}</ul></div>`;
 }

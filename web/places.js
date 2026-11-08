@@ -9,7 +9,7 @@ const PLACES = [
   { id: 'plan', label: 'Plan', views: ['calendar', 'todo', 'inbox'] },
   { id: 'study', label: 'Study', views: ['study', 'school'] },
   { id: 'fitness', label: 'Fitness', views: ['training'] },
-  { id: 'house', label: 'House', views: ['house'] },
+  { id: 'house', label: 'House', views: ['house', 'character'] },
   { id: 'friends', label: 'Friends', views: ['friends', 'board', 'profile'] },
 ];
 const PLACE_ICON = {

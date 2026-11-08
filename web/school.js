@@ -222,7 +222,7 @@ function viewSchool() {
           <div class="row" style="justify-content:center"><button class="btn" data-cls="end">End early and rate</button></div>`
         : r.absent ? `<p class="muted" style="text-align:center">Marked 🚫 not present. <a href="#" data-cls="rate" data-i="${cp.i}">Change</a></p>`
         : r.effort ? `<p class="muted" style="text-align:center">Rated ${effIcon(eff10(r))} ${eff10(r)}/10 already.</p>`
-          : `<div class="row clsstart"><input type="text" id="clsGoal" placeholder="Lesson goal (optional), e.g. finish Q1 to 8" maxlength="120"><button class="btn primary" data-cls="start" data-i="${cp.i}">▶ Start class focus</button><button class="btn" data-cls="absent" data-i="${cp.i}" title="It won't count toward your effort">🚫 Not present</button></div>`}
+          : `<div class="row clsstart"><input type="text" id="clsGoal" placeholder="Lesson goal (optional), e.g. finish Q1 to 8" maxlength="120"><button class="btn primary" data-cls="start" data-i="${cp.i}">🔒 Lock in</button><button class="btn" data-cls="absent" data-i="${cp.i}" title="It won't count toward your effort">🚫 Not present</button></div>`}
     </div>`;
   } else {
     const m = nowMin(), next = cfg.bells.find(b => hmToMin(b.start) > m);

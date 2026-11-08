@@ -2979,3 +2979,39 @@ h1 { font-size: 1.6rem; letter-spacing: -.015em; }
 .hsmini { flex: 1; min-width: 80px; height: 8px; border-radius: 4px; background: var(--panel2); overflow: hidden; display: block; }
 .hsmini i { display: block; height: 100%; background: #e03131; }
 .hsrecap { border-left: 5px solid var(--accent); margin-bottom: 12px; }
+
+/* ---------- Character (2.47): Mind/Body cards, class, Lumen and Ember ---------- */
+.cdwallet { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 14px; margin-bottom: 6px; }
+.cdcoin { display: flex; align-items: center; gap: 14px; }
+.cdbig { font-size: 1.7rem; font-weight: 800; white-space: nowrap; }
+.cd-l .cdbig { color: #e0a800; }
+.cd-e .cdbig { color: #f76707; }
+.cdcards { display: grid; grid-template-columns: 1fr 180px 1fr; gap: 14px; margin: 14px 0; align-items: stretch; }
+@media (max-width: 860px) { .cdcards { grid-template-columns: 1fr; } }
+.cdcard { border-top: 4px solid var(--cdc, var(--accent)); }
+.cd-m { --cdc: #748ffc; } .cd-b { --cdc: #2f9e44; }
+.cd-ovr { --cdc: #f59f00; text-align: center; display: flex; flex-direction: column; justify-content: center; gap: 4px; background: linear-gradient(160deg, rgba(255, 200, 60, .16), rgba(247, 103, 7, .14)); }
+.cdcls { font-size: 2.2rem; }
+.cdovr { font-size: 2.6rem; font-weight: 800; line-height: 1; }
+.cdhead { display: flex; justify-content: space-between; align-items: baseline; font-weight: 700; margin-bottom: 8px; }
+.cdhead b { font-size: 1.6rem; }
+.cdstat { display: grid; grid-template-columns: 90px 1fr 30px; gap: 8px; align-items: center; margin: 6px 0; font-size: .9rem; }
+.cdstat b { text-align: right; }
+.cdtrack { height: 8px; border-radius: 4px; background: var(--line, rgba(127, 127, 127, .2)); overflow: hidden; }
+.cdtrack i { display: block; height: 100%; border-radius: 4px; }
+.cdclasses { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 10px; }
+.cdclass { display: flex; flex-direction: column; align-items: flex-start; gap: 3px; text-align: left; padding: 10px 12px; border-radius: 12px; border: 1px solid var(--line, rgba(127, 127, 127, .25)); background: var(--card, transparent); color: inherit; cursor: pointer; }
+.cdclass.on { border-color: #f59f00; box-shadow: 0 0 0 2px rgba(245, 159, 0, .35); }
+.cdce { font-size: 1.4rem; }
+.cdclass small { font-size: .78rem; }
+.cdsubj { width: 100%; border-collapse: collapse; }
+.cdsubj td { padding: 6px 4px; border-bottom: 1px solid var(--line, rgba(127, 127, 127, .15)); vertical-align: middle; }
+.cdsubj .dot { display: inline-block; width: 9px; height: 9px; border-radius: 50%; }
+.cdpct { width: 70px; }
+.cdsrc { display: flex; flex-wrap: wrap; gap: 4px 10px; margin: 6px 0; font-size: .88rem; }
+.cdsrc b { min-width: 90px; }
+.cdsport { gap: 6px; flex-wrap: wrap; }
+.cdsport select, .cdsport input { width: auto; flex: 0 1 auto; }
+.cdsport input[type=number] { width: 70px; }
+.cdlog { list-style: none; padding: 0; margin: 10px 0 0; }
+.cdlog li { display: grid; grid-template-columns: 90px 1fr auto auto; gap: 8px; align-items: center; padding: 4px 0; font-size: .9rem; }
