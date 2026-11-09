@@ -3368,3 +3368,24 @@ body.dens-compact .item, body.dens-compact .todo-item { padding-top: 4px; paddin
 .cdscores.mini { display: block; text-align: left; }
 .cdscores.mini .card-head { display: flex; align-items: center; gap: 8px; width: 100%; }
 .cdscores.mini .cdmini, .cdscores.mini p { width: 100%; text-align: left; }
+
+/* 2.57.1: narrow windows (and big browser zoom) keep the places in the top bar.
+   Before this the places row was squeezed to nothing under 861px wide, so you
+   could only reach the tabs above the page (Today and Calendar). */
+@media (max-width: 860px) {
+  body { --sb-w: 0px; }
+  body .sidebar { width: auto; flex-wrap: nowrap; gap: 6px; min-width: 0; padding: 8px 10px; }
+  body .content { margin-left: 0; }
+  body .sidebar .brand { flex: none; }
+  body #cmdkBtn { width: auto; flex: none; margin: 0; padding: 8px 10px; }
+  body #cmdkBtn span, body #cmdkBtn kbd { display: none; }
+  body #gqa { flex: none; margin: 0; }
+  body #gqa .gqa-btn { padding: 8px 10px; }
+  body #gqa .gqa-btn span, body #gqa .gqa-btn kbd { display: none; }
+  body #places { flex: 1 1 0; min-width: 0; flex-direction: row; justify-content: space-around; gap: 2px; overflow-x: auto; overflow-y: hidden; }
+  body #places button { width: auto; flex: none; justify-content: center; gap: 6px; padding: 8px 10px; }
+  body #places button > span { display: inline; flex: none; }
+  body #places .navspacer { display: none; }
+  body #places button[data-badge]:not([data-badge=""])::after { position: absolute; top: 2px; right: 2px; margin: 0; }
+}
+@media (max-width: 700px) { body #places button > span { display: none; } }
