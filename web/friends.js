@@ -84,7 +84,7 @@ function compareFriend(id) {
 // Leaderboard tab: everything competitive with friends in one place
 function viewLeaderboard() {
   if (ONLINE) return `${pageHead('🏆 Leaderboard', '')}<div class="card"><p>Leaderboards live in the PC app.</p></div>`;
-  if (!acctLoaded) loadAccount().then(() => { if (view === 'board') render(); });
+  if (!acctLoaded) loadAccount().then(() => { if (view === 'islands' && ui.isTab === 'rank') render(); });
   const n = friendsCount();
   return `${pageHead('🏆 Leaderboard', n ? `You vs ${n} friend${n === 1 ? '' : 's'} · resets every Monday` : 'Add friends to race them')}
     <div class="friends-top">${myWeekCard()}${highlightsCard()}</div>
@@ -106,7 +106,8 @@ function athleticsBoardCard() {
 }
 // a line on Today: where you stand against your friends this week
 function todayRivals() {
-  const quick = `<div class="todayquick"><button class="btn small ghost" data-act="editClasses" title="Change your classes, calendars and timetable">✏️ Classes &amp; calendars</button></div>`;
+  const cfgOn = typeof schoolCfg === 'function' && schoolCfg().on && isSchoolDay(today());
+  const quick = `<div class="todayquick">${cfgOn ? `<button class="btn small ghost" data-act="clsAll" title="Every period today, with effort ratings">🏫 All my classes ${ui.clsAll ? '▲' : '▼'}</button>` : ''}<button class="btn small ghost" data-act="editClasses" title="Change your classes, calendars and timetable">✏️ Classes &amp; calendars</button></div>`;
   if (ONLINE || !friendsCount()) return quick;
   const sc = overallScores(thisWeekRows()), i = sc.findIndex(r => r.me); if (i < 0) return '';
   const ahead = sc[i - 1];

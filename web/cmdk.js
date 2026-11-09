@@ -17,10 +17,10 @@
     out.push({ k: 'Page', t: 'Settings', run: goView('settings') });
     out.push({ k: 'Page', t: 'Your island', sub: 'Islands', run: () => { ui.isTab = 'personal'; goView('islands')(); } });
     out.push({ k: 'Page', t: 'House island and your house', sub: 'Islands', run: () => { ui.isTab = 'house'; goView('islands')(); } });
+    out.push({ k: 'Page', t: 'Rankings: leaderboards against friends', sub: 'Islands', run: () => { ui.isTab = 'rank'; goView('islands')(); } });
     out.push({ k: 'Page', t: 'Boss island: fight the weekly boss', sub: 'Islands', run: () => { ui.isTab = 'boss'; goView('islands')(); } });
     out.push({ k: 'Action', t: 'Start studying', run: act('focusNew') });
     out.push({ k: 'Action', t: 'Add a task', run: act('new', { kind: 'todo' }) });
-    out.push({ k: 'Action', t: 'Add a study session', run: act('new', { kind: 'session' }) });
     out.push({ k: 'Action', t: 'Log a workout', run: act('new', { kind: 'workout' }) });
     out.push({ k: 'Action', t: 'Add a SAC or exam', run: act('new', { kind: 'assessment' }) });
     out.push({ k: 'Action', t: 'Add an event', run: act('new', { kind: 'event' }) });

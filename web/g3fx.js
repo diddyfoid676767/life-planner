@@ -13,10 +13,11 @@ const srgb = t => { t.encoding = THREE.sRGBEncoding; return t; };
 
 function fxRenderer() {
   const R = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
-  R.setPixelRatio(Math.min(devicePixelRatio || 1, 2));
+  const low = typeof D === 'object' && D && D.settings && D.settings.lowQuality;
+  R.setPixelRatio(low ? 1 : Math.min(devicePixelRatio || 1, 2));
   R.outputEncoding = THREE.sRGBEncoding;
   R.toneMapping = THREE.ACESFilmicToneMapping; R.toneMappingExposure = 1;
-  R.shadowMap.enabled = true; R.shadowMap.type = THREE.PCFSoftShadowMap;
+  R.shadowMap.enabled = !low; R.shadowMap.type = THREE.PCFSoftShadowMap;
   // don't stop to read back every shader's compile log (it blocks the page
   // while the graphics driver compiles, and these shaders are known to work)
   R.debug.checkShaderErrors = false;

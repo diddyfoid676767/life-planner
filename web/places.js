@@ -4,14 +4,14 @@
    pages, shown as one row of tabs above the page. The original page buttons
    (#tabs) stay in the page but hidden, because the rest of the app sets
    badges on them and clicks them to change page; this file mirrors them.
-   Also here: keys 1 to 5, the collapsible sidebar, Lumen / Ember / streak in
+   Also here: keys 1 to 5, icons-only sidebar on narrow windows, Lumen / Ember / streak in
    the footer and the one quick-add button. */
 const PLACES = [
-  { id: 'today', label: 'Today', views: ['today', 'calendar', 'todo', 'school'], extra: ['todo', 'school'] },
+  { id: 'today', label: 'Today', views: ['today', 'calendar'] },
   { id: 'study', label: 'Study', views: ['study'] },
   { id: 'fitness', label: 'Fitness', views: ['training'] },
   { id: 'islands', label: 'Islands', views: ['islands'] },
-  { id: 'friends', label: 'Friends', views: ['friends', 'board'] },
+  { id: 'friends', label: 'Friends', views: ['friends'] },
 ];
 const PLACE_ICON = {
   today: '<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>',
@@ -20,9 +20,9 @@ const PLACE_ICON = {
   islands: '<path d="M3 17c2 1.5 4 1.5 6 0s4-1.5 6 0 4 1.5 6 0"/><path d="M6 14c1-3 4-4 6-4s5 1 6 4"/><path d="M12 10V4l4 2-4 2"/>',
   friends: '<circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0"/><path d="M16 4.5a3.5 3.5 0 0 1 0 7M18 14a6 6 0 0 1 4 6"/>',
 };
-const SUB_LABEL = { today: 'Today', friends: 'Chats', board: 'Leaderboard', school: 'Class mode', todo: 'To-do' };
+const SUB_LABEL = { today: 'Today', friends: 'Chats' };
 // old page names still work (links, saved state, the setup tour)
-const VIEW_ALIAS = { day: 'today', plan: 'today', inbox: 'today', personal: 'todo', chats: 'friends', character: 'profile', forest: 'islands', arena: 'islands', house: 'islands', training2: 'training' };
+const VIEW_ALIAS = { day: 'today', plan: 'today', inbox: 'today', personal: 'today', todo: 'today', school: 'today', chats: 'friends', character: 'profile', forest: 'islands', arena: 'islands', house: 'islands', training2: 'training', board: 'islands' };
 const placeOf = v => PLACES.find(p => p.views.includes(VIEW_ALIAS[v] || v));
 // the sidebar button for a page, for the setup tour to point at
 function placeBtn(v) { const p = placeOf(v); return p ? document.querySelector(`#places [data-place="${p.id}"]`) : document.querySelector(`#places [data-go="${VIEW_ALIAS[v] || v}"]`); }
@@ -33,12 +33,10 @@ function placeBtn(v) { const p = placeOf(v); return p ? document.querySelector(`
   document.body.classList.add('places-on');
   let last = {};
   try { last = JSON.parse(localStorage.getItem('lpPlaceLast') || '{}') || {}; } catch (e) { }
-  try { if (localStorage.getItem('lpSideMini') === '1') document.body.classList.add('side-mini'); } catch (e) { }
   const nav = document.createElement('nav'); nav.id = 'places'; nav.setAttribute('aria-label', 'Places');
   nav.innerHTML = PLACES.map((p, i) => `<button type="button" data-place="${p.id}" title="${p.label} (${i + 1})"><svg viewBox="0 0 24 24" aria-hidden="true">${PLACE_ICON[p.id]}</svg><span>${p.label}</span></button>`).join('')
     + '<div class="navspacer"></div>'
-    + '<button type="button" data-go="profile" class="pl-you" title="You: your character, avatar, stats and settings"><span class="pl-av"></span><span>You</span></button>'
-    + '<button type="button" class="pl-mini" title="Collapse the sidebar to icons"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 6l-6 6 6 6"/></svg><span>Collapse</span></button>';
+    + '<button type="button" data-go="profile" class="pl-you" title="You: your character, avatar, stats and settings"><span class="pl-av"></span><span>You</span></button>';
   tabs.after(nav);
   const sub = document.createElement('nav'); sub.id = 'subnav'; sub.setAttribute('aria-label', 'Pages'); sub.hidden = true;
   main.before(sub);
@@ -49,6 +47,10 @@ function placeBtn(v) { const p = placeOf(v); return p ? document.querySelector(`
   const badgeOf = v => tabOf(v)?.dataset.badge || '';
   const setAttr = (el, k, val) => { if (val) { if (el.getAttribute(k) !== String(val)) el.setAttribute(k, val); } else if (el.hasAttribute(k)) el.removeAttribute(k); };
   const foot = document.getElementById('sideStats');
+  // 2.56: feedback is always one click away, at the bottom of the sidebar
+  const fb = document.createElement('button'); fb.type = 'button'; fb.id = 'fbBtn'; fb.className = 'fbbtn'; fb.dataset.act = 'feedback'; fb.title = 'Send feedback or report a bug';
+  fb.innerHTML = '<span>💬</span><span class="fbl">Feedback</span>';
+  (document.querySelector('.sidefoot') || side).prepend(fb);
 
   function sync() {
     const cur = tabs.querySelector('button.active')?.dataset.view || '';
@@ -80,9 +82,9 @@ function placeBtn(v) { const p = placeOf(v); return p ? document.querySelector(`
       if (av && a && av.dataset.k !== a.length + ':' + (D.settings.name || '')) { av.innerHTML = a; av.dataset.k = a.length + ':' + (D.settings.name || ''); }
     } catch (e) { }
   }
+  const visiblePlaces = () => (typeof placeIdsInOrder === 'function' ? placeIdsInOrder() : PLACES.map(p => p.id)).map(id => PLACES.find(p => p.id === id)).filter(p => !(D?.settings?.menu?.hide || []).includes(p.id));
   const openPlace = p => go(p.views.includes(last[p.id]) ? last[p.id] : p.views[0]);
   nav.addEventListener('click', e => {
-    if (e.target.closest('.pl-mini')) { const on = document.body.classList.toggle('side-mini'); try { localStorage.setItem('lpSideMini', on ? '1' : '0'); } catch (er) { } return; }
     const s = e.target.closest('[data-go]'); if (s) { go(s.dataset.go); return; }
     const b = e.target.closest('[data-place]'); if (!b) return;
     openPlace(PLACES.find(x => x.id === b.dataset.place));
@@ -93,7 +95,7 @@ function placeBtn(v) { const p = placeOf(v); return p ? document.querySelector(`
     if (e.ctrlKey || e.metaKey || e.altKey || e.repeat) return;
     const t = e.target; if (t && (t.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName))) return;
     if (document.getElementById('modal')?.open || !document.getElementById('cmdk')?.hidden && document.getElementById('cmdk')) return;
-    const i = +e.key; if (i >= 1 && i <= PLACES.length) { e.preventDefault(); openPlace(PLACES[i - 1]); }
+    const vis = visiblePlaces(), i = +e.key; if (i >= 1 && i <= vis.length) { e.preventDefault(); openPlace(vis[i - 1]); }
   });
   let queued = false;
   new MutationObserver(() => { if (!queued) { queued = true; queueMicrotask(() => { queued = false; sync(); syncFoot(); }); } })
@@ -105,7 +107,7 @@ function placeBtn(v) { const p = placeOf(v); return p ? document.querySelector(`
   // one quick-add button on every page: a task, a study session or a workout
   const qa = document.createElement('div'); qa.id = 'gqa';
   qa.innerHTML = '<button type="button" class="gqa-btn" title="Add something (Q)"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg><span>Add</span><kbd>Q</kbd></button><div class="gqa-menu" hidden>'
-    + [['todo', '✅', 'Task'], ['session', '📚', 'Study session'], ['workout', '🏃', 'Workout'], ['assessment', '📝', 'SAC or exam'], ['event', '📆', 'Event']].map(([k, ic, l]) => `<button type="button" data-act="new" data-kind="${k}"><span>${ic}</span>${l}</button>`).join('')
+    + [['todo', '✅', 'Task'], ['workout', '🏃', 'Workout'], ['assessment', '📝', 'SAC or exam'], ['event', '📆', 'Event']].map(([k, ic, l]) => `<button type="button" data-act="new" data-kind="${k}"><span>${ic}</span>${l}</button>`).join('')
     + '</div>';
   (side.querySelector('.brand') || side).after(qa);
   const menu = qa.querySelector('.gqa-menu'), openQa = on => { menu.hidden = !on; qa.classList.toggle('open', on); };

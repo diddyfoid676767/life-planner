@@ -61,6 +61,7 @@ function applyTheme() {
     '--ga': mix(th.a, 70, 'transparent'), '--gb': mix(th.b, 70, 'transparent'),
   });
   for (const [k2, x] of Object.entries(v)) r.setProperty(k2, x);
+  if (D?.settings?.menu?.accent) r.setProperty('--accent', D.settings.menu.accent);
   const bg = D?.settings?.themeBg || 'soft', el = document.documentElement;
   el.dataset.bg = bg;
   el.toggleAttribute('data-glass', !!D?.settings?.themeGlass);

@@ -5,7 +5,7 @@
    was dropped so nothing 3D loads until you open Islands. */
 
 const PF = {};
-const PF_CATS = [['look', '🪞 Look like me'], ['hair', '💇 Hair'], ['hairCol', '🎨 Hair colour'], ['face', '😀 Face'], ['hat', '🧢 Headwear'], ['eyes', '🕶️ Eyewear'], ['kit', '👕 Kit'], ['shoes', '👟 Shoes'], ['extra', '✨ Extras'], ['pet', '🐶 Pet'], ['bg', '🌄 Background'], ['dance', '💃 Dance'], ['skin', 'Skin tone']];
+const PF_CATS = [['look', '🪞 Look like me'], ['hair', '💇 Hair'], ['hairCol', '🎨 Hair colour'], ['face', '😀 Face'], ['hat', '🧢 Headwear'], ['eyes', '🕶️ Eyewear'], ['kit', '👕 Kit'], ['shoes', '👟 Shoes'], ['extra', '✨ Extras'], ['pet', '🐶 Pet'], ['bg', '🌄 Background'], ['skin', 'Skin tone']];
 function pfSpec() {
   const av = myAv(), tryId = ui.pfTry && cos(ui.pfTry), cat = ui.pfCat || 'look';
   const s = { ...avatarSpec(av) };
@@ -19,7 +19,6 @@ function viewProfile() {
   const user = acct.signedIn ? `@${esc(acct.username)}` : acct.configured && !ONLINE ? '<a href="#" data-pf="login">Log in to show friends</a>' : '';
   const stage = `<div class="pfstage" id="wardStage" style="background:${BG_CSS[spec.bg] || 'radial-gradient(ellipse at 50% 30%,var(--panel),var(--panel2))'}">
       <div class="pf2d on">${avatarFull(spec, { size: 260, cls: 'idle' })}${petHtml(spec.pet, 54)}</div>
-      <div class="pfstage-btns"><button class="btn small" data-act="avDance" title="Play your victory dance">💃 Dance</button></div>
       ${ui.pfTry ? `<div class="pftry"><span>Trying on <b>${esc(cos(ui.pfTry)?.name || '')}</b></span>${pfBuyBtn(cos(ui.pfTry))}<button class="btn small" data-pf="untry">Take off</button></div>` : ''}</div>`;
   const tab = ui.youTab || 'me';
   const tabs = `<div class="seg youseg">${[['me', '🜂 Character'], ['look', '🪞 Avatar'], ['stats', '📊 Stats']].map(([k, l]) => `<button class="${tab === k ? 'on' : ''}" data-pf="tab" data-v="${k}">${l}</button>`).join('')}</div>`;
@@ -54,12 +53,11 @@ function pfGrid(cat, av, spec) {
     const own = ownsCos(c.id), on = av[cat] === c.id, trying = ui.pfTry === c.id, r = cosReq(c);
     const preview = { ...base, [cat]: c.id, ...(cat === 'kit' ? { kitC: c.id === 'kit_gear' ? avatarSpec({ ...av, kit: 'kit_gear' }).kitC : c.c } : {}) };
     const pic = cat === 'bg' ? `<div class="wbg" style="background:${BG_CSS[c.id] || 'var(--panel2)'}"></div>` : cat === 'pet' ? `<div class="wbg dance">${c.e || '🚫'}</div>`
-      : cat === 'dance' ? `<div class="wbg dance">${{ d_jump: '🦘', d_flex: '💪', d_spin: '🌀', d_flip: '🤸', d_dab: '🙆', d_moon: '🕺', d_worm: '🐛', d_robot: '🤖', d_floss: '🕴️' }[c.id] || '💃'}</div>`
       : `<div class="wmini">${avatarFull(preview, { size: 92 })}</div>`;
     const tag = on ? '<span class="tag green">Wearing</span>' : own ? '<span class="tag">Owned</span>' : r ? `<span class="tag ${r.ok ? 'green' : ''}">🔒 ${esc(r.label)}</span>` : '';
     return `<button class="pfitem ${on ? 'on' : ''} ${own ? 'own' : 'locked'} ${trying ? 'trying' : ''}" data-pf="pick" data-id="${c.id}">${pic}<b>${esc(c.name)}</b>${tag}</button>`;
   }).join('')}</div>
-  <p class="muted small-text">${cat === 'dance' ? 'Pick a dance, then press 💃 Dance to see it.' : 'Click anything to wear it. Everything is free.'}</p>`;
+  <p class="muted small-text">Click anything to wear it. Everything is free.</p>`;
 }
 
 // clicking an item wears it when it's yours, otherwise tries it on

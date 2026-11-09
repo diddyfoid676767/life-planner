@@ -40,7 +40,7 @@ async function refreshFriends(force) {
   friendRowsAt = Date.now();
   try {
     const list = await (await fetch('/api/account/people?u=' + encodeURIComponent(names.join(',')), { cache: 'no-store' })).json();
-    if (Array.isArray(list)) { friendRows = list.map(toBoardRow); if (typeof settleComp === 'function') settleComp(); if ((view === 'friends' || view === 'board') && !modal.open) render(); }
+    if (Array.isArray(list)) { friendRows = list.map(toBoardRow); if (typeof settleComp === 'function') settleComp(); if ((view === 'friends' || (view === 'islands' && ui.isTab === 'rank')) && !modal.open) render(); }
   } catch { }
 }
 setInterval(() => { if (acct.signedIn) { publishMe(); refreshFriends(); } }, 5 * 60000);
@@ -72,7 +72,7 @@ async function loadSuggest() {
   if (!acct.signedIn || Date.now() - acctSuggestAt < 120000) return;
   acctSuggestAt = Date.now();
   try { const r = await (await fetch('/api/account/people?suggest=1', { cache: 'no-store' })).json(); acctSuggest = Array.isArray(r) ? r : []; } catch { acctSuggest = []; }
-  if (typeof wiz !== 'undefined' && wiz) drawSetup(); else if (view === 'friends' || view === 'board') render();
+  if (typeof wiz !== 'undefined' && wiz) drawSetup(); else if (view === 'friends' || (view === 'islands' && ui.isTab === 'rank')) render();
 }
 function friendSuggestions() {
   const mine = new Set([...friendNames(), acct.username]), score = {}, info = {};

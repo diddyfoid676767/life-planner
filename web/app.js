@@ -344,7 +344,7 @@ function groupedByDay(items, opts = {}) {
   return html + '</ul>';
 }
 // one "+ Add" button that opens a small menu, instead of a row of six buttons
-const ADD_KINDS = [['session', '📚', 'Study'], ['assessment', '📝', 'SAC / Exam'], ['workout', '🏃', 'Workout'], ['event', '📆', 'Event'], ['deadline', '⏰', 'Deadline'], ['todo', '✅', 'Task']];
+const ADD_KINDS = [['assessment', '📝', 'SAC / Exam'], ['workout', '🏃', 'Workout'], ['event', '📆', 'Event'], ['deadline', '⏰', 'Deadline'], ['todo', '✅', 'Task']];
 const addMenu = date => `<details class="addmenu"><summary class="btn small primary">+ Add</summary><div class="addpop">${ADD_KINDS.map(([k, ic, l]) => `<button class="addopt" data-act="new" data-kind="${k}" data-date="${date || ''}"><span>${ic}</span>${l}</button>`).join('')}</div></details>`;
 document.addEventListener('click', e => { for (const m of document.querySelectorAll('details.addmenu[open]')) if (!m.contains(e.target) || e.target.closest('.addopt')) m.open = false; });
 
@@ -437,8 +437,12 @@ function morphNode(o, n) {
 function render() {
   applyTheme();
   applyNav();
+  if (typeof applyMenu === 'function') applyMenu();
   // 2.55: old page names go to where that page lives now
   if (view === 'house') ui.isTab = 'house';
+  if (view === 'board') ui.isTab = 'rank';
+  if (view === 'todo' || view === 'personal') { ui.todoOpen = true; view = 'today'; }
+  if (view === 'school') { ui.clsAll = true; view = 'today'; }
   if (view === 'arena' || view === 'forest') ui.isTab = ui.isTab || 'personal';
   if (typeof VIEW_ALIAS === 'object' && VIEW_ALIAS[view]) view = VIEW_ALIAS[view];
   document.querySelectorAll('#tabs button').forEach(b => b.classList.toggle('active', b.dataset.view === view));
@@ -448,7 +452,7 @@ function render() {
   const fresh = v.dataset.view !== view;
   if (fresh) { v.classList.remove('enter'); void v.offsetWidth; v.classList.add('enter'); v.dataset.view = view; }
   else v.classList.remove('enter'); // staying on the same page: no entrance animation, only the parts that changed are updated
-  const page = { today: viewToday, calendar: viewCalendar, study: viewStudy, training: viewTraining, islands: viewIslands, friends: viewFriends, board: viewLeaderboard, profile: viewProfile, school: viewSchool, todo: viewTodo, settings: viewSettings };
+  const page = { today: viewToday, calendar: viewCalendar, study: viewStudy, training: viewTraining, islands: viewIslands, friends: viewFriends, board: viewLeaderboard, profile: viewProfile, settings: viewSettings };
   if (!page[view]) view = 'today';
   const html = page[view]();
   if (fresh || !v.firstChild) v.innerHTML = html; else morphHtml(v, html);
@@ -491,7 +495,7 @@ function viewToday() {
   const nextUp = todays.find(e => e.time && e.time >= nowT && !e.done);
   const nStudy = todays.filter(e => e.kind === 'session').length, nTrain = todays.filter(e => e.kind === 'workout').length;
   const bits = [nStudy && `${nStudy} study block${nStudy === 1 ? '' : 's'}`, nTrain && `${nTrain} workout${nTrain === 1 ? '' : 's'}`, todays.filter(e => e.kind === 'assessment').length && `${todays.filter(e => e.kind === 'assessment').length} SAC/assessment`].filter(Boolean);
-  const summary = todays.length ? `${todays.length} thing${todays.length === 1 ? '' : 's'} on today${bits.length ? ': ' + bits.join(', ') : ''}.${nextUp ? ` Next up: <b>${esc(nextUp.title)}</b> at ${fmtTime(nextUp.time)}.` : ''}` : 'Nothing planned today. A great day to get ahead.';
+  const summary = todays.length ? `${todays.length} thing${todays.length === 1 ? '' : 's'} on today${bits.length ? ': ' + bits.join(', ') : ''}.` : 'Nothing planned today. A great day to get ahead.';
   const studyMins = items.filter(e => e.kind === 'session').reduce((a, e) => a + (+e.mins || 0), 0);
   const trainMins = items.filter(e => e.kind === 'workout').reduce((a, e) => a + (+e.mins || 0), 0);
 
@@ -517,11 +521,11 @@ function viewToday() {
       <span class="dbar"><i style="width:${ck.length ? dn / ck.length * 100 : 0}%"></i></span></button>`;
   }).join('');
   const clsNow = typeof classNowCard === 'function' ? classNowCard() : '';
-  return `<div class="tpage">${welcome}${clsNow}${typeof hsTodayStrip === 'function' ? hsTodayStrip() : ''}${typeof todayRivals === 'function' ? todayRivals() : ''}
+  return `<div class="tpage">${welcome}${sundayRecap()}${clsNow}${ui.clsAll && typeof clsAllCard === 'function' ? clsAllCard() : ''}${typeof hsTodayStrip === 'function' ? hsTodayStrip() : ''}${typeof todayRivals === 'function' ? todayRivals() : ''}
   <div class="hero slim thero ${tod}">
     <div class="hero-text"><div class="hero-date">${fullDate(t)} ${now.getFullYear()}</div>
-      <h1>${greet}${D.settings.name ? ', ' + esc(D.settings.name) : ''}</h1><p>${summary}</p>
-      ${(nowLine && !clsNow) || unr ? `<button class="hnow" data-act="goto" data-v="school">🏫 ${nowLine}${nowLine && unr ? ' · ' : ''}${unr ? `${unr} period${unr === 1 ? '' : 's'} to rate` : ''} →</button>` : ''}</div>
+      <h1>${greet}${D.settings.name ? ', ' + esc(D.settings.name) : ''}</h1><p>${summary}</p>${nextUpLine(todays, nowT)}
+      ${(nowLine && !clsNow) || unr ? `<button class="hnow" data-act="clsAll">🏫 ${nowLine}${nowLine && unr ? ' · ' : ''}${unr ? `${unr} period${unr === 1 ? '' : 's'} to rate` : ''} →</button>` : ''}</div>
     <button class="btn white thero-go" data-act="focusNew">▶ Start studying</button>
     <div class="hero-qa">${quickAddHtml(true)}</div>
     <div class="hstats">${stat(`${doneN}/${checkable.length}`, 'ticked off', checkable.length ? doneN / checkable.length : 0)}${stat(fmtMins(studied) || '0m', `of ${fmtMins(goal)} study goal`, studied / goal)}${stat('🔥 ' + streak, 'day streak', streak / 7)}</div>
@@ -539,6 +543,34 @@ function viewToday() {
     </div>
   </div>
   <div class="apps-row">${apps}<button class="appchip add" data-act="new" data-kind="link" data-date="Apps" title="Add a quick-open button">＋</button></div></div>`;
+}
+
+// "Next up": one small line on Today: the next thing with a time, else the next class, else the next task or exam
+function nextUpLine(todays, nowT) {
+  let txt = '';
+  const it = todays.find(e => e.time && e.time >= nowT && !e.done && e.kind !== 'feed');
+  if (it) txt = `<b>${esc(it.title)}</b> at ${fmtTime(it.time)}`;
+  if (!txt && typeof schoolCfg === 'function' && schoolCfg().on && isSchoolDay(today())) {
+    const m = nowMin(), b = schoolCfg().bells.find(x => !x.brk && hmToMin(x.start) > m);
+    if (b) txt = `<b>${esc(subjLabel(periodSubj(today(), schoolCfg().bells.indexOf(b))))}</b> (${esc(b.n)}) at ${fmtTime(b.start)}`;
+  }
+  if (!txt) { const td = D.todos.filter(x => !x.done && x.due && x.due <= addDays(today(), 1)).sort((a, b) => a.due.localeCompare(b.due))[0]; if (td) txt = `<b>${esc(td.text)}</b>${td.due < today() ? ' (overdue)' : td.due === today() ? ' (due today)' : ' (due tomorrow)'}`; }
+  if (!txt) { const x = typeof upcomingExams === 'function' ? upcomingExams(today(), 14)[0] : null; if (x) txt = `<b>${esc(subj(x.subjectId).name)} ${esc(x.title)}</b> ${relDays(diffDays(today(), x.date))}`; }
+  return txt ? `<div class="nextup">➡️ Next up: ${txt}</div>` : '';
+}
+// Sunday weekly recap: Lumen and Ember earned, personal bests and boss damage
+function sundayRecap() {
+  const t = today(), wk = mondayOf(t);
+  if (parseYmd(t).getDay() !== 0 || D.settings.recapSeen === wk) return '';
+  let l = 0, e = 0, pbs = 0, dmg = 0, studied = 0;
+  try {
+    for (let i = 0; i < 7; i++) { const x = cdDay(addDays(wk, i)); l += x.lumen || 0; e += x.ember || 0; }
+    studied = D.focusLogs.filter(f => f.date >= wk && f.date <= t).reduce((s, f) => s + f.mins, 0);
+    if (typeof hsWeek === 'function') { const w = hsWeek(wk); pbs = w.pbs || 0; dmg = w.dmg + (typeof ftWeekDmg === 'function' ? ftWeekDmg(wk) : 0); }
+  } catch (er) { }
+  const cell = (ic, v, lb) => `<div class="rcp"><b>${ic} ${v}</b><span>${lb}</span></div>`;
+  return `<div class="card recap"><div class="card-head"><h2>🌅 Your week</h2><span style="flex:1"></span><button class="btn small" data-act="recapDone">Got it</button></div>
+    <div class="rcps">${cell('✦', Math.round(l).toLocaleString(), 'Lumen earned')}${cell('🔥', Math.round(e).toLocaleString(), 'Ember earned')}${cell('📚', fmtMins(studied) || '0m', 'studied')}${cell('🏅', pbs, pbs === 1 ? 'personal best' : 'personal bests')}${cell('⚔️', Math.round(dmg).toLocaleString(), 'boss damage')}</div></div>`;
 }
 const APP_COLORS = { google: '#4285f4', outlook: '#0078d4', teams: '#5b5fc7', onenote: '#7719aa', garmin: '#007cc3', 'brain.fm': '#1f2a44', 'school portal': '#8b1e3f' };
 function appColor(title) { const k = Object.keys(APP_COLORS).find(k => title.toLowerCase().includes(k)); return k ? APP_COLORS[k] : 'var(--accent)'; }
@@ -606,109 +638,55 @@ function viewCalendar() {
 }
 
 function viewStudy() {
-  const t = today(), now = new Date().toTimeString().slice(0, 5);
+  const t = today();
   const goal = +D.settings.dailyGoal || 60;
-  const sessOf = id => D.sessions.find(x => x.id === id);
-  const endOf = (tm, m) => { const [h, mi] = tm.split(':').map(Number), x = h * 60 + mi + m; return String(Math.floor(x / 60)).padStart(2, '0') + ':' + String(x % 60).padStart(2, '0'); };
-  const clean = s => String(s || '').replace(/^Study [^:]*: /, '').replace(/^Study /, '');
 
-  // up next: the next unfinished study block, the next SAC/exam, and today so far
-  const upcoming = D.sessions.filter(x => !x.done && (x.date > t || (x.date === t && (!x.time || endOf(x.time, +x.duration || 30) >= now)))).sort((a, b) => (a.date + (a.time || '99')).localeCompare(b.date + (b.time || '99')));
-  const nx = upcoming[0];
-  const nextCard = nx ? (() => {
-    const s = subj(nx.subjectId), dd = diffDays(t, nx.date);
-    return `<div class="card upnext" style="--c:${s.color}"><div class="unlabel">Next study block</div>
-      <div class="untitle">${esc(clean(nx.topic) || s.name)}</div>
-      <div class="unmeta"><span class="tag" style="background:${s.color}22;color:${s.color}">${esc(s.name)}</span> ${dd === 0 ? 'Today' : relDays(dd)}${nx.time ? ' · ' + fmtTime(nx.time) : ''} · ${fmtMins(+nx.duration || 30)}</div>
-      <div class="row" style="margin-top:auto"><button class="btn primary big" data-act="focus" data-id="${nx.id}">▶ Start now</button><button class="btn" data-act="edit" data-kind="session" data-id="${nx.id}">Edit</button></div></div>`;
-  })() : `<div class="card upnext"><div class="unlabel">Next study block</div><div class="untitle">Nothing planned</div><div class="unmeta">Plan some revision before your next SAC.</div><div class="row" style="margin-top:auto"><button class="btn primary big" data-act="planStudy">Plan study</button></div></div>`;
+  // today so far, and the next SAC or exam
   const na = D.assessments.filter(a => !a.done && a.date >= t).sort((a, b) => a.date.localeCompare(b.date))[0];
   const sacCard = na ? (() => {
-    const s = subj(na.subjectId), dd = diffDays(t, na.date), planned = D.sessions.filter(x => x.assessmentId === na.id), pdone = planned.filter(x => x.done).length;
+    const s = subj(na.subjectId), dd = diffDays(t, na.date);
     return `<div class="card upnext sac ${dd <= 3 ? 'soon' : ''}" style="--c:${s.color}"><div class="unlabel">Next SAC or exam</div>
       <div class="uncount"><b>${dd === 0 ? 'Today' : dd}</b>${dd === 0 ? '' : `<span>day${dd === 1 ? '' : 's'}</span>`}</div>
-      <div class="untitle sm">${esc(na.title)}</div><div class="unmeta">${esc(s.name)} · ${fullDate(na.date)}${na.time ? ' ' + fmtTime(na.time) : ''}</div>
-      <div class="row" style="margin-top:auto"><button class="btn" data-act="planStudy" data-id="${na.id}">${planned.length ? `Revision ${pdone}/${planned.length} done · plan more` : 'Plan revision'}</button></div></div>`;
+      <div class="untitle sm">${esc(na.title)}</div><div class="unmeta">${esc(s.name)} · ${fullDate(na.date)}${na.time ? ' ' + fmtTime(na.time) : ''}</div></div>`;
   })() : `<div class="card upnext sac"><div class="unlabel">Next SAC or exam</div><div class="untitle">None coming up</div></div>`;
   const minsT = D.focusLogs.filter(l => l.date === t).reduce((a, l) => a + l.mins, 0);
-  const blocksT = D.sessions.filter(x => x.date === t), doneT = blocksT.filter(x => x.done).length;
   const todayCard = `<div class="card upnext today-card"><div class="unlabel">Today</div><div class="row" style="gap:18px;flex-wrap:nowrap">
-      ${ringHtml(minsT / goal, '#40c057', 'studied', fmtMins(minsT) || '0m')}${ringHtml(blocksT.length ? doneT / blocksT.length : 0, '#7950f2', 'blocks done', `${doneT}/${blocksT.length}`)}</div>
+      ${ringHtml(minsT / goal, '#40c057', 'studied', fmtMins(minsT) || '0m')}</div>
       <div class="unmeta">Goal ${fmtMins(goal)} · 🔥 ${studyStreak()}-day streak</div></div>`;
-
-  // week: day strip + the selected day's blocks as big rows
-  const wk = addDays(mondayOf(t), 7 * ui.studyWeek), wkEnd = addDays(wk, 6);
-  if (!ui.studyDay || ui.studyDay < wk || ui.studyDay > wkEnd) ui.studyDay = t >= wk && t <= wkEnd ? t : wk;
-  const sd = ui.studyDay;
-  const items = agenda(wk, wkEnd).filter(e => e.kind === 'session' || e.kind === 'assessment');
-  const strip = Array.from({ length: 7 }, (_, i) => {
-    const d = addDays(wk, i), dt = parseYmd(d), list = items.filter(e => e.date === d);
-    const ss = list.filter(e => e.kind === 'session'), due = list.filter(e => e.kind === 'assessment');
-    const plan = ss.reduce((a, e) => a + (+e.mins || 0), 0), dn = ss.filter(e => e.done).length;
-    return `<button class="dpill ${d === sd ? 'sel' : ''} ${d === t ? 'today' : ''}" data-act="studyDay" data-date="${d}">
-      <span class="dn">${DOW[dt.getDay()]}</span><b>${dt.getDate()}</b><span class="dmins">${plan ? fmtMins(plan) : '–'}</span>
-      <span class="dots">${due.map(e => `<i class="due" style="background:${e.color}" title="${esc(e.title)}"></i>`).join('')}${ss.slice(0, 5).map(e => `<i style="background:${e.color}"></i>`).join('')}</span>
-      <span class="dbar"><i style="width:${ss.length ? dn / ss.length * 100 : 0}%"></i></span></button>`;
-  }).join('');
-  const dayList = items.filter(e => e.date === sd);
-  const dueRows = dayList.filter(e => e.kind === 'assessment').map(e => `<div class="sdue" style="--c:${e.color}" data-act="edit" data-kind="assessment" data-id="${e.id}"><span class="sdue-tag">${esc(e.tag)}</span><b>${esc(e.title.replace(/^[^:]*:\s*/, ''))}</b><span class="muted">${esc(e.sub || '')}${e.time ? ' · ' + fmtTime(e.time) : ''}</span></div>`).join('');
-  const blockRows = dayList.filter(e => e.kind === 'session').map(e => {
-    const x = sessOf(e.id) || {}, s = subj(x.subjectId), missed = !e.done && sd < t;
-    const logged = D.focusLogs.filter(l => l.sessionId === e.id).reduce((a, l) => a + l.mins, 0);
-    return `<div class="sblock item ${e.done ? 'done' : ''} ${missed ? 'missed' : ''}" style="--c:${e.color}">
-      <div class="stime">${e.time ? fmtTime(e.time) : 'Any time'}<span>${fmtMins(+e.mins || 30)}</span></div>
-      <input type="checkbox" class="bigcheck" data-toggle="session" data-id="${e.id}" ${e.done ? 'checked' : ''} title="Mark done">
-      <div class="main" data-act="edit" data-kind="session" data-id="${e.id}"><div class="stitle">${esc(clean(x.topic) || clean(e.title))}</div>
-        <div class="smeta"><span class="sdot" style="background:${s.color}"></span>${esc(s.name)}${logged ? ` · ⏱ ${fmtMins(logged)} studied` : ''}${missed ? ' · missed' : ''}</div>${x.notes ? `<div class="snotes">${esc(x.notes.slice(0, 110))}${x.notes.length > 110 ? '…' : ''}</div>` : ''}</div>
-      ${!e.done ? `<button class="btn primary sp" data-act="focus" data-id="${e.id}" title="Start a focus timer">▶ Start</button>` : '<span class="tag green">✓ Done</span>'}</div>`;
-  }).join('');
-  const wkLabel = ui.studyWeek === 0 ? 'This week' : ui.studyWeek === 1 ? 'Next week' : ui.studyWeek === -1 ? 'Last week' : `${fmtDate(wk)} – ${fmtDate(wkEnd)}`;
 
   // SACs & exams
   const assessments = D.assessments.filter(a => ui.assessPast ? a.date < t : a.date >= t).sort((a, b) => ui.assessPast ? b.date.localeCompare(a.date) : a.date.localeCompare(b.date));
   const assessRows = assessments.map(a => {
     const s = subj(a.subjectId), dd = diffDays(t, a.date);
-    const planned = D.sessions.filter(x => x.assessmentId === a.id).length;
     const tag = a.done ? '<span class="tag green">Done</span>' : dd < 0 ? '' : dd <= 7 ? `<span class="tag red">${relDays(dd)}</span>` : dd <= 21 ? `<span class="tag amber">${dd} days</span>` : `<span class="tag">${dd} days</span>`;
     return `<li class="aitem ${a.done ? 'done' : ''}" style="--c:${s.color}"><input type="checkbox" data-toggle="assessment" data-id="${a.id}" ${a.done ? 'checked' : ''} title="Mark done">
-      <div class="main" data-act="edit" data-kind="assessment" data-id="${a.id}"><div class="title">${esc(a.title)}</div><div class="meta">${esc(s.name)} · ${fmtDate(a.date)}${a.time ? ' ' + fmtTime(a.time) : ''}${a.score ? ' · ' + esc(a.score) : ''}</div></div>${tag}
-      ${!ui.assessPast && !a.done ? `<button class="btn small" data-act="planStudy" data-id="${a.id}" title="Create revision sessions before this">Plan${planned ? ` (${planned})` : ''}</button>` : ''}</li>`;
+      <div class="main" data-act="edit" data-kind="assessment" data-id="${a.id}"><div class="title">${esc(a.title)}</div><div class="meta">${esc(s.name)} · ${fmtDate(a.date)}${a.time ? ' ' + fmtTime(a.time) : ''}${a.score ? ' · ' + esc(a.score) : ''}</div></div>${tag}</li>`;
   }).join('');
 
   // studied this week, per subject
   const tw = mondayOf(t), twEnd = addDays(tw, 6);
   const sum = (from, to, sid) => D.focusLogs.filter(l => l.date >= from && l.date <= to && (!sid || l.subjectId === sid)).reduce((a, l) => a + l.mins, 0);
-  const rows = D.subjects.map(s => {
-    const w = D.sessions.filter(x => x.subjectId === s.id && x.date >= tw && x.date <= twEnd);
-    return { s, focus: sum(tw, twEnd, s.id), done: w.filter(x => x.done).length, plan: w.length };
-  });
+  const rows = D.subjects.map(s => ({ s, focus: sum(tw, twEnd, s.id) }));
   const max = Math.max(30, ...rows.map(r => r.focus));
   const sessN = D.focusLogs.filter(l => l.mins >= 10 && l.date >= tw).length;
   // 8-week trend: total minutes per week, newest last
   const weeks = Array.from({ length: 8 }, (_, i) => { const w0 = addDays(tw, -7 * (7 - i)); return { w0, m: sum(w0, addDays(w0, 6)) }; });
   const wMax = Math.max(60, ...weeks.map(w => w.m)), wAvg = Math.round(weeks.slice(0, 7).reduce((a, w) => a + w.m, 0) / 7);
-  const exams = typeof upcomingExams === 'function' ? upcomingExams() : [], boardOn = ui.studyBoard || (exams.length && diffDays(t, exams[0].date) <= 21);
   const C = typeof cdParts === 'function' ? cdParts() : null;
   const subjects = D.subjects.map(s => `<span class="subj" style="--c:${s.color}"><span class="dot" style="background:${s.color}"></span>${esc(s.name)}<button class="iconbtn" data-act="edit" data-kind="subject" data-id="${s.id}" title="Edit subject">✎</button></span>`).join('');
 
-  return `<div class="study2">${pageHead('Study', `${fmtMins(sum(tw, twEnd)) || '0m'} studied this week · ${sessN} session${sessN === 1 ? '' : 's'} · 🔥 ${studyStreak()}-day streak`, `<button class="btn" data-act="planStudy">Plan study</button><button class="btn" data-s2="examStart" title="Full screen; leaving the planner ends the timer">🔒 Exam mode</button><button class="btn primary" data-act="focusNew">▶ Start studying</button>`)}
-  <div class="upnext-row">${nextCard}${sacCard}${todayCard}</div>
+  return `<div class="study2">${pageHead('Study', `${fmtMins(sum(tw, twEnd)) || '0m'} studied this week · ${sessN} session${sessN === 1 ? '' : 's'} · 🔥 ${studyStreak()}-day streak`, `<button class="btn" data-s2="examStart" title="Full screen; leaving the planner ends the timer">🔒 Exam mode</button><button class="btn primary" data-act="focusNew">▶ Start studying</button>`)}
+  <div class="upnext-row">${todayCard}${sacCard}</div>
   ${examHub()}
-  ${boardOn && typeof examBoard === 'function' ? examBoard() : exams.length ? `<div class="row" style="margin:-4px 0 14px"><button class="btn small" data-act="studyBoard">🗓 Show the exam timetable</button></div>` : ''}
   <div class="study-grid2">
     <div class="study-side">
     <div class="card"><div class="card-head"><h2>Study trend</h2><span class="muted small-text">last 8 weeks · average ${fmtMins(wAvg) || '0m'} a week</span></div>
       <div class="wtrend">${weeks.map((w, i) => `<div class="wt ${i === 7 ? 'now' : ''}" title="Week of ${fmtDate(w.w0)}: ${fmtMins(w.m) || '0m'}"><b>${w.m ? fmtMins(w.m) : ''}</b><i style="height:${Math.round(w.m / wMax * 100)}%"></i><span>${parseYmd(w.w0).getDate()} ${MON[parseYmd(w.w0).getMonth()]}</span></div>`).join('')}</div></div>
     <div class="card"><div class="card-head"><h2>Studied this week</h2><b class="wk-total">${fmtMins(sum(tw, twEnd)) || '0m'}</b></div>
-      <div class="bars">${rows.map(r => `<div class="bar"><span>${esc(r.s.name)}</span><div class="track"><div class="fill" style="width:${r.focus / max * 100}%;background:${r.s.color}"></div></div><span class="muted">${fmtMins(r.focus) || '0m'}${r.plan ? ` · ${r.done}/${r.plan}` : ''}</span></div>`).join('')}</div>
-      <p class="muted small-text" style="margin:8px 0 0">Time from the focus timer · blocks ticked off / planned.</p></div>
+      <div class="bars">${rows.map(r => `<div class="bar"><span>${esc(r.s.name)}</span><div class="track"><div class="fill" style="width:${r.focus / max * 100}%;background:${r.s.color}"></div></div><span class="muted">${fmtMins(r.focus) || '0m'}</span></div>`).join('')}</div>
+      <p class="muted small-text" style="margin:8px 0 0">Time from the study timer.</p></div>
     ${typeof studyPieCard === 'function' ? studyPieCard() : ''}
     ${typeof studyTimeCard === 'function' ? studyTimeCard() : ''}
-    <div class="card"><div class="card-head"><h2>${wkLabel}</h2><span class="muted">${fullDate(sd)}</span><span style="flex:1"></span>
-      <div class="seg"><button data-act="studyWeek" data-v="-1" title="Previous week">‹</button><button class="${ui.studyWeek === 0 ? 'on' : ''}" data-act="studyWeek" data-v="0">Today</button><button data-act="studyWeek" data-v="1" title="Next week">›</button></div></div>
-      <div class="daystrip">${strip}</div>
-      <div class="sday">${dueRows}${blockRows || (dueRows ? '' : `<div class="empty big">No study blocks ${sd === t ? 'today' : 'on this day'}.</div>`)}</div>
-      <button class="btn" data-act="new" data-kind="session" data-date="${sd}" style="margin-top:10px">+ Add a study block</button></div>
     </div>
     <div class="study-side">
       ${C ? C.scores : ''}
@@ -717,7 +695,6 @@ function viewStudy() {
         <button class="iconbtn" data-act="new" data-kind="assessment" title="Add SAC / exam">＋</button></div>
         ${assessRows ? `<ul class="alist">${assessRows}</ul>` : `<div class="empty">${ui.assessPast ? 'No past assessments.' : 'No upcoming SACs or exams.'}</div>`}</div>
       <div class="card subjcard"><div class="card-head"><h2>Subjects</h2></div><div class="subjects">${subjects || '<span class="empty">Add your subjects to get started.</span>'}<button class="btn small" data-act="new" data-kind="subject">+ Subject</button></div></div>
-      ${linksHtml(['Study'], 'chips')}
     </div>
   </div>
 </div>`;
@@ -786,7 +763,6 @@ function trainingPlan() {
 const i18nWeek = s => { const d = parseYmd(s); return `Wk of ${d.getDate()} ${MON[d.getMonth()]}`; };
 
 // Events and deadlines now live in the To-do tab
-function viewPersonal() { ui.todoFilter = ui.evFilter === 'past' ? 'ev:past' : 'ev:up'; view = 'todo'; return viewTodo(); }
 function eventsListHtml(mode) {
   const t = today();
   let list = mode === 'past' ? agenda(addDays(t, -365), addDays(t, -1)).filter(e => e.kind === 'event').reverse() : agenda(t, addDays(t, 365)).filter(e => e.kind === 'event');
@@ -854,6 +830,7 @@ function viewSettings() {
   <div class="seg settabs">${tabs.map(([k, l]) => `<button class="${grp === k ? 'on' : ''}" data-act="setTab" data-v="${k}">${l}</button>`).join('')}</div>
   <div class="grid g2 settings-grid" data-sec="${grp}">
     ${themeCard()}
+    ${typeof menuCard === 'function' ? menuCard() : ''}
     ${soundCard()}
     ${accountCard().replace('class="card acctcard"', 'class="card acctcard" data-sec="account"')}
     ${ONLINE && !CLOUD ? `<div class="card" data-sec="calendars" style="grid-column:1/-1"><div class="card-head"><h2>Calendars</h2><button class="btn small" data-act="gcalRefresh">Refresh</button><button class="btn small primary" data-act="gcalChoose">Choose calendars</button></div>
@@ -894,8 +871,9 @@ function viewSettings() {
       <p class="muted small-text">Tip: export to your phone's calendar (below) for reminders even when your PC is off.</p></div>
     <div class="card" data-sec="reminders" style="grid-column:1/-1"><h2>Default reminders for new items</h2>
       <div style="overflow-x:auto"><table class="remtable"><thead><tr><th></th>${REMIND_OPTS.map(([, l]) => `<th>${l.replace(' before', '')}</th>`).join('')}</tr></thead><tbody>
-      ${remindRow('assessment', 'SACs &amp; exams')}${remindRow('session', 'Study sessions')}${remindRow('tevent', 'Training events')}${remindRow('workout', 'Workouts')}${remindRow('event', 'Personal events')}${remindRow('todo', 'Tasks with a due date')}</tbody></table></div>
+      ${remindRow('assessment', 'SACs &amp; exams')}${remindRow('tevent', 'Training events')}${remindRow('workout', 'Workouts')}${remindRow('event', 'Personal events')}${remindRow('todo', 'Tasks with a due date')}</tbody></table></div>
       <p class="muted small-text">Columns are how long before each item you get reminded.</p></div>
+    ${typeof bellCard === 'function' ? bellCard().replace('<div class="card">', '<div class="card" data-sec="reminders" style="grid-column:1/-1">') : ''}
     <div class="card" data-sec="backup"><h2>Backup &amp; sync</h2>
       <p class="muted small-text" style="margin-top:0">${ONLINE ? 'Your planner is saved to your account and to this device. Backups are kept by the PC app.' : 'Your data is in <code>data\\planner-data.json</code> next to Solis.exe. Backups are kept in <code>data\\backups</code>: every hour for two days, every day for two weeks, and a copy of your planner whenever something replaces it.'}</p>
       <div class="row"><button class="btn" data-act="exportJson">Export backup (.json)</button><label class="btn">Import backup<input type="file" accept=".json,application/json" data-change="importJson" hidden></label></div>
@@ -1123,56 +1101,6 @@ const editors = {
 // ---------- plan generators ----------
 const WEEKDAYS = [[1, 'Mon'], [2, 'Tue'], [3, 'Wed'], [4, 'Thu'], [5, 'Fri'], [6, 'Sat'], [0, 'Sun']];
 
-function planStudy(assessId) {
-  const t = today();
-  const upcoming = D.assessments.filter(a => a.date > t && !a.done).sort((a, b) => a.date.localeCompare(b.date));
-  if (!upcoming.length) { alert('Add an upcoming SAC or exam first, then plan study sessions for it.'); return; }
-  const a = assessId ? find('assessment', assessId) : upcoming[0];
-  showForm({
-    title: 'Plan study sessions',
-    saveLabel: 'Create sessions',
-    fields: [{ type: 'html', html: '<p class="muted small-text" style="margin-top:0">Spreads revision sessions from the start date up to the day before the assessment, getting more frequent as it gets closer. You can edit or delete any session afterwards.</p>' },
-      { key: 'assessmentId', label: 'Prepare for', type: 'select', options: upcoming.map(x => [x.id, `${subj(x.subjectId).name}: ${x.title} (${fmtDate(x.date)})`]), value: a.id },
-      { type: 'row', fields: [{ key: 'start', label: 'Start from', type: 'date', value: t, required: true }, { key: 'perWeek', label: 'Sessions per week (early on)', type: 'number', value: 3, min: 1, step: 1 }] },
-      { key: 'days', label: 'Days I can study', type: 'checks', options: WEEKDAYS, value: ['1', '2', '3', '4', '5', '6', '0'] },
-      { type: 'row', fields: [{ key: 'time', label: 'Usual time', type: 'time', value: '16:30' }, { key: 'duration', label: 'Session length (minutes)', type: 'number', value: 60, min: 15, step: 5 }] },
-      { key: 'topics', label: 'Topics to rotate through (one per line)', type: 'textarea', value: 'Review notes & summaries\nPractice questions\nPast exam / SAC questions under timed conditions\nFix weak areas from mistakes', hint: 'The last session before the assessment is always a final review.' },
-      { key: 'ramp', label: 'Study every available day in the final week', type: 'bool', value: true }],
-    onSave: v => {
-      const target = find('assessment', v.assessmentId);
-      const days = new Set(v.days.map(Number));
-      if (!days.size) { alert('Pick at least one day.'); return false; }
-      const end = addDays(target.date, -1);
-      if (v.start > end) { alert('The start date must be before the assessment.'); return false; }
-      const topics = v.topics.split('\n').map(s => s.trim()).filter(Boolean);
-      if (!topics.length) topics.push('Revision');
-      const per = Math.max(1, Math.min(7, v.perWeek || 3));
-      // candidate days, skipping ones that already have a session for this subject
-      const cands = [];
-      for (let d = v.start; d <= end; d = addDays(d, 1)) if (days.has(parseYmd(d).getDay()) && !D.sessions.some(s => s.subjectId === target.subjectId && s.date === d)) cands.push(d);
-      if (!cands.length) { alert('No free days in that range.'); return false; }
-      const chosen = new Set();
-      const finalWeekStart = addDays(target.date, -7);
-      // group the rest by 7-day blocks counting back from the assessment
-      const blocks = {};
-      for (const d of cands) {
-        if (v.ramp && d >= finalWeekStart) { chosen.add(d); continue; }
-        const b = Math.floor(diffDays(d, target.date) / 7); (blocks[b] = blocks[b] || []).push(d);
-      }
-      for (const [b, list] of Object.entries(blocks)) {
-        const n = Math.min(list.length, b <= 1 ? per + 1 : per); // a little extra in the second-last week
-        for (let i = 0; i < n; i++) chosen.add(list[Math.floor((i + 0.5) * list.length / n)]);
-      }
-      const sorted = [...chosen].sort();
-      const created = sorted.map((d, i) => ({
-        id: uid() + i, subjectId: target.subjectId, assessmentId: target.id, date: d, time: v.time, duration: v.duration || 60,
-        topic: i === sorted.length - 1 ? `Final review for ${target.title}` : topics[i % topics.length], notes: '', done: false, remind: D.settings.remind.session,
-      }));
-      D.sessions.push(...created);
-      undoToast(`Created ${created.length} study sessions for ${target.title}.`, () => { const ids = new Set(created.map(c => c.id)); D.sessions = D.sessions.filter(s => !ids.has(s.id)); });
-    },
-  });
-}
 
 const TEMPLATES = {
   'Running': [['Easy run', 'Easy'], ['Intervals (e.g. 6 × 400 m fast, 90 s jog)', 'Hard'], ['Tempo run', 'Moderate'], ['Long run', 'Moderate']],
@@ -1787,11 +1715,11 @@ document.addEventListener('click', e => {
     case 'calDay': ui.daySel = el.dataset.v; view = 'today'; window.scrollTo(0, 0); render(); break;
     case 'goto': view = el.dataset.v; window.scrollTo(0, 0); render(); break;
     case 'gotoIsland': ui.isTab = el.dataset.v; ui.isPanel = null; ui.isSel = null; view = 'islands'; window.scrollTo(0, 0); render(); break;
+    case 'recapDone': D.settings.recapSeen = mondayOf(today()); save(); render(); break;
     case 'dismissWelcome': D.settings.welcomed = true; save(); render(); break;
     case 'calNav': { const n = +el.dataset.n; if (n === 0) { const d = new Date(); ui.calMonth = new Date(d.getFullYear(), d.getMonth(), 1); ui.calSel = today(); } else ui.calMonth = new Date(ui.calMonth.getFullYear(), ui.calMonth.getMonth() + n, 1); render(); break; }
     case 'calSel': ui.calSel = date; render(); document.getElementById('calDay')?.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); break;
     case 'daySel': ui.daySel = date; render(); break;
-    case 'studyDay': ui.studyDay = date; render(); break;
     case 'trainWeek': ui.trainWeek = el.dataset.v === '0' ? 0 : (ui.trainWeek || 0) + Number(el.dataset.v); render(); break;
     case 'evCat': ui.evCat = el.dataset.v; render(); break;
     case 'setTab': ui.setTab = el.dataset.v; render(); break;
@@ -1799,8 +1727,6 @@ document.addEventListener('click', e => {
     case 'calFilter': ui.calFilter[el.dataset.g] = !ui.calFilter[el.dataset.g]; render(); break;
     case 'assessPast': ui.assessPast = el.dataset.v === '1'; render(); break;
     case 'studyAll': ui.studyAll = el.dataset.v === '1'; render(); break;
-    case 'studyBoard': ui.studyBoard = !ui.studyBoard; render(); if (ui.studyBoard) setTimeout(() => document.getElementById('examBoard')?.scrollIntoView({ behavior: 'smooth' }), 50); break;
-    case 'studyWeek': ui.studyWeek = el.dataset.v === '0' ? 0 : ui.studyWeek + Number(el.dataset.v); render(); break;
     case 'claudeTokenSave': case 'claudeTokenClear': {
       const token = act === 'claudeTokenClear' ? '' : ($('#claudeToken')?.value || '').trim();
       if (act === 'claudeTokenSave' && !token) { toast('Paste the token first', ''); break; }
@@ -1812,7 +1738,7 @@ document.addEventListener('click', e => {
     case 'brainfmTest': checkBrainfm().then(() => { render(); openBrainfm(); }); break;
     case 'setupOpen': openSetup(false); break;
     case 'tourStart': startTour(); break;
-    case 'goSchool': view = 'school'; render(); break;
+    case 'goSchool': case 'clsAll': ui.clsAll = !ui.clsAll; render(); break;
     case 'icuSync': icuSync(); break;
     case 'icuKeys': icuSaveKeys(); break;
     case 'icuOff': icuDisconnect(); break;
@@ -1825,7 +1751,6 @@ document.addEventListener('click', e => {
     case 'wardCat': ui.wardCat = el.dataset.v; render(); break;
     case 'wearCos': wearCos(id); break;
     case 'buyCos': buyCos(id); break;
-    case 'avDance': { const st = document.querySelector('#wardStage .avatar'); if (st) { const d = myAv().dance; st.parentNode.classList.remove('dance-' + d); void st.parentNode.offsetWidth; st.parentNode.classList.add('dance-' + d); setTimeout(() => st.parentNode.classList.remove('dance-' + d), 2200); } break; }
     case 'ttEdit': openSetup(false); wiz.step = wizStepOf('tt'); drawSetup(); break;
     case 'editClasses': openSetup(false); wiz.step = wizStepOf('classes'); drawSetup(); break;
     case 'bodyPage': view = 'training'; ui.bodyPage = el.dataset.v; render(); break;
@@ -1854,7 +1779,6 @@ document.addEventListener('click', e => {
     case 'navReset': D.settings.navOrder = []; D.settings.navHidden = []; save(); render(); break;
     case 'setThemeBg': D.settings.themeBg = el.dataset.v; save(); render(); break;
     case 'evFilter': ui.evFilter = el.dataset.v; render(); break;
-    case 'planStudy': planStudy(id); break;
     case 'planTraining': planTraining(id); break;
     case 'clearDone': if (confirm('Remove all completed tasks?')) { D.todos = D.todos.filter(x => !x.done); save(); render(); } break;
     case 'askNotify': askNotify(); break;
@@ -1895,8 +1819,6 @@ document.addEventListener('click', e => {
     case 'feedback': openFeedback(); break;
     case 'ideasCopy': navigator.clipboard.writeText(D.settings.fbIdeas || '').then(() => toast('📋 Copied', 'Your ideas are on the clipboard.'), () => toast("Couldn't copy", 'Your browser blocked the clipboard.', { cls: 'danger' })); break;
     case 'fbLogin': modal.close(); ui.setTab = 'account'; view = 'settings'; render(); break;
-    case 'examPlan': buildExamPlan(); break;
-    case 'logPaper': logPaper({ assessmentId: el.dataset.id }); break;
     case 'checkUpdateNow': {
       el.disabled = true; el.textContent = 'Checking…';
       fetch('/api/update/check', { method: 'POST' }).then(r => r.json()).then(u => {
@@ -2013,6 +1935,22 @@ function bootDone(skip) {
   addEventListener('keydown', skip, { once: true });
   setTimeout(skip, 6000); // never stuck behind it
 }
+
+// 2.56: study blocks and the exam timetable are gone. Once, the planner is
+// backed up to a file in data/backups (kept as "manual"), then the blocks go.
+async function clearStudyBlocks() {
+  if (ONLINE || !loaded || D.settings.blocksCleared) return;
+  if (!D.sessions.length) { D.settings.blocksCleared = true; save(); return; }
+  try {
+    if (!(await saveNow())) return;
+    const r = await fetch('/api/backups', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ snapshot: 'manual' }) });
+    if (!r.ok) return; // no backup, no delete
+  } catch { return; }
+  const n = D.sessions.length;
+  D.sessions = [];
+  D.settings.blocksCleared = true; save(); render();
+  setTimeout(() => toast('🧹 Study blocks removed', `${n} old study block${n === 1 ? '' : 's'} cleared. A backup of your planner from just before is in the data/backups folder (Settings, Restore a backup).`, { timeout: 20000 }), 1200);
+}
 (async function init() {
   if (ONLINE) { bootDone(true); return initOnline(); }
   try {
@@ -2045,6 +1983,8 @@ function bootDone(skip) {
     const seed = await fetch('/api/seed', { cache: 'no-store' }).then(r => r.json()).catch(() => null);
     openSetup(true); wiz.seed = !!(seed && seed.subjects); drawSetup();
   }
+  clearStudyBlocks();
+  if (typeof menuStart === 'function') menuStart();
   renderFocusBar();
   checkBrainfm().then(() => { if (view === 'settings' && !modal.open) render(); });
   checkTempFolder();

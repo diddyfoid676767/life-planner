@@ -132,7 +132,7 @@ function isLayout() {
 // ---------- page ----------
 const isTimeLeft = d => { const ms = new Date(d + 'T00:00').getTime() - Date.now(); if (ms <= 0) return 'soon'; const h = Math.floor(ms / 36e5), dd = Math.floor(h / 24); return dd ? `${dd}d ${h % 24}h` : `${h}h ${Math.floor(ms / 6e4) % 60}m`; };
 const IS_LABEL = { build: '🏗️ Building', ok: '✅ Working', worn: '🟠 Worn: half perk', broken: '🔴 Broken: no perk' };
-const isSwitch = tab => `<div class="ishud is-tc"><div class="isswitch">${[['personal', '🏝️', 'Your island'], ['house', '🏰', 'House island'], ['boss', typeof hsBoss === 'function' ? hsBoss(mondayOf(today())).e : '💀', 'Boss island']].map(([id, e, n]) => `<button class="${tab === id ? 'on' : ''}" data-is="tab" data-v="${id}">${e} ${n}</button>`).join('')}</div></div>`;
+const isSwitch = tab => `<div class="ishud is-tc"><div class="isswitch">${[['personal', '🏝️', 'Your island'], ['house', '🏰', 'House island'], ['boss', typeof hsBoss === 'function' ? hsBoss(mondayOf(today())).e : '💀', 'Boss island'], ['rank', '🏆', 'Rankings']].map(([id, e, n]) => `<button class="${tab === id ? 'on' : ''}" data-is="tab" data-v="${id}">${e} ${n}</button>`).join('')}</div></div>`;
 const isCtl = () => `<div class="g3ctl isctl"><button data-is="view" data-v="left" title="Turn left (or drag)">⟲</button><button data-is="view" data-v="right" title="Turn right">⟳</button><button data-is="view" data-v="in" title="Zoom in (or scroll)">＋</button><button data-is="view" data-v="out" title="Zoom out">−</button><button data-is="view" data-v="reset" title="Reset view">⌂</button></div>`;
 // a resource bar: amount, and how full the store is
 const isBar = (cls, ico, amt, sub, fill, act) => `<div class="isres ${cls}" ${act ? `data-is="${act}" role="button" tabindex="0"` : ''}><span class="isico">${ico}</span><div><b>${amt.toLocaleString()}</b><i style="width:${Math.max(0, Math.min(100, fill * 100))}%"></i></div><small>${sub}</small></div>`;
@@ -150,6 +150,7 @@ function viewIslands() {
   const tab = ui.isTab || 'personal';
   if (tab === 'house') return viewHouseIsland();
   if (tab === 'boss') return viewBossIsland();
+  if (tab === 'rank') return `<div class="rankpage"><div class="rank-sw">${isSwitch(tab).replace(/^<div class="ishud is-tc">|<\/div>$/g, '')}</div>${viewLeaderboard()}</div>`;
   const st = isState(), w = cdWallet(), lv = isLv(), L = isLayout(), sto = isStore();
   for (const s of Object.values(st.items)) isFold(s);
   const busy = IS_ITEMS.filter(it => isBusy(st.items[it.id])).length;
@@ -265,6 +266,16 @@ function isPlaceStart(P) {
 // ---------- 3D (three.js, rotate and zoom only, drawn on demand) ----------
 const IS3 = { yaw: Math.PI / 4, pitch: .62, dist: 34, sig: '' };
 const is3home = house => ({ yaw: Math.PI / 4, pitch: house === 'boss' ? .42 : .62, dist: house === 'boss' ? 30 : house ? 50 : 34 });
+// 2.56: the Low graphics switch in Settings drops the 3D shadows (works live)
+function applyQuality() {
+  if (typeof IS3 !== 'object' || !IS3.R) return;
+  const low = !!(D.settings && D.settings.lowQuality);
+  if (IS3.R.shadowMap.enabled === !low) return;
+  IS3.R.shadowMap.enabled = !low; IS3.R.setPixelRatio(low ? 1 : Math.min(devicePixelRatio || 1, 2));
+  if (IS3.sun) IS3.sun.castShadow = !low;
+  IS3.scene?.traverse(o => { if (o.material) [].concat(o.material).forEach(m => { m.needsUpdate = true; }); });
+  IS3.sz = '';
+}
 function is3init() {
   if (IS3.R) return;
   const R = IS3.R = fxRenderer(); R.shadowMap.type = THREE.PCFSoftShadowMap;
@@ -281,7 +292,7 @@ function is3init() {
   for (const [col, p] of [['#7b4dff', [-70, 20, -90]], ['#1fb5c9', [80, -30, -60]], ['#ff7a3d', [30, 50, 110]]]) { const n = new THREE.Mesh(new THREE.IcosahedronGeometry(26, 1), new THREE.MeshBasicMaterial({ color: col, transparent: true, opacity: .07, depthWrite: false })); n.position.set(...p); S.add(n); }
   IS3.cam = new THREE.PerspectiveCamera(38, 1, .5, 400);
   S.add(new THREE.HemisphereLight('#d9e2ff', '#3b2a55', .75));
-  const sun = IS3.sun = new THREE.DirectionalLight('#fff1d6', 1); sun.position.set(16, 30, 10); sun.castShadow = true; sun.shadow.mapSize.set(1024, 1024);
+  const sun = IS3.sun = new THREE.DirectionalLight('#fff1d6', 1); sun.position.set(16, 30, 10); sun.castShadow = !(D.settings && D.settings.lowQuality); sun.shadow.mapSize.set(1024, 1024);
   Object.assign(sun.shadow.camera, { left: -18, right: 18, top: 18, bottom: -18, near: 1, far: 90 }); S.add(sun);
   const rim = new THREE.DirectionalLight('#8a7dff', .35); rim.position.set(-20, -6, -14); S.add(rim);
   IS3.world = new THREE.Group(); S.add(IS3.world);

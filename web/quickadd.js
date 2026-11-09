@@ -54,8 +54,7 @@ function parseQuick(raw) {
   if (/\b(sac|exam|test|quiz|assessment|assignment|oral|presentation|essay|practice exam|trial exam|mock)\b/.test(low) && !/\b(study|revise|revision)\b/.test(low.replace(/\bstudy design\b/, ''))) {
     kind = 'assessment';
     type = /practice exam|trial exam|mock/.test(low) ? 'Practice exam' : /\bexam\b/.test(low) ? 'Exam' : /\b(test|quiz)\b/.test(low) ? 'Test' : /\b(assignment|essay|presentation|oral)\b/.test(low) ? 'Assignment' : 'SAC';
-  } else if (/\b(study|revise|revision|homework)\b/.test(low) && subj && time) kind = 'session';
-  else if (/\b(run|jog|gym|swim|ride|cycle|training|footy|basketball|netball|soccer|tennis|sprints?|workout|yoga|pilates)\b/.test(low) && !/\b(party|birthday)\b/.test(low)) kind = 'workout';
+  } else if (/\b(run|jog|gym|swim|ride|cycle|training|footy|basketball|netball|soccer|tennis|sprints?|workout|yoga|pilates)\b/.test(low) && !/\b(party|birthday)\b/.test(low)) kind = 'workout';
   else if (/\b(due|deadline|hand in|submit|by)\b/.test(low) && date) { kind = 'event'; category = 'Deadline'; }
   else if (/\b(birthday|bday)\b/.test(low)) { kind = 'event'; category = 'Birthday'; }
   else if (date && (time || /\b(appointment|dentist|doctor|physio|party|excursion|camp|meeting|interview|concert|game|match|carnival|formal|trip|dinner|movie|holiday)\b/.test(low))) {
@@ -184,15 +183,6 @@ function quickAdd(text) {
   editors[q.kind](null, pre);
   const inp = document.getElementById('qaInput'); if (inp) inp.value = '';
   const prev = document.getElementById('qaPrev'); if (prev) prev.innerHTML = '';
-  if (q.kind === 'assessment') {
-    // after it's saved, offer a revision plan
-    const once = () => {
-      modal.removeEventListener('close', once);
-      const a = D.assessments.length > before && D.assessments[D.assessments.length - 1];
-      if (a && a.date > today() && confirm(`Plan revision sessions for "${a.title}" before ${fmtDate(a.date)}?`)) planStudy(a.id);
-    };
-    modal.addEventListener('close', once);
-  }
 }
 document.addEventListener('input', e => {
   if (e.target.id !== 'qaInput') return;

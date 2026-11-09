@@ -386,7 +386,7 @@ function openFeedback() {
   showForm({
     title: '💬 Send feedback',
     fields: [{ key: 'kind', label: 'What is it?', type: 'select', options: FB_KINDS, value: 'bug' },
-      { key: 'body', label: 'Tell the developer', type: 'textarea', value: '', required: true, placeholder: "What happened, or what would make Solis better? For a bug, say what you were doing when it went wrong." }],
+      { key: 'body', label: 'Tell the developer', type: 'textarea', value: '', required: true, placeholder: "What happened, or what would make Solis better?" }],
     saveLabel: 'Send',
     onSave: v => { sendFeedback(v); return false; },
   });

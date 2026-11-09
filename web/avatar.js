@@ -47,9 +47,6 @@ const COSMETICS = [
   { id: 'bg_none', cat: 'bg', name: 'Plain' }, { id: 'bg_sunset', cat: 'bg', name: 'Sunset', coins: 80 },
   { id: 'bg_track', cat: 'bg', name: 'Running track', grit: 120 }, { id: 'bg_oval', cat: 'bg', name: 'Footy oval', grit: 150 },
   { id: 'bg_galaxy', cat: 'bg', name: 'Galaxy', coins: 250 }, { id: 'bg_fire', cat: 'bg', name: 'On fire', grit: 400 },
-  // victory dances (after a battle win)
-  { id: 'd_jump', cat: 'dance', name: 'Jump for joy' }, { id: 'd_flex', cat: 'dance', name: 'Flex', grit: 100 },
-  { id: 'd_spin', cat: 'dance', name: 'Spin', coins: 120 }, { id: 'd_flip', cat: 'dance', name: 'Backflip', grit: 300 },
   // more headwear
   { id: 'hat_phones', cat: 'hat', name: 'Headphones', coins: 140 }, { id: 'hat_bucket', cat: 'hat', name: 'Bucket hat', coins: 110 },
   { id: 'hat_party', cat: 'hat', name: 'Party hat', coins: 70 }, { id: 'hat_viking', cat: 'hat', name: 'Viking helmet', grit: 250 },
@@ -74,8 +71,6 @@ const COSMETICS = [
   { id: 'bg_beach', cat: 'bg', name: 'Beach', coins: 150 }, { id: 'bg_snow', cat: 'bg', name: 'Snowy peaks', coins: 200 },
   { id: 'bg_everest', cat: 'bg', name: 'Everest base camp', grit: 300 }, { id: 'bg_neon', cat: 'bg', name: 'Neon city', coins: 300 },
   { id: 'bg_gold', cat: 'bg', name: 'Hall of Fame gold', grit: 700 },
-  // more dances
-  { id: 'd_dab', cat: 'dance', name: 'Dab', coins: 150 }, { id: 'd_moon', cat: 'dance', name: 'Moonwalk', coins: 250 }, { id: 'd_worm', cat: 'dance', name: 'The worm', grit: 220 },
   // pets that follow you around
   { id: 'p_none', cat: 'pet', name: 'No pet' }, { id: 'p_dog', cat: 'pet', name: 'Puppy', e: '🐶', coins: 200 }, { id: 'p_cat', cat: 'pet', name: 'Cat', e: '🐱', coins: 200 },
   { id: 'p_roo', cat: 'pet', name: 'Joey', e: '🦘', grit: 250 }, { id: 'p_koala', cat: 'pet', name: 'Koala', e: '🐨', coins: 300 }, { id: 'p_penguin', cat: 'pet', name: 'Penguin', e: '🐧', coins: 300 },
@@ -106,7 +101,6 @@ const COSMETICS = [
   { id: 'x_laptop', cat: 'extra', name: 'Dev laptop', req: { badge: 'dev' } },
   { id: 'bg_ocean', cat: 'bg', name: 'Under the sea', coins: 250 }, { id: 'bg_night', cat: 'bg', name: 'Stadium at night', grit: 250 },
   { id: 'bg_volcano', cat: 'bg', name: 'Volcano', grit: 400 }, { id: 'bg_aurora', cat: 'bg', name: 'Aurora', req: { streak: 7 } },
-  { id: 'd_robot', cat: 'dance', name: 'The robot', coins: 200 }, { id: 'd_floss', cat: 'dance', name: 'Floss', coins: 180 },
   { id: 'p_bunny', cat: 'pet', name: 'Bunny', e: '🐰', coins: 250 }, { id: 'p_frog', cat: 'pet', name: 'Frog', e: '🐸', grit: 200 },
   { id: 'p_panda', cat: 'pet', name: 'Panda', e: '🐼', coins: 350 }, { id: 'p_lion', cat: 'pet', name: 'Lion', e: '🦁', grit: 600 },
   { id: 'p_robot', cat: 'pet', name: 'Robo pal', e: '🤖', coins: 600 }, { id: 'p_turtle', cat: 'pet', name: 'Wise turtle', e: '🐢', req: { streak: 30 } },
@@ -118,8 +112,8 @@ function cosReq(c) {
   if (r.badge) { const has = typeof myBadges !== 'undefined' && myBadges.includes(r.badge); return { ok: has, label: r.badge === 'beta' ? 'Beta testers only' : 'Developer only', prog: '' }; }
   return null;
 }
-const COS_CATS = [['look', '🪞 Look like me'], ['skin', 'Skin'], ['hair', 'Hair'], ['hairCol', 'Hair colour'], ['face', 'Face'], ['hat', 'Headwear'], ['eyes', 'Eyewear'], ['kit', 'Kit colour'], ['shoes', 'Shoes'], ['extra', 'Extras'], ['bg', 'Background'], ['dance', 'Victory dance'], ['pet', 'Pet']];
-const AV_DEFAULT = { skin: 'sk2', hair: 'h_short', hairCol: 'hc_brown', face: 'f_smile', hat: 'hat_none', eyes: 'eye_none', kit: 'kit_gear', shoes: 'sh_white', extra: 'x_none', bg: 'bg_none', dance: 'd_jump', pet: 'p_none' };
+const COS_CATS = [['look', '🪞 Look like me'], ['skin', 'Skin'], ['hair', 'Hair'], ['hairCol', 'Hair colour'], ['face', 'Face'], ['hat', 'Headwear'], ['eyes', 'Eyewear'], ['kit', 'Kit colour'], ['shoes', 'Shoes'], ['extra', 'Extras'], ['bg', 'Background'], ['pet', 'Pet']];
+const AV_DEFAULT = { skin: 'sk2', hair: 'h_short', hairCol: 'hc_brown', face: 'f_smile', hat: 'hat_none', eyes: 'eye_none', kit: 'kit_gear', shoes: 'sh_white', extra: 'x_none', bg: 'bg_none', pet: 'p_none' };
 const cos = id => COSMETICS.find(c => c.id === id);
 const cosFree = c => !c.req?.badge;
 const ownsCos = id => { const c = cos(id); if (!c) return false; if (cosFree(c) || (D.arena.owned || {})[id]) return true; const r = cosReq(c); if (r?.ok && !c.req.badge) { D.arena.owned = { ...(D.arena.owned || {}), [id]: new Date().toISOString() }; return true; } return !!r?.ok; };

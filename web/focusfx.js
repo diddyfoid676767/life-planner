@@ -1,6 +1,6 @@
 'use strict';
-/* Full-screen focus timer: a progress ring with a sun that grows brighter in
-   the middle (2.55: it replaced the old forest tree). Opens when a study timer
+/* Full-screen focus timer: a progress ring with an hourglass of light in the
+   middle that drains as you study (2.56; 2.55 had a sun). Opens when a study timer
    starts; "Minimise" drops back to the bar. */
 
 const FOCUS_STAGES = [[10, 'Spark'], [22, 'Glow'], [45, 'Flare'], [90, 'Sun'], [180, 'Star']];
@@ -19,8 +19,15 @@ function focusTarget(f, m) {
   const next = FOCUS_STAGES.find(([t]) => m < t);
   return next ? next[0] : Math.ceil((m + 1) / 30) * 30;
 }
+// 2.56: an hourglass of light. The light drains from the top into the bottom as the session goes on.
 function focusTreeMarkup(f, m) {
-  return sunSvg(subj(f.subjectId).color, Math.min(1, (focusStage(m) + (m < 10 ? m / 10 : 0)) / FOCUS_STAGES.length), 190);
+  const c = esc(subj(f.subjectId).color), g = 'M22 8H78C78 48 56 60 52 70C56 80 78 92 78 132H22C22 92 44 80 48 70C44 60 22 48 22 8Z';
+  return `<svg viewBox="0 0 100 140" class="hourglass" aria-hidden="true"><defs><clipPath id="hgc"><path d="${g}"/></clipPath>
+    <linearGradient id="hgl" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff8d6"/><stop offset=".5" stop-color="#ffd43b"/><stop offset="1" stop-color="${c}"/></linearGradient></defs>
+    <path d="${g}" fill="rgba(255,255,255,.07)"/>
+    <g clip-path="url(#hgc)"><rect class="hg-top" x="18" y="8" width="64" height="62" fill="url(#hgl)"/><rect class="hg-bot" x="18" y="70" width="64" height="62" fill="url(#hgl)"/>
+      <line class="hg-stream" x1="50" y1="68" x2="50" y2="128" stroke="#fff3b0" stroke-width="2" stroke-linecap="round" stroke-dasharray="3 5"/></g>
+    <path d="${g}" fill="none" stroke="rgba(255,255,255,.7)" stroke-width="3" stroke-linejoin="round"/><path d="M16 8H84M16 132H84" stroke="${c}" stroke-width="6" stroke-linecap="round"/></svg>`;
 }
 function openFocusFull() {
   const f = D.focus; if (!f) return;
@@ -53,6 +60,7 @@ function updateFocusFull() {
   const m = focusElapsed(f), mm = Math.floor(m), ss = Math.floor((m - mm) * 60);
   const target = focusTarget(f, m), pct = Math.min(1, m / target);
   el.querySelector('.ring-fg').setAttribute('stroke-dashoffset', String(Math.round(1000 * (1 - pct))));
+  el.style.setProperty('--hp', pct.toFixed(4)); el.classList.toggle('hg-paused', !!f.pausedAt);
   el.querySelector('.ff-time').textContent = `${Math.floor(mm / 60) ? Math.floor(mm / 60) + ':' + pad(mm % 60) : mm}:${pad(ss)}`;
   const next = FOCUS_STAGES.find(([t]) => m < t);
   el.querySelector('.ff-sub').innerHTML = f.pausedAt ? '<span class="ff-paused">Paused</span>'

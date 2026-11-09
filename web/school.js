@@ -165,10 +165,10 @@ function checkBells() {
       if (late < 5 && !D.fired[key]) { D.fired[key] = Date.now(); save(); notify('🔔 ' + b.n + ' is over', 'Rate your effort.', 'cls'); }
     }
   }
-  if (view === 'school' || view === 'today') {
+  if (view === 'today') {
     const el = document.getElementById('clsClock'), cp = currentPeriod();
     const key = cp ? cp.i : -1;
-    if (key !== shownPeriod && !modal.open && !document.querySelector('.clsfx') && (view === 'school' || document.querySelector('.tclass') || (cp && !cp.b.brk))) { shownPeriod = key; render(); return; }
+    if (key !== shownPeriod && !modal.open && !document.querySelector('.clsfx') && (document.querySelector('.tclass') || (cp && !cp.b.brk))) { shownPeriod = key; render(); return; }
     if (el && cp) { el.textContent = clockTxt(cp); const bar = document.getElementById('clsBar'); if (bar) bar.style.width = `${100 * (1 - cp.left / cp.len)}%`; }
   }
   updateSchoolBadge();
@@ -223,17 +223,12 @@ function classNowCard() {
   const t = today(), cfg = schoolCfg(), cp = currentPeriod();
   if (!cfg.on || !isSchoolDay(t) || !cp || cp.b.brk) return '';
   shownPeriod = cp.i;
-  return `<div class="tclass">${clsHero(t, cfg, D.school?.log?.[t] || {}, D.school?.active, cp).replace('<div class="card clshero', '<div class="card clshero tnow')}<a href="#" class="tclass-more" data-act="goto" data-v="school">All of today\'s periods →</a></div>`;
+  return `<div class="tclass">${clsHero(t, cfg, D.school?.log?.[t] || {}, D.school?.active, cp).replace('<div class="card clshero', '<div class="card clshero tnow')}<a href="#" class="tclass-more" data-act="clsAll">All of today\'s periods →</a></div>`;
 }
-function viewSchool() {
-  const t = today(), cfg = schoolCfg(), log = D.school?.log?.[t] || {}, a = D.school?.active, cp = currentPeriod();
-  shownPeriod = cp ? cp.i : -1;
-  const streak = effortStreak();
-  const cd = isSchoolDay(t) ? cycleDay(t) : 0;
-  const head = pageHead('🏫 Class mode' + (cd ? ` <span class="pill">Day ${cd}</span>` : ''), 'A focus timer for every period, then rate your effort when the bell goes.',
-    `${streak ? `<span class="pill">🔥 ${streak}-day effort streak</span>` : ''}`);
-  if (!cfg.on) return `${head}<div class="card"><p>Class mode is off.</p><button class="btn primary" data-cls="on">Turn it on</button></div>${bellCard()}`;
-  const hero = clsHero(t, cfg, log, a, cp);
+// 2.56: all of today's periods, shown inline on Today (the Class mode page is gone)
+function clsAllCard() {
+  const t = today(), cfg = schoolCfg(), log = D.school?.log?.[t] || {}, cp = currentPeriod();
+  if (!cfg.on) return `<div class="card clsall"><div class="card-head"><h2>🏫 All my classes</h2><span style="flex:1"></span><button class="btn small" data-act="clsAll">Hide ▲</button></div><p>Class mode is off.</p><button class="btn primary" data-cls="on">Turn it on</button></div>`;
   const m = nowMin();
   const rows = isSchoolDay(t) ? cfg.bells.map((b, i) => {
     if (b.brk) return `<div class="clsrow brk"><span class="clstime">${fmtTime(b.start)}</span><span class="muted">${esc(b.n)}</span></div>`;
@@ -244,12 +239,14 @@ function viewSchool() {
     return `<div class="clsrow ${now ? 'now' : ''} ${over && !r.effort && !r.absent ? 'due' : ''}" style="--c:${subjColor(sid)}"><span class="clstime">${fmtTime(b.start)}</span><b class="clsn">${esc(b.n)}</b>${subjSelect(t, i, sid)}${evChips(t, b)}<span style="flex:1"></span>${right}</div>`;
   }).join('') : '';
   const wk = weekEffort();
-  const week = wk.length ? `<div class="card"><h2>Effort this week</h2><div class="bars">${wk.map(w => `<div class="bar"><span>${esc(w.k ? subjLabel(w.k) : 'No subject set')}</span><div class="track"><div class="fill" style="width:${w.avg / 10 * 100}%;background:${subjColor(w.k)}"></div></div><span class="muted">${effIcon(Math.round(w.avg))} ${w.avg.toFixed(1)}/10 · ${w.n}</span></div>`).join('')}</div>
+  const week = wk.length ? `<div class="clsweek"><h3>Effort this week</h3><div class="bars">${wk.map(w => `<div class="bar"><span>${esc(w.k ? subjLabel(w.k) : 'No subject set')}</span><div class="track"><div class="fill" style="width:${w.avg / 10 * 100}%;background:${subjColor(w.k)}"></div></div><span class="muted">${effIcon(Math.round(w.avg))} ${w.avg.toFixed(1)}/10 · ${w.n}</span></div>`).join('')}</div>
     <p class="muted small-text" style="margin:8px 0 0">Average effort out of 10 for each subject since Monday.</p></div>` : '';
-  return `${head}<div class="clsgrid"><div>${hero}${rows ? `<div class="card"><div class="card-head"><h2>Today's periods</h2></div>${rows}
-      <p class="muted small-text" style="margin:8px 0 0">The subject you pick is remembered for ${cd ? `Day ${cd} of your timetable` : 'this day of the week'}. Rate each period out of 10. Weren't there? Press 🚫 and it's left out of your effort. Class lock-in time earns Lumen, scaled by your effort.</p></div>` : ''}</div>
-    <div>${week}${bellCard()}</div></div>`;
+  const streak = effortStreak(), cd = isSchoolDay(t) ? cycleDay(t) : 0;
+  return `<div class="card clsall"><div class="card-head"><h2>🏫 All my classes${cd ? ` <span class="pill">Day ${cd}</span>` : ''}</h2>${streak ? `<span class="pill">🔥 ${streak}-day effort streak</span>` : ''}<span style="flex:1"></span><button class="btn small" data-act="clsAll">Hide ▲</button></div>
+    ${rows ? `${rows}<p class="muted small-text" style="margin:8px 0 0">Rate each period out of 10. Weren't there? Press 🚫 and it's left out of your effort. The subject you pick is remembered for ${cd ? `Day ${cd} of your timetable` : 'this day of the week'}.</p>` : `<p class="muted">${isHoliday(t) ? 'Holiday' : 'No school today'}.</p>`}
+    ${week}</div>`;
 }
+
 function bellCard() {
   const cfg = schoolCfg(), names = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
   return `<div class="card"><details ${ui.bellsOpen ? 'open' : ''} data-cls-det><summary><b>Bell times</b> <span class="muted small-text">check these match your school</span></summary>

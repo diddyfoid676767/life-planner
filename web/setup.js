@@ -233,23 +233,16 @@ const TOUR_PAGES = {
     ['.cal', 'Month view', 'Click any day to see it underneath. Events from linked calendars show up here too.'],
     ['.calday', 'The day you picked', 'Everything on that day, with buttons to add study, SACs, workouts, events, deadlines and tasks.']]],
   study: ['📚 Study', 'Your study tracker: how much you study, your SAC scores and your exams.', [
-    ['.upnext-row', 'What\'s next', 'Your next study block, next SAC or exam and today\'s progress.'],
+    ['.upnext-row', 'What\'s next', 'Today\'s study progress and your next SAC or exam.'],
     ['.study-grid2 > .study-side:first-child > .card:first-child', 'Study trend', 'Your study time for each of the last 8 weeks. Press <b>▶ Start studying</b> to time a session and earn Lumen.'],
     ['.cdscores', 'SAC scores', 'Add each result as a percentage with its weighting. Each subject shows its weighted average, which also builds your Mind card.'],
     ['.subjcard', 'Subjects and links', 'Your classes and their colours.']]],
-  school: ['🏫 Class mode', 'A timer for each school period.', [
-    ['.clsgrid > :first-child', 'Today\'s periods', 'Pick the subject for each period. When the bell goes, rate your effort from 😴 to 🔥.'],
-    ['.clsgrid > :last-child', 'Effort and bell times', 'Your average effort per subject this week. Check the bell times match your school.']]],
   training: ['💪 Fitness', 'Train, track your bests and grow your Body card.', [
     ['.btiles', 'This week at a glance', 'Ember earned, training time, sessions done and your day streak. Start a workout from here.'],
     ['.bodytabs', 'Train, Progress and Body', '<b>Train</b> has your plan, events and recent workouts, <b>Progress</b> tracks personal records and charts, and <b>Body</b> shows your Body card stats and heat map.']]],
   islands: ['🏝️ Islands', 'Your island, your house island and the boss island.', [
-    ['.isswitch', 'Three islands', 'Build your own island with Lumen and Ember, build the house island together (the 🏰 House button has your house, its members and rankings), and fight the weekly boss.']]],
-  friends: ['👥 Friends', 'Chat with friends and race them on the leaderboard.', [
-    ['#subnav', 'Chats and Leaderboard', 'Message your friends on Chats. The Leaderboard has one board with a dropdown for each category.']]],
-  todo: ['✅ To-do', 'Your tasks, events and deadlines in one place.', [
-    ['.todo-side', 'Pick what to show', 'All tasks, today, the next 7 days, each list, and your upcoming or past events.'],
-    ['.todo-main', 'Your list', 'Tasks grouped by when they\'re due. Add one at the top, or press <b>+ Event</b> for birthdays, appointments and deadlines.']]],
+    ['.isswitch', 'Islands and Rankings', 'Build your own island with Lumen and Ember, build the house island together (the 🏰 House button has your house, its members and rankings), fight the weekly boss, and race your friends on 🏆 Rankings.']]],
+  friends: ['👥 Friends', 'Chat with your friends and add new ones.', []],
   settings: ['⚙️ Settings', 'Make the planner yours. Open it from You, at the bottom of the sidebar.', [
     ['.settabs', 'Settings sections', 'You &amp; account, Look &amp; sound, Calendars &amp; reminders, and Backup &amp; app. You can replay this tour from here.']]],
 };

@@ -29,6 +29,15 @@ function todoMatches(x, f, t) {
 
 function todoRow(x) {
   const t = today(), dd = x.due ? diffDays(t, x.due) : null, pri = +x.pri || 0;
+  if (ui.todoEdit === x.id) {
+    const opts = (arr, v) => arr.map(o => { const [val, lab] = Array.isArray(o) ? o : [o, o]; return `<option value="${esc(val)}" ${String(val) === String(v) ? 'selected' : ''}>${esc(lab)}</option>`; }).join('');
+    return `<li class="todo-item editing"><form class="todo-edit" data-form="todoEdit" data-id="${x.id}">
+      <input type="text" name="text" value="${esc(x.text)}" maxlength="300" autocomplete="off">
+      <input type="date" name="due" value="${esc(x.due || '')}" title="Due date">
+      <select name="list" title="List"><option value="">No list</option>${opts(todoLists(), x.list || '')}</select>
+      <select name="pri" title="Priority">${opts(TODO_PRI, String(pri))}</select>
+      <button class="btn small primary">Save</button><button type="button" class="btn small" data-todo="cancel">Cancel</button><button type="button" class="iconbtn" data-todo="del" data-id="${x.id}" title="Delete">🗑</button></form></li>`;
+  }
   const tag = dd === null || x.done ? '' : dd < 0 ? `<span class="tag red">${dd === -1 ? 'Yesterday' : `${-dd} days overdue`}</span>` : dd === 0 ? '<span class="tag amber">Today</span>' : dd === 1 ? '<span class="tag amber">Tomorrow</span>' : '';
   const meta = [x.due && !tag ? `Due ${fmtDate(x.due)}` : '', x.fromEmail ? 'from an email' : ''].filter(Boolean).join(' · ');
   return `<li class="todo-item ${x.done ? 'done' : ''}" style="--p:${PRI_COLOR[pri] || 'transparent'}">
@@ -37,62 +46,36 @@ function todoRow(x) {
       <div class="meta"><span class="tag ktag">${esc(todoListOf(x))}</span>${esc(meta)}</div>
       ${x.notes ? `<div class="todo-notes">${esc(String(x.notes).slice(0, 160))}</div>` : ''}</div>
     <div class="todo-acts">${!x.done && x.due !== t ? `<button class="iconbtn" data-todo="today" data-id="${x.id}" title="Do it today">☀</button>` : ''}
-      <button class="iconbtn" data-act="edit" data-kind="todo" data-id="${x.id}" title="Edit">✎</button></div></li>`;
+      <button class="iconbtn" data-todo="edit" data-id="${x.id}" title="Edit">✎</button></div></li>`;
 }
 
-function viewTodo() {
-  const t = today(), f = ui.todoFilter || 'all', q = (ui.todoQ || '').toLowerCase(), ev = f.startsWith('ev:');
-  const open = D.todos.filter(x => !x.done);
-  const count = k => k === 'ev:up' ? upcomingEventCount() : k === 'ev:past' ? 0 : D.todos.filter(x => todoMatches(x, k, t)).length;
-  let list = D.todos.filter(x => todoMatches(x, f, t) && (!q || (x.text + ' ' + (x.notes || '') + ' ' + (x.list || '')).toLowerCase().includes(q)));
-  const byPri = (a, b) => (+b.pri || 0) - (+a.pri || 0);
-  list.sort((a, b) => (a.due || '9999').localeCompare(b.due || '9999') || byPri(a, b));
-  const groupsDef = f === 'done' ? [['Completed', () => true]] : [
-    ['Overdue', x => x.due && x.due < t], ['Today', x => x.due === t], ['Tomorrow', x => x.due === addDays(t, 1)],
-    ['Next 7 days', x => x.due && x.due > addDays(t, 1) && x.due <= addDays(t, 7)], ['Later', x => x.due && x.due > addDays(t, 7)], ['No due date', x => !x.due],
-  ];
-  const groups = groupsDef.map(([label, fn]) => {
-    const xs = list.filter(fn); if (!xs.length) return '';
-    return `<div class="tgroup ${label === 'Overdue' ? 'late' : ''}"><div class="tg-head">${label} <span>${xs.length}</span></div><ul class="todo-list">${xs.map(todoRow).join('')}</ul></div>`;
-  }).join('');
-  const side = (k, icon, label) => `<button class="todo-nav ${f === k ? 'on' : ''}" data-todo="filter" data-v="${esc(k)}"><span>${icon}</span><b>${esc(label)}</b><i>${count(k) || ''}</i></button>`;
-  const overdue = open.filter(x => x.due && x.due < t).length, dueToday = open.filter(x => x.due === t).length;
-  const title = { 'ev:up': 'Upcoming events', 'ev:past': 'Past events', all: 'All tasks', today: 'Today', week: 'Next 7 days', nodate: 'No due date', high: 'High priority', done: 'Completed' }[f] || f.slice(2);
-  const opts = (arr, v) => arr.map(o => { const [val, lab] = Array.isArray(o) ? o : [o, o]; return `<option value="${esc(val)}" ${String(val) === String(v) ? 'selected' : ''}>${esc(lab)}</option>`; }).join('');
-  const defList = f.startsWith('l:') ? f.slice(2) : (ui.todoLastList || '');
-  return `${pageHead('To-do', `${open.length} open task${open.length === 1 ? '' : 's'}${dueToday ? ` · ${dueToday} due today` : ''}${overdue ? ` · <b class="red-text">${overdue} overdue</b>` : ''}`,
-      `<button class="btn" data-act="new" data-kind="event">+ Event</button><button class="btn" data-act="new" data-kind="deadline">+ Deadline</button><button class="btn primary" data-act="new" data-kind="todo">+ Task</button>`)}
-  <div class="todo-page">
-    <aside class="card todo-side">
-      ${side('all', '📋', 'All')}${side('today', '☀', 'Today')}${side('week', '📅', 'Next 7 days')}${side('nodate', '∞', 'No due date')}${side('high', '❗', 'High priority')}
-      <div class="todo-sidehead">Lists</div>
-      ${todoLists().map(l => side('l:' + l, '•', l)).join('')}
-      <div class="todo-sidehead"></div>${side('done', '✓', 'Completed')}
-      <div class="todo-sidehead">Events</div>${side('ev:up', '📆', 'Upcoming')}${side('ev:past', '🗓', 'Past')}
-    </aside>
-    <section class="card todo-main">${ev ? `<div class="card-head"><h2>${title}</h2></div>${eventsListHtml(f === 'ev:past' ? 'past' : 'up')}` : `
-      <div class="card-head"><h2>${esc(title)}</h2><input type="text" id="todoQ" placeholder="Search tasks" value="${esc(ui.todoQ || '')}" data-todo-search style="max-width:220px"></div>
-      <form class="todo-add" data-form="todoAdd">
-        <input type="text" name="text" placeholder="＋ Add a task and press Enter" maxlength="300" autocomplete="off">
-        <input type="date" name="due" title="Due date (optional)" value="${f === 'today' ? t : ''}">
-        <select name="list" title="List"><option value="">No list</option>${opts(todoLists(), defList)}</select>
-        <select name="pri" title="Priority">${opts(TODO_PRI.map(([v, l]) => [v, l === 'None' ? 'Priority' : l]), f === 'high' ? '3' : '0')}</select>
-        <button class="btn primary">Add</button></form>
-      ${groups || `<div class="empty">${q ? 'No tasks match that search.' : f === 'done' ? 'Nothing completed yet.' : 'No open tasks here. 🎉'}</div>`}
-      ${f === 'done' && list.length ? '<button class="btn small" data-act="clearDone" style="margin-top:10px">Clear completed</button>' : ''}`}
-    </section>
-  </div>`;
-}
-
-// A small Today card: quick add plus what's due, with a link to the To-do tab
+// The to-do card on Today. It opens in place: add box, filters and in-row edit.
+const TODO_FILTERS = [['all', 'All'], ['today', 'Today'], ['week', '7 days'], ['nodate', 'No date'], ['high', 'High'], ['done', 'Done'], ['ev', 'Events']];
 function todoTodayCard(overdueHtml) {
-  const t = today(), open = D.todos.filter(x => !x.done);
+  const t = today(), open = D.todos.filter(x => !x.done), isOpen = !!ui.todoOpen;
   const due = open.filter(x => x.due && x.due <= t).sort((a, b) => a.due.localeCompare(b.due) || (+b.pri || 0) - (+a.pri || 0));
-  return `<div class="card ttasks"><div class="card-head"><h2>To-do</h2><span class="muted small-text">${open.length} open</span><button class="btn small" data-act="goto" data-v="todo">Show all →</button></div>
+  const head = `<div class="card-head"><h2>To-do</h2><span class="muted small-text">${open.length} open</span><button class="btn small" data-todo="open">${isOpen ? 'Show less ▲' : 'Show all ▼'}</button></div>`;
+  if (!isOpen) {
+    return `<div class="card ttasks">${head}
     <form class="row" data-form="quickTodo" style="margin-bottom:8px"><input type="text" name="text" placeholder="＋ Add a task and press Enter" style="flex:1" maxlength="300"><input type="date" name="due" style="width:auto" title="Due date (optional)"></form>
-    <div class="tscroll">${due.length ? `<div class="tg-head">Due today or overdue <span>${due.length}</span></div><ul class="todo-list compact">${due.slice(0, 8).map(todoRow).join('')}</ul>${due.length > 8 ? `<button class="btn small" data-act="goto" data-v="todo">+${due.length - 8} more</button>` : ''}`
-      : `<div class="empty">Nothing due today.${open.length ? ` <a href="#" data-act="goto" data-v="todo">See all ${open.length} tasks</a>` : ' 🎉'}</div>`}
+    <div class="tscroll">${due.length ? `<div class="tg-head">Due today or overdue <span>${due.length}</span></div><ul class="todo-list compact">${due.slice(0, 8).map(todoRow).join('')}</ul>${due.length > 8 ? `<button class="btn small" data-todo="open">+${due.length - 8} more</button>` : ''}`
+      : `<div class="empty">Nothing due today.${open.length ? ` <a href="#" data-todo="open">See all ${open.length} tasks</a>` : ' 🎉'}</div>`}
     ${overdueHtml || ''}</div></div>`;
+  }
+  const f = ui.todoFilter && TODO_FILTERS.some(x => x[0] === ui.todoFilter) ? ui.todoFilter : 'all', q = (ui.todoQ || '').toLowerCase();
+  const list = D.todos.filter(x => todoMatches(x, f, t) && (!q || (x.text + ' ' + (x.notes || '') + ' ' + (x.list || '')).toLowerCase().includes(q)))
+    .sort((a, b) => (a.due || '9999').localeCompare(b.due || '9999') || (+b.pri || 0) - (+a.pri || 0));
+  const opts = (arr, v) => arr.map(o => { const [val, lab] = Array.isArray(o) ? o : [o, o]; return `<option value="${esc(val)}" ${String(val) === String(v) ? 'selected' : ''}>${esc(lab)}</option>`; }).join('');
+  return `<div class="card ttasks tall">${head}
+    <div class="catchips">${TODO_FILTERS.map(([k, l]) => `<button class="cchip ${f === k ? 'on' : ''}" data-todo="filter" data-v="${k}">${l}</button>`).join('')}<input type="text" id="todoQ" placeholder="Search" value="${esc(ui.todoQ || '')}" data-todo-search style="max-width:130px;margin-left:auto"></div>
+    ${f === 'ev' ? `<div class="tscroll">${eventsListHtml('up')}</div>` : `<form class="todo-add" data-form="todoAdd">
+      <input type="text" name="text" placeholder="＋ Add a task and press Enter" maxlength="300" autocomplete="off">
+      <input type="date" name="due" title="Due date (optional)" value="${f === 'today' ? t : ''}">
+      <select name="list" title="List"><option value="">No list</option>${opts(todoLists(), ui.todoLastList || '')}</select>
+      <select name="pri" title="Priority">${opts(TODO_PRI.map(([v, l]) => [v, l === 'None' ? 'Priority' : l]), f === 'high' ? '3' : '0')}</select>
+      <button class="btn primary">Add</button></form>
+    <div class="tscroll">${list.length ? `<ul class="todo-list">${list.map(todoRow).join('')}</ul>` : `<div class="empty">${q ? 'No tasks match that search.' : f === 'done' ? 'Nothing completed yet.' : 'No open tasks here. 🎉'}</div>`}
+    ${f === 'done' && list.length ? '<button class="btn small" data-act="clearDone" style="margin-top:10px">Clear completed</button>' : ''}${f === 'all' || f === 'today' ? overdueHtml || '' : ''}</div>`}</div>`;
 }
 
 document.addEventListener('click', e => {
@@ -100,6 +83,10 @@ document.addEventListener('click', e => {
   e.preventDefault();
   const a = b.dataset.todo;
   if (a === 'filter') { ui.todoFilter = b.dataset.v; render(); }
+  if (a === 'open') { ui.todoOpen = !ui.todoOpen; ui.todoEdit = null; render(); }
+  if (a === 'edit') { ui.todoEdit = b.dataset.id; ui.todoOpen = ui.todoOpen; render(); setTimeout(() => document.querySelector('.todo-edit input[name=text]')?.focus(), 0); }
+  if (a === 'cancel') { ui.todoEdit = null; render(); }
+  if (a === 'del') { D.todos = D.todos.filter(y => y.id !== b.dataset.id); ui.todoEdit = null; save(); render(); }
   if (a === 'today') { const x = D.todos.find(y => y.id === b.dataset.id); if (x) { x.due = today(); save(); render(); } }
 });
 document.addEventListener('input', e => {
@@ -116,4 +103,12 @@ document.addEventListener('submit', e => {
   D.todos.push({ id: uid(), text, due, list: f.list.value, pri: +f.pri.value || 0, done: false, notes: '', remind: due ? D.settings.remind.todo : [] });
   save(); render();
   document.querySelector('[data-form="todoAdd"] input[name=text]')?.focus();
+});
+document.addEventListener('submit', e => {
+  const f = e.target.closest('[data-form="todoEdit"]'); if (!f) return;
+  e.preventDefault();
+  const x = D.todos.find(y => y.id === f.dataset.id); if (!x) return;
+  const text = f.text.value.trim(); if (!text) return;
+  Object.assign(x, { text, due: f.due.value, list: f.list.value, pri: +f.pri.value || 0 });
+  ui.todoEdit = null; save(); render();
 });
