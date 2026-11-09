@@ -221,6 +221,7 @@ function migrate(d) {
   d.focusLogs = d.focusLogs || [];
   d.school = Object.assign({ log: {}, active: null }, d.school || {});
   d.arena = Object.assign({ pbs: [], gear: {}, equip: {}, spent: 0, ledger: {}, battles: [] }, d.arena || {});
+  if (typeof cosGrandfather === 'function') try { cosGrandfather(d); } catch (e) { }
   d.claude = Object.assign({ requests: [], decided: {}, seen: {}, draft: '' }, d.claude || {});
   d.game = Object.assign({ spent: 0, bonus: 0, items: {}, scene: 'meadow', claimed: {}, opened: 0, hidden: {}, ledger: {}, critters: {}, upgrades: {}, trees: {}, away: {}, restUsed: {} }, d.game || {});
   d.focus = d.focus || null;
@@ -831,9 +832,11 @@ function viewSettings() {
   const sec = ui.setTab || 'general';
   const SET_GROUP = { general: 'you', account: 'you', theme: 'look', sound: 'look', calendars: 'cal', reminders: 'cal', backup: 'app', app: 'app' };
   const grp = SET_GROUP[sec] || (['you', 'look', 'cal', 'app'].includes(sec) ? sec : 'you');
-  const tabs = [['you', '👤 You & account'], ['look', '🎨 Look & sound'], ['cal', '📅 Calendars & reminders'], ['app', '💾 Backup & app']];
+  const tabs = [['you', '⚙️ General & account'], ['look', '🎨 Look & sound'], ['cal', '📅 Calendars & reminders'], ['app', '💾 Backup & app']];
   const perm = 'Notification' in window ? Notification.permission : 'unsupported';
-  return `${pageHead('Settings', '', '')}
+  // 2.59: the version and the update buttons sit at the top of every Settings tab
+  const upd = ONLINE ? '' : `<div class="setupd"><span class="muted small-text" id="verText2">Solis ${esc(appVersion)}</span><button class="btn small primary" data-act="checkUpdateNow">Check for updates</button><button class="btn small" data-act="restartApp" title="Saves everything and restarts Solis">🔄 Restart</button></div>`;
+  return `${pageHead('Settings', '', `<button class="btn small" data-act="goto" data-v="profile">← Back to You</button>${upd}`)}
   <div class="seg settabs">${tabs.map(([k, l]) => `<button class="${grp === k ? 'on' : ''}" data-act="setTab" data-v="${k}">${l}</button>`).join('')}</div>
   <div class="grid g2 settings-grid" data-sec="${grp}">
     ${themeCard()}
@@ -859,7 +862,7 @@ function viewSettings() {
       <p class="muted small-text" style="margin:0">Change your name, classes, bell times and timetable, or add a training week. Nothing else is touched.</p>
       ${ONLINE ? '' : `<details style="margin-top:10px"><summary><b>Share the planner with a friend</b></summary><div class="small-text"><p>Send them <b>LifePlanner-share.zip</b>. It's the same app with none of your data in it. When they first open it, they get the setup and the tour, then everything they add is saved only on their PC.</p>
         <p>Don't send your own Solis folder: its <b>data</b> folder holds your planner.</p></div></details>`}</div>
-    <div class="card" data-sec="general"><h2>You</h2>
+    <div class="card" data-sec="general"><h2>General</h2>
       <div class="field"><label>Your name (for the greeting)</label><input type="text" data-setting="name" value="${esc(D.settings.name)}" maxlength="40"></div>
       <label class="row"><input type="checkbox" data-setting="sound" ${D.settings.sound ? 'checked' : ''}> Play a sound with reminders</label>
       <label class="row"><input type="checkbox" data-setting="bootIntro" ${D.settings.bootIntro !== false ? 'checked' : ''}> Show the intro when the app opens</label>
@@ -1543,6 +1546,7 @@ async function checkUpdate() {
     // keeps working in an old copy and loses it
     if (u.available && !autoUpdateTimer) { updateAt = Date.now() + 60000; updateTick(); }
     const v = $('#verText'); if (v) v.textContent = 'Version ' + u.version;
+    const v2 = $('#verText2'); if (v2) v2.textContent = 'Solis ' + u.version;
   } catch { }
 }
 function updateTick() {

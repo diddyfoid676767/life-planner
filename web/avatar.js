@@ -137,9 +137,45 @@ const COSMETICS = [
   { id: 'x_wingsDragon', cat: 'extra', name: 'Dragon wings', rar: 'legendary', price: { e: 2000 }, as2d: 'x_wings' },
 ];
 const COS_RAR = { common: ['Common', '#868e96', 4], rare: ['Rare', '#1c7ed6', 3], epic: ['Epic', '#ae3ec9', 2], legendary: ['Legendary', '#f59f00', 1] };
-const cosPrice = c => c?.price ? (c.price.l ? `${LUMEN} ${c.price.l.toLocaleString()}` : `${EMBER} ${c.price.e.toLocaleString()}`) : '';
+/* 2.59: most looks cost a little Lumen or Ember, by rarity (common 30-60,
+   rare 100-160, epic 250-350, legendary 600-800). Skin tones, "none" picks and
+   a decent starter set of commons are free from the start. Any look you were
+   already wearing or had unlocked stays yours (cosGrandfather). Everything can
+   be bought any time; the weekly shop's six looks are 30% off. */
+const COS_START = new Set(['h_short', 'h_buzz', 'h_long', 'h_curly', 'h_side', 'h_fringe', 'h_wavy', 'h_afro', 'h_pony', 'h_bald', 'h_crop', 'h_bob', 'h_braids', 'h_cornrows', 'h_locs', 'h_twists', 'h_topknot', 'h_hero',
+  'hc_brown', 'hc_black', 'hc_blonde', 'hc_ginger', 'f_smile', 'f_focus', 'hat_band', 'hat_cap', 'hat_beanie', 'hat_hood', 'eye_nerd', 'eye_sport', 'eye_patch',
+  'kit_gear', 'kit_navy', 'kit_red', 'kit_green', 'kit_black', 'kit_white', 'sh_white', 'sh_black', 'x_scarf', 'x_backpack', 'bg_sunset']);
+const COS_BAND = { common: [30, 60], rare: [100, 160], epic: [250, 350], legendary: [600, 800] };
+(() => {
+  for (const c of COSMETICS) {
+    if (c.cat === 'skin' || COS_START.has(c.id) || c.req?.badge || /_none$/.test(c.id)) { delete c.price; delete c.rar; continue; }
+    const v = c.coins || c.grit || (c.price ? 0 : c.drop ? 400 : 300);
+    const rar = c.rar || (v <= 100 ? 'common' : v <= 250 ? 'rare' : v <= 600 ? 'epic' : 'legendary');
+    const cur = c.price ? (c.price.e ? 'e' : 'l') : c.grit || c.drop ? 'e' : 'l';
+    let h = 0; for (const ch of c.id) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
+    const [lo, hi] = COS_BAND[rar], amt = lo + Math.round((h % (hi - lo + 1)) / 5) * 5;
+    c.rar = rar; c.price = { [cur]: Math.min(hi, amt) };
+  }
+})();
+const COS_DEAL = .7;
+// what a look costs right now (30% off while it's in this week's shop)
+function cosCost(c) {
+  if (!c?.price) return null;
+  const k = cosInShop(c.id) ? COS_DEAL : 1;
+  return c.price.l ? { l: Math.round(c.price.l * k / 5) * 5, e: 0 } : { l: 0, e: Math.round(c.price.e * k / 5) * 5 };
+}
+const cosPrice = c => { const p = cosCost(c); return p ? (p.l ? `${LUMEN} ${p.l.toLocaleString()}` : `${EMBER} ${p.e.toLocaleString()}`) : ''; };
+// looks you were already wearing or had unlocked before they had a price stay yours
+function cosGrandfather(d) {
+  if (!d?.arena || d.arena.cosV2) return;
+  const own = d.arena.owned = d.arena.owned || {}, at = new Date().toISOString();
+  for (const id of Object.values(d.arena.av || {})) { const c = cos(id); if (c && c.price && !own[id]) own[id] = at; }
+  d.arena.cosV2 = 1;
+}
 // the weekly shop: 6 bought looks, picked by the week (the same for everyone), rarer ones less often
+let COS_SHOP_MEMO = ['', []];
 function cosShop(wk = mondayOf(today())) {
+  if (COS_SHOP_MEMO[0] === wk) return COS_SHOP_MEMO[1].slice();
   let seed = 0; for (const ch of 'solis-shop-' + wk) seed = (seed * 31 + ch.charCodeAt(0)) >>> 0;
   const rnd = () => { seed = (seed * 1664525 + 1013904223) >>> 0; return seed / 4294967296; };
   const pool = COSMETICS.filter(c => c.price), out = [];
@@ -148,7 +184,9 @@ function cosShop(wk = mondayOf(today())) {
     for (; i < pool.length - 1; i++) { r -= COS_RAR[pool[i].rar][2]; if (r < 0) break; }
     out.push(pool.splice(i, 1)[0]);
   }
-  return out.sort((a, b) => COS_RAR[b.rar][2] - COS_RAR[a.rar][2]); // commons first, legendaries last
+  out.sort((a, b) => COS_RAR[b.rar][2] - COS_RAR[a.rar][2]); // commons first, legendaries last
+  COS_SHOP_MEMO = [wk, out];
+  return out.slice();
 }
 const cosInShop = id => cosShop().some(c => c.id === id);
 // unlocked by doing things: a level, a study streak, or a badge
@@ -169,8 +207,7 @@ function buyCos(id) {
   const c = cos(id); if (!c) return;
   if (ownsCos(id)) return wearCos(id);
   if (!c.price) return;
-  if (!cosInShop(id)) { toast('🛒 Not in the shop this week', `${c.name} comes back to the shop in another week.`); return; }
-  const w = cdWallet(), l = c.price.l || 0, e = c.price.e || 0;
+  const w = cdWallet(), { l, e } = cosCost(c);
   if (w.lumen < l || w.ember < e) { toast('Not enough yet', `${c.name} costs ${cosPrice(c)}. You have ${LUMEN} ${w.lumen.toLocaleString()} and ${EMBER} ${w.ember.toLocaleString()}.`); return; }
   ftTake(l, e);
   D.arena.owned = { ...(D.arena.owned || {}), [id]: new Date().toISOString() };

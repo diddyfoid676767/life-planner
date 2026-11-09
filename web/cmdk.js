@@ -25,6 +25,7 @@
     out.push({ k: 'Action', t: 'Add a SAC or exam', run: act('new', { kind: 'assessment' }) });
     out.push({ k: 'Action', t: 'Add an event', run: act('new', { kind: 'event' }) });
     out.push({ k: 'Action', t: 'Send feedback', run: act('feedback') });
+    if (typeof ONLINE === 'undefined' || !ONLINE) { out.push({ k: 'Action', t: 'Check for updates', sub: 'install a new version now', run: act('checkUpdateNow') }); out.push({ k: 'Action', t: 'Save and restart Solis', run: act('restartApp') }); }
     if (typeof D !== 'object' || !D) return out;
     const t = typeof today === 'function' ? today() : '';
     const add = (arr, kind, k, title) => { for (const x of arr || []) { const n = title(x); if (n && !x.done) out.push({ k, t: n, sub: (x.date || x.due) && typeof fmtDate === 'function' ? fmtDate(x.date || x.due) : '', run: act('edit', { kind, id: x.id }), old: (x.date || x.due || '9') < t }); } };

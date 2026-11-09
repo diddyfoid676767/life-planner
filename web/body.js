@@ -47,7 +47,7 @@ function recentWorkouts() {
   return `<div class="card"><div class="card-head"><h2>Recent workouts</h2></div>${recent.length ? `<ul class="list">${recent.map(x => { const em = workoutEmber(x);
     return `<li class="item"><span class="dot" style="background:${TEVENT_COLOR}"></span><div class="main"><div class="title">${esc(x.title || x.sport || 'Workout')}${x.stravaId ? ' <span class="tag">Strava</span>' : ''}</div><div class="meta">${fmtDate(x.date)} · ${fmtMins(+x.duration || 0)}${x.distance ? ' · ' + x.distance + ' km' : ''}${x.intensity ? ' · ' + esc(x.intensity) : ''}</div></div><span class="tag">${em ? '+' + em + ' ' + EMBER : 'no Ember'}</span></li>`; }).join('')}</ul>${doneWorkouts().length > 6 && !ui.recAll ? '<button class="btn small" data-fit="recAll">Show more</button>' : ''}` : '<div class="empty">Tick off a workout or log one and it shows up here.</div>'}</div>`;
 }
-function trainTab() { return trainToday() + logMenu() + gymPage('train') + trainingPlan() + recentWorkouts(); }
+function trainTab() { return trainToday() + logMenu() + gymPage('train') + trainingPlan() + (typeof cdParts === 'function' ? cdParts().sports : '') + recentWorkouts(); }
 
 // ---------- Progress ----------
 function trendCard() {

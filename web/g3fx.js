@@ -11,8 +11,8 @@ const fxHQ = () => (((typeof D !== 'undefined' && D) && D.game && D.game.fx) || 
 const fxMix = (a, b, t) => '#' + new THREE.Color(a).lerp(new THREE.Color(b), t).getHexString();
 const srgb = t => { t.encoding = THREE.sRGBEncoding; return t; };
 
-function fxRenderer() {
-  const R = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
+function fxRenderer(o = {}) {
+  const R = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance', ...o });
   const low = typeof D === 'object' && D && D.settings && D.settings.lowQuality;
   R.setPixelRatio(low ? 1 : Math.min(devicePixelRatio || 1, 2));
   R.outputEncoding = THREE.sRGBEncoding;

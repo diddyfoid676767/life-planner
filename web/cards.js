@@ -263,20 +263,18 @@ function cdParts() {
     scores: `<div class="card cdscores"><div class="card-head"><h2>🎓 SAC scores, ${cdTermName(term)}</h2></div>
         <p class="muted small-text">Add each result as you get it back (SACs, tests, exams) as a percentage, with its weighting (1 = normal, 2 = counts double). Each subject shows the weighted average of this term's results, which also builds your Mind card. A subject with nothing this term uses last term's score.</p>
         ${D.subjects.length ? `<div class="cdsubj">${subjRows}</div>` : '<p class="empty">Add your subjects first.</p>'}</div>`,
-    stats: `    <div class="friends-main">
-      <div class="stack"><div class="card"><h3>💪 What builds your Body</h3>${srcList}
+    // 2.59: the sports log lives on Fitness, Train; Stats keeps what builds your Body
+    stats: `<div class="card"><h3>💪 What builds your Body</h3>${srcList}
         <p class="muted small-text">Your best three results for each stat count. PRs come from Training → Athletics, your gym log (estimated 1RM from any set, 12+ rep sets help Endurance), swimming by stroke, logged runs and team sports.</p>
-        <button class="btn small" data-act="goto" data-v="training">Log a PR</button></div></div>
-      <div class="stack"><div class="card"><h3>🏉 Sports log</h3>
+        <button class="btn small" data-act="goto" data-v="training">Log a PR</button></div>`,
+    sports: `<div class="card cdsports"><h3>🏉 Sports log</h3>
           <div class="row cdsport"><select id="cdSport">${CD_SPORTS.map(([id, n]) => `<option value="${id}">${n}</option>`).join('')}</select>
             <select id="cdKind"><option>Game</option><option>Training</option></select>
             <input id="cdMins" type="number" min="15" max="240" step="5" value="60" title="Minutes">
             <select id="cdInt"><option>Easy</option><option selected>Moderate</option><option>Hard</option></select>
             <input id="cdDate" type="date" value="${today()}"><button class="btn small primary" data-cd="sport">Log</button></div>
           ${sportsLog.length ? `<ul class="cdlog">${sportsLog.map(x => `<li><span>${fmtDate(x.date)}</span><b>${esc(x.title)}</b><span class="muted">${fmtMins(+x.duration)} · ${x.intensity}</span><button class="iconbtn" data-cd="delSport" data-id="${x.id}" title="Delete">✕</button></li>`).join('')}</ul>` : ''}
-          <p class="muted small-text">Hours over the last 90 days add to your Body stats (up to 40 hours per sport), and each session earns Ember like a workout. ${Object.keys(hrs).length ? 'Last 90 days: ' + Object.entries(hrs).map(([id, h]) => `${CD_SPORTS.find(s => s[0] === id)?.[1] || id} ${r1(h)}h`).join(', ') : ''}</p></div>
-      </div>
-    </div>` };
+          <p class="muted small-text">Hours over the last 90 days add to your Body stats (up to 40 hours per sport), and each session earns Ember like a workout. ${Object.keys(hrs).length ? 'Last 90 days: ' + Object.entries(hrs).map(([id, h]) => `${CD_SPORTS.find(s => s[0] === id)?.[1] || id} ${r1(h)}h`).join(', ') : ''}</p></div>` };
 }
 
 document.addEventListener('click', e => {
