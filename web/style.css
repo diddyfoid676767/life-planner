@@ -3389,3 +3389,12 @@ body.dens-compact .item, body.dens-compact .todo-item { padding-top: 4px; paddin
   body #places button[data-badge]:not([data-badge=""])::after { position: absolute; top: 2px; right: 2px; margin: 0; }
 }
 @media (max-width: 700px) { body #places button > span { display: none; } }
+
+/* 2.57.2: always-visible Settings gear */
+.fbrow { display: flex; align-items: center; gap: 4px; }
+.fbrow .fbbtn { flex: 1; min-width: 0; width: auto; }
+.setbtn { flex: none; border: 0; border-radius: 8px; background: none; color: var(--muted); font-size: 1.05rem; line-height: 1; padding: 5px 8px; cursor: pointer; }
+.setbtn:hover { background: var(--panel2); color: var(--text); }
+.settop { display: none; }
+@media (min-width: 861px) and (max-width: 1040px) { .fbrow { flex-direction: column; } }
+@media (max-width: 860px) { body .settop { display: block; } }

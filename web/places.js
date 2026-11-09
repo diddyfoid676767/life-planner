@@ -51,7 +51,11 @@ function placeBtn(v) { const p = placeOf(v); return p ? document.querySelector(`
   // 2.56: feedback is always one click away, at the bottom of the sidebar
   const fb = document.createElement('button'); fb.type = 'button'; fb.id = 'fbBtn'; fb.className = 'fbbtn'; fb.dataset.act = 'feedback'; fb.title = 'Send feedback or report a bug';
   fb.innerHTML = '<span>💬</span><span class="fbl">Feedback</span>';
-  (document.querySelector('.sidefoot') || side).prepend(fb);
+  // 2.57.2: Settings is always one click away: a gear next to Feedback, and in the top bar on narrow windows
+  const gear = (id, cls) => { const g = document.createElement('button'); g.type = 'button'; g.id = id; g.className = cls; g.title = 'Settings'; g.setAttribute('aria-label', 'Settings'); g.textContent = '⚙'; g.addEventListener('click', () => go('settings')); return g; };
+  const fbRow = document.createElement('div'); fbRow.className = 'fbrow'; fbRow.append(fb, gear('setBtn', 'setbtn'));
+  (document.querySelector('.sidefoot') || side).prepend(fbRow);
+  side.appendChild(gear('setBtnTop', 'setbtn settop'));
 
   function sync() {
     const cur = tabs.querySelector('button.active')?.dataset.view || '';
