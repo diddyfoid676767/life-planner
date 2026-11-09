@@ -18,16 +18,64 @@ const MIND_STATS = [['log', 'Logic', '#4dabf7'], ['kno', 'Knowledge', '#748ffc']
 const BODY_STATS = [['spd', 'Speed', '#339af0'], ['end', 'Endurance', '#2f9e44'], ['str', 'Strength', '#e03131'], ['agi', 'Agility', '#f59f00']];
 const CD_STAT = Object.fromEntries([...MIND_STATS, ...BODY_STATS].map(s => [s[0], s]));
 const CD_CLASSES = [
-  { id: 'tactician', n: 'Tactician', e: '♟️', s: ['log', 'agi', 'foc'], d: 'Plans three moves ahead and strikes where it counts.' },
-  { id: 'sage', n: 'Sage', e: '📜', s: ['kno', 'log', 'end'], d: 'Knows the answer and outlasts the fight.' },
-  { id: 'bard', n: 'Bard', e: '🎻', s: ['exp', 'kno', 'agi'], d: 'Words and wit that lift the whole house.' },
-  { id: 'monk', n: 'Monk', e: '🧘', s: ['foc', 'end', 'exp'], d: 'Calm, steady and impossible to distract.' },
-  { id: 'striker', n: 'Striker', e: '⚡', s: ['spd', 'agi', 'str'], d: 'Hits first, hits fast, hits hard.' },
-  { id: 'ranger', n: 'Ranger', e: '🏹', s: ['end', 'foc', 'spd'], d: 'Goes the distance and never misses.' },
-  { id: 'guardian', n: 'Guardian', e: '🛡️', s: ['str', 'end', 'log'], d: 'Holds the line so others can attack.' },
-  { id: 'rogue', n: 'Rogue', e: '🗡️', s: ['agi', 'spd', 'exp'], d: 'Quick, slippery and full of tricks.' },
+  { id: 'tactician', n: 'Tactician', e: '♟️', s: ['log', 'agi', 'foc'], d: 'Plans three moves ahead and strikes where it counts.', col: '#4dabf7', title: 'The Strategist' },
+  { id: 'sage', n: 'Sage', e: '📜', s: ['kno', 'log', 'end'], d: 'Knows the answer and outlasts the fight.', col: '#748ffc', title: 'Keeper of Knowledge' },
+  { id: 'bard', n: 'Bard', e: '🎻', s: ['exp', 'kno', 'agi'], d: 'Words and wit that lift the whole house.', col: '#da77f2', title: 'Voice of the House' },
+  { id: 'monk', n: 'Monk', e: '🧘', s: ['foc', 'end', 'exp'], d: 'Calm, steady and impossible to distract.', col: '#38d9a9', title: 'The Unshaken' },
+  { id: 'striker', n: 'Striker', e: '⚡', s: ['spd', 'agi', 'str'], d: 'Hits first, hits fast, hits hard.', col: '#fab005', title: 'Lightning Fist' },
+  { id: 'ranger', n: 'Ranger', e: '🏹', s: ['end', 'foc', 'spd'], d: 'Goes the distance and never misses.', col: '#40c057', title: 'The Far-Sighted' },
+  { id: 'guardian', n: 'Guardian', e: '🛡️', s: ['str', 'end', 'log'], d: 'Holds the line so others can attack.', col: '#f76707', title: 'Shield of the House' },
+  { id: 'rogue', n: 'Rogue', e: '🗡️', s: ['agi', 'spd', 'exp'], d: 'Quick, slippery and full of tricks.', col: '#e64980', title: 'Shadow Blade' },
 ];
 // subject name -> Mind weights and a scaling factor (roughly how VCE scales it)
+// 2.57: classes unlock at player level 8 (2,800 XP) and are permanent once picked.
+// A Respec Scroll (about a 3% drop when your house kills the weekly boss) lets you pick again.
+const CD_CLASS_LV = 8, CD_RESPEC_DROP = .03;
+// your class, once it is locked in (an old pick from before 2.57 waits until level 8)
+function cdClass() {
+  if (!cdState().clsV) { // 2.57 ship: anyone already past level 8 with a class keeps it and gets one free re-pick
+    const past = typeof solisHas === 'function' && solisHas(CD_CLASS_LV), st = cdState(); // (cdState() makes a new object, so get it after the level)
+    st.clsV = 1;
+    if (st.cls && past) { st.clsLock = 1; st.respec = (st.respec || 0) + 1; st.respecGift = 1; }
+  }
+  const st = cdState();
+  return st.clsLock && CD_CLASSES.some(c => c.id === st.cls) ? st.cls : '';
+}
+const cdClassInfo = (id = cdClass()) => CD_CLASSES.find(c => c.id === id) || null;
+// the choose-a-class screen (opens from the You page)
+function clsPickerDraw() {
+  let ov = document.getElementById('clsov');
+  if (!ui.clsPick) { ov?.remove(); return; }
+  if (!ov) { ov = document.createElement('div'); ov.id = 'clsov'; document.body.appendChild(ov); }
+  const st = cdState(), ch = cdChar(), cur = cdClass(), sel = ui.clsSel || '', best = ch.fit.slice(0, 3).map(x => x.c.id), respec = !!cur;
+  const sk = s => `<div class="clsk"><span>${s.e}</span><div><b>${esc(s.n)}</b> <small class="muted">${s.k === 'spell' ? 'Spell' : 'Move'} · ${CD_STAT[s.st][1]}</small><div class="small-text">${esc(s.d)}</div></div></div>`;
+  ov.innerHTML = `<div class="clsbox"><div class="row" style="justify-content:space-between"><div><div class="muted small-text">${respec ? `RESPEC SCROLL · ${st.respec || 0} LEFT` : `LEVEL ${CD_CLASS_LV} REACHED`}</div><h2 style="margin:2px 0">Choose your class</h2></div><button class="iconbtn" data-cls="close" title="Close">✕</button></div>
+    <p class="muted small-text">Your class is <b>permanent</b>. It gives you a title, an outfit colour and aura, a passive and two skills only it has (a spell and a move). ⭐ marks your best matches from your Mind and Body stats. ${respec ? 'Picking a new class uses up one Respec Scroll.' : 'To change it later you need a Respec Scroll, a very rare drop from killing the weekly boss with your house.'}</p>
+    <div class="clsgrid">${CD_CLASSES.map(c => { const F = FT_CLASS[c.id]; return `<button type="button" class="clscard ${sel === c.id ? 'on' : ''} ${cur === c.id ? 'cur' : ''}" style="--cc:${c.col}" data-cls="sel" data-id="${c.id}">
+      <div class="clstop"><span class="clse">${c.e}</span><div><b>${c.n}${best.includes(c.id) ? ' ⭐' : ''}</b><small>${esc(c.title)}</small></div>${cur === c.id ? '<span class="tag">Current</span>' : ''}</div>
+      <div class="clsstats">${c.s.map(k => `<span>${CD_STAT[k][1]} <b>${ch.all[k]}</b></span>`).join('')}</div>
+      <div class="small-text muted">${esc(c.d)}</div><div class="small-text"><b>Passive:</b> ${esc(F.p)}</div>${ftClassSkills(c.id).map(sk).join('')}</button>`; }).join('')}</div>
+    <div class="row" style="justify-content:flex-end;gap:8px"><button class="btn" data-cls="close">Not yet</button><button class="btn primary" data-cls="ok" ${sel && sel !== cur ? '' : 'disabled'}>${sel ? `Become a ${cdClassInfo(sel).n}` : 'Pick a class'}</button></div></div>`;
+}
+document.addEventListener('click', e => {
+  const el = e.target.closest('[data-cls]'); if (!el || !D) return;
+  const a = el.dataset.cls;
+  if (a === 'open') { if (!solisHas(CD_CLASS_LV)) { toast('🔒 Not yet', `Classes unlock at level ${CD_CLASS_LV}.`); return; } const had = cdClass(), st = cdState(); if (had && !(st.respec > 0)) { toast('📜 You need a Respec Scroll', 'Your class is permanent. Scrolls are a rare drop from killing the weekly boss.'); return; } ui.clsPick = true; ui.clsSel = st.clsLock ? '' : st.cls || ''; }
+  else if (a === 'close') { ui.clsPick = false; ui.clsSeen = true; }
+  else if (a === 'sel') ui.clsSel = el.dataset.id;
+  else if (a === 'ok') {
+    const c = cdClassInfo(ui.clsSel), had = cdClass(), st = cdState(); if (!c || c.id === had) return; // (fresh state: cdClass() can replace it)
+    if (had && !(st.respec > 0)) return;
+    if (!confirm(had ? `Use a Respec Scroll and become a ${c.n}? This is permanent until your next scroll.` : `Become a ${c.n}? This is permanent.`)) return;
+    if (had) st.respec--;
+    st.cls = c.id; st.clsLock = 1; st.clsAt = today(); delete st.respecGift; ui.clsPick = false; ui.clsSeen = true;
+    save(); render();
+    if (typeof celebrate === 'function') celebrate({ icon: `<span class="critbig">${c.e}</span>`, color: c.col, kicker: had ? 'New class' : 'Class chosen', title: `${esc(c.n)}: ${esc(c.title)}`, text: `${esc(FT_CLASS[c.id].p)} Your two class skills are in your build.` });
+  }
+  clsPickerDraw();
+});
+document.addEventListener('keydown', e => { if (e.key === 'Escape' && ui.clsPick) { ui.clsPick = false; ui.clsSeen = true; clsPickerDraw(); } });
+
 const CD_SUBJ = [
   [/specialist/i, { log: .6, foc: .3, kno: .1 }, 1.12],
   [/method/i, { log: .6, foc: .3, kno: .1 }, 1.05],
@@ -175,7 +223,7 @@ function cdBars(stats, vals) {
 // 2.51: the Character page is now part of Profile (profile.js puts these pieces together)
 function cdParts() {
   const st = cdState(), ch = cdChar(), w = cdWallet(), t = w.today, term = cdTerm();
-  const cls = CD_CLASSES.find(c => c.id === st.cls), sug = ch.fit.slice(0, 3).map(x => x.c.id);
+  const cls = cdClassInfo(), sug = ch.fit.slice(0, 3).map(x => x.c.id);
   const fresh = ch.ovr <= 6;
   const sc = st.scores[term] || {}, latest = cdScores();
   const rs = (st.res || {})[term] || {};
@@ -235,7 +283,6 @@ document.addEventListener('click', e => {
   const el = e.target.closest('[data-cd]'); if (!el || el.tagName === 'INPUT') return;
   const st = cdState();
   switch (el.dataset.cd) {
-    case 'cls': { const c = CD_CLASSES.find(x => x.id === el.dataset.id); if (!c || st.cls === c.id) return; st.cls = c.id; save(); render(); toast(`${c.e} You're a ${c.n}`, c.d); break; }
     case 'sport': {
       const id = $('#cdSport').value, int = $('#cdInt').value, sp = CD_SPORTS.find(s => s[0] === id), mins = Math.max(0, Math.min(240, +$('#cdMins').value || 0)), d = $('#cdDate').value || today();
       if (!sp || mins < 1) return;
@@ -250,6 +297,13 @@ document.addEventListener('click', e => {
     case 'delSport': if (confirm('Delete this session?')) { D.workouts = D.workouts.filter(w => w.id !== el.dataset.id); save(); render(); } break;
   }
 });
+// 2.57: Study shows a read-only summary; results are added in You, Records
+function cdScoresMini() {
+  const latest = cdScores(), term = cdTerm();
+  return `<div class="card cdscores mini"><div class="card-head"><h2>🎓 SAC averages</h2><span style="flex:1"></span><button class="btn small" data-pf="goRec">+ Add a result</button></div>
+    ${D.subjects.length ? `<div class="cdmini">${D.subjects.map(s => { const x = latest[s.id]; return `<div><span><span class="dot" style="background:${s.color}"></span> ${esc(s.name)}</span><b>${x ? x.pct + '%' : '–'}</b><small class="muted">${x ? x.term !== term ? cdTermName(x.term) : x.n ? `${x.n} result${x.n === 1 ? '' : 's'}` : 'term average' : 'no score yet'}</small></div>`; }).join('')}</div>` : '<p class="empty">Add your subjects first.</p>'}
+    <p class="muted small-text">Your results and PRs live together in You, Records.</p></div>`;
+}
 // 2.51: add one result at a time (Enter in the % box works too)
 function cdAddRes(sid) {
   const inp = document.getElementById('cdr-' + sid), nm = document.getElementById('cdn-' + sid), raw = (inp?.value || '').trim();

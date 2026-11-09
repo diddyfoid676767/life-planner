@@ -43,14 +43,14 @@ const FT_SKILLS = [
 ];
 // each class: a passive and its own skill (always in your build)
 const FT_CLASS = {
-  tactician: { p: 'Every 3rd round your hits always crit.', sk: { id: 'c_gambit', k: 'spell', n: 'Gambit', e: '♟️', st: 'log', pw: 0, cd: 3, fx: 'buff', d: 'Your next hit does double damage.' } },
-  sage: { p: 'Spells do 15% more.', sk: { id: 'c_insight', k: 'spell', n: 'Insight', e: '📜', st: 'kno', pw: 20, cd: 3, fx: 'reveal', t: 'light', d: 'Hits and reveals: your next 2 hits count as super effective.' } },
-  bard: { p: 'Heal 4% of your health every round.', sk: { id: 'c_rally', k: 'spell', n: 'Rally', e: '🎻', st: 'exp', pw: 0, cd: 4, fx: 'rally', d: 'Everything you do hits 30% harder for 3 rounds.' } },
-  monk: { p: "Can't be stunned, confused or lost in fog.", sk: { id: 'c_still', k: 'spell', n: 'Still Mind', e: '🧘', st: 'foc', pw: 30, cd: 3, fx: 'heal', cleanse: 1, d: 'Heal 30% and clear burns and blindness.' } },
-  striker: { p: 'Moves do 15% more.', sk: { id: 'c_blitz', k: 'move', n: 'Blitz', e: '⚡', st: 'spd', pw: 12, hits: 3, cd: 2, t: 'swift', d: 'Three lightning hits.' } },
-  ranger: { p: 'Never misses: ignores dodging, fog and blindness.', sk: { id: 'c_mark', k: 'move', n: 'Mark', e: '🏹', st: 'foc', pw: 16, cd: 3, fx: 'mark', t: 'swift', d: 'Hits and marks it: +25% damage taken for 3 rounds.' } },
-  guardian: { p: 'Takes 20% less damage.', sk: { id: 'c_bulwark', k: 'move', n: 'Bulwark', e: '🛡️', st: 'str', pw: 40, cd: 3, fx: 'shield', d: 'A shield worth 40% of your health.' } },
-  rogue: { p: '20% chance to dodge any hit.', sk: { id: 'c_backstab', k: 'move', n: 'Backstab', e: '🗡️', st: 'agi', pw: 22, cd: 2, t: 'strike', back: 1, d: 'Does 2.5× damage if the target is stunned, blind or confused.' } },
+  tactician: { p: 'Every 3rd round your hits always crit.', sk: { id: 'c_gambit', k: 'spell', n: 'Gambit', e: '♟️', st: 'log', pw: 0, cd: 3, fx: 'buff', d: 'Your next hit does double damage.' }, sk2: { id: 'c_feint', k: 'move', n: 'Feint', e: '🎭', st: 'agi', pw: 18, cd: 2, t: 'swift', stun: .4, d: 'A fake-out: 40% chance to stun.' } },
+  sage: { p: 'Spells do 15% more.', sk: { id: 'c_insight', k: 'spell', n: 'Insight', e: '📜', st: 'kno', pw: 20, cd: 3, fx: 'reveal', t: 'light', d: 'Hits and reveals: your next 2 hits count as super effective.' }, sk2: { id: 'c_staff', k: 'move', n: 'Staff Strike', e: '🪄', st: 'end', pw: 22, cd: 2, t: 'strike', heal: 8, d: 'A measured blow that heals 8%.' } },
+  bard: { p: 'Heal 4% of your health every round.', sk: { id: 'c_rally', k: 'spell', n: 'Rally', e: '🎻', st: 'exp', pw: 0, cd: 4, fx: 'rally', d: 'Everything you do hits 30% harder for 3 rounds.' }, sk2: { id: 'c_encore', k: 'move', n: 'Encore', e: '🎶', st: 'agi', pw: 10, hits: 3, cd: 2, t: 'swift', d: 'Three quick hits in time with the music.' } },
+  monk: { p: "Can't be stunned, confused or lost in fog.", sk: { id: 'c_still', k: 'spell', n: 'Still Mind', e: '🧘', st: 'foc', pw: 30, cd: 3, fx: 'heal', cleanse: 1, d: 'Heal 30% and clear burns and blindness.' }, sk2: { id: 'c_palm', k: 'move', n: 'Palm Strike', e: '🖐️', st: 'end', pw: 24, cd: 2, t: 'strike', stun: .3, d: 'A calm, heavy strike: 30% chance to stun.' } },
+  striker: { p: 'Moves do 15% more.', sk: { id: 'c_blitz', k: 'move', n: 'Blitz', e: '⚡', st: 'spd', pw: 12, hits: 3, cd: 2, t: 'swift', d: 'Three lightning hits.' }, sk2: { id: 'c_charge', k: 'spell', n: 'Overcharge', e: '🔋', st: 'spd', pw: 0, cd: 3, fx: 'buff', d: 'Your next hit does double damage.' } },
+  ranger: { p: 'Never misses: ignores dodging, fog and blindness.', sk: { id: 'c_mark', k: 'move', n: 'Mark', e: '🏹', st: 'foc', pw: 16, cd: 3, fx: 'mark', t: 'swift', d: 'Hits and marks it: +25% damage taken for 3 rounds.' }, sk2: { id: 'c_eagle', k: 'spell', n: 'Eagle Eye', e: '🦅', st: 'foc', pw: 18, cd: 3, fx: 'reveal', t: 'light', d: 'Hits and spots the weak point: your next 2 hits count as super effective.' } },
+  guardian: { p: 'Takes 20% less damage.', sk: { id: 'c_bulwark', k: 'move', n: 'Bulwark', e: '🛡️', st: 'str', pw: 40, cd: 3, fx: 'shield', d: 'A shield worth 40% of your health.' }, sk2: { id: 'c_aegis', k: 'spell', n: 'Aegis Light', e: '🌞', st: 'log', pw: 18, cd: 3, t: 'light', heal: 10, d: 'Holy light that hits and heals 10%.' } },
+  rogue: { p: '20% chance to dodge any hit.', sk: { id: 'c_backstab', k: 'move', n: 'Backstab', e: '🗡️', st: 'agi', pw: 22, cd: 2, t: 'strike', back: 1, d: 'Does 2.5× damage if the target is stunned, blind or confused.' }, sk2: { id: 'c_smoke', k: 'spell', n: 'Smoke Bomb', e: '💨', st: 'exp', pw: 10, cd: 3, t: 'arcane', stun: .6, d: '60% chance to stun, which sets up Backstab.' } },
 };
 // bosses (same names as the weekly house bosses): their own attacks, a weakness and a special rule
 const FT_BOSS = {
@@ -94,7 +94,24 @@ const FT_RAR = [['common', 'Common', 1, '#868e96'], ['rare', 'Rare', 1.6, '#1c7e
 const FT_STAT_ORDER = ['log', 'kno', 'exp', 'foc', 'spd', 'end', 'str', 'agi'];
 
 const ftState = () => { const c = cdState(); return (c.ft = Object.assign({ own: ['spark', 'jab'], eq: { spell: ['spark'], move: ['jab'] }, gear: [], wear: {}, att: {}, dmg: {}, leg: {}, kill: {}, r: 1000, w: 0, l: 0 }, c.ft || {})); };
-const ftSkill = id => FT_SKILLS.find(s => s.id === id) || Object.values(FT_CLASS).map(c => c.sk).find(s => s.id === id);
+const ftSkill = id => FT_SKILLS.find(s => s.id === id) || Object.values(FT_CLASS).flatMap(c => [c.sk, c.sk2]).find(s => s.id === id);
+// 2.57: each class has two exclusive skills, a spell and a move, always in your build
+const ftClassSkills = cls => FT_CLASS[cls] ? [FT_CLASS[cls].sk, FT_CLASS[cls].sk2].filter(Boolean) : [];
+// 2.57 gear sets: wear 3 or more matching pieces for a bonus, 5 or more for a bigger one
+const FT_SETS = [
+  { id: 'scholar', n: 'Scholar', e: '🎓', pcs: ['Study Cap', 'Robe', 'Slippers', 'Pen of Power', 'Seer Orb'], b3: { sp: .08 }, b5: { sp: .08, wk: .1 } },
+  { id: 'iron', n: 'Ironclad', e: '🛡️', pcs: ['Helm', 'Chestplate', 'Greaves', 'Boots', 'Tape', 'Medal'], b3: { dr: .05 }, b5: { hp: 40, dr: .03 } },
+  { id: 'athlete', n: 'Athlete', e: '🏃', pcs: ['Headband', 'Hoodie', 'Track Pants', 'Training Shorts', 'Spikes', 'Gloves', 'Lucky Clover'], b3: { mv: .08 }, b5: { dg: .05, cr: .03 } },
+];
+// which template a piece was made from (its name without the rarity)
+const ftGearBase = p => (FT_GEAR[p.slot] || []).find(t => p.n === t[0] || p.n.endsWith(' ' + t[0]))?.[0] || '';
+const ftSetOf = p => FT_SETS.find(S => S.pcs.includes(ftGearBase(p)));
+// sets you have on: [{ S, n, b }] where b is the bonus that is switched on
+function ftSets(st = ftState(), wear = st.wear) {
+  const cnt = {};
+  for (const id of Object.values(wear)) { const p = st.gear.find(x => x.id === id), S = p && ftSetOf(p); if (S) cnt[S.id] = (cnt[S.id] || 0) + 1; }
+  return FT_SETS.filter(S => cnt[S.id]).map(S => { const n = cnt[S.id], b = {}; if (n >= 3) for (const [k, v] of Object.entries(S.b3)) b[k] = (b[k] || 0) + v; if (n >= 5) for (const [k, v] of Object.entries(S.b5)) b[k] = (b[k] || 0) + v; return { S, n, b }; });
+}
 const ftRar = r => FT_RAR.find(x => x[0] === r) || FT_RAR[0];
 // 2.51: spells and moves unlock by player level (level.js), cheaper ones first; gear above common needs a level to wear
 const ftSkillLv = s => s.lv || (!s.c ? 1 : s.r === 'legendary' ? 18 : s.r === 'epic' ? 12 : s.c <= 120 ? 2 : s.c <= 160 ? 3 : s.c <= 200 ? 4 : s.c <= 240 ? 6 : 8);
@@ -109,9 +126,10 @@ function ftAttempts() {
   return { left: Math.max(0, Math.min(FT_WEEK_ATT + extra - week, FT_DAY_ATT - day)), week, day, extra };
 }
 // total buffs from what you're wearing
-function ftGearBuffs(st = ftState()) {
+function ftGearBuffs(st = ftState(), wear = st.wear) {
   const g = {};
-  for (const id of Object.values(st.wear)) { const p = st.gear.find(x => x.id === id); if (p) for (const [k, v] of Object.entries(p.b)) g[k] = (g[k] || 0) + v; }
+  for (const id of Object.values(wear)) { const p = st.gear.find(x => x.id === id); if (p) for (const [k, v] of Object.entries(p.b)) g[k] = (g[k] || 0) + v; }
+  for (const { b } of ftSets(st, wear)) for (const [k, v] of Object.entries(b)) g[k] = (g[k] || 0) + v;
   if (typeof islBuffs === 'function') for (const [k, v] of Object.entries(islBuffs())) g[k] = (g[k] || 0) + v; // 2.49: island perks
   return g;
 }
@@ -139,12 +157,12 @@ function ftFighter({ n, e, stats, cls, skills, g }) {
   return { n, e, s: stats, cls, g, hp: max, max, sk: skills.map(s => ({ ...s, cdl: 0 })), shield: 0, stun: 0, blind: 0, confuse: 0, slow: 0, dot: [], buff: 1, rally: 0, mark: 0, reveal: 0, chain: 0, lastSt: '' };
 }
 function ftMe(house) {
-  const st = ftState(), ch = cdChar(), cls = cdState().cls, ids = [...st.eq.spell, ...st.eq.move].filter(id => st.own.includes(id));
-  if (FT_CLASS[cls]) ids.push(FT_CLASS[cls].sk.id);
+  const st = ftState(), ch = cdChar(), cls = cdClass(), ids = [...st.eq.spell, ...st.eq.move].filter(id => st.own.includes(id));
+  for (const s of ftClassSkills(cls)) ids.push(s.id);
   return ftFighter({ n: D.settings.name || 'You', e: CD_CLASSES.find(c => c.id === cls)?.e || '🙂', stats: ch.all, cls, skills: ids.map(ftSkill).filter(Boolean), g: house && typeof hiFightBuffs === 'function' ? hiFightBuffs(ftGearBuffs(st)) : ftGearBuffs(st) });
 }
 function ftPublish() {
-  const st = ftState(), ch = cdChar(), cls = cdState().cls, g = ftGearBuffs(st);
+  const st = ftState(), ch = cdChar(), cls = cdClass(), g = ftGearBuffs(st);
   return { c: cls || '', s: FT_STAT_ORDER.map(k => ch.all[k]), k: [...st.eq.spell, ...st.eq.move].filter(id => st.own.includes(id)).slice(0, 6), g: Object.fromEntries(Object.entries(g).map(([k, v]) => [k, Math.round(v * 100) / 100])), r: st.r };
 }
 // a friend's published character, cleaned up (it came over the network)
@@ -154,7 +172,7 @@ function ftGhost(row) {
   const g = {}; for (const k of Object.keys(FT_BUFF)) { const v = +ch.g?.[k]; if (v > 0) g[k] = Math.min(k === 'hp' ? 200 : k === 'rg' ? 25 : .6, v); }
   const cls = FT_CLASS[ch.c] ? ch.c : '';
   const ids = (Array.isArray(ch.k) ? ch.k : []).filter(id => FT_SKILLS.some(s => s.id === id)).slice(0, 6);
-  if (!ids.length) ids.push('spark', 'jab'); if (cls) ids.push(FT_CLASS[cls].sk.id);
+  if (!ids.length) ids.push('spark', 'jab'); for (const s of ftClassSkills(cls)) ids.push(s.id);
   return ftFighter({ n: row.name, e: CD_CLASSES.find(c => c.id === cls)?.e || '🙂', stats, cls, skills: ids.map(ftSkill), g });
 }
 
@@ -356,10 +374,10 @@ function ftDraw() {
 }
 
 // ---------- the Build card on the Character page ----------
-function ftBuildHtml() {
-  const st = ftState(), w = cdWallet(), cls = cdState().cls, me = ftMe(), g = ftGearBuffs(st), tab = ui.ftTab || 'spell';
+function ftBuildHtml(noGear) {
+  const st = ftState(), w = cdWallet(), cls = cdClass(), me = ftMe(), g = ftGearBuffs(st), tab = ui.ftTab || 'spell';
   const slot = (k, i) => { const id = st.eq[k][i], s = id && ftSkill(id); return `<button class="ftslot ${k}" data-ft="unequip" data-k="${k}" data-i="${i}" title="${s ? esc(s.d) + ' (click to take off)' : 'Empty: equip one from your collection below'}">${s ? `<span>${s.e}</span><b>${esc(s.n)}</b><small>${CD_STAT[s.st][1]}</small>` : '<span class="muted">+</span><small class="muted">Empty</small>'}</button>`; };
-  const csk = FT_CLASS[cls]?.sk;
+  const csk = ftClassSkills(cls);
   const lvN = solisLevel(w).n;
   const shop = FT_SKILLS.filter(s => s.k === tab).sort((a, b) => ftSkillLv(a) - ftSkillLv(b) || a.c - b.c).map(s => {
     const need = ftSkillLv(s);
@@ -372,11 +390,11 @@ function ftBuildHtml() {
   const bag = [...st.gear].sort((a, b) => FT_RAR.findIndex(x => x[0] === b.r) - FT_RAR.findIndex(x => x[0] === a.r));
   const gearSlots = FT_GEAR_SLOTS.map(([k, n, e]) => { const p = st.gear.find(x => x.id === st.wear[k]); return `<div class="ftgslot" ${p ? `style="--rc:${ftRar(p.r)[3]}" title="${esc(ftBuffText(p.b))}"` : ''}><small class="muted">${n}</small>${p ? `<span>${p.e}</span><b>${esc(p.n)}</b><button class="iconbtn" data-ft="unwear" data-k="${k}" title="Take off">✕</button>` : `<span class="muted">${e}</span><small class="muted">Empty</small>`}</div>`; }).join('');
   return `<div class="card ftbuild"><div class="row" style="justify-content:space-between"><h3>⚔️ Build</h3><span class="muted small-text">❤️ ${me.max} health${Object.keys(g).length ? ' · ' + ftBuffText(Object.fromEntries(Object.entries(g).filter(([k]) => k !== 'hp'))) : ''}</span></div>
-    <p class="muted small-text">New spells and moves unlock as you level up (what they do is hidden until then), and rare, epic and legendary gear can be worn from levels ${FT_GEAR_LV.rare}, ${FT_GEAR_LV.epic} and ${FT_GEAR_LV.legendary}. Equip up to ${FT_SPELLS} spells (Mind) and ${FT_MOVES} moves (Body). Each one scales with the stat shown, so your cards matter. Your class skill is always in. Change your build any time outside a fight.</p>
+    <p class="muted small-text">New spells and moves unlock as you level up (what they do is hidden until then), and rare, epic and legendary gear can be worn from levels ${FT_GEAR_LV.rare}, ${FT_GEAR_LV.epic} and ${FT_GEAR_LV.legendary}. Equip up to ${FT_SPELLS} spells (Mind) and ${FT_MOVES} moves (Body). Each one scales with the stat shown, so your cards matter. Your two class skills are always in. Change your build any time outside a fight.</p>
     <div class="ftslots"><div><div class="ftlbl">🧠 Spells</div>${[0, 1, 2].map(i => slot('spell', i)).join('')}</div><div><div class="ftlbl">💪 Moves</div>${[0, 1, 2].map(i => slot('move', i)).join('')}</div>
-      <div><div class="ftlbl">Class</div>${csk ? `<div class="ftslot cl" title="${esc(csk.d)}"><span>${csk.e}</span><b>${csk.n}</b><small>${esc(FT_CLASS[cls].p)}</small></div>` : '<div class="ftslot"><small class="muted">Pick a class above to get its skill</small></div>'}</div></div>
-    <div class="ftlbl" style="margin-top:12px">🛡️ Gear</div><div class="ftgear6">${gearSlots}</div>
-    ${bag.length ? `<details class="ftbag"><summary>Gear bag (${bag.length})</summary>${bag.map(p => { const on = st.wear[p.slot] === p.id; const gl = ftGearLv(p); if (!on && lvN < gl) return `<div class="ftbagrow"><span class="ftgear" style="--rc:${ftRar(p.r)[3]}">${p.e} ${ftRar(p.r)[1]} ${FT_GEAR_SLOTS.find(s => s[0] === p.slot)[1].toLowerCase()} piece</span> <span class="muted small-text">buffs hidden</span><span class="tag">🔒 Wear at level ${gl}</span><button class="iconbtn" data-ft="scrap" data-id="${p.id}" title="Scrap for ${ftScrap(p)} ${LUMEN} and ${EMBER}">♻️</button></div>`;
+      <div><div class="ftlbl">Class</div>${csk.length ? csk.map(s => `<div class="ftslot cl" title="${esc(s.d)}"><span>${s.e}</span><b>${esc(s.n)}</b><small>${s.k === 'spell' ? 'Spell' : 'Move'} · ${CD_STAT[s.st][1]}</small></div>`).join('') + `<small class="muted">${esc(FT_CLASS[cls].p)}</small>` : `<div class="ftslot"><small class="muted">${solisHas(CD_CLASS_LV) ? 'Choose your class to get its two skills' : `Classes unlock at level ${CD_CLASS_LV}`}</small></div>`}</div></div>
+    ${noGear ? '' : `<div class="ftlbl" style="margin-top:12px">🛡️ Gear</div><div class="ftgear6">${gearSlots}</div>`}
+    ${noGear ? '' : bag.length ? `<details class="ftbag"><summary>Gear bag (${bag.length})</summary>${bag.map(p => { const on = st.wear[p.slot] === p.id; const gl = ftGearLv(p); if (!on && lvN < gl) return `<div class="ftbagrow"><span class="ftgear" style="--rc:${ftRar(p.r)[3]}">${p.e} ${ftRar(p.r)[1]} ${FT_GEAR_SLOTS.find(s => s[0] === p.slot)[1].toLowerCase()} piece</span> <span class="muted small-text">buffs hidden</span><span class="tag">🔒 Wear at level ${gl}</span><button class="iconbtn" data-ft="scrap" data-id="${p.id}" title="Scrap for ${ftScrap(p)} ${LUMEN} and ${EMBER}">♻️</button></div>`;
       return `<div class="ftbagrow">${ftGearChip(p)} <small class="muted">${FT_GEAR_SLOTS.find(s => s[0] === p.slot)[1]}</small>${on ? '<span class="tag">Wearing</span>' : `<button class="btn small" data-ft="wear" data-id="${p.id}">Wear</button><button class="iconbtn" data-ft="scrap" data-id="${p.id}" title="Scrap for ${ftScrap(p)} ${LUMEN} and ${EMBER}">♻️</button>`}</div>`; }).join('')}</details>` : '<p class="muted small-text">Gear drops from house boss fights, spars and duels. Beating the weekly boss as a house gives everyone who fought a rare or better piece.</p>'}
     <div class="ftlbl" style="margin-top:12px">🛒 Shop</div>
     <div class="seg"><button class="${tab === 'spell' ? 'on' : ''}" data-ft="tab" data-v="spell">Spells (${LUMEN} Lumen)</button><button class="${tab === 'move' ? 'on' : ''}" data-ft="tab" data-v="move">Moves (${EMBER} Ember)</button></div>
@@ -406,6 +424,7 @@ function ftHouseKill(wk) {
   const st = ftState(); if (st.kill[wk] || !(st.dmg[wk] > 0)) return;
   st.kill[wk] = 1; for (const k in st.kill) if (k < addDays(wk, -70)) delete st.kill[k];
   const p = ftRollGear(1); toast('🎁 Boss reward', `You fought, so you get ${p.e} ${p.n}.`);
+  if (Math.random() < CD_RESPEC_DROP) { const c = cdState(); c.respec = (c.respec || 0) + 1; setTimeout(() => toast('📜 Respec Scroll!', 'A very rare drop. Use it on the You page to change your class once.'), 1500); }
 }
 
 document.addEventListener('click', e => {
@@ -432,7 +451,8 @@ document.addEventListener('click', e => {
     }
     case 'equip': { const s = ftSkill(v.id); if (!s || !st.own.includes(s.id) || st.eq[s.k].includes(s.id)) return; const max = s.k === 'spell' ? FT_SPELLS : FT_MOVES; if (st.eq[s.k].length >= max) { toast('Slots full', `Click one of your equipped ${s.k}s to take it off first.`); return; } st.eq[s.k].push(s.id); save(); render(); return; }
     case 'unequip': { const arr = st.eq[v.k]; if (!arr?.[+v.i]) return; if (arr.length === 1 && st.eq[v.k === 'spell' ? 'move' : 'spell'].length === 0) return; arr.splice(+v.i, 1); save(); render(); return; }
-    case 'wear': { const p = st.gear.find(x => x.id === v.id); if (p && solisLevel().n < ftGearLv(p)) { toast('🔒 Too heavy for now', `Reach level ${ftGearLv(p)} to wear ${ftRar(p.r)[1].toLowerCase()} gear.`); return; } if (p) { st.wear[p.slot] = p.id; save(); render(); } return; }
+    case 'wear': { const p = st.gear.find(x => x.id === v.id); if (p && solisLevel().n < ftGearLv(p)) { toast('🔒 Too heavy for now', `Reach level ${ftGearLv(p)} to wear ${ftRar(p.r)[1].toLowerCase()} gear.`); return; } if (p) { st.wear[p.slot] = p.id; if (ui.gearTry === p.id) ui.gearTry = null; save(); render(); } return; }
+    case 'try': ui.gearTry = ui.gearTry === v.id ? null : v.id; render(); return;
     case 'unwear': delete st.wear[v.k]; save(); render(); return;
     case 'scrap': { const p = st.gear.find(x => x.id === v.id); if (!p || Object.values(st.wear).includes(p.id)) return; const n = ftScrap(p); if (!confirm(`Scrap ${p.n} for ${n} Lumen and ${n} Ember?`)) return; st.gear = st.gear.filter(x => x !== p); ftAddCurrency(n, n); save(); render(); return; }
   }

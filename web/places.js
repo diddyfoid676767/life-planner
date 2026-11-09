@@ -4,7 +4,7 @@
    pages, shown as one row of tabs above the page. The original page buttons
    (#tabs) stay in the page but hidden, because the rest of the app sets
    badges on them and clicks them to change page; this file mirrors them.
-   Also here: keys 1 to 5, icons-only sidebar on narrow windows, Lumen / Ember / streak in
+   Also here: keys 1 to 6, icons-only sidebar on narrow windows, Lumen / Ember / streak in
    the footer and the one quick-add button. */
 const PLACES = [
   { id: 'today', label: 'Today', views: ['today', 'calendar'] },
@@ -12,12 +12,14 @@ const PLACES = [
   { id: 'fitness', label: 'Fitness', views: ['training'] },
   { id: 'islands', label: 'Islands', views: ['islands'] },
   { id: 'friends', label: 'Friends', views: ['friends'] },
+  { id: 'you', label: 'You', views: ['profile', 'settings'], extra: ['settings'] }, // 2.57: an ordinary sixth place; Settings sits behind the gear on You
 ];
 const PLACE_ICON = {
   today: '<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>',
   study: '<path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20V3H6.5A2.5 2.5 0 0 0 4 5.5z"/><path d="M4 19.5A2.5 2.5 0 0 0 6.5 22H20v-5"/>',
   fitness: '<path d="M22 12h-4l-3 8L9 4l-3 8H2"/>',
   islands: '<path d="M3 17c2 1.5 4 1.5 6 0s4-1.5 6 0 4 1.5 6 0"/><path d="M6 14c1-3 4-4 6-4s5 1 6 4"/><path d="M12 10V4l4 2-4 2"/>',
+  you: '<circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/>',
   friends: '<circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0"/><path d="M16 4.5a3.5 3.5 0 0 1 0 7M18 14a6 6 0 0 1 4 6"/>',
 };
 const SUB_LABEL = { today: 'Today', friends: 'Chats' };
@@ -35,8 +37,7 @@ function placeBtn(v) { const p = placeOf(v); return p ? document.querySelector(`
   try { last = JSON.parse(localStorage.getItem('lpPlaceLast') || '{}') || {}; } catch (e) { }
   const nav = document.createElement('nav'); nav.id = 'places'; nav.setAttribute('aria-label', 'Places');
   nav.innerHTML = PLACES.map((p, i) => `<button type="button" data-place="${p.id}" title="${p.label} (${i + 1})"><svg viewBox="0 0 24 24" aria-hidden="true">${PLACE_ICON[p.id]}</svg><span>${p.label}</span></button>`).join('')
-    + '<div class="navspacer"></div>'
-    + '<button type="button" data-go="profile" class="pl-you" title="You: your character, avatar, stats and settings"><span class="pl-av"></span><span>You</span></button>';
+    + '<div class="navspacer"></div>';
   tabs.after(nav);
   const sub = document.createElement('nav'); sub.id = 'subnav'; sub.setAttribute('aria-label', 'Pages'); sub.hidden = true;
   main.before(sub);
@@ -63,7 +64,6 @@ function placeBtn(v) { const p = placeOf(v); return p ? document.querySelector(`
       const bs = p.views.map(badgeOf).filter(Boolean), n = bs.reduce((s, x) => s + (parseInt(x) || 0), 0);
       setAttr(b, 'data-badge', n ? (n > 99 ? '99+' : n) : bs.length ? '●' : '');
     }
-    nav.querySelector('.pl-you').classList.toggle('active', cur === 'profile' || cur === 'settings');
     // one row of tabs: the place's main pages, plus an extra page (To-do, Class mode) while you're on it
     const vs = here ? here.views.filter(v => !(here.extra || []).includes(v) || v === cur) : [];
     sub.hidden = vs.length < 2;
@@ -78,8 +78,6 @@ function placeBtn(v) { const p = placeOf(v); return p ? document.querySelector(`
       const w = typeof cdWallet === 'function' ? cdWallet() : null, st = typeof studyStreak === 'function' ? studyStreak() : 0;
       const html = `<div class="sfcur" title="Lumen from study · Ember from training · your study streak">${w ? `<span class="cd-l">✦ <b>${w.lumen.toLocaleString()}</b></span><span class="cd-e">🔥 <b>${w.ember.toLocaleString()}</b></span>` : ''}<span class="sfst">⚡ <b>${st}</b><small>day streak</small></span></div>`;
       if (foot && foot.innerHTML !== html) foot.innerHTML = html;
-      const av = nav.querySelector('.pl-av'), a = typeof avatarSpec === 'function' && typeof avatarFace === 'function' ? avatarFace(avatarSpec()) : '';
-      if (av && a && av.dataset.k !== a.length + ':' + (D.settings.name || '')) { av.innerHTML = a; av.dataset.k = a.length + ':' + (D.settings.name || ''); }
     } catch (e) { }
   }
   const visiblePlaces = () => (typeof placeIdsInOrder === 'function' ? placeIdsInOrder() : PLACES.map(p => p.id)).map(id => PLACES.find(p => p.id === id)).filter(p => !(D?.settings?.menu?.hide || []).includes(p.id));
@@ -90,7 +88,7 @@ function placeBtn(v) { const p = placeOf(v); return p ? document.querySelector(`
     openPlace(PLACES.find(x => x.id === b.dataset.place));
   });
   sub.addEventListener('click', e => { const s = e.target.closest('[data-go]'); if (s) go(s.dataset.go); });
-  // keys 1 to 5 jump between places (not while typing)
+  // keys 1 to 6 jump between places (not while typing)
   document.addEventListener('keydown', e => {
     if (e.ctrlKey || e.metaKey || e.altKey || e.repeat) return;
     const t = e.target; if (t && (t.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName))) return;

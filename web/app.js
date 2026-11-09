@@ -457,6 +457,8 @@ function render() {
   const html = page[view]();
   if (fresh || !v.firstChild) v.innerHTML = html; else morphHtml(v, html);
   if (typeof mountIsland3D === 'function') try { mountIsland3D(); } catch (e) { console.error(e); }
+  if (typeof mountYou3D === 'function') try { mountYou3D(); } catch (e) { console.error(e); }
+  if (typeof clsPickerDraw === 'function' && (ui.clsPick || document.getElementById('clsov'))) clsPickerDraw();
   window.scrollTo(0, y);
   v.querySelectorAll('[data-ks]').forEach(el => { if (ks[el.dataset.ks]) el.scrollTop = ks[el.dataset.ks]; });
   updateNotifyBtn();
@@ -672,7 +674,6 @@ function viewStudy() {
   // 8-week trend: total minutes per week, newest last
   const weeks = Array.from({ length: 8 }, (_, i) => { const w0 = addDays(tw, -7 * (7 - i)); return { w0, m: sum(w0, addDays(w0, 6)) }; });
   const wMax = Math.max(60, ...weeks.map(w => w.m)), wAvg = Math.round(weeks.slice(0, 7).reduce((a, w) => a + w.m, 0) / 7);
-  const C = typeof cdParts === 'function' ? cdParts() : null;
   const subjects = D.subjects.map(s => `<span class="subj" style="--c:${s.color}"><span class="dot" style="background:${s.color}"></span>${esc(s.name)}<button class="iconbtn" data-act="edit" data-kind="subject" data-id="${s.id}" title="Edit subject">✎</button></span>`).join('');
 
   return `<div class="study2">${pageHead('Study', `${fmtMins(sum(tw, twEnd)) || '0m'} studied this week · ${sessN} session${sessN === 1 ? '' : 's'} · 🔥 ${studyStreak()}-day streak`, `<button class="btn" data-s2="examStart" title="Full screen; leaving the planner ends the timer">🔒 Exam mode</button><button class="btn primary" data-act="focusNew">▶ Start studying</button>`)}
@@ -689,7 +690,7 @@ function viewStudy() {
     ${typeof studyTimeCard === 'function' ? studyTimeCard() : ''}
     </div>
     <div class="study-side">
-      ${C ? C.scores : ''}
+      ${typeof cdScoresMini === 'function' ? cdScoresMini() : ''}
       <div class="card"><div class="card-head"><h2>SACs &amp; exams</h2><span style="flex:1"></span>
         <div class="seg"><button class="${!ui.assessPast ? 'on' : ''}" data-act="assessPast" data-v="0">Upcoming</button><button class="${ui.assessPast ? 'on' : ''}" data-act="assessPast" data-v="1">Past</button></div>
         <button class="iconbtn" data-act="new" data-kind="assessment" title="Add SAC / exam">＋</button></div>

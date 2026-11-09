@@ -389,7 +389,7 @@ function bestsSummary(sec) {
   const cells = TESTS.filter(T => B[T.id] != null && (!S || S[2].includes(T.cat))).map(T => { const rk = rankOf(testLevel(T, B[T.id]) ?? 0); return `<div class="lbest" style="--rk:${rk.col}"><small>${esc(T.name)}</small><b>${fmtTest(T, B[T.id])}</b>${rankTag(rk)}</div>`; });
   const liftCells = lifts.map(([id, p]) => { const f = liftLevel(id, p.e); return `<div class="lbest est" style="--rk:${f != null ? rankOf(f).col : 'var(--border)'}"><small>${esc(exInfo(id).name)} <em>est.</em></small><b>${r1(p.e)} kg</b>${f != null ? rankTag(rankOf(f)) : ''}</div>`; });
   return `<div class="card"><div class="card-head"><h2>🏅 ${S ? S[1].replace(/^\S+ /, '') + ' bests' : 'Logged bests'}</h2><span class="muted small-text">${cells.length + liftCells.length} best${cells.length + liftCells.length === 1 ? '' : 's'}${acct?.signedIn ? ' · your friends can see these' : ''}</span></div>
-    ${cells.length || liftCells.length ? `<div class="lbests">${cells.join('')}${liftCells.join('')}</div>` : '<p class="muted">Log a result below and it shows up here with its rank, from Rookie up to Legend.</p>'}</div>`;
+    ${cells.length || liftCells.length ? `<div class="lbests">${cells.join('')}${liftCells.join('')}</div>` : '<p class="muted">Log a PR and it shows up here with its rank, from Rookie up to Legend.</p>'}</div>`;
 }
 // every lift in the gym log, grouped by body part
 function liftPrGroups() {
@@ -401,7 +401,8 @@ function liftPrGroups() {
 }
 function athleticsPage() {
   const sec = ui.prSec || (ui.athCat && ui.athCat !== 'records' ? prSecOf(ui.athCat) : ui.athCat) || 'run';
-  const tabs = `<div class="seg athtabs">${PR_SECS.map(([k, l]) => `<button class="${sec === k ? 'on' : ''}" data-fit="prSec" data-v="${k}">${l}</button>`).join('')}<button class="${sec === 'records' ? 'on' : ''}" data-fit="prSec" data-v="records">🏆 Records</button></div>`;
+  // 2.57: results are read-only here; Log PR opens the same search bar as You, Records
+  const tabs = `<div class="athtop"><div class="seg athtabs">${PR_SECS.map(([k, l]) => `<button class="${sec === k ? 'on' : ''}" data-fit="prSec" data-v="${k}">${l}</button>`).join('')}<button class="${sec === 'records' ? 'on' : ''}" data-fit="prSec" data-v="records">🏆 Records</button></div><button class="btn primary" data-prb="open">${ui.prBarOpen ? 'Close' : '+ Log PR'}</button></div>${ui.prBarOpen ? `<div class="card">${prBarHtml()}</div>` : ''}`;
   if (sec === 'records') return `${tabs}${bestsSummary()}${recordsHtml().replace(/<h2 style="margin:18px 0 10px">.*<\/h2>/, '')}${typeof athleticsBoardCard === 'function' && friendsCount() ? athleticsBoardCard() : ''}`;
   const S = PR_SECS.find(x => x[0] === sec), sub = S[2].includes(ui.prSub) ? ui.prSub : '';
   const subs = `<div class="prsubs">${[['', 'All'], ...S[2].map(k => [k, PR_SUBS[k]])].map(([k, l]) => `<button class="${sub === k ? 'on' : ''}" data-fit="prSub" data-v="${k}">${l}</button>`).join('')}</div>`;
@@ -413,12 +414,11 @@ function athleticsPage() {
       ${rk ? `<div class="rkbar" title="Progress from starting out to elite"><i style="width:${Math.min(100, rk.f * 100).toFixed(0)}%;background:${rk.col}"></i></div>` : ''}
       ${open ? lineChart(h.list.filter(p => p.date).map(p => ({ x: p.date, y: p.value })), { lower: T.lower, fmt: v => fmtTest(T, v), h: 120 }) : spark(h.list.map(p => p.value), T.lower)}
       <div class="muted small-text">${h.list.length ? `${h.list.length} result${h.list.length === 1 ? '' : 's'} · ${h.list.filter(p => p.pb).length} PB${h.list.filter(p => p.pb).length === 1 ? '' : 's'} · last ${pbWhen(last)}` : `${T.lower ? 'Lower' : 'Higher'} is better · ${T.time ? 'm:ss' : T.unit}`}${h.list.length > 1 ? ` · <a href="#" data-fit="athOpen" data-v="${T.id}">${open ? 'hide graph' : 'graph'}</a>` : ''}</div>
-      <div class="row pbadd"><input id="pbv_${T.id}" type="text" inputmode="decimal" placeholder="${T.time ? 'm:ss' : T.unit}"><input id="pbd_${T.id}" type="date" value="${today()}"><button class="btn small primary" data-act="addPb" data-id="${T.id}">Log</button></div><button class="pbunk" data-act="addPbUnk" data-id="${T.id}" title="Log the result without a date, for a best you did a while ago">🤷 Don't know when I did it</button>
       ${h.list.length ? `<details><summary class="small-text">History</summary>${[...h.list].reverse().map(p => `<div class="pbrow"><span>${pbWhen(p)}</span><b>${fmtTest(T, p.value)}</b>${p.pb ? '<span class="tag green">PB</span>' : ''}<button class="iconbtn" data-act="delPb" data-id="${p.id}" title="Delete">✕</button></div>`).join('')}</details>` : ''}</div>`;
   };
   const est = () => { const P = liftPRs(), map = { bench: 'bench', sq: 'squat', dl: 'deadlift', ohp: 'ohp', clean: 'clean', fsq: 'fsquat', hipt: 'hipthrust' };
     const rows = Object.entries(map).filter(([, x]) => P[x]).map(([t, x]) => `<span class="tag">${esc(exInfo(x).name)}: ~${r1(P[x].e)} kg</span>`);
-    return rows.length ? `<p class="muted small-text" style="margin:0 0 10px">Estimated from your gym log: ${rows.join(' ')}. Log a real max here when you test it.</p>` : ''; };
+    return rows.length ? `<p class="muted small-text" style="margin:0 0 10px">Estimated from your gym log: ${rows.join(' ')}. Log a real max with + Log PR when you test it.</p>` : ''; };
   const part = k => `<h3 class="prsubh">${PR_SUBS[k]}</h3>${k === 'lifts' ? liftPrGroups() : `${k === 'rm' ? est() : ''}<div class="pbgrid">${TESTS.filter(T => T.cat === k).map(card).join('')}</div>`}`;
   return `${tabs}${bestsSummary(sec)}${subs}${(sub ? [sub] : S[2]).map(part).join('')}`;
 }

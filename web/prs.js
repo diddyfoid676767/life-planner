@@ -185,3 +185,96 @@ function recordsHtml() {
     ${bestRecords().map(([icon, title, rows]) => `<div class="recgroup"><div class="daygroup">${icon} ${title}</div><div class="recgrid">${rows.map(([ic, label, v, sub]) => `<div class="rec ${v == null ? 'none' : ''}"><span class="recic">${ic}</span><div class="main"><small>${label}</small><b>${v ?? '–'}</b>${sub && v != null ? `<em>${sub}</em>` : ''}</div></div>`).join('')}</div></div>`).join('')}</div>
     <h2 style="margin:18px 0 10px">📈 Fitness tests</h2>`;
 }
+
+// ---------- 2.57 one search bar to log a PR ----------
+// Type an event, pick it, type one value in the right unit (time, kg × reps,
+// cm...), the date defaults to today (clear it for "date unknown"), Enter saves.
+// The same bar sits in You, Records and opens from Fitness, Progress.
+const PRB_ALIAS = { '5k': 'tt5k', '10k': 'tt10k', '1k': 'tt1k', '2k': 'tt2k', '3k': 'tt3k', beep: 'beep', bench: 'bench', squat: 'sq', dead: 'dl' };
+function prEvents() {
+  const ev = TESTS.map(T => ({ k: 't:' + T.id, n: T.name, sub: (TEST_CATS.find(c => c[0] === T.cat) || [, ''])[1].replace(/^\S+ /, ''), T }));
+  if (typeof EXERCISES !== 'undefined') for (const [id, n] of [...fitCfg().custom.map(c => [c.id, c.name]), ...EXERCISES]) { const ex = exInfo(id); if (ex.group === 'Plyos') continue; ev.push({ k: 'x:' + id, n, sub: `Gym set · ${ex.group || 'lift'}`, x: id }); }
+  return ev;
+}
+const prEv = k => prEvents().find(e => e.k === k);
+function prUnit(e) {
+  if (e.x) return exInfo(e.x).bwf ? ['reps, or +kg × reps', 'e.g. 12, or 10 x 8 for 10 kg extra'] : ['kg × reps', 'e.g. 80 x 5 (just 80 for a single)'];
+  const T = e.T; if (T.time) return ['m:ss', 'minutes:seconds, e.g. 7:45'];
+  if (T.unit === 's') return ['seconds', 'e.g. 12.4'];
+  if (T.cat === 'rm') return ['kg', 'your tested max in kg (80 x 3 works out a max for you)'];
+  return [T.unit, `in ${T.unit}`];
+}
+function prMatches(q) {
+  q = q.toLowerCase().trim(); if (!q) return [];
+  const words = q.split(/\s+/), ev = prEvents(), al = PRB_ALIAS[q];
+  const hit = ev.filter(e => { const t = (e.n + ' ' + e.sub).toLowerCase(); return words.every(w => t.includes(w)); });
+  hit.sort((a, b) => (b.k === 't:' + al) - (a.k === 't:' + al) || a.n.toLowerCase().indexOf(words[0]) - b.n.toLowerCase().indexOf(words[0]) || !!a.x - !!b.x);
+  if (al && !hit.some(e => e.k === 't:' + al)) { const e = ev.find(x => x.k === 't:' + al); if (e) hit.unshift(e); }
+  return hit.slice(0, 8);
+}
+function prBarHtml() {
+  const e = ui.prPick && prEv(ui.prPick);
+  if (!e) return `<div class="prbar"><input class="prb-q" id="prbQ" type="text" autocomplete="off" spellcheck="false" placeholder="🔎 Log a PR: type an event, e.g. 100m, 5km, bench, beep test"><div class="prb-list" hidden></div></div>`;
+  const [u, hint] = prUnit(e);
+  return `<div class="prbar picked"><span class="prb-ev"><b>${esc(e.n)}</b><small>${esc(e.sub)}</small><button class="iconbtn" data-prb="clear" title="Pick another event">✕</button></span>
+    <input class="prb-val" id="prbVal" type="text" autocomplete="off" placeholder="${esc(u)}" title="${esc(hint)}"><input id="prbDate" type="date" value="${today()}" max="${today()}" title="Clear the date if you don't know when"><button class="btn primary" data-prb="save">Save</button>
+    <small class="muted prb-hint">${esc(hint)} · Enter saves</small></div>`;
+}
+function prPick(k) { ui.prPick = k; render(); setTimeout(() => document.getElementById('prbVal')?.focus(), 0); }
+function prSave() {
+  const e = ui.prPick && prEv(ui.prPick), raw = (document.getElementById('prbVal')?.value || '').trim(), date = document.getElementById('prbDate')?.value || '';
+  if (!e) return;
+  if (date > today()) { toast("That date hasn't happened yet", ''); return; }
+  const xr = raw.match(/^\+?(\d+(?:[.,]\d+)?)\s*(?:kg)?\s*(?:[x×*]|kg\s)\s*(\d+)$/i), num = parseFloat(raw.replace(',', '.'));
+  if (e.x) {
+    const ex = exInfo(e.x); let w, r;
+    if (xr) { w = +xr[1].replace(',', '.'); r = +xr[2]; } else if (isFinite(num) && num > 0) { if (ex.bwf) { w = 0; r = Math.round(num); } else { w = num; r = 1; } }
+    if (!(r > 0) || !(w > 0 || ex.bwf)) { toast('Enter weight × reps', prUnit(e)[1]); return; }
+    const before = liftPRs()[e.x]?.e || 0, F = fitCfg();
+    F.gym.push({ id: uid(), date: date || today(), name: `${ex.name} PR`, mins: 0, pr: 1, ex: [{ x: e.x, sets: [{ w, r }] }] });
+    ui.prPick = ''; save(); render();
+    const now = liftPRs()[e.x]?.e || 0;
+    if (now > before && before) celebrate({ icon: '<span class="critbig">🎉</span>', color: '#f59f00', kicker: 'New lift PR!', title: `${esc(ex.name)}: ${w ? w + ' kg × ' : ''}${r}`, text: `Estimated 1RM ${r1(before)} → ${r1(now)} kg. Your Body card's Strength goes up.` });
+    else toast(`🏋️ ${ex.name} saved`, `${w ? w + ' kg × ' : ''}${r}${now ? ` · est. 1RM ${r1(now)} kg` : ''}`);
+    return;
+  }
+  const T = e.T; let v;
+  if (T.cat === 'rm' && xr) { v = Math.round(e1rm(+xr[1].replace(',', '.'), +xr[2]) * 2) / 2; }
+  else if (T.unit === 's' && /:/.test(raw)) { const m = raw.match(/^(\d+):(\d{1,2}(?:\.\d+)?)$/); v = m ? +m[1] * 60 + +m[2] : null; }
+  else v = parseTest(T, raw);
+  if (v == null || !(v > 0)) { toast('Enter a result first', prUnit(e)[1]); return; }
+  const before = pbHistory(T.id).best;
+  D.arena.pbs = [...(D.arena.pbs || []), { id: uid(), test: T.id, value: v, date, ...(date ? {} : { unk: true }) }];
+  ui.prPick = ''; save(); render();
+  const isPb = before != null && (T.lower ? v < before : v > before);
+  if (isPb && date) celebrate({ icon: '<span class="critbig">🎉</span>', color: '#f59f00', kicker: 'New personal best!', title: `${esc(T.name)}: ${fmtTest(T, v)}`, text: `Beat your old best of ${fmtTest(T, before)}. Your Body card's ${statInfo(T.stat)[1]} goes up.` });
+  else toast(before == null ? `📏 ${T.name} baseline saved` : isPb ? `📏 ${T.name}: new best saved` : 'Result saved', before == null ? `${fmtTest(T, v)}. Beat it next time for a PB.` : isPb ? `${fmtTest(T, v)} (no date)` : `Your best is still ${fmtTest(T, before)}.`);
+  setTimeout(() => document.getElementById('prbQ')?.focus(), 0);
+}
+function prList(inp) {
+  const list = inp.parentNode.querySelector('.prb-list'), hits = prMatches(inp.value);
+  list.hidden = !hits.length;
+  list.innerHTML = hits.map((e, i) => `<button type="button" class="${i ? '' : 'on'}" data-prb="pick" data-k="${e.k}"><b>${esc(e.n)}</b><small>${esc(e.sub)}</small></button>`).join('');
+}
+document.addEventListener('input', e => { if (e.target.id === 'prbQ') prList(e.target); });
+document.addEventListener('keydown', e => {
+  const t = e.target;
+  if (t.id === 'prbQ') {
+    const list = t.parentNode.querySelector('.prb-list'), bs = [...list.querySelectorAll('button')], i = bs.findIndex(b => b.classList.contains('on'));
+    if (e.key === 'ArrowDown' || e.key === 'ArrowUp') { e.preventDefault(); if (!bs.length) return; const j = (i + (e.key === 'ArrowDown' ? 1 : -1) + bs.length) % bs.length; bs.forEach((b, n) => b.classList.toggle('on', n === j)); }
+    else if (e.key === 'Enter') { e.preventDefault(); const b = bs[i] || bs[0]; if (b) prPick(b.dataset.k); }
+    else if (e.key === 'Escape') { t.value = ''; list.hidden = true; }
+  } else if (t.id === 'prbVal' || t.id === 'prbDate') {
+    if (e.key === 'Enter') { e.preventDefault(); prSave(); }
+    else if (e.key === 'Escape') { ui.prPick = ''; render(); setTimeout(() => document.getElementById('prbQ')?.focus(), 0); }
+  }
+});
+document.addEventListener('click', e => {
+  const b = e.target.closest('[data-prb]');
+  if (!b) { document.querySelectorAll('.prb-list').forEach(l => { if (!e.target.closest('.prbar')) l.hidden = true; }); return; }
+  const a = b.dataset.prb;
+  if (a === 'pick') prPick(b.dataset.k);
+  else if (a === 'clear') { ui.prPick = ''; render(); setTimeout(() => document.getElementById('prbQ')?.focus(), 0); }
+  else if (a === 'save') prSave();
+  else if (a === 'open') { ui.prBarOpen = !ui.prBarOpen; render(); if (ui.prBarOpen) setTimeout(() => (document.getElementById('prbQ') || document.getElementById('prbVal'))?.focus(), 0); }
+});
