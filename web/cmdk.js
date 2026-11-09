@@ -3,7 +3,7 @@
    opens a task, SAC, event or race by name. */
 (() => {
   const box = document.createElement('div'); box.id = 'cmdk'; box.hidden = true;
-  box.innerHTML = '<div class="cmdk-in" role="dialog" aria-label="Search"><input id="cmdkQ" placeholder="Search pages, tasks, SACs and events…" autocomplete="off" spellcheck="false"><ul id="cmdkList" role="listbox"></ul><div class="cmdk-foot">↑↓ to move · Enter to open · Esc to close</div></div>';
+  box.innerHTML = '<div class="cmdk-in" role="dialog" aria-label="Search"><input id="cmdkQ" placeholder="Search pages, tasks, SACs, subjects and friends…" autocomplete="off" spellcheck="false"><ul id="cmdkList" role="listbox"></ul><div class="cmdk-foot">↑↓ to move · Enter to open · Esc to close</div></div>';
   document.body.appendChild(box);
   const q = box.querySelector('#cmdkQ'), list = box.querySelector('#cmdkList');
   let rows = [], at = 0;
@@ -13,9 +13,15 @@
   function all() {
     const out = [];
     for (const p of (typeof PLACES !== 'undefined' ? PLACES : [])) for (const v of p.views) out.push({ k: 'Page', t: label(v), sub: p.label, run: goView(v) });
+    out.push({ k: 'Page', t: 'You', sub: 'character, avatar, stats', run: goView('profile') });
     out.push({ k: 'Page', t: 'Settings', run: goView('settings') });
+    out.push({ k: 'Page', t: 'Your island', sub: 'Islands', run: () => { ui.isTab = 'personal'; goView('islands')(); } });
+    out.push({ k: 'Page', t: 'House island and your house', sub: 'Islands', run: () => { ui.isTab = 'house'; goView('islands')(); } });
+    out.push({ k: 'Page', t: 'Boss island: fight the weekly boss', sub: 'Islands', run: () => { ui.isTab = 'boss'; goView('islands')(); } });
     out.push({ k: 'Action', t: 'Start studying', run: act('focusNew') });
     out.push({ k: 'Action', t: 'Add a task', run: act('new', { kind: 'todo' }) });
+    out.push({ k: 'Action', t: 'Add a study session', run: act('new', { kind: 'session' }) });
+    out.push({ k: 'Action', t: 'Log a workout', run: act('new', { kind: 'workout' }) });
     out.push({ k: 'Action', t: 'Add a SAC or exam', run: act('new', { kind: 'assessment' }) });
     out.push({ k: 'Action', t: 'Add an event', run: act('new', { kind: 'event' }) });
     out.push({ k: 'Action', t: 'Send feedback', run: act('feedback') });
@@ -26,6 +32,8 @@
     add(D.assessments, 'assessment', 'SAC / exam', x => x.title);
     add(D.events, 'event', 'Event', x => x.title);
     add(D.trainingEvents, 'tevent', 'Race / event', x => x.title || x.name);
+    for (const x of D.subjects || []) out.push({ k: 'Subject', t: x.name, sub: 'Study', run: goView('study') });
+    if (typeof allFriendRows === 'function') try { for (const f of allFriendRows()) out.push({ k: 'Friend', t: f.name, sub: f.user ? '@' + f.user : '', run: goView('friends') }); } catch (e) { }
     return out;
   }
   function draw() {

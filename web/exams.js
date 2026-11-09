@@ -44,8 +44,7 @@ function upcomingExams(from = today(), days = 60) {
 }
 function subjectTopics(sid) {
   const name = subj(sid).name || '';
-  const pack = typeof revisionFor === 'function' && revisionFor(sid);
-  const base = pack ? pack.topics.map(t => t.t) : (EXAM_TOPICS.find(([re]) => re.test(name)) || [, ['Key concepts', 'Practice questions', 'Extended response']])[1];
+  const base = (EXAM_TOPICS.find(([re]) => re.test(name)) || [, ['Key concepts', 'Practice questions', 'Extended response']])[1];
   const own = examPrep().papers.filter(p => p.subjectId === sid).flatMap(p => p.topics || []);
   return [...new Set([...own, ...base])];
 }
@@ -56,8 +55,6 @@ function weakTopics(sid) {
     const age = Math.max(0, diffDays(p.date, today()));
     for (const t of p.topics || []) score[t] = (score[t] || 0) + 1 / (1 + age / 14);
   }
-  // shaky topics and missed practice questions from the subject's revision tab count too
-  if (typeof revWeak === 'function') for (const [t, w] of Object.entries(revWeak(sid))) score[t] = (score[t] || 0) + w * .6;
   return Object.entries(score).sort((a, b) => b[1] - a[1]).map(([t]) => t);
 }
 // how long a full paper takes, including reading time
@@ -80,7 +77,7 @@ function examReadiness(a) {
   const avg = pct.length ? pct.reduce((x, y) => x + y, 0) / pct.length : null;
   const onTrack = due.length ? done / due.length : plan.length ? 1 : 0;
   const cover = Math.min(1, papers.length / target);
-  const score = Math.round(100 * (avg == null ? .65 * onTrack + .35 * cover : .35 * onTrack + .4 * avg + .25 * cover));
+  const score = Math.round(100 * (avg == null ? onTrack : .6 * onTrack + .4 * avg)); // 2.55: from your plan, since papers aren't logged any more
   return { score, papers: papers.length, target, avg, planDone: plan.filter(s => s.done).length, planN: plan.length };
 }
 
@@ -131,7 +128,7 @@ function buildExamPlan() {
       const before = D.sessions.slice();
       const made = makeExamPlan(v.start || t, v.mode || 'rebuild');
       if (!made) { alert('There was no free time to plan in. Try more hours, fewer days off or an earlier start.'); return false; }
-      ui.studyTab = 'board'; view = 'study';
+      ui.studyBoard = true; view = 'study';
       setTimeout(() => undoToast(`🎓 Timetable ${v.mode === 'rebuild' ? 'rebuilt' : 'updated'}: ${made.blocks} blocks including ${made.papers} timed past papers${added ? `, and ${added} new exam${added === 1 ? '' : 's'}` : ''}.`, () => { D.sessions = before; }), 50);
     },
   });
@@ -289,7 +286,7 @@ document.addEventListener('change', e => {
   const el = e.target;
   if (el.dataset?.toggle !== 'session' || !el.checked) return;
   const s = D.sessions.find(x => x.id === el.dataset.id);
-  if (s?.paper) setTimeout(() => logPaper({ assessmentId: s.assessmentId, date: s.date }), 450);
+  // 2.55: past papers aren't logged any more
 });
 
 // ---------- the Study page hub ----------
@@ -304,13 +301,13 @@ function examHub() {
       <div class="ex-top"><div class="ex-days"><b>${dd === 0 ? 'Today' : dd}</b>${dd ? `<span>day${dd === 1 ? '' : 's'}</span>` : ''}</div>
         <div class="main"><div class="ex-subj">${esc(s.name)}</div><div class="ex-title">${esc(a.title)}</div><div class="muted small-text">${longDay(a.date)} ${fmtDate(a.date)}${a.time ? ' · ' + fmtTime(a.time) : ''}</div></div></div>
       <div class="ex-ready"><span>Ready</span><div class="meter"><i style="width:${r.score}%;background:${col}"></i></div><b>${r.score}%</b></div>
-      <div class="ex-stats"><span title="Timed past papers logged">📝 ${r.papers}/${r.target} papers${r.avg != null ? ` · avg ${Math.round(r.avg * 100)}%` : ''}</span><span title="Exam plan blocks done">📚 ${r.planDone}/${r.planN} blocks</span></div>
+      <div class="ex-stats"><span title="Exam plan blocks done">📚 ${r.planDone}/${r.planN} blocks</span></div>
       ${weak.length ? `<div class="ex-weak"><span class="muted small-text">Work on</span>${weak.map(w => `<span class="tag">${esc(w)}</span>`).join('')}</div>` : ''}
       ${dd === 1 ? `<div class="ex-eve">🌙 Tomorrow! Light review only, then an early night.</div>` : ''}
-      <button class="btn small" data-act="logPaper" data-id="${a.id}">Log a paper</button></div>`;
+      </div>`;
   }).join('');
   return `<div class="card examhub"><div class="card-head"><h2>🎓 Exam lead-up</h2><span class="muted small-text">${exams.length} exam${exams.length === 1 ? '' : 's'} · the first is ${relDays(diffDays(t, exams[0].date))}</span>
-      <span style="flex:1"></span><button class="btn small" data-act="logPaper">📝 Log a past paper</button><button class="btn small primary" data-act="examPlan">${hasPlan ? '🔁 Rebuild my timetable' : '✨ Build my exam timetable'}</button></div>
+      <span style="flex:1"></span><button class="btn small primary" data-act="examPlan">${hasPlan ? '🔁 Rebuild my timetable' : '✨ Build my exam timetable'}</button></div>
     <div class="examcards">${cards}</div>
     ${hasPlan ? '' : `<p class="muted small-text" style="margin:10px 0 0">Add exam prep and it slots timed past papers into your current plan wherever there's room, preps any SAC that has nothing planned, and keeps the day before each exam light. You pick the subjects, block and break lengths, and your hours for each day when you build.</p>`}</div>`;
 }
@@ -372,7 +369,7 @@ function examAutoBuild() {
   const before = D.sessions.slice(), start = new Date().getHours() >= 18 ? addDays(today(), 1) : today();
   const made = makeExamPlan(start, 'fill'); if (!made) return;
   save();
-  setTimeout(() => toast('🎓 Your exam timetable is ready', `${made.blocks} blocks, including ${made.papers} timed past papers, fitted around what you'd already planned.`, { timeout: 20000, actions: [['See it', () => { ui.studyTab = 'board'; view = 'study'; render(); }], ['Undo', () => { D.sessions = before; save(); render(); }]] }), 400);
+  setTimeout(() => toast('🎓 Your exam timetable is ready', `${made.blocks} blocks, including ${made.papers} timed past papers, fitted around what you'd already planned.`, { timeout: 20000, actions: [['See it', () => { ui.studyBoard = true; view = 'study'; render(); }], ['Undo', () => { D.sessions = before; save(); render(); }]] }), 400);
 }
 function examBoard() {
   const t = today(), exams = upcomingExams(), P = examPrep();
@@ -396,9 +393,9 @@ function examBoard() {
       ${list.map(block).join('')}
       <button class="xadd" data-act="new" data-kind="session" data-date="${d}">＋</button></div>`;
   }).join('');
-  return `<div class="study2">${pageHead('Study', 'Your exam timetable', `<button class="btn" data-act="examPlan">Rebuild…</button><button class="btn primary" data-act="focusNew">▶ Start studying</button>`)}${studyTabs()}
+  return `<div class="card examboard" id="examBoard"><div class="card-head"><h2>🗓 Exam timetable</h2><span style="flex:1"></span><button class="btn small" data-act="examPlan">Rebuild…</button></div>
     <p class="muted small-text">Drag a block to another day to move it. Use − and ＋ to change how long it is. The numbers at the top of each day are planned time against that day's hours. Got something on? Press ⋯ on a day to mark it as a day you can't study (or have less time) and its blocks move to other days.</p>
-    <div class="xboard">${cols}</div></div>`;
+    <div class="xboard" data-ks="xboard">${cols}</div></div>`;
 }
 // re-time a day's blocks one after another, keeping the earliest start
 function retimeDay(d) {

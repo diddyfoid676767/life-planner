@@ -140,7 +140,7 @@ const isBar = (cls, ico, amt, sub, fill, act) => `<div class="isres ${cls}" ${ac
 function isFrame(tab, hud, extra = '') {
   return `<div class="isfull" id="isfull">
     <div class="is3host" id="is3host"></div>
-    ${typeof webglOK === 'function' && webglOK() ? '' : '<div class="isno3d">This computer can\'t show 3D, but your buildings still work.</div>'}
+    ${!window.THREE && !is3dFail ? (need3D(), '<div class="isno3d">Loading your islands…</div>') : webglOK() ? '' : '<div class="isno3d">This computer can\'t show 3D, but your buildings still work.</div>'}
     ${isSwitch(tab)}${hud}${isCtl()}${extra}</div>`;
 }
 const isPanel = (title, body) => `<div class="ispanel-bg" data-is="close"></div><div class="ispanel"><div class="ispanel-h"><h3>${title}</h3><button class="isx" data-is="close" title="Close">✕</button></div><div class="ispanel-b">${body}</div></div>`;
@@ -360,9 +360,24 @@ function is3tap(e) {
   if (centre && !o) { ui.isSel = null; ui.isPanel = IS3.house ? 'hall' : 'help'; render(); return; }
   if (sel !== ui.isSel || ui.isPanel) { ui.isSel = sel; ui.isPanel = null; render(); }
 }
+// 2.55: three.js (about 640 KB) only loads the first time Islands opens, so the
+// rest of the app starts faster
+const IS3D_SRC = ['vendor/three.min.js', 'vendor/three-extras.js', 'g3fx.js'];
+let is3dLoad = null, is3dFail = false, is3ok = null;
+function need3D() {
+  if (window.THREE && typeof fxRenderer === 'function') return true;
+  if (!is3dLoad) is3dLoad = IS3D_SRC.reduce((p, src) => p.then(() => new Promise((ok, no) => { const el = document.createElement('script'); el.src = src; el.onload = ok; el.onerror = () => no(new Error("couldn't load " + src)); document.head.appendChild(el); })), Promise.resolve())
+    .then(() => { if (view === 'islands') render(); }).catch(e => { console.error(e); is3dFail = true; if (view === 'islands') render(); });
+  return false;
+}
+function webglOK() {
+  if (!window.THREE) return false;
+  if (is3ok == null) try { const c = document.createElement('canvas'); is3ok = !!(c.getContext('webgl2') || c.getContext('webgl')); } catch (e) { is3ok = false; }
+  return is3ok;
+}
 function mountIsland3D() {
   const host = document.getElementById('is3host');
-  if (!host || typeof webglOK !== 'function' || !webglOK()) return;
+  if (!host || !need3D() || !webglOK()) return;
   is3init();
   if (IS3.canvas.parentNode !== host) { host.prepend(IS3.canvas); IS3.sz = ''; }
   is3resize();

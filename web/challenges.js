@@ -11,8 +11,7 @@ const CHAL_CATS = {
   study: ['📚', 'Most study', s => s.study || 0, v => fmtMins(v) || '0m'],
   train: ['🏃', 'Most training', s => s.work || 0, v => fmtMins(v) || '0m'],
   km: ['👟', 'Most km run', s => s.km || 0, v => `${(+v || 0).toFixed(1)} km`],
-  steps: ['🚶', 'Most steps', s => s.steps || 0, v => (v || 0).toLocaleString()],
-  trees: ['🌳', 'Most trees grown', s => s.trees || 0, v => `${v} tree${v === 1 ? '' : 's'}`],
+  trees: ['✦', 'Most focus sessions', s => s.trees || 0, v => `${v} session${v === 1 ? '' : 's'}`],
 };
 const kmOf = w => parseFloat(String(w.distance || '').replace(',', '.')) || 0;
 // your numbers for one week, in the shape the challenge categories read
@@ -20,7 +19,7 @@ function chalWeek(from = mondayOf(today())) {
   const to = addDays(from, 6), w = weekStats(from);
   const runs = D.workouts.filter(x => x.done && x.date >= from && x.date <= to && (x.sport === 'Running' || /run|jog/i.test(x.title || '')));
   return { week: from, study: w.study, work: w.work, km: Math.round(runs.reduce((a, x) => a + kmOf(x), 0) * 10) / 10,
-    steps: healthWeek(from).steps || 0, trees: D.focusLogs.filter(l => l.mins >= 10 && !l.withered && l.date >= from && l.date <= to).length };
+    trees: D.focusLogs.filter(l => l.mins >= 10 && !l.withered && l.date >= from && l.date <= to).length };
 }
 const myChals = () => (D.challenges = D.challenges || []);
 // what goes into the published board row
@@ -74,14 +73,14 @@ function answerChallenge(id, yes) {
   const x = incomingChals().find(c => c.id === id); if (!x) return;
   myChals().push({ id: x.id, with: x.from, name: x.name, cat: x.cat, week: x.week, by: 'them', status: yes ? 'active' : 'declined', at: new Date().toISOString() });
   save(); publishMe(true); render();
-  if (yes) toast('⚔️ Challenge accepted', `${CHAL_CATS[x.cat][1]} against ${x.name}, ${x.week === mondayOf(today()) ? 'this week' : 'next week'}. Winner gets an Arena box.`);
+  if (yes) toast('⚔️ Challenge accepted', `${CHAL_CATS[x.cat][1]} against ${x.name}, ${x.week === mondayOf(today()) ? 'this week' : 'next week'}. May the best one win.`);
 }
 function claimFriendChal(id) {
   const c = myChals().find(x => x.id === id); if (!c || c.claimed || !c.result) return;
   c.claimed = true;
-  if (c.result === 'win') { save(); openArenaBox('kit', true); return; }
-  D.arena.ledger = { ...(D.arena.ledger || {}), ['chal:' + c.id]: c.result === 'draw' ? 40 : 20 };
-  save(); render(); toast(c.result === 'draw' ? '🤝 A draw' : '💪 Good fight', `+${c.result === 'draw' ? 40 : 20} ${GRIT} for taking part.`);
+  save(); render();
+  if (c.result === 'win') celebrate({ icon: '<span class="critbig">🏆</span>', color: '#f59f00', kicker: 'Challenge', title: `You beat ${esc(c.name)}!`, text: 'Bragging rights are yours this week.' });
+  else toast(c.result === 'draw' ? '🤝 A draw' : '💪 Good fight', 'Rematch next week?');
 }
 function cancelChallenge(id) { D.challenges = myChals().filter(c => c.id !== id); save(); publishMe(true); render(); }
 
@@ -100,9 +99,9 @@ function challengesFriendsCard() {
     return `<li class="chrow ${c.result || ''}"><span class="hl-ic">${ic}</span><div class="main"><b>${label} vs ${esc(c.name)}</b>
       <small>${c.status === 'pending' ? `Waiting for ${esc(c.name)} to accept` : c.result ? (c.result === 'win' ? '🏆 You won!' : c.result === 'lose' ? `${esc(c.name)} won` : 'A draw') : lead} · ${when}</small>
       ${c.status === 'active' ? `<div class="chbar"><i class="l" style="width:${(me / t * 100).toFixed(0)}%"></i><i class="r" style="width:${(them / t * 100).toFixed(0)}%"></i></div><div class="chnums"><span>You ${fmt(me)}</span><span>${esc(c.name)} ${fmt(them)}</span></div>` : ''}</div>
-      ${c.result && !c.claimed ? `<button class="btn small primary" data-act="chalClaim" data-id="${c.id}">${c.result === 'win' ? '🎁 Open prize' : `+${c.result === 'draw' ? 40 : 20} ${GRIT}`}</button>` : c.status === 'pending' ? `<button class="iconbtn" data-act="chalCancel" data-id="${c.id}" title="Cancel">✕</button>` : ''}</li>`;
+      ${c.result && !c.claimed ? `<button class="btn small primary" data-act="chalClaim" data-id="${c.id}">${c.result === 'win' ? '🏆 Celebrate' : 'OK'}</button>` : c.status === 'pending' ? `<button class="iconbtn" data-act="chalCancel" data-id="${c.id}" title="Cancel">✕</button>` : ''}</li>`;
   };
-  return `<div class="card chcard"><div class="card-head"><h2>⚔️ Challenges</h2><span class="muted small-text">weekly head-to-heads · winner gets an Arena box</span></div>
+  return `<div class="card chcard"><div class="card-head"><h2>⚔️ Challenges</h2><span class="muted small-text">weekly head-to-heads</span></div>
     ${inc.map(x => `<div class="chinc"><span class="hl-ic">${CHAL_CATS[x.cat][0]}</span><div class="main"><b>${esc(x.name)} challenged you</b><small>${CHAL_CATS[x.cat][1]}, ${x.week === wk ? 'this week' : 'next week'}</small></div><button class="btn small primary" data-act="chalYes" data-id="${esc(x.id)}">Accept</button><button class="btn small" data-act="chalNo" data-id="${esc(x.id)}">Decline</button></div>`).join('')}
     ${list.length ? `<ul class="hlist chlist">${list.map(row).join('')}</ul>` : '<p class="muted small-text">No challenges yet.</p>'}
     ${friends.length ? `<div class="chnew"><select id="chWho">${friends.map(f => `<option value="${esc(f.user)}">${esc(f.name)}</option>`).join('')}</select>

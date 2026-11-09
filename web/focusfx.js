@@ -1,8 +1,17 @@
 'use strict';
-/* Full-screen focus timer: a progress ring with your subject's tree growing in
-   the middle. Opens when a study timer starts; "Minimise" drops back to the bar. */
+/* Full-screen focus timer: a progress ring with a sun that grows brighter in
+   the middle (2.55: it replaced the old forest tree). Opens when a study timer
+   starts; "Minimise" drops back to the bar. */
 
-const FOCUS_STAGES = TREE_STAGES.slice(0, 5); // a session can grow a tree up to a grand tree
+const FOCUS_STAGES = [[10, 'Spark'], [22, 'Glow'], [45, 'Flare'], [90, 'Sun'], [180, 'Star']];
+const focusStage = m => FOCUS_STAGES.reduce((s, [t], i) => m >= t ? i + 1 : s, 0); // 0 before 10 minutes
+// a sun in your subject's colour; pct (0 to 1) makes it bigger and adds rays
+function sunSvg(color, pct = 1, size = 40) {
+  const p = Math.max(0, Math.min(1, pct)), r = 9 + 9 * p, n = 12, rays = Math.round(n * p);
+  const ray = i => { const a = i / n * Math.PI * 2, r1 = r + 4, r2 = r + 9 + 3 * p; return `<line x1="${(32 + Math.cos(a) * r1).toFixed(1)}" y1="${(32 + Math.sin(a) * r1).toFixed(1)}" x2="${(32 + Math.cos(a) * r2).toFixed(1)}" y2="${(32 + Math.sin(a) * r2).toFixed(1)}"/>`; };
+  return `<svg viewBox="0 0 64 64" width="${size}" height="${size}" class="sunsvg" aria-hidden="true"><defs><radialGradient id="sg${size}"><stop offset="0" stop-color="#fff"/><stop offset=".55" stop-color="#ffe066"/><stop offset="1" stop-color="${esc(color)}"/></radialGradient></defs>
+    <circle cx="32" cy="32" r="${(r + 8).toFixed(1)}" fill="${esc(color)}" opacity="${(.12 + .2 * p).toFixed(2)}"/><g stroke="#ffd43b" stroke-width="3" stroke-linecap="round">${Array.from({ length: rays }, (_, i) => ray(i)).join('')}</g><circle cx="32" cy="32" r="${r.toFixed(1)}" fill="url(#sg${size})"/></svg>`;
+}
 let focusFullOpen = false, focusFullStage = null;
 
 function focusTarget(f, m) {
@@ -11,10 +20,7 @@ function focusTarget(f, m) {
   return next ? next[0] : Math.ceil((m + 1) / 30) * 30;
 }
 function focusTreeMarkup(f, m) {
-  const s = subj(f.subjectId), stage = m < 10 ? 0 : treeStage(m);
-  const within = m < 10 ? 0 : stageProgress(m);
-  const k = m < 10 ? .45 + .55 * (m / 10) : .82 + .18 * within;
-  return `<svg viewBox="-48 -118 96 122" class="fftree" aria-hidden="true"><g transform="scale(${k.toFixed(3)})" style="transition:transform 1s ease">${treeG(speciesFor(f.subjectId), s.color, stage, f.startedAt)}</g></svg>`;
+  return sunSvg(subj(f.subjectId).color, Math.min(1, (focusStage(m) + (m < 10 ? m / 10 : 0)) / FOCUS_STAGES.length), 190);
 }
 function openFocusFull() {
   const f = D.focus; if (!f) return;
@@ -49,20 +55,19 @@ function updateFocusFull() {
   el.querySelector('.ring-fg').setAttribute('stroke-dashoffset', String(Math.round(1000 * (1 - pct))));
   el.querySelector('.ff-time').textContent = `${Math.floor(mm / 60) ? Math.floor(mm / 60) + ':' + pad(mm % 60) : mm}:${pad(ss)}`;
   const next = FOCUS_STAGES.find(([t]) => m < t);
-  const coinsSoFar = m >= 10 ? Math.min(Math.floor(m), 120) + (m >= 45 ? 10 : 0) : 0;
   el.querySelector('.ff-sub').innerHTML = f.pausedAt ? '<span class="ff-paused">Paused</span>'
-    : `${f.planned ? (m < f.planned ? `${fmtMins(Math.ceil(f.planned - m))} left of ${fmtMins(f.planned)}` : `🎉 ${fmtMins(f.planned)} done! Keep going or stop.`) : next ? `${Math.ceil(next[0] - m)} min to a ${next[1].toLowerCase()}` : 'Grand tree grown 🌸'}${coinsSoFar ? ` · +${coinsSoFar} ${COIN}` : ''}${D.settings.strictFocus ? ` · <span class="ff-strict ${(f.distractions || 0) >= DISTRACT_LIMIT ? 'bad' : ''}" title="Strict focus: leaving the planner for over a minute counts as a distraction">👀 ${f.distractions || 0}/${DISTRACT_LIMIT}</span>` : ''}`;
+    : `${f.planned ? (m < f.planned ? `${fmtMins(Math.ceil(f.planned - m))} left of ${fmtMins(f.planned)}` : `🎉 ${fmtMins(f.planned)} done! Keep going or stop.`) : next ? `${Math.ceil(next[0] - m)} min to a ${next[1].toLowerCase()}` : 'Star reached ✦'}${D.settings.strictFocus ? ` · <span class="ff-strict ${(f.distractions || 0) >= DISTRACT_LIMIT ? 'bad' : ''}" title="Strict focus: leaving the planner for over a minute counts as a distraction">👀 ${f.distractions || 0}/${DISTRACT_LIMIT}</span>` : ''}`;
   el.querySelectorAll('.ff-stages span').forEach(sp => sp.classList.toggle('got', m >= +sp.dataset.t));
-  const stageKey = (m < 10 ? 's' + Math.floor(m) : 't' + treeStage(m) + ':' + Math.floor(m / 3));
+  const stageKey = (m < 10 ? 's' + Math.floor(m) : 't' + focusStage(m) + ':' + Math.floor(m / 3));
   if (stageKey !== focusFullStage) {
     const grew = focusFullStage && focusFullStage[0] === 't' && stageKey[0] === 't' && stageKey[1] !== focusFullStage[1] || (focusFullStage && focusFullStage[0] === 's' && stageKey[0] === 't');
     focusFullStage = stageKey;
     const box = el.querySelector('.ff-tree');
     box.innerHTML = focusTreeMarkup(f, m);
-    if (grew) { box.classList.remove('levelup'); void box.offsetWidth; box.classList.add('levelup'); stageSfx(m < 10 ? 0 : treeStage(m)); }
+    if (grew) { box.classList.remove('levelup'); void box.offsetWidth; box.classList.add('levelup'); stageSfx(m < 10 ? 0 : focusStage(m)); }
   }
   el.querySelector('.ff-actions').innerHTML = focusAskCancel
-    ? `<span><b>Cancel without logging?</b> No time, coins or tree.</span><button class="btn danger" data-act="focusCancelYes">Yes, cancel it</button><button class="btn ghostlight" data-act="focusCancelNo">Keep going</button>`
+    ? `<span><b>Cancel without logging?</b> Nothing gets logged.</span><button class="btn danger" data-act="focusCancelYes">Yes, cancel it</button><button class="btn ghostlight" data-act="focusCancelNo">Keep going</button>`
     : f.exam ? `<span class="ff-exam">🔒 Exam mode: switching windows, Esc or leaving full screen ends it with no reward</span><button class="btn primary big" data-act="focusStop">■ Stop &amp; log</button><button class="btn ghostlight" data-act="focusCancel">Cancel</button>`
     : `<button class="btn ghostlight big" data-act="focusPause">${f.pausedAt ? '▶ Resume' : '❚❚ Pause'}</button><button class="btn primary big" data-act="focusStop">■ Stop &amp; log</button><button class="btn ghostlight" data-act="focusCancel">Cancel</button>
        ${typeof openBrainfm === 'function' ? '<button class="btn ghostlight" data-act="brainfmOpen" title="Open Brain.fm">♫ Brain.fm</button>' : ''}`;

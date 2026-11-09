@@ -188,10 +188,10 @@ function hsRecord(f) {
 // a slim strip on Today
 function hsTodayStrip() {
   const st = hsState();
-  if (!st.id) return `<div class="card hsstrip"><b>🏰 Join your house</b><span class="muted">Your study and workouts become hits on a weekly boss.</span><button class="btn small" data-act="goto" data-v="house">Pick house</button></div>`;
+  if (!st.id) return `<div class="card hsstrip"><b>🏰 Join your house</b><span class="muted">Your study and workouts become hits on a weekly boss.</span><button class="btn small" data-act="gotoIsland" data-v="house">Pick house</button></div>`;
   hsLoad();
   const h = hsHouse(st.id), f = hsFight(st.id), boss = hsBoss(f.wk), pct = Math.min(100, Math.round(f.dealt / f.hp * 100)), t = hsDay(today(), hsMoves(hsCards()));
-  return `<div class="card hsstrip" style="--hc:${h.col}"><b>${h.e} ${h.name} vs ${boss.e} ${esc(boss.n)}</b><span class="hsmini"><i style="width:${100 - pct}%"></i></span><span class="muted small-text">${f.dead ? 'Defeated 🎉' : `${pct}% down`} · today you: ${Math.round(t.s + t.b)} pts</span><button class="btn small ghost" data-act="goto" data-v="house">Open</button></div>`;
+  return `<div class="card hsstrip" style="--hc:${h.col}"><b>${h.e} ${h.name} vs ${boss.e} ${esc(boss.n)}</b><span class="hsmini"><i style="width:${100 - pct}%"></i></span><span class="muted small-text">${f.dead ? 'Defeated 🎉' : `${pct}% down`} · today you: ${Math.round(t.s + t.b)} pts</span>${!f.dead && typeof ftAttempts === 'function' && ftAttempts().left ? `<button class="btn small primary" data-act="gotoIsland" data-v="boss" title="${ftAttempts().left} attempt${ftAttempts().left === 1 ? '' : 's'} left today">⚔️ Fight the boss</button>` : `<button class="btn small ghost" data-act="gotoIsland" data-v="house">Open</button>`}</div>`;
 }
 
 document.addEventListener('click', e => {

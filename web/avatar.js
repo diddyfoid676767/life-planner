@@ -114,28 +114,18 @@ const COSMETICS = [
 // unlocked by doing things: a level, a study streak, or a badge
 function cosReq(c) {
   const r = c?.req; if (!r) return null;
-  if (r.level) { const n = typeof levelInfo === 'function' ? levelInfo().n : 0; return { ok: n >= r.level, label: `Reach style level ${r.level}`, prog: `${Math.min(n, r.level)}/${r.level}` }; }
-  if (r.streak) { const n = typeof studyStreak === 'function' ? studyStreak() : 0; return { ok: n >= r.streak, label: `${r.streak}-day study streak`, prog: `${Math.min(n, r.streak)}/${r.streak}` }; }
+  // 2.55: coins and style levels are gone, so everything is free except the beta and developer badges' styles
   if (r.badge) { const has = typeof myBadges !== 'undefined' && myBadges.includes(r.badge); return { ok: has, label: r.badge === 'beta' ? 'Beta testers only' : 'Developer only', prog: '' }; }
   return null;
 }
 const COS_CATS = [['look', '🪞 Look like me'], ['skin', 'Skin'], ['hair', 'Hair'], ['hairCol', 'Hair colour'], ['face', 'Face'], ['hat', 'Headwear'], ['eyes', 'Eyewear'], ['kit', 'Kit colour'], ['shoes', 'Shoes'], ['extra', 'Extras'], ['bg', 'Background'], ['dance', 'Victory dance'], ['pet', 'Pet']];
 const AV_DEFAULT = { skin: 'sk2', hair: 'h_short', hairCol: 'hc_brown', face: 'f_smile', hat: 'hat_none', eyes: 'eye_none', kit: 'kit_gear', shoes: 'sh_white', extra: 'x_none', bg: 'bg_none', dance: 'd_jump', pet: 'p_none' };
 const cos = id => COSMETICS.find(c => c.id === id);
-const cosFree = c => !c.coins && !c.grit && !c.drop && !c.req;
+const cosFree = c => !c.req?.badge;
 const ownsCos = id => { const c = cos(id); if (!c) return false; if (cosFree(c) || (D.arena.owned || {})[id]) return true; const r = cosReq(c); if (r?.ok && !c.req.badge) { D.arena.owned = { ...(D.arena.owned || {}), [id]: new Date().toISOString() }; return true; } return !!r?.ok; };
 const myAv = () => Object.assign({}, AV_DEFAULT, D.arena.av || {});
 
-function buyCos(id) {
-  const c = cos(id); if (!c || ownsCos(id)) return;
-  if (c.coins && coins() < c.coins) { toast('Not enough coins', `${c.name} costs ${c.coins} ${COIN}. Study to earn more.`); return; }
-  if (c.grit && grit() < c.grit) { toast('Not enough Grit', `${c.name} costs ${c.grit} ${GRIT}. Train to earn more.`); return; }
-  if (c.coins) D.game.spent = (D.game.spent || 0) + c.coins;
-  if (c.grit) D.arena.spent = (D.arena.spent || 0) + c.grit;
-  D.arena.owned = { ...(D.arena.owned || {}), [id]: new Date().toISOString() };
-  wearCos(id, true);
-  toast(`✨ ${c.name} unlocked`, 'Equipped on your avatar.');
-}
+function buyCos(id) { wearCos(id); }
 function wearCos(id, quiet) {
   const c = cos(id); if (!c || !ownsCos(id)) return;
   D.arena.av = { ...myAv(), [c.cat]: id }; save(); render();
@@ -143,8 +133,7 @@ function wearCos(id, quiet) {
 
 // avatar as a compact object other people's copies can draw (for the leaderboard)
 function avatarSpec(av = myAv()) {
-  const top = equippedGear().find(g => g.slot === 'top');
-  return { ...av, look: myLook(), kitC: av.kit === 'kit_gear' ? (top?.color || '#5c7cfa') : cos(av.kit)?.c, no: D.settings.jerseyNo ?? 11 };
+  return { ...av, look: myLook(), kitC: av.kit === 'kit_gear' ? '#5c7cfa' : cos(av.kit)?.c, no: D.settings.jerseyNo ?? 11 };
 }
 
 // ---------- character creator (free): features that make the avatar look like you ----------
@@ -390,18 +379,3 @@ function lookEditor() {
 const avatarFace = spec => avatarFull(spec, { size: 150 }).replace(/viewBox="0 0 124 170"/, 'viewBox="34 4 56 60"').replace(/width="[\d.]+" height="150"/, 'width="52" height="52"');
 
 // ---------- wardrobe page ----------
-function arenaWardrobe() {
-  const av = myAv(), cat = ui.wardCat || 'hair', bare = cat === 'look' && (av.hat !== 'hat_none' || av.eyes !== 'eye_none');
-  const spec = { ...avatarSpec(av), ...(bare ? { hat: 'hat_none', eyes: 'eye_none' } : {}) };
-  return `<div class="wardrobe"><div class="card wardprev"><div class="wardstage" id="wardStage" style="background:${BG_CSS[av.bg] || 'linear-gradient(180deg,var(--panel2),var(--panel))'}">${avatarFull(spec, { size: 260, cls: 'idle' })}${petHtml(av.pet, 56)}</div>
-      <div class="row" style="justify-content:center;gap:10px;margin-top:10px"><span class="pill">${COIN} ${coins()}</span><span class="pill">${GRIT} ${grit()}</span></div>
-      <p class="muted small-text" style="text-align:center">Coins come from studying, Grit from training. ${ONLINE ? '' : 'Your avatar shows on the leaderboard.'}</p>
-      ${bare ? '<p class="muted small-text" style="text-align:center;margin:0 0 8px">Headwear and eyewear are hidden while you edit your look.</p>' : ''}<button class="btn small" data-act="avDance" style="display:block;margin:0 auto">💃 Test your victory dance</button></div>
-    <div class="card"><div class="seg wardcats">${COS_CATS.map(([k, l]) => `<button class="${cat === k ? 'on' : ''}" data-act="wardCat" data-v="${k}">${l}</button>`).join('')}</div>
-      ${cat === 'look' ? lookEditor() : ''}<div class="wardgrid">${COSMETICS.filter(c => c.cat === cat).map(c => {
-        const own = ownsCos(c.id), on = av[cat] === c.id, preview = { ...spec, [cat]: c.id, ...(cat === 'kit' ? { kitC: c.id === 'kit_gear' ? avatarSpec({ ...av, kit: 'kit_gear' }).kitC : c.c } : {}) };
-        const price = c.coins ? `${c.coins} ${COIN}` : `${c.grit} ${GRIT}`, can = c.coins ? coins() >= c.coins : grit() >= (c.grit || 0);
-        return `<div class="wcos ${on ? 'on' : ''} ${own ? 'own' : ''}">${cat === 'bg' ? `<div class="wbg" style="background:${BG_CSS[c.id] || 'var(--panel2)'}"></div>` : cat === 'pet' ? `<div class="wbg dance">${c.e || '🚫'}</div>` : cat === 'dance' ? `<div class="wbg dance">${{ d_jump: '🦘', d_flex: '💪', d_spin: '🌀', d_flip: '🤸', d_dab: '🙆', d_moon: '🕺', d_worm: '🐛' }[c.id]}</div>` : `<div class="wmini">${avatarFull(preview, { size: 92 })}</div>`}
-          <b>${esc(c.name)}</b>${!own ? `<span class="muted small-text">${c.coins ? 'study reward' : 'training reward'}</span>` : ''}${on ? '<span class="tag green">Wearing</span>' : own ? `<button class="btn small" data-act="wearCos" data-id="${c.id}">Wear</button>` : `<button class="btn small ${can ? 'primary' : ''}" data-act="buyCos" data-id="${c.id}" ${can ? '' : 'disabled'}>${price}</button>`}</div>`;
-      }).join('')}</div></div></div>`;
-}

@@ -197,7 +197,7 @@ func main() {
 	go watchIdle()
 	go cleanupOld()
 	go watchGitHub()
-	go mailLoop()
+	// 2.55: Missed info was removed, so the email check no longer runs (mailLoop)
 	log.Printf("Solis running at %s, data in %s", url, dataDir)
 	go func() { log.Fatal(http.Serve(ln, localOnly(mux))) }()
 	// The planner's own window (WebView2) runs here on the main thread; the

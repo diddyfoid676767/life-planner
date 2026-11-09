@@ -15,7 +15,7 @@ function examLeft(why) {
   D.focus = null; focusAskCancel = false;
   save(); renderFocusBar(); examExitFull(); publishMe(true);
   if (!modal.open) render();
-  celebrate({ icon: '<span class="critbig">🔒</span>', color: '#e03131', kicker: 'Exam mode', title: 'Exam ended', text: `You ${why} after ${fmtMins(mins) || 'under a minute'}, so the timer stopped. This session gives no study time, coins or tree.`, ok: 'OK' });
+  celebrate({ icon: '<span class="critbig">🔒</span>', color: '#e03131', kicker: 'Exam mode', title: 'Exam ended', text: `You ${why} after ${fmtMins(mins) || 'under a minute'}, so the timer stopped. This session isn't logged.`, ok: 'OK' });
   examEnding = false;
 }
 document.addEventListener('visibilitychange', () => { if (document.hidden) examLeft('left the planner'); });
@@ -60,11 +60,11 @@ function seasonStats() {
   };
 }
 
-// ---------- weekly competition: one event a week, 100 coins for the winner ----------
+// ---------- weekly competition: one event a week ----------
 const COMPS = [
   ['⏱️', 'Longest single session', logs => Math.max(0, ...logs.map(l => l.mins)), v => fmtMins(v) || '0m'],
   ['📅', 'Most days with 30m+ study', logs => { const d = {}; for (const l of logs) d[l.date] = (d[l.date] || 0) + l.mins; return Object.values(d).filter(m => m >= 30).length; }, v => `${v} day${v === 1 ? '' : 's'}`],
-  ['🌳', 'Most trees grown', logs => logs.filter(l => l.mins >= 10 && !l.withered).length, v => `${v} tree${v === 1 ? '' : 's'}`],
+  ['✦', 'Most focus sessions', logs => logs.filter(l => l.mins >= 10 && !l.withered).length, v => `${v} session${v === 1 ? '' : 's'}`],
   ['🎯', 'Most study blocks ticked off', (logs, from, to) => D.sessions.filter(s => s.done && s.date >= from && s.date <= to).length, v => `${v}`],
   ['🏃', 'Most training', (logs, from, to) => D.workouts.filter(w => w.done && w.date >= from && w.date <= to).reduce((a, w) => a + (+w.duration || 0), 0), v => fmtMins(v) || '0m'],
   ['📚', 'Most study', logs => logs.reduce((a, l) => a + l.mins, 0), v => fmtMins(v) || '0m'],
@@ -86,14 +86,14 @@ function settleComp() {
   const rows = compRows(wk); C.settled = wk;
   if (rows.length > 1 && rows[0].me && rows[0].v > 0 && rows[0].v > rows[1].v) {
     D.game.ledger['comp:' + wk] = COMP_PRIZE; C.won = [...(C.won || []), wk].slice(-60);
-    setTimeout(() => celebrate({ icon: '<span class="critbig">🏆</span>', color: '#f59f00', kicker: 'Weekly competition', title: 'You won last week!', text: `${compFor(wk)[0]} ${compFor(wk)[1]}: ${compFor(wk)[3](rows[0].v)}. +${COMP_PRIZE} ${COIN}` }), 400);
+    setTimeout(() => celebrate({ icon: '<span class="critbig">🏆</span>', color: '#f59f00', kicker: 'Weekly competition', title: 'You won last week!', text: `${compFor(wk)[0]} ${compFor(wk)[1]}: ${compFor(wk)[3](rows[0].v)}.` }), 400);
   }
   save();
 }
 function compCard() {
   const wk = mondayOf(today()), [icon, name, , fmt] = compFor(wk), rows = compRows(wk), lw = addDays(wk, -7), won = (D.comp?.won || []).length;
   const left = 7 - ((new Date().getDay() + 6) % 7);
-  return `<div class="card comp"><div class="card-head"><h2>${icon} This week: ${esc(name)}</h2><span class="muted small-text">${left === 1 ? 'ends tonight' : `${left} days left`} · ${COMP_PRIZE} ${COIN} prize</span></div>
+  return `<div class="card comp"><div class="card-head"><h2>${icon} This week: ${esc(name)}</h2><span class="muted small-text">${left === 1 ? 'ends tonight' : `${left} days left`}</span></div>
     <ol class="lbath">${rows.slice(0, 8).map((r, i) => `<li class="${r.me ? 'me' : ''}"><span class="lbpos">${['🥇', '🥈', '🥉'][i] || i + 1}</span>${safeBadge(r.av, 28)}<b>${esc(r.name)}</b><span style="flex:1"></span><b class="lbv">${fmt(r.v)}</b></li>`).join('')}</ol>
     <p class="muted small-text" style="margin:6px 0 0">A new event every Monday. Last week was ${compFor(lw)[0]} ${esc(compFor(lw)[1].toLowerCase())}.${won ? ` You've won ${won} week${won === 1 ? '' : 's'} 🏆` : ''}</p></div>`;
 }
@@ -107,14 +107,14 @@ function seasonCard() {
     cols = r => `<span class="bparts"><span title="Study">📚${fmtMins(r.s) || '0m'}</span><span title="Training">🏃${fmtMins(r.k) || '0m'}</span></span><b class="lbv">${r.v.toLocaleString()} pts</b>`;
   } else {
     rows = [{ me: true, name: 'You', av: avatarSpec(), ...mine.yr }, ...fr.filter(f => f.raw?.yr?.y === +y).map(f => ({ name: f.name, av: f.av, ...f.raw.yr }))]
-      .map(r => ({ ...r, v: (r.tr || 0) * 10 + (r.w || 0) * 5 }));
-    cols = r => `<span class="bparts"><span title="Trees this year">🌳${r.tr || 0}</span><span title="Arena wins this year">⚔️${r.w || 0}</span></span><b class="lbv">${r.v.toLocaleString()} pts</b>`;
+      .map(r => ({ ...r, v: (r.tr || 0) * 10 }));
+    cols = r => `<span class="bparts"><span title="Focus sessions this year">✦${r.tr || 0}</span></span><b class="lbv">${r.v.toLocaleString()} pts</b>`;
   }
   rows.sort((a, b) => b.v - a.v);
   const daysLeft = diffDays(today(), tab === 'season' ? S.to : `${y}-12-31`);
-  return `<div class="card"><div class="card-head"><div class="seg"><button class="${tab === 'season' ? 'on' : ''}" data-s2="seasonTab" data-v="season">🗓️ Term ${S.n} season</button><button class="${tab === 'year' ? 'on' : ''}" data-s2="seasonTab" data-v="year">🌲 ${y}</button></div><span style="flex:1"></span><span class="muted small-text">${daysLeft} day${daysLeft === 1 ? '' : 's'} left</span></div>
+  return `<div class="card"><div class="card-head"><div class="seg"><button class="${tab === 'season' ? 'on' : ''}" data-s2="seasonTab" data-v="season">🗓️ Term ${S.n} season</button><button class="${tab === 'year' ? 'on' : ''}" data-s2="seasonTab" data-v="year">📅 ${y}</button></div><span style="flex:1"></span><span class="muted small-text">${daysLeft} day${daysLeft === 1 ? '' : 's'} left</span></div>
     <ol class="lbath">${rows.map((r, i) => `<li class="${r.me ? 'me' : ''}"><span class="lbpos">${['🥇', '🥈', '🥉'][i] || i + 1}</span>${safeBadge(r.av, 28)}<b>${esc(r.name)}</b><span style="flex:1"></span>${cols(r)}</li>`).join('')}</ol>
-    <p class="muted small-text" style="margin:6px 0 0">${tab === 'season' ? 'This term and the holidays after it: study counts double, training once. Resets each term.' : 'Your forest and arena all year: 10 points a tree, 5 an arena win. Resets on 1 January.'}</p></div>`;
+    <p class="muted small-text" style="margin:6px 0 0">${tab === 'season' ? 'This term and the holidays after it: study counts double, training once. Resets each term.' : 'All year: 10 points for every focus session of 10+ minutes. Resets on 1 January.'}</p></div>`;
 }
 
 // ---------- grades: from your SAC and exam results ----------
@@ -164,11 +164,11 @@ function friendView(id) {
   const f = allFriendRows().find(x => x.id === id); if (!f) return;
   const s = f.raw || {}, fo = s.fo, gr = s.gr, st = friendStatus(f);
   const trees = (typeof fo?.t === 'string' ? fo.t.split(';').map(x => x.split(':')) : []).filter(t => t.length === 4 && /^[0-9a-f]{6}$/i.test(t[2]));
-  const forest = trees.length ? `<div class="ffor">${trees.map(t => `<span title="${esc(fmtMins(t[1]))}">${treeSvg('#' + t[2], +t[1] || 10, +t[3] ? .4 : 1, String(t[0]), Math.round(34 + Math.min(1, (+t[1] || 0) / 180) * 40))}</span>`).join('')}</div>` : '<p class="muted small-text">Their forest shows here once they update to 2.36.</p>';
+  const forest = trees.length ? `<div class="ffor">${trees.map(t => `<span title="${esc(fmtMins(t[1]))}">${sunSvg('#' + t[2], Math.min(1, (+t[1] || 0) / 180), Math.round(30 + Math.min(1, (+t[1] || 0) / 180) * 30))}</span>`).join('')}</div>` : '<p class="muted small-text">Their forest shows here once they update to 2.36.</p>';
   const grades = gr?.m && gr.y === +today().slice(0, 4) ? `<h3>🎓 Grades</h3><ul class="hlist">${[['Average', gr.o], ...grSubs(gr)].map(([n, p]) => `<li><div class="main"><b>${esc(String(n))}</b></div><span class="hl-v">${(+p).toFixed(1)}%</span></li>`).join('')}</ul>` : '';
-  mform.innerHTML = `<h2>${safeBadge(f.av, 48)} ${esc(f.name)}'s forest</h2>
+  mform.innerHTML = `<h2>${safeBadge(f.av, 48)} ${esc(f.name)}</h2>
     ${st.txt ? `<p>${statusLine(f)}</p>` : ''}
-    <p class="muted small-text">${fo ? `🌳 ${fo.n} tree${fo.n === 1 ? '' : 's'} grown · showing their biggest ${trees.length}` : ''}</p>
+    <p class="muted small-text">${fo ? `✦ ${fo.n} focus session${fo.n === 1 ? '' : 's'} · showing their biggest ${trees.length}` : ''}</p>
     ${forest}${grades}
     <div class="modal-actions"><button type="button" class="btn" data-act="friendCompare" data-id="${esc(f.id)}">Compare</button><button type="button" class="btn primary" data-mact="cancel">Close</button></div>`;
   modal.showModal();

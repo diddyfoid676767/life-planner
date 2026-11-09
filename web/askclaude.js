@@ -46,7 +46,7 @@ async function mailCheckDirect(quiet) {
   try {
     const r = await fetch('/api/mail', { method: 'POST' }), j = await r.json().catch(() => ({}));
     if (!r.ok) throw new Error(j.error || "The check didn't finish.");
-    AI.mail = j; await loadInbox();
+    AI.mail = j;
     if (!quiet) toast(j.added ? `📬 ${j.added} new in Missed info` : '📬 Nothing new', '', { timeout: 5000 });
   } catch (e) { if (!quiet) toast("Couldn't check your email", e.message, { cls: 'danger', timeout: 10000 }); await aiLoad(); }
   if (!modal.open) render();

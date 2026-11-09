@@ -22,7 +22,7 @@ async function acctPost(body) {
 
 function myStatsRow() {
   const r = myBoardRow();
-  return { display: (D.settings.name || '').slice(0, 30), avatar: r.av, stats: { week: r.week, study: r.study, work: r.work, health: r.health, ...chalPublish(), pvp: typeof pvpPublish === 'function' ? pvpPublish() : undefined, fit: typeof fitPublish === 'function' ? fitPublish() : undefined, fr: friendNames().slice(0, 60), hs: typeof housePublish === 'function' ? housePublish() : undefined, ...(typeof myStatus === 'function' ? { st: myStatus(), ...seasonStats(), ...compPublish(), gr: gradePublish(), fo: forestPublish() } : {}) } };
+  return { display: (D.settings.name || '').slice(0, 30), avatar: r.av, stats: { week: r.week, study: r.study, work: r.work, health: r.health, ...chalPublish(), fit: typeof fitPublish === 'function' ? fitPublish() : undefined, fr: friendNames().slice(0, 60), hs: typeof housePublish === 'function' ? housePublish() : undefined, ...(typeof myStatus === 'function' ? { st: myStatus(), ...seasonStats(), ...compPublish(), gr: gradePublish(), fo: forestPublish() } : {}) } };
 }
 async function publishMe(force) {
   if (!acct.signedIn || (!force && Date.now() - acctPublishedAt < 4.5 * 60000)) return;

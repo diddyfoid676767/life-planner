@@ -306,7 +306,6 @@ function agenda(from, to, filter = null) {
 function toggleDone(kind, id, val) {
   const x = find(kind, id); if (!x) return;
   x.done = val; save();
-  if (val && x.fromEmail && D.inboxSeen[x.fromEmail] !== 'dismissed') inboxDismiss(x.fromEmail); // done with it, so the email is crossed off too
   const row = document.querySelector(`[data-toggle="${kind}"][data-id="${id}"]`)?.closest('.item, .todo-item, tr');
   if (val && row) { row.classList.add('ticked'); setTimeout(render, 380); } else render();
 }
@@ -438,8 +437,10 @@ function morphNode(o, n) {
 function render() {
   applyTheme();
   applyNav();
-  if (view === 'day') view = 'today';
-  if (view === 'character') view = 'profile'; // 2.51: Character is part of Profile now
+  // 2.55: old page names go to where that page lives now
+  if (view === 'house') ui.isTab = 'house';
+  if (view === 'arena' || view === 'forest') ui.isTab = ui.isTab || 'personal';
+  if (typeof VIEW_ALIAS === 'object' && VIEW_ALIAS[view]) view = VIEW_ALIAS[view];
   document.querySelectorAll('#tabs button').forEach(b => b.classList.toggle('active', b.dataset.view === view));
   const v = $('#view');
   const y = window.scrollY, ks = {}; // boxes that scroll by themselves keep their place
@@ -447,10 +448,10 @@ function render() {
   const fresh = v.dataset.view !== view;
   if (fresh) { v.classList.remove('enter'); void v.offsetWidth; v.classList.add('enter'); v.dataset.view = view; }
   else v.classList.remove('enter'); // staying on the same page: no entrance animation, only the parts that changed are updated
-  const html = ({ today: viewToday, calendar: viewCalendar, study: viewStudyHub, forest: viewForest, training: viewTraining, arena: viewArena, house: viewHouse, islands: viewIslands, friends: viewFriends, board: viewLeaderboard, chats: () => { view = 'friends'; return viewFriends(); }, profile: viewProfile, school: viewSchool, personal: viewPersonal, todo: viewTodo, inbox: viewInbox, settings: viewSettings })[view]();
+  const page = { today: viewToday, calendar: viewCalendar, study: viewStudy, training: viewTraining, islands: viewIslands, friends: viewFriends, board: viewLeaderboard, profile: viewProfile, school: viewSchool, todo: viewTodo, settings: viewSettings };
+  if (!page[view]) view = 'today';
+  const html = page[view]();
   if (fresh || !v.firstChild) v.innerHTML = html; else morphHtml(v, html);
-  updateInboxBadge();
-  gameFeedback();
   if (typeof mountIsland3D === 'function') try { mountIsland3D(); } catch (e) { console.error(e); }
   window.scrollTo(0, y);
   v.querySelectorAll('[data-ks]').forEach(el => { if (ks[el.dataset.ks]) el.scrollTop = ks[el.dataset.ks]; });
@@ -494,7 +495,7 @@ function viewToday() {
   const studyMins = items.filter(e => e.kind === 'session').reduce((a, e) => a + (+e.mins || 0), 0);
   const trainMins = items.filter(e => e.kind === 'workout').reduce((a, e) => a + (+e.mins || 0), 0);
 
-  const welcome = D.settings.welcomed ? '' : `<div class="card welcome twelcome"><b>👋 Welcome to Solis.</b> <span class="muted">Type anything into Quick add, tick things off as you go, and press ▶ to grow a tree while you study.</span><button class="btn small" data-act="dismissWelcome">Got it</button></div>`;
+  const welcome = D.settings.welcomed ? '' : `<div class="card welcome twelcome"><b>👋 Welcome to Solis.</b> <span class="muted">Type anything into Quick add (or press Q for the ＋ button), tick things off as you go, and press ▶ to time your study and earn Lumen.</span><button class="btn small" data-act="dismissWelcome">Got it</button></div>`;
   const apps = D.links.filter(l => l.group === 'Apps').map(l => l.url
     ? `<a class="appchip" href="${esc(safeUrl(l.url))}" target="_blank" rel="noopener noreferrer"><i style="background:${appColor(l.title)}">${esc(l.title[0] || '?')}</i>${esc(l.title)}</a>`
     : `<button class="appchip" data-act="edit" data-kind="link" data-id="${l.id}" title="Click to add its web address"><i>?</i>${esc(l.title)} (set link)</button>`).join('');
@@ -515,11 +516,12 @@ function viewToday() {
       <span class="dots">${list.slice(0, 6).map(e => `<i style="background:${e.color}"></i>`).join('')}</span>
       <span class="dbar"><i style="width:${ck.length ? dn / ck.length * 100 : 0}%"></i></span></button>`;
   }).join('');
-  return `<div class="tpage">${welcome}${typeof hsTodayStrip === 'function' ? hsTodayStrip() : ''}${typeof todayRivals === 'function' ? todayRivals() : ''}
+  const clsNow = typeof classNowCard === 'function' ? classNowCard() : '';
+  return `<div class="tpage">${welcome}${clsNow}${typeof hsTodayStrip === 'function' ? hsTodayStrip() : ''}${typeof todayRivals === 'function' ? todayRivals() : ''}
   <div class="hero slim thero ${tod}">
     <div class="hero-text"><div class="hero-date">${fullDate(t)} ${now.getFullYear()}</div>
       <h1>${greet}${D.settings.name ? ', ' + esc(D.settings.name) : ''}</h1><p>${summary}</p>
-      ${nowLine || unr ? `<button class="hnow" data-act="goto" data-v="school">🏫 ${nowLine}${nowLine && unr ? ' · ' : ''}${unr ? `${unr} period${unr === 1 ? '' : 's'} to rate` : ''} →</button>` : ''}</div>
+      ${(nowLine && !clsNow) || unr ? `<button class="hnow" data-act="goto" data-v="school">🏫 ${nowLine}${nowLine && unr ? ' · ' : ''}${unr ? `${unr} period${unr === 1 ? '' : 's'} to rate` : ''} →</button>` : ''}</div>
     <button class="btn white thero-go" data-act="focusNew">▶ Start studying</button>
     <div class="hero-qa">${quickAddHtml(true)}</div>
     <div class="hstats">${stat(`${doneN}/${checkable.length}`, 'ticked off', checkable.length ? doneN / checkable.length : 0)}${stat(fmtMins(studied) || '0m', `of ${fmtMins(goal)} study goal`, studied / goal)}${stat('🔥 ' + streak, 'day streak', streak / 7)}</div>
@@ -681,34 +683,41 @@ function viewStudy() {
     return { s, focus: sum(tw, twEnd, s.id), done: w.filter(x => x.done).length, plan: w.length };
   });
   const max = Math.max(30, ...rows.map(r => r.focus));
-  const trees = D.focusLogs.filter(l => l.mins >= 10 && l.date >= tw).length;
+  const sessN = D.focusLogs.filter(l => l.mins >= 10 && l.date >= tw).length;
+  // 8-week trend: total minutes per week, newest last
+  const weeks = Array.from({ length: 8 }, (_, i) => { const w0 = addDays(tw, -7 * (7 - i)); return { w0, m: sum(w0, addDays(w0, 6)) }; });
+  const wMax = Math.max(60, ...weeks.map(w => w.m)), wAvg = Math.round(weeks.slice(0, 7).reduce((a, w) => a + w.m, 0) / 7);
+  const exams = typeof upcomingExams === 'function' ? upcomingExams() : [], boardOn = ui.studyBoard || (exams.length && diffDays(t, exams[0].date) <= 21);
+  const C = typeof cdParts === 'function' ? cdParts() : null;
   const subjects = D.subjects.map(s => `<span class="subj" style="--c:${s.color}"><span class="dot" style="background:${s.color}"></span>${esc(s.name)}<button class="iconbtn" data-act="edit" data-kind="subject" data-id="${s.id}" title="Edit subject">✎</button></span>`).join('');
 
-  return `<div class="study2">${pageHead('Study', `${fmtMins(sum(tw, twEnd)) || '0m'} studied this week · ${trees} tree${trees === 1 ? '' : 's'} planted`, `<button class="btn" data-act="planStudy">Plan study</button><button class="btn" data-s2="examStart" title="Full screen; leaving the planner ends the timer with no reward">🔒 Exam mode</button><button class="btn primary" data-act="focusNew">▶ Start studying</button>`)}
-  ${studyTabs()}
+  return `<div class="study2">${pageHead('Study', `${fmtMins(sum(tw, twEnd)) || '0m'} studied this week · ${sessN} session${sessN === 1 ? '' : 's'} · 🔥 ${studyStreak()}-day streak`, `<button class="btn" data-act="planStudy">Plan study</button><button class="btn" data-s2="examStart" title="Full screen; leaving the planner ends the timer">🔒 Exam mode</button><button class="btn primary" data-act="focusNew">▶ Start studying</button>`)}
   <div class="upnext-row">${nextCard}${sacCard}${todayCard}</div>
   ${examHub()}
+  ${boardOn && typeof examBoard === 'function' ? examBoard() : exams.length ? `<div class="row" style="margin:-4px 0 14px"><button class="btn small" data-act="studyBoard">🗓 Show the exam timetable</button></div>` : ''}
   <div class="study-grid2">
     <div class="study-side">
+    <div class="card"><div class="card-head"><h2>Study trend</h2><span class="muted small-text">last 8 weeks · average ${fmtMins(wAvg) || '0m'} a week</span></div>
+      <div class="wtrend">${weeks.map((w, i) => `<div class="wt ${i === 7 ? 'now' : ''}" title="Week of ${fmtDate(w.w0)}: ${fmtMins(w.m) || '0m'}"><b>${w.m ? fmtMins(w.m) : ''}</b><i style="height:${Math.round(w.m / wMax * 100)}%"></i><span>${parseYmd(w.w0).getDate()} ${MON[parseYmd(w.w0).getMonth()]}</span></div>`).join('')}</div></div>
+    <div class="card"><div class="card-head"><h2>Studied this week</h2><b class="wk-total">${fmtMins(sum(tw, twEnd)) || '0m'}</b></div>
+      <div class="bars">${rows.map(r => `<div class="bar"><span>${esc(r.s.name)}</span><div class="track"><div class="fill" style="width:${r.focus / max * 100}%;background:${r.s.color}"></div></div><span class="muted">${fmtMins(r.focus) || '0m'}${r.plan ? ` · ${r.done}/${r.plan}` : ''}</span></div>`).join('')}</div>
+      <p class="muted small-text" style="margin:8px 0 0">Time from the focus timer · blocks ticked off / planned.</p></div>
+    ${typeof studyPieCard === 'function' ? studyPieCard() : ''}
+    ${typeof studyTimeCard === 'function' ? studyTimeCard() : ''}
     <div class="card"><div class="card-head"><h2>${wkLabel}</h2><span class="muted">${fullDate(sd)}</span><span style="flex:1"></span>
       <div class="seg"><button data-act="studyWeek" data-v="-1" title="Previous week">‹</button><button class="${ui.studyWeek === 0 ? 'on' : ''}" data-act="studyWeek" data-v="0">Today</button><button data-act="studyWeek" data-v="1" title="Next week">›</button></div></div>
       <div class="daystrip">${strip}</div>
       <div class="sday">${dueRows}${blockRows || (dueRows ? '' : `<div class="empty big">No study blocks ${sd === t ? 'today' : 'on this day'}.</div>`)}</div>
       <button class="btn" data-act="new" data-kind="session" data-date="${sd}" style="margin-top:10px">+ Add a study block</button></div>
-  <div class="card subjcard"><div class="card-head"><h2>Subjects</h2></div><div class="subjects">${subjects || '<span class="empty">Add your subjects to get started.</span>'}<button class="btn small" data-act="new" data-kind="subject">+ Subject</button></div></div>
-  ${typeof studyPieCard === 'function' ? studyPieCard() : ''}
-  ${typeof studyTimeCard === 'function' ? studyTimeCard() : ''}
-  ${linksHtml(['Study'], 'chips')}
     </div>
     <div class="study-side">
+      ${C ? C.scores : ''}
       <div class="card"><div class="card-head"><h2>SACs &amp; exams</h2><span style="flex:1"></span>
         <div class="seg"><button class="${!ui.assessPast ? 'on' : ''}" data-act="assessPast" data-v="0">Upcoming</button><button class="${ui.assessPast ? 'on' : ''}" data-act="assessPast" data-v="1">Past</button></div>
         <button class="iconbtn" data-act="new" data-kind="assessment" title="Add SAC / exam">＋</button></div>
         ${assessRows ? `<ul class="alist">${assessRows}</ul>` : `<div class="empty">${ui.assessPast ? 'No past assessments.' : 'No upcoming SACs or exams.'}</div>`}</div>
-      <div class="card"><div class="card-head"><h2>Studied this week</h2><b class="wk-total">${fmtMins(sum(tw, twEnd)) || '0m'}</b></div>
-        <div class="bars">${rows.map(r => `<div class="bar"><span>${esc(r.s.name)}</span><div class="track"><div class="fill" style="width:${r.focus / max * 100}%;background:${r.s.color}"></div></div><span class="muted">${fmtMins(r.focus) || '0m'}${r.plan ? ` · ${r.done}/${r.plan}` : ''}</span></div>`).join('') || '<div class="empty">No subjects.</div>'}</div>
-        <p class="muted small-text" style="margin:8px 0 0">Time from the focus timer · blocks ticked off / planned.</p>
-        <a href="#" class="forest-link" data-act="goto" data-v="forest">${treeSvg('#40c057', 45, 1, 'oak', 30)}<span><b>${trees} tree${trees === 1 ? '' : 's'}</b> this week · 🔥 ${studyStreak()}-day streak</span><span class="muted">Open forest →</span></a></div>
+      <div class="card subjcard"><div class="card-head"><h2>Subjects</h2></div><div class="subjects">${subjects || '<span class="empty">Add your subjects to get started.</span>'}<button class="btn small" data-act="new" data-kind="subject">+ Subject</button></div></div>
+      ${linksHtml(['Study'], 'chips')}
     </div>
   </div>
 </div>`;
@@ -798,93 +807,11 @@ function eventsListHtml(mode) {
 const upcomingEventCount = () => { const t = today(), seen = new Set(); return agenda(t, addDays(t, 365)).filter(e => e.kind === 'event' && !seen.has(e.id) && seen.add(e.id)).length; };
 
 
-// ---------- missed info (email summary) ----------
-// Claude writes data/missed-info.json: { updated, summary, items: [{ id, source, from, subject, received, category, summary, due, link }] }
-const INBOX_CATS = ['Action needed', 'Deadline', 'Event', 'Changed', 'FYI'];
-async function loadInbox() {
-  try {
-    if (ONLINE) return;
-    const r = await fetch('/api/inbox', { cache: 'no-store' });
-    applyInbox(await r.json());
-  } catch { }
-}
-// Crossed-off emails stay gone: the same email coming back (a forward, a reply
-// or the school copy) is matched on its subject too. The list also goes to the
-// data folder so the hourly email check skips them and never mentions them again.
-const inboxKey = x => String(x.subject || '').toLowerCase().replace(/^\s*((re|fw|fwd|aw)\s*:\s*)+/g, '').replace(/[^a-z0-9]+/g, ' ').trim();
-const inboxGone = x => D.inboxSeen[x.id] === 'dismissed' || (!!inboxKey(x) && !!D.inboxMuted[inboxKey(x)]);
-function inboxDismiss(id) {
-  const x = (D.inbox?.items || []).find(i => i.id === id);
-  D.inboxSeen[id] = 'dismissed';
-  if (x && inboxKey(x)) D.inboxMuted[inboxKey(x)] = today();
-  // its to-do goes too (SACs and tests stay in the planner)
-  D.todos = D.todos.filter(t => t.fromEmail !== id || t.done);
-  save(); render(); syncInboxDismissed();
-}
-async function syncInboxDismissed() {
-  if (ONLINE) return;
-  const ids = Object.keys(D.inboxSeen).filter(k => D.inboxSeen[k] === 'dismissed'), subjects = Object.keys(D.inboxMuted);
-  try { await fetch('/api/inbox/dismissed', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ updated: new Date().toISOString(), ids, subjects }) }); } catch { }
-}
-function applyInbox(d) {
-  try {
-    if (d && Array.isArray(d.items) && (!D.inbox || d.updated !== D.inbox.updated)) {
-      const isNew = !!D.inbox;
-      D.inbox = d; inboxToPlanner(); save();
-      const fresh = d.items.filter(x => !D.inboxSeen[x.id] && !inboxGone(x)).length;
-      if (isNew && fresh) notify(`${fresh} new thing${fresh === 1 ? '' : 's'} in Missed info`, d.summary || '', 'inbox');
-      if (!modal.open) render();
-    }
-  } catch { }
-}
-// SACs, tests and other dated school work found in email go straight into the
-// planner: an assessment when the subject is clear, otherwise a task. Each email
-// is only ever added once (D.inboxAdded), so deleting the entry keeps it gone.
-const ASSESS_RE = /\b(sacs?|exam|test|assessment|assignment|essay|presentation|oral|prac(tical)?|investigation|report|folio|quiz|outcome)\b/i;
-const DUE_RE = /\b(due|submit|submission|hand[- ]?in|deadline|bring|permission|form|sign|pay|excursion|incursion|camp|reminder|complete|finish)\b/i;
 const SUBJ_ALIAS = [[/\b(maths? methods|methods|mm)\b/i, /method/i], [/\b(spec(ialist)?|specialist maths)\b/i, /spec/i], [/\b(general maths|gen maths)\b/i, /general/i], [/\bbio(logy)?\b/i, /bio/i], [/\bchem(istry)?\b/i, /chem/i], [/\bphys(ics)?\b/i, /phys/i], [/\b(biz|bus(iness)?( management)?|bm)\b/i, /bus/i], [/\b(eng(lish)?|lit(erature)?|eal)\b/i, /engl|lit/i], [/\bmedia\b/i, /media/i], [/\b(pe|phys(ical)? ed(ucation)?)\b/i, /physical|\bpe\b/i]];
 function inboxSubject(text) {
   for (const s of D.subjects) if (s.name && new RegExp('\\b' + s.name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '\\b', 'i').test(text)) return s;
   for (const [re, nameRe] of SUBJ_ALIAS) if (re.test(text)) { const s = D.subjects.find(x => nameRe.test(x.name)); if (s) return s; }
   return null;
-}
-function inboxToPlanner() {
-  if (!D.inbox?.items || D.settings.inboxAuto === false) return 0;
-  D.inboxAdded = D.inboxAdded || {};
-  const t = today(), added = [];
-  for (const x of D.inbox.items) {
-    if (!x.id || D.inboxAdded[x.id] || inboxGone(x) || !/^\d{4}-\d{2}-\d{2}$/.test(x.due || '') || x.due < t) continue;
-    const text = `${x.subject || ''} ${x.summary || ''}`, cat = x.category || 'FYI';
-    const assess = ASSESS_RE.test(text) || /^mwb-[at]/.test(x.id), s = assess && inboxSubject(text); // school portal and Teams assessments always count
-    if (!assess && !DUE_RE.test(text) && cat !== 'Deadline' && cat !== 'Action needed') continue;
-    const notes = [x.summary, x.from && `From ${x.from}`, x.source ? `Added from ${x.source}` + (x.link ? ': ' + x.link : '') : 'Added from your email'].filter(Boolean).join('\n');
-    if (s) {
-      const same = D.assessments.find(a => a.subjectId === s.id && a.date === x.due);
-      if (same) { D.inboxAdded[x.id] = 'a:' + same.id; continue; }
-      const type = /\bsacs?\b/i.test(text) ? 'SAC' : /practice exam|trial exam/i.test(text) ? 'Practice exam' : /\bexam\b/i.test(text) ? 'Exam' : /\b(test|quiz)\b/i.test(text) ? 'Test' : /assignment|essay|report|folio|investigation/i.test(text) ? 'Assignment' : 'Other';
-      const a = { id: uid(), subjectId: s.id, type, title: (x.subject || type).slice(0, 120), date: x.due, time: /^\d{2}:\d{2}$/.test(x.time || '') ? x.time : '', weight: '', score: '', notes, done: false, remind: D.settings.remind.assessment, fromEmail: x.id };
-      D.assessments.push(a); D.inboxAdded[x.id] = 'a:' + a.id; added.push(`${s.name} ${type}`);
-    } else {
-      if (D.todos.some(td => td.fromEmail === x.id || (td.due === x.due && td.text.startsWith(x.subject || '\u0000')))) { D.inboxAdded[x.id] = 't'; continue; }
-      const td = { id: uid(), text: (x.subject || 'From email').slice(0, 140), due: x.due, done: false, notes, remind: D.settings.remind.todo, fromEmail: x.id };
-      D.todos.push(td); D.inboxAdded[x.id] = 't:' + td.id; added.push(td.text);
-    }
-  }
-  if (added.length) {
-    notify(`📬 ${added.length} due date${added.length === 1 ? '' : 's'} from your email, school portal or Teams added to your planner`, added.slice(0, 4).join(' · ') + (added.length > 4 ? ' …' : ''), 'inboxadd');
-  }
-  return added.length;
-}
-function updateInboxBadge() {
-  const b = document.querySelector('#tabs button[data-view=inbox]'); if (!b) return;
-  const n = (D.inbox?.items || []).filter(x => !D.inboxSeen[x.id] && !inboxGone(x)).length;
-  b.dataset.badge = n || '';
-}
-function mailLink(x) {
-  if (x.link && /^https:\/\//.test(x.link)) return x.link;
-  if (!x.id || !/^[A-Za-z0-9_-]+$/.test(x.id)) return '';
-  const acct = D.settings.gmailAccount;
-  return `https://mail.google.com/mail/${acct ? '?authuser=' + encodeURIComponent(acct) : ''}#all/${x.id}`;
 }
 // Opens a claude.ai path in the Claude desktop app, or in the browser when the app isn't installed.
 async function openClaudeApp(path) {
@@ -903,75 +830,11 @@ async function checkClaudeLink() {
   try { claudeLinked = !!(await (await fetch('/api/claudelink', { cache: 'no-store' })).json()).configured; } catch { claudeLinked = false; }
   return claudeLinked;
 }
-async function inboxCheckNow() {
-  if (claudeLinked === null) await checkClaudeLink();
-  // the planner's own check runs first; the hourly Claude task is still asked too when it's linked
-  const direct = await mailCheckDirect(false);
-  if (direct && claudeLinked) { fetch('/api/claudelink', { method: 'POST' }).catch(() => { }); return; }
-  if (direct) return;
-  if (claudeLinked) {
-    try {
-      const r = await fetch('/api/claudelink', { method: 'POST' });
-      const j = await r.json().catch(() => ({}));
-      if (!r.ok) throw new Error(j.error || "Claude couldn't start the check.");
-      toast('📬 Checking your email now', 'Claude is reading your Gmail and school mail. Missed info updates by itself in a few minutes.', { timeout: 9000 });
-      return;
-    } catch (e) { toast("Couldn't start the email check", e.message, { cls: 'danger', timeout: 10000 }); return; }
-  }
-  await loadInbox();
-  try { await navigator.clipboard.writeText('Check my email now and update Missed info'); } catch { }
-  const where = await openClaudeApp(PROJECT_URL.replace('https://claude.ai', '')) ? 'the Claude app' : 'a new tab';
-  toast('Reloaded Missed info', `Claude opened in ${where}. Paste the copied message (Ctrl+V) and send it to get a fresh check now; this tab updates within a minute after.`, { timeout: 12000 });
-}
-const INBOX_STYLE = { 'Action needed': ['#e03131', '❗'], Deadline: ['#f76707', '⏰'], Event: ['#7950f2', '📅'], Changed: ['#f59f00', '🔄'], FYI: ['#1c7ed6', 'ℹ️'] };
 const ago = iso => {
   const m = Math.round((Date.now() - new Date(iso)) / 60000);
   if (!(m >= 0)) return new Date(iso).toLocaleString();
   return m < 60 ? `${Math.max(1, m)} min ago` : m < 1440 ? `${Math.round(m / 60)} h ago` : m < 2880 ? 'yesterday' : `${Math.round(m / 1440)} days ago`;
 };
-function viewInbox() {
-  const ib = D.inbox;
-  const all = (ib?.items || []).filter(x => !inboxGone(x));
-  const cats = INBOX_CATS.concat([...new Set(all.map(x => x.category || 'FYI'))].filter(c => !INBOX_CATS.includes(c)));
-  const items = ui.inboxCat ? all.filter(x => (x.category || 'FYI') === ui.inboxCat) : all;
-  const unread = all.filter(x => !D.inboxSeen[x.id]).length;
-  // sort: by urgency (urgent / coming up / everything else) or simply newest first
-  const sort = ui.inboxSort || 'urgent', t = today();
-  const rec = x => String(x.received || '');
-  const urg = x => {
-    const c = x.category || 'FYI', dd = x.due ? diffDays(t, x.due) : null;
-    if (c === 'Action needed' || (dd != null && dd <= 3)) return 0;
-    if (c === 'Deadline' || c === 'Event' || c === 'Changed' || (dd != null && dd >= 0)) return 1;
-    return 2;
-  };
-  const byUrg = (a, b) => (a.due || '9999').localeCompare(b.due || '9999') || rec(b).localeCompare(rec(a));
-  const sorted = [...items].sort((a, b) => rec(b).localeCompare(rec(a)));
-  const groups = sort === 'recent' ? [['', sorted]] : [['🔥 Urgent', 'Needs action, or due within 3 days'], ['📌 Coming up', 'Deadlines, events and changes'], ['📰 Everything else', '']]
-    .map(([h, sub], i) => [h ? `<div class="mgroup"><b>${h}</b>${sub ? `<span class="muted small-text">${sub}</span>` : ''}</div>` : '', items.filter(x => urg(x) === i).sort(byUrg)]).filter(g => g[1].length);
-  const card = x => {
-    const c = x.category || 'FYI', [col, icon] = INBOX_STYLE[c] || ['#868e96', '✉️'];
-    return `<li class="mailcard ${D.inboxSeen[x.id] ? '' : 'unread'}" style="--c:${col}"><div class="micon">${icon}</div>
-      <div class="main"><div class="title">${D.inboxSeen[x.id] ? '' : '<span class="newdot"></span>'}${esc(x.subject || '(no subject)')}${x.due ? ` <span class="tag ${diffDays(t, x.due) <= 3 ? 'red' : 'amber'}">due ${fmtDate(x.due)}${diffDays(t, x.due) < 0 ? ' (overdue)' : diffDays(t, x.due) <= 3 ? ` (${relDays(diffDays(t, x.due))})` : ''}</span>` : ''}</div>
-        <div class="msum">${esc(x.summary || '')}</div>
-        <div class="meta"><span class="tag ktag">${esc(c)}</span>${esc(x.source || 'Email')} · ${esc(x.from || '')}${x.received ? ` · <span title="${esc(new Date(x.received).toLocaleString())}">${esc(ago(x.received))}</span>` : ''}</div></div>
-      <div class="mact">${mailLink(x) ? `<a class="btn small primary" href="${esc(mailLink(x))}" target="_blank" rel="noopener noreferrer" title="Opens the email in Gmail, where you can reply">Open &amp; reply ↗</a>` : ''}
-        ${D.inboxAdded[x.id] ? '<span class="tag green" title="Already in your planner">✓ In planner</span>' : x.due ? `<button class="btn small" data-act="inboxTask" data-id="${esc(x.id)}">+ Task</button>` : ''}
-        <button class="iconbtn" data-act="inboxDismiss" data-id="${esc(x.id)}" title="Cross off: hides it for good, and the email check won\x27t bring it back">✕</button></div></li>`;
-  };
-  return `${pageHead('Missed info', ib?.updated ? `Updated ${new Date(ib.updated).toLocaleString()} · ${unread} new` : 'Summaries of emails you might have missed',
-      `<button class="btn primary" data-act="inboxCheck" title="Starts a fresh email check now">↻ Check email now</button><button class="btn" data-act="inboxRead">Mark all read</button>
-      <label class="btn">Load file<input type="file" accept=".json,application/json" data-change="importInbox" hidden></label>
-      ${D.settings.inboxUrl ? `<a class="btn" href="${esc(safeUrl(D.settings.inboxUrl))}" target="_blank" rel="noopener noreferrer">Online ↗</a>` : ''}`)}
-    ${ib?.summary ? `<div class="card summarycard"><div class="micon">✨</div><div>${esc(ib.summary)}</div></div>` : ''}
-    ${all.length ? `<div class="row mtools"><div class="seg"><button class="${sort === 'urgent' ? 'on' : ''}" data-act="inboxSort" data-v="urgent">🔥 Most urgent first</button><button class="${sort === 'recent' ? 'on' : ''}" data-act="inboxSort" data-v="recent">🕒 Newest first</button></div></div>` : ''}
-    ${all.length ? `<div class="catchips" style="margin-bottom:12px"><button class="cchip ${!ui.inboxCat ? 'on' : ''}" data-act="inboxCat" data-v="">All <b>${all.length}</b></button>${cats.map(c => { const n = all.filter(x => (x.category || 'FYI') === c).length; return n ? `<button class="cchip ${ui.inboxCat === c ? 'on' : ''}" style="--c:${(INBOX_STYLE[c] || ['#868e96'])[0]}" data-act="inboxCat" data-v="${esc(c)}">${(INBOX_STYLE[c] || ['', '✉️'])[1]} ${esc(c)} <b>${n}</b></button>` : ''; }).join('')}</div>` : ''}
-    ${items.length ? groups.map(([h, list]) => `${h}<ul class="mailcards">${list.map(card).join('')}</ul>`).join('') : `<div class="card emptystate"><svg viewBox="0 0 120 90" width="140" aria-hidden="true"><rect x="10" y="18" width="100" height="64" rx="10" fill="color-mix(in srgb, var(--accent) 14%, transparent)"/><path d="M14 26 L60 58 L106 26" stroke="var(--accent)" stroke-width="5" fill="none" stroke-linecap="round" stroke-linejoin="round"/><circle cx="98" cy="20" r="12" fill="#40c057"/><path d="M92 20 l4 4 l8 -8" stroke="#fff" stroke-width="3" fill="none" stroke-linecap="round"/></svg>
-      <h2>${ib ? 'You\'re all caught up' : 'No summary yet'}</h2><p class="muted">${ib ? 'Nothing you missed. Nice.' : 'Claude checks your email every hour (7am to 10pm) while the Claude app is open on this PC, and puts a summary here.'}</p></div>`}
-    ${mailStatusLine()}
-    <p class="muted small-text">Claude checks your Gmail, school Outlook and Teams notifications every hour (7am to 10pm) while the Claude app is open on this PC${AI.mail?.configured ? ', and the planner checks Gmail itself every 30 minutes while it\'s open' : ''}. For an instant check, use <b>Check email now</b>.</p>`;
-}
-
-
 async function loadShortcuts() {
   try {
     const st = await (await fetch('/api/shortcuts')).json();
@@ -983,14 +846,15 @@ function viewSettings() {
   const r = D.settings.remind;
   const remindRow = (k, label) => `<tr><th>${label}</th>${REMIND_OPTS.map(([v, l]) => `<td><label class="rcheck" title="${l}"><input type="checkbox" data-remdef="${k}" value="${v}" ${r[k].includes(v) ? 'checked' : ''}></label></td>`).join('')}</tr>`;
   const sec = ui.setTab || 'general';
-  const tabs = [['general', '👤 You'], ...(acct.configured && !ONLINE ? [['account', '🔑 Account']] : []), ['theme', '🎨 Theme'], ['sound', '🔊 Sound'], ['calendars', '📅 Calendars'], ['reminders', '🔔 Reminders'], ['backup', '💾 Backup'], ['app', '🖥 App']];
+  const SET_GROUP = { general: 'you', account: 'you', theme: 'look', sound: 'look', calendars: 'cal', reminders: 'cal', backup: 'app', app: 'app' };
+  const grp = SET_GROUP[sec] || (['you', 'look', 'cal', 'app'].includes(sec) ? sec : 'you');
+  const tabs = [['you', '👤 You & account'], ['look', '🎨 Look & sound'], ['cal', '📅 Calendars & reminders'], ['app', '💾 Backup & app']];
   const perm = 'Notification' in window ? Notification.permission : 'unsupported';
   return `${pageHead('Settings', '', '')}
-  <div class="seg settabs">${tabs.map(([k, l]) => `<button class="${sec === k ? 'on' : ''}" data-act="setTab" data-v="${k}">${l}</button>`).join('')}</div>
-  <div class="grid g2 settings-grid" data-sec="${sec}">
+  <div class="seg settabs">${tabs.map(([k, l]) => `<button class="${grp === k ? 'on' : ''}" data-act="setTab" data-v="${k}">${l}</button>`).join('')}</div>
+  <div class="grid g2 settings-grid" data-sec="${grp}">
     ${themeCard()}
     ${soundCard()}
-    ${navCard()}
     ${accountCard().replace('class="card acctcard"', 'class="card acctcard" data-sec="account"')}
     ${ONLINE && !CLOUD ? `<div class="card" data-sec="calendars" style="grid-column:1/-1"><div class="card-head"><h2>Calendars</h2><button class="btn small" data-act="gcalRefresh">Refresh</button><button class="btn small primary" data-act="gcalChoose">Choose calendars</button></div>
       <p class="muted small-text" style="margin-top:0">Shows your Google Calendar (${(D.settings.gcal?.ids || ['primary']).length} calendar(s) selected). The first time, claude.ai asks you to allow access to Google Calendar. To include your school Outlook or Garmin calendar, subscribe to its iCal link inside Google Calendar (Other calendars → + → From URL).</p>
@@ -1010,7 +874,7 @@ function viewSettings() {
     <div class="card" data-sec="general" style="grid-column:1/-1"><div class="card-head"><h2>Setup and guide</h2><button class="btn small" data-act="tourStart">🧭 Take the tour</button><button class="btn small primary" data-act="setupOpen">Change my setup</button></div>
       <p class="muted small-text" style="margin:0">Change your name, classes, bell times and timetable, or add a training week. Nothing else is touched.</p>
       ${ONLINE ? '' : `<details style="margin-top:10px"><summary><b>Share the planner with a friend</b></summary><div class="small-text"><p>Send them <b>LifePlanner-share.zip</b>. It's the same app with none of your data in it. When they first open it, they get the setup and the tour, then everything they add is saved only on their PC.</p>
-        <p>Don't send your own Solis folder: its <b>data</b> folder holds your planner. Missed info is linked to your Claude account, so on their copy those pages only work once they set up their own.</p></div></details>`}</div>
+        <p>Don't send your own Solis folder: its <b>data</b> folder holds your planner.</p></div></details>`}</div>
     <div class="card" data-sec="general"><h2>You</h2>
       <div class="field"><label>Your name (for the greeting)</label><input type="text" data-setting="name" value="${esc(D.settings.name)}" maxlength="40"></div>
       <label class="row"><input type="checkbox" data-setting="sound" ${D.settings.sound ? 'checked' : ''}> Play a sound with reminders</label>
@@ -1022,8 +886,6 @@ function viewSettings() {
         <div class="field"><label>Other houses (comma separated)</label><input type="text" data-setting="houses" value="${esc(D.settings.houses || '')}" placeholder="Hides notices meant for them"></div></div>
       <div class="field"><label>Daily study goal (minutes)</label><input type="number" min="10" max="600" step="5" data-setting="dailyGoal" value="${esc(D.settings.dailyGoal || 60)}"></div>
       <div class="field"><label>Training goal (shown on the Training tab)</label><input type="text" data-setting="trainingGoal" value="${esc(D.settings.trainingGoal || '')}" placeholder="e.g. Get fitter, faster and stronger for athletics and footy"></div>
-      <label class="row"><input type="checkbox" data-setting="inboxAuto" ${D.settings.inboxAuto !== false ? 'checked' : ''}> Put SACs, tests and other due dates from my email straight into the planner and to-do list</label>
-      <div class="field"><label>Missed info online page (optional link)</label><input type="text" data-setting="inboxUrl" value="${esc(D.settings.inboxUrl || '')}" placeholder="https://claude.ai/…"></div>
     </div>
     <div class="card" data-sec="reminders"><h2>Reminders</h2>
       <p class="muted small-text" style="margin-top:0">Pop-up notifications: <b>${perm === 'granted' ? 'on' : perm === 'denied' ? 'blocked in browser settings' : perm === 'unsupported' ? 'not supported by this browser' : 'off'}</b>.
@@ -1057,9 +919,6 @@ function viewSettings() {
       <p class="small-text"><b>Brain.fm:</b> <span id="brainfmState">${brainfmApp ? 'opens the app (' + esc(brainfmApp.split(/[\\/]/).pop()) + ')' : 'app not found, so it opens the website'}</span></p>
       <div class="row" style="margin-bottom:10px"><input type="text" placeholder="Brain.fm app path (optional, e.g. C:\\Users\\you\\AppData\\Local\\brain\\Brain.fm.exe)" data-setting="brainfmPath" value="${esc(D.settings.brainfmPath || '')}" style="flex:1;min-width:220px"><button class="btn small" data-act="brainfmTest">Test</button></div>
       <p class="muted small-text" style="margin-top:0">Closing this tab is fine: the planner shuts itself down a few minutes after the last tab is closed. To reopen it, double-click Solis.exe.</p>
-      <p class="small-text" style="margin-top:14px"><b>Instant email check:</b> <span id="claudeLinkState">${claudeLinked ? 'on. <b>Check email now</b> starts the check straight away.' : 'off. <b>Check email now</b> opens Claude instead.'}</span></p>
-      <p class="muted small-text" style="margin-top:0">To turn it on: in the Claude app open <b>Routines</b> in the left sidebar, open <b>Missed info email check</b>, click <b>⋯</b> then <b>Edit</b>, click <b>+</b> next to Trigger, pick <b>API</b>, then <b>Generate token</b> and paste it here. It's saved only on this PC.</p>
-      <div class="row" style="margin-bottom:10px"><input type="password" id="claudeToken" placeholder="${claudeLinked ? 'Token saved (paste a new one to replace it)' : 'Paste the token (starts with sk-ant-)'}" autocomplete="off" style="flex:1;min-width:220px"><button class="btn small" data-act="claudeTokenSave">Save</button>${claudeLinked ? '<button class="btn small" data-act="claudeTokenClear">Remove</button>' : ''}</div>
       <div class="row"><button class="btn" data-act="loadStarter">Re-add starter plan</button><button class="btn danger" data-act="quit">Quit planner now</button><button class="btn danger" data-act="reset">Delete all data…</button></div></div>
   </div>`;
 }
@@ -1425,27 +1284,24 @@ function stopFocus(log, quiet) {
   if (f.exam && typeof examExitFull === 'function') examExitFull();
   if (typeof publishMe === 'function') setTimeout(() => publishMe(true), 0);
   if (log && mins >= 1) {
-    D.focusLogs.push({ id: uid(), subjectId: f.subjectId, species: speciesFor(f.subjectId), ...((f.distractions || 0) >= DISTRACT_LIMIT ? { withered: true } : {}), sessionId: f.sessionId, date: ymd(new Date(f.startedAt)), start: new Date(f.startedAt).toISOString(), mins });
-    leafSessionBonus(D.focusLogs[D.focusLogs.length - 1]);
-    if (typeof newTreeExtras === 'function') newTreeExtras(D.focusLogs[D.focusLogs.length - 1]); // heirloom seeds, mythic seeds
+    D.focusLogs.push({ id: uid(), subjectId: f.subjectId, sessionId: f.sessionId, date: ymd(new Date(f.startedAt)), start: new Date(f.startedAt).toISOString(), mins });
     const sess = f.sessionId && find('session', f.sessionId);
     if (sess && !sess.done && (!quiet) && confirm(`Logged ${fmtMins(mins)} of ${subj(f.subjectId).name}. Tick off this study block?`)) sess.done = true;
-    else if (!quiet) toast(mins >= 10 ? '🌳 You grew a tree!' : 'Study time logged', `${fmtMins(mins)} of ${subj(f.subjectId).name}`);
+    else if (!quiet) toast(mins >= 10 ? `${LUMEN} Session logged` : 'Study time logged', `${fmtMins(mins)} of ${subj(f.subjectId).name}`);
   }
   save(); renderFocusBar(); if (!modal.open) render();
 }
 let focusTick = null, focusAskCancel = false;
 function renderFocusBar() {
   const bar = $('#focusBar'); const f = D && D.focus;
-  if (D && D.game) gameFeedback();
   if (!f) { bar.hidden = true; clearInterval(focusTick); focusTick = null; document.title = 'Solis'; closeFocusFull(); updateMini(null); return; }
   const s = subj(f.subjectId);
   const draw = () => {
     const m = focusElapsed(f), mm = Math.floor(m), ss = Math.floor((m - mm) * 60);
     const time = `${Math.floor(mm / 60) ? Math.floor(mm / 60) + ':' + pad(mm % 60) : mm}:${pad(ss)}`;
     const pct = Math.min(100, m / focusTarget(f, m) * 100);
-    bar.innerHTML = `<i class="fprog" style="width:${pct.toFixed(1)}%"></i><span class="ftree">${treeSvg(s.color, Math.max(10, f.planned || 45), Math.min(1, m / Math.max(10, f.planned || 45)), speciesFor(f.subjectId), 40)}</span><b>${esc(s.name)}</b> <span class="ftime">${time}</span>${f.planned ? `<span class="small-text"> / ${fmtMins(f.planned)}</span>` : ''}${f.pausedAt ? ' <span class="tag amber">Paused</span>' : ''}
-      <span class="spacer"></span>${focusAskCancel ? `<span class="small-text"><b>Cancel without logging?</b> No time, coins or tree.</span><button class="btn small danger" data-act="focusCancelYes">Yes, cancel it</button><button class="btn small" data-act="focusCancelNo">Keep going</button>`
+    bar.innerHTML = `<i class="fprog" style="width:${pct.toFixed(1)}%"></i><span class="ftree">${sunSvg(s.color, Math.min(1, m / Math.max(10, f.planned || 45)), 34)}</span><b>${esc(s.name)}</b> <span class="ftime">${time}</span>${f.planned ? `<span class="small-text"> / ${fmtMins(f.planned)}</span>` : ''}${f.pausedAt ? ' <span class="tag amber">Paused</span>' : ''}
+      <span class="spacer"></span>${focusAskCancel ? `<span class="small-text"><b>Cancel without logging?</b> Nothing gets logged.</span><button class="btn small danger" data-act="focusCancelYes">Yes, cancel it</button><button class="btn small" data-act="focusCancelNo">Keep going</button>`
         : f.exam ? `<span class="tag red">🔒 Exam mode</span><button class="btn small primary" data-act="focusStop">Stop &amp; log</button><button class="btn small" data-act="focusCancel" title="Stop without logging">Cancel</button><button class="btn small" data-act="focusMax" title="Big timer">⤢ Big timer</button>`
         : `<button class="btn small" data-act="focusPause">${f.pausedAt ? 'Resume' : 'Pause'}</button><button class="btn small primary" data-act="focusStop">Stop &amp; log</button><button class="btn small" data-act="focusCancel" title="Stop without logging">Cancel</button><button class="btn small" data-act="focusMax" title="Big timer">⤢ Big timer</button><button class="btn small" data-act="focusMini" title="A small player you can drag anywhere">▣ Mini player</button><button class="btn small" data-act="focusPop" title="A tiny window that stays on top of other apps">⧉ Pop out</button>`}`;
     updateFocusFull();
@@ -1457,15 +1313,14 @@ function renderFocusBar() {
   bar.hidden = false; draw();
   clearInterval(focusTick); focusTick = setInterval(draw, 1000);
 }
-// ---------- streaks (forest drawing lives in forest.js) ----------
+// ---------- streaks ----------
 function studyStreak() {
   const byDay = {}; for (const l of D.focusLogs) byDay[l.date] = (byDay[l.date] || 0) + l.mins;
-  let n = 0, d = today(), shield = upg('shield'); // a streak shield covers one missed day
+  let n = 0, d = today();
   if (!(byDay[d] >= 30)) d = addDays(d, -1); // today still counts if you study later
   for (;;) {
     if (byDay[d] >= 30) { n++; d = addDays(d, -1); }
     else if ((isHoliday(d) || isRestDay(d)) && d >= addDays(today(), -60)) d = addDays(d, -1); // holidays and rest days don't break it
-    else if (shield && n && byDay[addDays(d, -1)] >= 30) { shield--; d = addDays(d, -1); }
     else break;
   }
   return n;
@@ -1931,22 +1786,20 @@ document.addEventListener('click', e => {
     case 'moveToday': { const x = find(kind, id); if (kind === 'todo') x.due = today(); else x.date = today(); save(); render(); break; }
     case 'calDay': ui.daySel = el.dataset.v; view = 'today'; window.scrollTo(0, 0); render(); break;
     case 'goto': view = el.dataset.v; window.scrollTo(0, 0); render(); break;
+    case 'gotoIsland': ui.isTab = el.dataset.v; ui.isPanel = null; ui.isSel = null; view = 'islands'; window.scrollTo(0, 0); render(); break;
     case 'dismissWelcome': D.settings.welcomed = true; save(); render(); break;
     case 'calNav': { const n = +el.dataset.n; if (n === 0) { const d = new Date(); ui.calMonth = new Date(d.getFullYear(), d.getMonth(), 1); ui.calSel = today(); } else ui.calMonth = new Date(ui.calMonth.getFullYear(), ui.calMonth.getMonth() + n, 1); render(); break; }
     case 'calSel': ui.calSel = date; render(); document.getElementById('calDay')?.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); break;
     case 'daySel': ui.daySel = date; render(); break;
     case 'studyDay': ui.studyDay = date; render(); break;
-    case 'studyTab': ui.studyTab = el.dataset.v; ui.revTopic = null; window.scrollTo(0, 0); render(); break;
-    case 'rev': revAct(el); break;
-    case 'inboxSort': ui.inboxSort = el.dataset.v; render(); break;
     case 'trainWeek': ui.trainWeek = el.dataset.v === '0' ? 0 : (ui.trainWeek || 0) + Number(el.dataset.v); render(); break;
     case 'evCat': ui.evCat = el.dataset.v; render(); break;
-    case 'inboxCat': ui.inboxCat = el.dataset.v; render(); break;
     case 'setTab': ui.setTab = el.dataset.v; render(); break;
     case 'dayNav': { const n = +el.dataset.n; ui.daySel = n === 0 ? today() : addDays(ui.daySel || today(), n); render(); break; }
     case 'calFilter': ui.calFilter[el.dataset.g] = !ui.calFilter[el.dataset.g]; render(); break;
     case 'assessPast': ui.assessPast = el.dataset.v === '1'; render(); break;
     case 'studyAll': ui.studyAll = el.dataset.v === '1'; render(); break;
+    case 'studyBoard': ui.studyBoard = !ui.studyBoard; render(); if (ui.studyBoard) setTimeout(() => document.getElementById('examBoard')?.scrollIntoView({ behavior: 'smooth' }), 50); break;
     case 'studyWeek': ui.studyWeek = el.dataset.v === '0' ? 0 : ui.studyWeek + Number(el.dataset.v); render(); break;
     case 'claudeTokenSave': case 'claudeTokenClear': {
       const token = act === 'claudeTokenClear' ? '' : ($('#claudeToken')?.value || '').trim();
@@ -1957,10 +1810,6 @@ document.addEventListener('click', e => {
       break;
     }
     case 'brainfmTest': checkBrainfm().then(() => { render(); openBrainfm(); }); break;
-    case 'forestPage': ui.forestPage = el.dataset.v; render(); break;
-    case 'claim': claimChallenge(id); break;
-    case 'treeInfo': openTreeCard(id); break;
-    case 'treePick': openTreePicker(id); break;
     case 'setupOpen': openSetup(false); break;
     case 'tourStart': startTour(); break;
     case 'goSchool': view = 'school'; render(); break;
@@ -1972,8 +1821,6 @@ document.addEventListener('click', e => {
     case 'stravaOff': stravaDisconnect(); break;
     case 'boardKind': ui.boardKind = el.dataset.v; render(); break;
     case 'boardSort': ui.boardSort = { ...(ui.boardSort || {}), [ui.boardKind || 'study']: el.dataset.v }; render(); break;
-    case 'buyItem': buyItem(id); break;
-    case 'boostToggle': ui.boost = ui.boost || {}; ui.boost[id] = el.checked; break;
     case 'setLook': setLook(el.dataset.k, el.dataset.v); break;
     case 'wardCat': ui.wardCat = el.dataset.v; render(); break;
     case 'wearCos': wearCos(id); break;
@@ -1981,54 +1828,26 @@ document.addEventListener('click', e => {
     case 'avDance': { const st = document.querySelector('#wardStage .avatar'); if (st) { const d = myAv().dance; st.parentNode.classList.remove('dance-' + d); void st.parentNode.offsetWidth; st.parentNode.classList.add('dance-' + d); setTimeout(() => st.parentNode.classList.remove('dance-' + d), 2200); } break; }
     case 'ttEdit': openSetup(false); wiz.step = wizStepOf('tt'); drawSetup(); break;
     case 'editClasses': openSetup(false); wiz.step = wizStepOf('classes'); drawSetup(); break;
-    case 'arenaPage': ui.arenaPage = el.dataset.v; render(); break;
     case 'bodyPage': view = 'training'; ui.bodyPage = el.dataset.v; render(); break;
     case 'friendCompare': compareFriend(el.dataset.id); break;
     case 'friendsLogin': view = 'settings'; ui.setTab = 'account'; render(); break;
-    case 'claimQuest': claimQuest(id); break;
-    case 'fight': startBattle(id); break;
-    case 'arenaSel': ui.arenaSel = el.dataset.v; render(); break;
-    case 'moveUnlock': moveUnlock(id); break;
-    case 'moveUpgrade': moveUpgrade(id); break;
-    case 'moveEquip': moveEquip(id); break;
-    case 'crewToggle': crewToggle(id); break;
-    case 'crewUp': crewUp(id); break;
-    case 'fightMode': startBattle(null, el.dataset.v); break;
     case 'addPb': addPb(id); break;
     case 'addPbUnk': addPb(id, true); break;
     case 'delPb': if (confirm('Delete this result?')) { D.arena.pbs = D.arena.pbs.filter(p => p.id !== id); save(); render(); } break;
-    case 'buyGear': buyGear(id); break;
-    case 'openArenaBox': openArenaBox(id); break;
     case 'chalSend': sendChallenge(); break;
     case 'chalYes': answerChallenge(id, true); break;
     case 'chalNo': answerChallenge(id, false); break;
     case 'chalClaim': claimFriendChal(id); break;
     case 'chalCancel': cancelChallenge(id); break;
-    case 'equip': { const g = GEAR.find(x => x.id === id); if (g && ownsGear(id)) { D.arena.equip[g.slot] = id; save(); render(); } break; }
     case 'holAdd': addHoliday(); break;
     case 'bedOn': D.settings.bedtime = { ...bedCfg(), on: el.checked }; save(); break;
     case 'bedDay': { const b = bedCfg(), v = +el.dataset.v; D.settings.bedtime = { ...b, days: b.days.includes(v) ? b.days.filter(x => x !== v) : [...b.days, v] }; save(); render(); break; }
     case 'holDel': D.settings.holidays = holidays().filter(h => h.id !== id); save(); render(); break;
     case 'goSettingsApp': view = 'settings'; ui.setTab = 'app'; render(); break;
-    case 'treeSubj': ui.treeSubj = el.dataset.v; render(); break;
-    case 'treeSort': ui.treeSort = el.dataset.v; render(); break;
-    case 'treeFiltClear': ui.treeFilt = { sort: (ui.treeFilt || {}).sort }; render(); break;
-    case 'buyUpg': buyUpgrade(id); break;
-    case 'storeCat': ui.storeCat = el.dataset.v; render(); break;
-    case 'shopTab': ui.shopTab = el.dataset.v; render(); break;
-    case 'storeBuy': storeBuy(id); break;
-    case 'gift': claimGift(); break;
-    case 'milestone': claimMilestone(id); break;
-    case 'openBox': openBox(id); break;
-    case 'collectLeaves': collectLeaves(el); render(); break;
-    case 'buyLeafUpg': buyLeafUpgrade(id); break;
-    case 'setScene': D.game.scene = el.dataset.v; save(); render(); break;
-    case 'forestRange': ui.forestRange = el.dataset.v; render(); break;
     case 'setTheme': D.settings.theme = el.dataset.v; save(); render(); break;
     case 'setThemeMode': D.settings.themeMode = el.dataset.v; save(); render(); break;
     case 'navHeadAdd': navHead('add'); break;
     case 'navHeadNew': navHead('new'); break;
-    case 'g3view': g3view(el.dataset.v); break;
     case 'navHeadRename': navHead('rename', el.dataset.v); break;
     case 'navHeadDel': navHead('del', el.dataset.v); break;
     case 'navMove': navMove(el.dataset.v, +el.dataset.n); save(); render(); break;
@@ -2088,10 +1907,6 @@ document.addEventListener('click', e => {
       break;
     }
     case 'loadStarter': if (confirm('Add your exams, SACs, study blocks, training and tasks from the starter plan? Anything already there stays; nothing is duplicated.')) loadStarter(false); break;
-    case 'inboxDismiss': inboxDismiss(id); break;
-    case 'inboxCheck': inboxCheckNow(); break;
-    case 'inboxRead': for (const x of D.inbox?.items || []) if (!D.inboxSeen[x.id]) D.inboxSeen[x.id] = 'read'; save(); render(); break;
-    case 'inboxTask': { const x = D.inbox.items.find(i => i.id === id); D.inboxAdded = D.inboxAdded || {}; D.inboxAdded[id] = 't'; D.todos.push({ id: uid(), text: x.subject + (x.from ? ' (' + x.from + ')' : ''), due: x.due, done: false, notes: x.summary || '', remind: D.settings.remind.todo }); D.inboxSeen[id] = D.inboxSeen[id] || 'read'; save(); render(); toast('Added to To-do', x.subject); break; }
     case 'quit': if (confirm('Quit the planner? Your data is saved.')) { flush().finally(() => fetch('/api/quit', { method: 'POST' }).catch(() => { }).finally(() => { document.body.innerHTML = '<main><h1>Planner closed</h1><p>You can close this tab. Double-click Solis.exe to open it again.</p></main>'; })); } break;
     case 'reset': if (prompt('This deletes ALL your planner data. Type DELETE to confirm.') === 'DELETE') { D = migrate(freshData()); save(); render(); openSetup(true); } break;
   }
@@ -2106,10 +1921,11 @@ document.addEventListener('change', e => {
     return;
   }
   if (el.dataset.toggle) { toggleDone(el.dataset.toggle, el.dataset.id, el.checked); return; }
-  if (el.dataset.setting) { D.settings[el.dataset.setting] = el.type === 'checkbox' ? el.checked : el.value.trim().replace(/^"|"$/g, ''); save(); if (el.dataset.setting === 'inboxAuto' && el.checked && inboxToPlanner()) { save(); render(); } if (el.dataset.setting === 'brainfmPath') checkBrainfm().then(render); if (el.dataset.setting === 'bootIntro') try { localStorage.setItem('lpNoIntro', el.checked ? '0' : '1'); } catch { } return; }
+  if (el.dataset.setting) { D.settings[el.dataset.setting] = el.type === 'checkbox' ? el.checked : el.value.trim().replace(/^"|"$/g, ''); save(); if (el.dataset.setting === 'brainfmPath') checkBrainfm().then(render); if (el.dataset.setting === 'bootIntro') try { localStorage.setItem('lpNoIntro', el.checked ? '0' : '1'); } catch { } return; }
   if (el.dataset.remdef) { const k = el.dataset.remdef; D.settings.remind[k] = [...document.querySelectorAll(`[data-remdef="${k}"]`)].filter(x => x.checked).map(x => Number(x.value)).sort((a, b) => b - a); save(); return; }
   if (el.dataset.change === 'lookColor') { setLook(el.dataset.k, el.value); return; }
   if (el.dataset.change === 'lbEvent') { ui.lbEvent = el.value; render(); return; }
+  if (el.dataset.change === 'lbCat') { ui.lbCat = el.value; render(); return; }
   if (el.dataset.change === 'evCat') { ui.evCat = el.value; render(); }
   if (el.dataset.change === 'treeFilt') { ui.treeFilt = { ...(ui.treeFilt || {}), [el.dataset.k]: el.value }; render(); }
   if (el.dataset.change === 'showItem') { D.game.hidden[el.dataset.id] = !el.checked; save(); }
@@ -2120,7 +1936,6 @@ document.addEventListener('change', e => {
   if (el.dataset.change === 'dayPick' && el.value) { ui.daySel = el.value; render(); }
   if (el.dataset.change === 'navShow') { const h = new Set(D.settings.navHidden || []); el.checked ? h.delete(el.dataset.v) : h.add(el.dataset.v); D.settings.navHidden = [...h]; save(); render(); }
   if (el.dataset.change === 'themeGlass') { D.settings.themeGlass = el.checked; save(); render(); }
-  if (el.dataset.change === 'importInbox' && el.files[0]) el.files[0].text().then(txt => { try { const d = JSON.parse(txt); if (!Array.isArray(d.items)) throw 0; D.inbox = d; save(); render(); } catch { alert("That isn't a Missed info summary file."); } });
   if (el.dataset.change === 'importIcs' && el.files[0]) {
     const file = el.files[0];
     file.text().then(txt => {
@@ -2151,11 +1966,6 @@ document.addEventListener('submit', e => {
   save(); render();
   const again = $('[data-form="quickTodo"] input[name=text]'); if (again) again.focus();
 });
-document.addEventListener('keydown', e => {
-  if (modal.open || e.ctrlKey || e.metaKey || e.altKey || /INPUT|TEXTAREA|SELECT/.test(document.activeElement.tagName)) return;
-  const keys = { '1': 'today', '2': 'calendar', '3': 'study', '4': 'training', '5': 'arena', '6': 'friends', '7': 'todo', '8': 'todo', '9': 'settings' };
-  if (keys[e.key]) { view = keys[e.key]; render(); }
-});
 window.addEventListener('beforeunload', e => { if (dirty || saving) { if (!ONLINE) stash(JSON.stringify(D)); flush(); e.preventDefault(); } });
 addEventListener('online', () => { if (ONLINE && dirty) flush(); });
 document.addEventListener('visibilitychange', () => { if (document.hidden && dirty && !ONLINE) { stash(JSON.stringify(D)); flush(); } else if (!document.hidden) ping(); });
@@ -2179,7 +1989,6 @@ async function initOnline() {
   // that upload merges them in)
   OL.subscribe(remote => { if (dirty || saving) return false; const keepFired = D.fired; D = migrate(remote); D.fired = keepFired; if (!modal.open) render(); renderFocusBar(); },
     aside => { D = migrate(LPMerge.merge(null, D, aside)); save(); render(); renderFocusBar(); }, tookMerge);
-  OL.watchInbox(applyInbox);
   loadGoogle(false);
   setInterval(() => loadGoogle(false), 30 * 60000);
   checkReminders();
@@ -2192,11 +2001,11 @@ async function initOnline() {
 const bootStart = performance.now();
 function bootDone(skip) {
   const el = document.getElementById('boot'); if (!el || el.classList.contains('out')) return;
-  const go = () => { el.classList.add('out'); setTimeout(() => el.remove(), 450); };
+  const go = () => { el.classList.add('out'); setTimeout(() => el.remove(), 300); };
   if (skip) return go();
   const hello = document.getElementById('bootHello'), hr = new Date().getHours();
   if (hello && D?.settings?.name) hello.textContent = `Good ${hr < 12 ? 'morning' : hr < 18 ? 'afternoon' : 'evening'}, ${D.settings.name}`;
-  setTimeout(go, Math.max(0, (matchMedia('(prefers-reduced-motion: reduce)').matches ? 300 : 2600) - (performance.now() - bootStart)));
+  setTimeout(go, Math.max(0, (matchMedia('(prefers-reduced-motion: reduce)').matches ? 250 : 1300) - (performance.now() - bootStart)));
 }
 {
   const skip = () => bootDone(true);
@@ -2240,7 +2049,7 @@ function bootDone(skip) {
   checkBrainfm().then(() => { if (view === 'settings' && !modal.open) render(); });
   checkTempFolder();
   checkClaudeLink();
-  aiLoad().then(() => { aiFab(); if (view === 'inbox' || view === 'settings') render(); });
+  aiLoad().then(() => { aiFab(); if (view === 'settings') render(); });
   loadAccount().then(a => { if (a.signedIn) { publishMe(true); refreshFriends(true); } if (view === 'settings' && !modal.open) render(); });
   checkUpdate();
   setInterval(checkUpdate, 60000); // cheap local check, so a downloaded update installs within a minute
@@ -2248,10 +2057,6 @@ function bootDone(skip) {
   setInterval(checkReminders, 30000);
   setInterval(ping, 20000);
   refreshFeeds(false);
-  if (inboxToPlanner()) { save(); render(); }
-  syncInboxDismissed();
-  loadInbox();
-  setInterval(loadInbox, 60000);
   setInterval(() => refreshFeeds(false), 30 * 60000);
   // re-render at midnight-ish so "today" stays right
   let day = today();

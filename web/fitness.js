@@ -402,7 +402,7 @@ function liftPrGroups() {
 function athleticsPage() {
   const sec = ui.prSec || (ui.athCat && ui.athCat !== 'records' ? prSecOf(ui.athCat) : ui.athCat) || 'run';
   const tabs = `<div class="seg athtabs">${PR_SECS.map(([k, l]) => `<button class="${sec === k ? 'on' : ''}" data-fit="prSec" data-v="${k}">${l}</button>`).join('')}<button class="${sec === 'records' ? 'on' : ''}" data-fit="prSec" data-v="records">🏆 Records</button></div>`;
-  if (sec === 'records') return `${tabs}${bestsSummary()}${recordsHtml().replace(/<h2 style="margin:18px 0 10px">.*<\/h2>/, '')}`;
+  if (sec === 'records') return `${tabs}${bestsSummary()}${recordsHtml().replace(/<h2 style="margin:18px 0 10px">.*<\/h2>/, '')}${typeof athleticsBoardCard === 'function' && friendsCount() ? athleticsBoardCard() : ''}`;
   const S = PR_SECS.find(x => x[0] === sec), sub = S[2].includes(ui.prSub) ? ui.prSub : '';
   const subs = `<div class="prsubs">${[['', 'All'], ...S[2].map(k => [k, PR_SUBS[k]])].map(([k, l]) => `<button class="${sub === k ? 'on' : ''}" data-fit="prSub" data-v="${k}">${l}</button>`).join('')}</div>`;
   const card = T => {

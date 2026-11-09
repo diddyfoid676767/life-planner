@@ -65,7 +65,7 @@ function drawSetup() {
   let body = '';
   if (st === -1) {
     body = `<div class="wizhero">📅</div><h2>Welcome to Solis</h2>
-      <p>Your study, classes, training and tasks in one place, with a forest that grows while you study and an arena that gets tougher as you train.</p>
+      <p>Your study, classes, training and tasks in one place, with Lumen for every study session, Ember for every workout, and islands you build with them.</p>
       <p class="muted">A few quick questions set it up for you. You can change everything later in Settings.</p>
       <div class="row wizbtns"><button class="btn primary big" data-w="next">Set up my planner →</button></div>
       ${W.seed ? `<p class="muted small-text" style="text-align:center;margin-top:14px">Moving your own planner to a new PC? <a href="#" data-w="starter">Load the built-in plan instead</a></p>` : ''}`;
@@ -79,14 +79,14 @@ function drawSetup() {
   } else if (key === 'account') {
     if (!acctLoaded) loadAccount().then(() => { if (wiz) drawSetup(); });
     body = !acctLoaded ? '<h2>Your account</h2><p class="muted">Loading…</p>' : !acct.configured ? '<h2>Your account</h2><p class="muted">Accounts aren\'t switched on for this copy of Solis, so friends and chats are off. Press Next to carry on.</p>' : acct.signedIn ? `<h2>You're signed in</h2><p class="muted">You're <b>@${esc(acct.username)}</b>. Add some friends so you can race them on the leaderboards. You can always add more on the Friends page.</p>${friendSuggestHtml(true)}`
-      : `<h2>Make your account</h2><p class="muted">Solis is better with friends: race them on the leaderboards, battle them in the Arena and chat. Pick a username (no email needed) or log in if you already have one.</p>${accountCard().replace('<h2>Log in to Solis</h2>', '').replace('<div class="acct-hero">👥</div>', '')}`;
+      : `<h2>Make your account</h2><p class="muted">Solis is better with friends: race them on the leaderboard, build your house island together and chat. Pick a username (no email needed) or log in if you already have one.</p>${accountCard().replace('<h2>Log in to Solis</h2>', '').replace('<div class="acct-hero">👥</div>', '')}`;
   } else if (key === 'calendar') {
     body = `<h2>Your calendars</h2><p class="muted">Paste a private iCal (.ics) link from Google Calendar, Outlook or your school portal and its events show up in Today and Calendar. You can skip this and add them later in Settings.</p>
       <div class="wizlist">${W.feeds.map((f, i) => `<div class="row"><span>📅</span><input type="text" data-wf="feeds.${i}.name" value="${esc(f.name)}" placeholder="Name, e.g. School" style="max-width:180px"><input type="text" data-wf="feeds.${i}.url" value="${esc(f.url || '')}" placeholder="https://…/basic.ics" ${f.id && !f.url ? 'disabled' : ''}><button class="iconbtn" data-w="feedDel" data-i="${i}" title="Remove">✕</button></div>`).join('') || '<p class="muted small-text">No calendars yet.</p>'}</div>
       <button class="btn small" data-w="feedAdd">+ Add a calendar link</button>
       <p class="muted small-text">In Google Calendar: Settings, your calendar, "Secret address in iCal format". In Outlook: Settings, Calendar, Shared calendars, Publish.</p>`;
   } else if (key === 'classes') {
-    body = `<h2>Your classes</h2><p class="muted">Add the subjects you study. Each gets its own colour and tree in the forest.</p>
+    body = `<h2>Your classes</h2><p class="muted">Add the subjects you study. Each gets its own colour.</p>
       <div class="wizlist">${W.subjects.map((x, i) => {
         const used = x.id && (D.assessments.some(a => a.subjectId === x.id) || D.sessions.some(a => a.subjectId === x.id));
         return `<div class="row"><span class="dot" style="background:${x.color || SUBJ_COLORS[i % SUBJ_COLORS.length]}"></span><input type="text" data-wf="subjects.${i}.name" value="${esc(x.name)}" placeholder="e.g. ${['English', 'Maths', 'Biology', 'History', 'Art'][i % 5]}" maxlength="40">
@@ -111,12 +111,12 @@ function drawSetup() {
       <p class="muted" style="margin-bottom:6px">Your usual week. Pick a sport for each day you train and leave rest days empty.</p>
       <div class="wizweek">${W.week.map((w, i) => `<div class="row"><b class="wizday">${DOW[w.d]}</b><select data-wf="week.${i}.sport"><option value="">Rest</option>${WIZ_SPORTS.map(s => `<option ${w.sport === s ? 'selected' : ''}>${s}</option>`).join('')}</select>
         <input type="time" data-wf="week.${i}.time" value="${w.time}"><input type="number" min="10" max="240" step="5" data-wf="week.${i}.mins" value="${w.mins}"><span class="muted small-text">min</span></div>`).join('')}</div>
-      <p class="muted small-text">${W.first ? '' : 'These are added on top of the workouts you already have. '}Workouts are added for the next ${W.weeks} weeks. Ticking them off grows your athlete card in the Arena.</p>`;
+      <p class="muted small-text">${W.first ? '' : 'These are added on top of the workouts you already have. '}Workouts are added for the next ${W.weeks} weeks. Ticking them off earns Ember and grows your Body card.</p>`;
   } else if (key === 'habits') {
     body = `<h2>Good habits</h2>
       <div class="field"><label>Daily study goal (minutes)</label><input type="number" min="10" max="600" step="5" data-wf="daily" value="${W.daily}"></div>
       <div class="row" style="gap:10px"><label><input type="checkbox" data-wf="bed" ${W.bed ? 'checked' : ''} style="width:auto"> Bedtime on school nights at</label><input type="time" data-wf="bedTime" value="${W.bedTime}" style="width:auto"></div>
-      <p class="muted small-text">The planner nudges you to wind down 30 minutes before, and you earn coins for early nights.</p>
+      <p class="muted small-text">The planner nudges you to wind down 30 minutes before, </p>
       ${W.first ? `<div class="wiznote">💡 <b>Reminders:</b> after this, click <b>Turn on reminders</b> at the top right so pop-ups can reach you.</div>` : ''}`;
   }
   const nav = st < 0 ? '' : `<div class="row wizbtns">${st > 0 ? '<button class="btn" data-w="back">← Back</button>' : W.first ? '' : '<button class="btn" data-w="close">Cancel</button>'}<span style="flex:1"></span>
@@ -220,51 +220,38 @@ function finishSetup() {
 // Each page gets a step on its menu button, then one per section. A step whose
 // section isn't on screen (no data yet, a card that's turned off) is skipped.
 const TOUR_PAGES = {
-  today: ['☀️ Today', 'Your home page. Your whole day on one screen.', [
+  today: ['☀️ Today', 'Your home page. Your whole day on one screen. The sidebar has five places (keys 1 to 5 jump between them), and You at the bottom.', [
     ['.hero', 'Your day at a glance', 'How many things you\'ve ticked off, your study goal and your streak. <b>Start studying</b> starts a focus timer straight away.'],
-    ['.quickadd', 'Quick add', 'Type things like <b>"Biology SAC next Thursday 9am"</b> or <b>"dentist 3 Nov 4pm"</b>. It works out what it is, the subject, the date and the time, and puts it in the right place. For a SAC it offers to plan your revision too. Press <b>/</b> anywhere to jump here.'],
+    ['.quickadd', 'Quick add', 'Type things like <b>"Biology SAC next Thursday 9am"</b> or <b>"dentist 3 Nov 4pm"</b>. It works out what it is, the subject, the date and the time, and puts it in the right place. Press <b>/</b> anywhere to jump here, or <b>Q</b> for the Add button in the sidebar.'],
     ['.tweek', 'Pick a day', 'Click any day to plan it. The dots show what\'s on and the green bar shows how much is ticked off. Use the arrows to move between days and weeks.'],
     ['.tday', 'The day, in time order', 'Tick things off as you go, press <b>▶ Focus</b> on a study block, and use the buttons underneath to add more.'],
-    ['.ttasks', 'Tasks', 'Type a task and press Enter to add it. Overdue and missed things show underneath so nothing slips.'],
-    ['.tside', 'Coming up', 'Your next SAC, deadline and race, plus the next three days. Click a day to open it.'],
+    ['.ttasks', 'To-do', 'Type a task and press Enter to add it. <b>Show all</b> opens the full list. During a lesson, Class mode shows at the top of Today.'],
+    ['.tside', 'Coming up', 'Your next SAC, deadline and race.'],
     ['.apps-row', 'Your apps', 'Shortcuts to the apps and websites you use for school and training.']]],
   calendar: ['📅 Calendar', 'The whole month at once.', [
     ['.calbar', 'Month and filters', 'Move between months, connect a Google or school calendar, and choose what to show.'],
     ['.cal', 'Month view', 'Click any day to see it underneath. Events from linked calendars show up here too.'],
-    ['.calday', 'The day you picked', 'Everything on that day, laid out across the page, with buttons to add study, SACs, workouts, events, deadlines and tasks.']]],
-  study: ['📚 Study', 'Subjects, SACs and study blocks.', [
-    ['.upnext-row', 'What\'s next', 'Your next study block, next SAC or exam and today\'s progress. <b>Plan more</b> builds a revision plan for a SAC.'],
-    ['.study-grid2 > .study-side:first-child > .card:first-child', 'This week', 'Pick a day to see its study blocks. Press <b>▶ Start</b> to focus. A session of 10+ minutes plants a tree.'],
-    ['.examhub', 'Exam lead-up', 'A countdown for each exam and how ready you are. <b>Add exam prep</b> adds timed past papers, SAC prep and a light day before each exam to your current plan. After a paper, <b>Log a paper</b> with your score and the topics you lost marks on, and your next blocks focus on them.'],
-    ['.subjcard', 'Subjects and links', 'Your classes and their colours, plus links to study guides and notes.'],
-    ['.study-grid2 > .study-side:last-child > .card:first-child', 'SACs & exams', 'Every assessment with a countdown. Tick one off when it\'s done to earn coins.'],
-    ['.study-grid2 > .study-side:last-child > .card:last-child', 'Studied this week', 'Focus time per subject against what you planned.']]],
+    ['.calday', 'The day you picked', 'Everything on that day, with buttons to add study, SACs, workouts, events, deadlines and tasks.']]],
+  study: ['📚 Study', 'Your study tracker: how much you study, your SAC scores and your exams.', [
+    ['.upnext-row', 'What\'s next', 'Your next study block, next SAC or exam and today\'s progress.'],
+    ['.study-grid2 > .study-side:first-child > .card:first-child', 'Study trend', 'Your study time for each of the last 8 weeks. Press <b>▶ Start studying</b> to time a session and earn Lumen.'],
+    ['.cdscores', 'SAC scores', 'Add each result as a percentage with its weighting. Each subject shows its weighted average, which also builds your Mind card.'],
+    ['.subjcard', 'Subjects and links', 'Your classes and their colours.']]],
   school: ['🏫 Class mode', 'A timer for each school period.', [
-    ['.clsgrid > :first-child', 'Today\'s periods', 'Pick the subject for each period. When the bell goes, rate your effort from 😴 to 🔥 for coins.'],
+    ['.clsgrid > :first-child', 'Today\'s periods', 'Pick the subject for each period. When the bell goes, rate your effort from 😴 to 🔥.'],
     ['.clsgrid > :last-child', 'Effort and bell times', 'Your average effort per subject this week. Check the bell times match your school.']]],
-  forest: ['🌳 Forest', 'Every focus session grows a tree here.', [
-    ['.scene-wrap', 'Your 3D garden', 'Drag empty space to move around, pinch (or ＋ −) to zoom, right-drag or ⟲ ⟳ to spin, and ◇ for an isometric view. Drag a tree to another tile to move it, click it to name or water it, and brush through trees to see them bend. Trees grow 🍃 leaves: tap a leaf bubble or Collect to bank them. ✨ Effects turns clouds, weather and roaming animals on or off.'],
-    ['.forest-tabs', 'Trees, critters and the shop', 'Choose each subject\'s tree, meet your critters, and spend coins on scenes, decorations and upgrades.'],
-    ['.forest-cols > .stack:first-child', 'Challenges', 'New challenges every day and week. Claim the coins when you finish one.'],
-    ['.forest-cols > .stack:last-child', 'Milestones and your trees', 'Big goals with bigger rewards, plus which tree each subject grows.']]],
   training: ['💪 Fitness', 'Train, track your bests and grow your Body card.', [
     ['.btiles', 'This week at a glance', 'Ember earned, training time, sessions done and your day streak. Start a workout from here.'],
     ['.bodytabs', 'Train, Progress and Body', '<b>Train</b> has your plan, events and recent workouts, <b>Progress</b> tracks personal records and charts, and <b>Body</b> shows your Body card stats and heat map.']]],
-  arena: ['⚔️ Arena', 'Battle with the athlete your workouts built.', [
-    ['.ahero', 'Your athlete', 'Your stats, today\'s readiness bonus, 💪 Grit, combo and battles left today.'],
-    ['.arenatabs', 'Arena tabs', 'Battle gym leaders and bosses, check quests, unlock and upgrade moves, and spend Grit on gear and outfits.']]],
-  friends: ['👥 Friends', 'Race your friends at studying and training.', [
-    ['.fme', 'Your week', 'Your numbers this week. Friends see these and your avatar, nothing else.'],
-    ['.friends-main', 'Leaderboards and friends', 'Switch between study, training and health boards, search friends by username, and press <b>Compare</b> to go head to head.']]],
+  islands: ['🏝️ Islands', 'Your island, your house island and the boss island.', [
+    ['.isswitch', 'Three islands', 'Build your own island with Lumen and Ember, build the house island together (the 🏰 House button has your house, its members and rankings), and fight the weekly boss.']]],
+  friends: ['👥 Friends', 'Chat with friends and race them on the leaderboard.', [
+    ['#subnav', 'Chats and Leaderboard', 'Message your friends on Chats. The Leaderboard has one board with a dropdown for each category.']]],
   todo: ['✅ To-do', 'Your tasks, events and deadlines in one place.', [
     ['.todo-side', 'Pick what to show', 'All tasks, today, the next 7 days, each list, and your upcoming or past events.'],
     ['.todo-main', 'Your list', 'Tasks grouped by when they\'re due. Add one at the top, or press <b>+ Event</b> for birthdays, appointments and deadlines.']]],
-  inbox: ['📬 Missed info', 'School emails and notices you might have missed.', [
-    ['.summarycard', 'The summary', 'A short catch-up of what came in. <b>Check email now</b> runs a fresh check.'],
-    ['.catchips', 'Filter by type', 'Show just the action items, deadlines or events.'],
-    ['.mailcards', 'Each email', 'Due dates go straight into your planner. Cross one off and it never reminds you again.']]],
-  settings: ['⚙️ Settings', 'Make the planner yours.', [
-    ['.settabs', 'Settings sections', 'Your details, your <b>Account</b> for friends, <b>Theme</b> colours, calendars, reminders, backups and app options. You can replay this tour from here.']]],
+  settings: ['⚙️ Settings', 'Make the planner yours. Open it from You, at the bottom of the sidebar.', [
+    ['.settabs', 'Settings sections', 'You &amp; account, Look &amp; sound, Calendars &amp; reminders, and Backup &amp; app. You can replay this tour from here.']]],
 };
 let TOUR = [], tourAt = -1;
 function startTour() {

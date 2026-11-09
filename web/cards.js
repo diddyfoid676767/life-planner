@@ -69,7 +69,7 @@ function cdScores() {
   const st = cdState(), sc = st.scores, rs = st.res || {}, terms = [...new Set([...Object.keys(sc), ...Object.keys(rs)])].sort().reverse(), out = {};
   for (const s of D.subjects) for (const t of terms) {
     const list = rs[t]?.[s.id]; // 2.51: single results (SACs, tests) entered one at a time, averaged
-    if (list?.length) { out[s.id] = { pct: Math.round(list.reduce((a, r) => a + r.v, 0) / list.length), term: t, n: list.length }; break; }
+    if (list?.length) { const W = list.reduce((a, r) => a + (+r.w || 1), 0); out[s.id] = { pct: Math.round(list.reduce((a, r) => a + r.v * (+r.w || 1), 0) / W), term: t, n: list.length }; break; } // 2.55: each result has a weighting
     const v = sc[t]?.[s.id]; if (v !== '' && v != null && !isNaN(+v)) { out[s.id] = { pct: +v, term: t }; break; }
   }
   return out;
@@ -181,12 +181,12 @@ function cdParts() {
   const rs = (st.res || {})[term] || {};
   const subjRows = D.subjects.map(s => {
     const [wts, scale] = cdSubjInfo(s.name), cur = latest[s.id], list = rs[s.id] || [], old = !list.length && sc[s.id] != null;
-    const chips = list.map(r => `<span class="cdres">${esc(r.n || 'Result')} <b>${r.v}%</b><button class="iconbtn" data-cd="delRes" data-s="${s.id}" data-id="${r.id}" title="Remove">✕</button></span>`).join('')
+    const chips = list.map(r => `<span class="cdres">${esc(r.n || 'Result')} <b>${r.v}%</b>${(+r.w || 1) !== 1 ? `<small class="muted"> ×${+r.w}</small>` : ''}<button class="iconbtn" data-cd="delRes" data-s="${s.id}" data-id="${r.id}" title="Remove">✕</button></span>`).join('')
       + (old ? `<span class="cdres">Term average <b>${sc[s.id]}%</b><button class="iconbtn" data-cd="delOld" data-s="${s.id}" title="Remove">✕</button></span>` : '');
     return `<div class="cdsubjrow"><div class="cdsubjtop"><span><span class="dot" style="background:${s.color}"></span> <b>${esc(s.name)}</b></span>
-        <span class="muted small-text">${cur ? `${cur.pct}%${cur.term !== term ? ` (from ${cdTermName(cur.term)})` : cur.n ? ` average of ${cur.n}` : ''}` : 'No score yet'}</span></div>
+        <span class="muted small-text">${cur ? `${cur.pct}%${cur.term !== term ? ` (from ${cdTermName(cur.term)})` : cur.n ? ` weighted average of ${cur.n}` : ''}` : 'No score yet'}</span></div>
       <div class="muted small-text">${Object.entries(wts).sort((a, b) => b[1] - a[1]).map(([k, v]) => `${CD_STAT[k][1]} ${Math.round(v * 100)}%`).join(' · ')}${scale !== 1 ? ` · scaled ×${scale}` : ''}</div>
-      <div class="cdreslist">${chips}<input type="text" class="cdresn" id="cdn-${s.id}" maxlength="30" placeholder="What (e.g. SAC 1)"><input type="number" min="0" max="100" step="1" class="cdpct" id="cdr-${s.id}" data-cdadd="${s.id}" placeholder="%"><button class="btn small" data-cd="addRes" data-s="${s.id}">Add</button></div></div>`;
+      <div class="cdreslist">${chips}<input type="text" class="cdresn" id="cdn-${s.id}" maxlength="30" placeholder="What (e.g. SAC 1)"><input type="number" min="0" max="100" step="1" class="cdpct" id="cdr-${s.id}" data-cdadd="${s.id}" placeholder="%"><input type="number" min="0.1" max="10" step="0.1" class="cdpct cdw" id="cdw-${s.id}" data-cdadd="${s.id}" placeholder="Weight" title="Weighting: how much this result counts (1 = normal, 2 = counts double)"><button class="btn small" data-cd="addRes" data-s="${s.id}">Add</button></div></div>`;
   }).join('');
   const src = cdBodySources(), hrs = cdSportHours();
   const srcList = BODY_STATS.map(([k, n, c]) => { const top = src.filter(s => s.k === k).sort((a, b) => b.v - a.v).slice(0, 3);
@@ -199,7 +199,7 @@ function cdParts() {
     </div>
     <p class="muted small-text">Sessions count from ${CD_MIN} minutes and pay by the minute (training pays more when it's hard). Class mode's lock-in pays about a third as much, scaled by your effort rating. Spend them on spells and moves in the Build below.</p>
 `,
-    banner: `    ${fresh ? `<div class="card banner"><b>You're on a starter card.</b> <span class="muted">Add your subject scores below and log a few PRs on Training → Athletics to build your real card.</span></div>` : ''}
+    banner: `    ${fresh ? `<div class="card banner"><b>You're on a starter card.</b> <span class="muted">Add your SAC scores on Study and log a few PRs on Fitness to build your real card.</span></div>` : ''}
 `,
     cards: `    <div class="cdcards">
       <div class="card cdcard cd-m"><div class="cdhead"><span>🧠 MIND</span><b>${ch.mind}</b></div>${cdBars(MIND_STATS, ch.m)}</div>
@@ -212,14 +212,14 @@ function cdParts() {
 `,
     build: `    ${typeof ftBuildHtml === 'function' ? `<div class="friends-main"><div class="stack">${ftBuildHtml()}</div><div class="stack">${ftBattlesHtml()}</div></div>` : ''}
 `,
+    scores: `<div class="card cdscores"><div class="card-head"><h2>🎓 SAC scores, ${cdTermName(term)}</h2></div>
+        <p class="muted small-text">Add each result as you get it back (SACs, tests, exams) as a percentage, with its weighting (1 = normal, 2 = counts double). Each subject shows the weighted average of this term's results, which also builds your Mind card. A subject with nothing this term uses last term's score.</p>
+        ${D.subjects.length ? `<div class="cdsubj">${subjRows}</div>` : '<p class="empty">Add your subjects first.</p>'}</div>`,
     stats: `    <div class="friends-main">
-      <div class="stack"><div class="card"><h3>🧠 Subject scores, ${cdTermName(term)}</h3>
-        <p class="muted small-text">Add each result as you get it back (SACs, tests, exams), one at a time, as a percentage. Each subject uses the average of this term's results and feeds Mind by the weights shown, scaled roughly like VCE scaling. A subject with nothing this term uses last term's score. These will come from MyWestbourne once the app can read it.</p>
-        ${D.subjects.length ? `<div class="cdsubj">${subjRows}</div>` : '<p class="empty">Add your subjects on the Study page first.</p>'}</div></div>
       <div class="stack"><div class="card"><h3>💪 What builds your Body</h3>${srcList}
         <p class="muted small-text">Your best three results for each stat count. PRs come from Training → Athletics, your gym log (estimated 1RM from any set, 12+ rep sets help Endurance), swimming by stroke, logged runs and team sports.</p>
-        <button class="btn small" data-act="goto" data-v="training">Log a PR</button></div>
-        <div class="card"><h3>🏉 Sports log</h3>
+        <button class="btn small" data-act="goto" data-v="training">Log a PR</button></div></div>
+      <div class="stack"><div class="card"><h3>🏉 Sports log</h3>
           <div class="row cdsport"><select id="cdSport">${CD_SPORTS.map(([id, n]) => `<option value="${id}">${n}</option>`).join('')}</select>
             <select id="cdKind"><option>Game</option><option>Training</option></select>
             <input id="cdMins" type="number" min="15" max="240" step="5" value="60" title="Minutes">
@@ -255,8 +255,9 @@ function cdAddRes(sid) {
   const inp = document.getElementById('cdr-' + sid), nm = document.getElementById('cdn-' + sid), raw = (inp?.value || '').trim();
   if (raw === '' || isNaN(+raw)) { inp?.focus(); return; }
   const st = cdState(), t = cdTerm(), r = st.res = st.res || {}, T = r[t] = r[t] || {};
-  (T[sid] = T[sid] || []).push({ id: uid(), v: Math.max(0, Math.min(100, Math.round(+raw))), n: (nm?.value || '').trim().slice(0, 30), d: today() });
-  inp.value = ''; if (nm) nm.value = '';
+  const wi = document.getElementById('cdw-' + sid), w = Math.max(0.1, Math.min(10, +(wi?.value || 1) || 1));
+  (T[sid] = T[sid] || []).push({ id: uid(), v: Math.max(0, Math.min(100, Math.round(+raw))), n: (nm?.value || '').trim().slice(0, 30), d: today(), ...(w !== 1 ? { w } : {}) });
+  inp.value = ''; if (nm) nm.value = ''; if (wi) wi.value = '';
   save(); render(); toast('🧠 Result added', `${D.subjects.find(x => x.id === sid)?.name || 'Subject'}: ${Math.round(+raw)}%`);
   setTimeout(() => document.getElementById('cdr-' + sid)?.focus(), 0);
 }

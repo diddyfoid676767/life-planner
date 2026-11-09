@@ -88,7 +88,7 @@ function viewTodo() {
 function todoTodayCard(overdueHtml) {
   const t = today(), open = D.todos.filter(x => !x.done);
   const due = open.filter(x => x.due && x.due <= t).sort((a, b) => a.due.localeCompare(b.due) || (+b.pri || 0) - (+a.pri || 0));
-  return `<div class="card ttasks"><div class="card-head"><h2>To-do</h2><span class="muted small-text">${open.length} open</span><button class="btn small" data-act="goto" data-v="todo">Open →</button></div>
+  return `<div class="card ttasks"><div class="card-head"><h2>To-do</h2><span class="muted small-text">${open.length} open</span><button class="btn small" data-act="goto" data-v="todo">Show all →</button></div>
     <form class="row" data-form="quickTodo" style="margin-bottom:8px"><input type="text" name="text" placeholder="＋ Add a task and press Enter" style="flex:1" maxlength="300"><input type="date" name="due" style="width:auto" title="Due date (optional)"></form>
     <div class="tscroll">${due.length ? `<div class="tg-head">Due today or overdue <span>${due.length}</span></div><ul class="todo-list compact">${due.slice(0, 8).map(todoRow).join('')}</ul>${due.length > 8 ? `<button class="btn small" data-act="goto" data-v="todo">+${due.length - 8} more</button>` : ''}`
       : `<div class="empty">Nothing due today.${open.length ? ` <a href="#" data-act="goto" data-v="todo">See all ${open.length} tasks</a>` : ' 🎉'}</div>`}

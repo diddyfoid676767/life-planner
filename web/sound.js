@@ -118,29 +118,6 @@ function crowdSfx(c, big) {
   for (let i = 0; i < (big ? 4 : 2); i++) tone(c, { f: 380 + Math.random() * 220, f2: 520 + Math.random() * 300, dur: .35, vol: .02, type: 'sawtooth', filter: 'lowpass', q: 1400, at: .1 + Math.random() * dur * .6, attack: .08 });
   for (let i = 0; i < (big ? 26 : 9); i++) hiss(c, { f: 1800 + Math.random() * 2500, dur: .03, vol: .035, at: .2 + Math.random() * dur, q: 1.5, attack: .001 });
 }
-function battleSfx(side, kind, d = {}) {
-  const c = sfxReady('arena'); if (!c) return;
-  if (kind === 'send') { if (side === 'me') crowdSfx(c, false); hiss(c, { f: 500, f2: 4000, dur: .3, vol: .05 }); tone(c, { f: 523, f2: 1047, dur: .2, vol: .06, type: 'triangle', at: .2 }); }
-  else if (kind === 'recall') tone(c, { f: 900, f2: 300, dur: .25, vol: .05, type: 'triangle' });
-  else if (kind === 'move' && d.move) { const m = d.move; (SPECIAL_TYPES.has(m.type) ? TYPE_SND[m.type] : c => hiss(c, { f: 500, f2: 1800, dur: .18, vol: .05, q: 1.5 }))?.(c); if (!isDmg(m)) tone(c, { f: 660, f2: 990, dur: .2, vol: .04, type: 'triangle' }); }
-  else if (kind === 'hit') {
-    if (d.dot) { tone(c, { f: 260, f2: 180, dur: .15, vol: .06, type: 'triangle' }); (TYPE_SND[d.type] || TYPE_SND.normal)(c); return; }
-    const big = d.eff > 1 || d.crit, weak = d.eff && d.eff < 1;
-    tone(c, { f: weak ? 140 : 110, f2: 45, dur: big ? .3 : .18, vol: big ? .2 : weak ? .08 : .14 }); hiss(c, { f: big ? 1800 : 1200, f2: 400, dur: big ? .25 : .14, vol: big ? .12 : weak ? .04 : .08, type: 'lowpass' });
-    if (!SPECIAL_TYPES.has(d.type)) TYPE_SND[d.type]?.(c);
-    if (d.crit) tone(c, { f: 1760, dur: .25, vol: .05, type: 'triangle', at: .05 });
-    if (side === 'them' && (d.crit || d.eff > 1) && Math.random() < .7) crowdSfx(c, !!d.crit); else if (side === 'them' && Math.random() < .12) crowdSfx(c, false);
-    if (d.eff > 1) [880, 1319].forEach((f, i) => tone(c, { f, dur: .2, vol: .04, type: 'square', filter: 'lowpass', q: 2500, at: .08 + i * .07 }));
-  }
-  else if (kind === 'miss') hiss(c, { f: 2500, f2: 600, dur: .25, vol: .05, q: 3 });
-  else if (kind === 'faint') { if (side === 'them') crowdSfx(c, false); else hiss(c, { f: 700, f2: 300, dur: .9, vol: .04, q: .5 }); tone(c, { f: 600, f2: 90, dur: .8, vol: .08, type: 'triangle' }); tone(c, { f: 80, f2: 40, dur: .3, vol: .12, at: .65 }); }
-  else if (kind === 'heal') [784, 988, 1175].forEach((f, i) => tone(c, { f, dur: .3, vol: .05, type: 'triangle', at: i * .07 }));
-  else if (kind === 'stat') (d.up ? [523, 659, 784] : [784, 659, 523]).forEach((f, i) => tone(c, { f, dur: .12, vol: .05, type: 'square', filter: 'lowpass', q: 2200, at: i * .06 }));
-  else if (kind === 'status') ({ slp: () => tone(c, { f: 500, f2: 300, dur: .6, vol: .04 }), frz: () => TYPE_SND.frost(c), par: () => TYPE_SND.spark(c), conf: () => TYPE_SND.mind(c), brn: () => TYPE_SND.fire(c), psn: () => TYPE_SND.toxic(c), tox: () => TYPE_SND.toxic(c), leech: () => TYPE_SND.nature(c) }[d.st] || (() => tone(c, { f: 400, f2: 300, dur: .2, vol: .04 })))();
-  else if (kind === 'charge') hiss(c, { f: 300, f2: 2500, dur: .5, vol: .06 });
-  else if (kind === 'phase') { tone(c, { f: 80, f2: 160, dur: .9, vol: .14, type: 'sawtooth', filter: 'lowpass', q: 400 }); hiss(c, { f: 200, dur: .9, vol: .06, type: 'lowpass' }); }
-  else if (kind === 'win') { crowdSfx(c, side === 'me'); } if (kind === 'win') (side === 'me' ? [523, 523, 523, 659, 784, 1047] : [392, 349, 311, 262]).forEach((f, i) => tone(c, { f, dur: side === 'me' ? .22 : .4, vol: .07, type: 'square', filter: 'lowpass', q: 2600, at: i * (side === 'me' ? .11 : .22) }));
-}
 function sfxReady(group) {
   const cfg = sndCfg(); if (!cfg.on || !cfg.vol || (group && cfg[group] === false)) return null;
   const c = sndCtx(); if (!c || c.state !== 'running') return null;
@@ -187,7 +164,7 @@ let sndCoins = null, sndLevel = null;
 function soundFeedback() {
   try {
     if (!(typeof D !== 'undefined' && D) || !D.game) return;
-    const c = coins(), lv = typeof levelInfo === 'function' ? levelInfo().n : null;
+    const c = typeof cdWallet === 'function' ? (w => w.lumen + w.ember)(cdWallet()) : 0, lv = typeof solisLevel === 'function' ? solisLevel().n : null;
     if (sndCoins != null && c > sndCoins) sfx('coin', { gap: 120 });
     if (sndLevel != null && lv != null && lv > sndLevel) setTimeout(() => sfx('levelup'), 250);
     sndCoins = c; sndLevel = lv;

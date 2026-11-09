@@ -6,19 +6,18 @@
 function friendsCount() { return allFriendRows().length; }
 
 function myWeekCard() {
-  const r = myBoardRow(), lv = levelInfo();
+  const r = myBoardRow(), lv = typeof solisLevel === 'function' ? solisLevel() : { n: 1 };
   const stat = (icon, v, label) => `<div class="fwstat"><span>${icon}</span><b>${v}</b><small>${label}</small></div>`;
   return `<div class="card fme"><div class="fme-top">${safeBadge(r.av, 96)}<div class="fme-name">
       <h2>${esc(D.settings.name || 'You')}${badgeTags(myBadges)}</h2>
-      <div class="muted">${acct.signedIn ? `@${esc(acct.username)}` : acct.configured && !ONLINE ? '<a href="#" data-act="friendsLogin">Log in to race friends</a>' : 'Just you for now'} · Level ${lv.n} ${esc(lv.title)}</div></div></div>
-    <div class="fwstats">${stat('📚', fmtMins(r.study.mins) || '0m', 'studied')}${stat('🏃', fmtMins(r.work.mins) || '0m', 'trained')}${stat('🔥', r.study.streak, 'day streak')}${stat('🌳', r.study.trees, 'trees')}${stat(GRIT, r.work.grit, 'Grit')}${stat('⭐', r.work.ovr, 'rating')}</div></div>`;
+      <div class="muted">${acct.signedIn ? `@${esc(acct.username)}` : acct.configured && !ONLINE ? '<a href="#" data-act="friendsLogin">Log in to race friends</a>' : 'Just you for now'} · Level ${lv.n}</div></div></div>
+    <div class="fwstats">${stat('📚', fmtMins(r.study.mins) || '0m', 'studied')}${stat('🏃', fmtMins(r.work.mins) || '0m', 'trained')}${stat('🔥', r.study.streak, 'day streak')}${stat('✦', r.study.trees, 'focus sessions')}</div></div>`;
 }
 
 const FRIEND_CATS = [
   ['📚', 'Most study', r => r.study?.mins || 0, v => fmtMins(v) || '0m'],
   ['🏃', 'Most training', r => r.work?.mins || 0, v => fmtMins(v) || '0m'],
   ['🔥', 'Longest streak', r => r.study?.streak || 0, v => `${v} days`],
-  ['⚔️', 'Battle wins', r => r.work?.wins || 0, v => `${v}`],
 ];
 function thisWeekRows() {
   const wk = mondayOf(today());
@@ -54,9 +53,9 @@ function friendCards() {
   const wk = mondayOf(today());
   return `<div class="fcards">${list.map(f => {
     const stale = f.week && f.week !== wk;
-    return `<div class="fcard"><div class="fcard-av">${safeBadge(f.av, 64)}</div><div class="main"><b>${esc(f.name)}${presStar(f)}</b>${badgeTags(f.badges, true)}<div class="muted small-text">${f.user ? '@' + esc(f.user) : 'friend code'}</div>${f.user ? statusLine(f) : ''}
-      <div class="fcard-stats"><span>📚 ${fmtMins(stale ? 0 : f.study?.mins) || '0m'}</span><span>🏃 ${fmtMins(stale ? 0 : f.work?.mins) || '0m'}</span><span>🔥 ${f.study?.streak || 0}</span><span>⭐ ${f.work?.ovr || '–'}</span></div></div>
-      <div class="fcard-btns"><button class="btn small primary" data-act="friendCompare" data-id="${esc(f.id)}">Compare</button>${f.user ? `<button class="btn small" data-s2="friendView" data-id="${esc(f.id)}" title="See their forest">🌳</button>` : ''}${f.user && acct.signedIn ? `<button class="btn small" data-chat="dm" data-u="${esc(f.user)}" title="Message">💬</button>` : ''}${f.user ? `<button class="iconbtn" data-acct="unfriend" data-u="${esc(f.user)}" title="Remove">✕</button>` : `<button class="iconbtn" data-fact="remove" data-id="${esc(f.id)}" title="Remove">✕</button>`}</div></div>`;
+    return `<div class="fcard"><div class="fcard-av">${safeBadge(f.av, 64)}</div><div class="main"><b>${esc(f.name)}</b>${badgeTags(f.badges, true)}<div class="muted small-text">${f.user ? '@' + esc(f.user) : 'friend code'}</div>${f.user ? statusLine(f) : ''}
+      <div class="fcard-stats"><span>📚 ${fmtMins(stale ? 0 : f.study?.mins) || '0m'}</span><span>🏃 ${fmtMins(stale ? 0 : f.work?.mins) || '0m'}</span><span>🔥 ${f.study?.streak || 0}</span></div></div>
+      <div class="fcard-btns"><button class="btn small primary" data-act="friendCompare" data-id="${esc(f.id)}">Compare</button>${f.user ? `<button class="btn small" data-s2="friendView" data-id="${esc(f.id)}" title="See their study">✦</button>` : ''}${f.user && acct.signedIn ? `<button class="btn small" data-chat="dm" data-u="${esc(f.user)}" title="Message">💬</button>` : ''}${f.user ? `<button class="iconbtn" data-acct="unfriend" data-u="${esc(f.user)}" title="Remove">✕</button>` : `<button class="iconbtn" data-fact="remove" data-id="${esc(f.id)}" title="Remove">✕</button>`}</div></div>`;
   }).join('')}</div>`;
 }
 function compareFriend(id) {
@@ -66,11 +65,7 @@ function compareFriend(id) {
     ['📚 Study this week', r => r.study?.mins || 0, v => fmtMins(v) || '0m', true],
     ['🏃 Training this week', r => r.work?.mins || 0, v => fmtMins(v) || '0m', true],
     ['🔥 Study streak', r => r.study?.streak || 0, v => `${v}`],
-    ['🌳 Trees', r => r.study?.trees || 0, v => `${v}`],
-    [`${GRIT} Grit`, r => r.work?.grit || 0, v => `${v}`],
-    ['⭐ Rating', r => r.work?.ovr || 0, v => `${v}`],
-    ['⚔️ Battle wins', r => r.work?.wins || 0, v => `${v}`],
-    ['🌊 Survival best', r => r.work?.surv || 0, v => `${v}`],
+    ['✦ Focus sessions', r => r.study?.trees || 0, v => `${v}`],
   ];
   let mine = 0, theirs = 0;
   const body = rows.map(([label, get, fmt, weekly]) => {
@@ -91,12 +86,12 @@ function viewLeaderboard() {
   if (ONLINE) return `${pageHead('🏆 Leaderboard', '')}<div class="card"><p>Leaderboards live in the PC app.</p></div>`;
   if (!acctLoaded) loadAccount().then(() => { if (view === 'board') render(); });
   const n = friendsCount();
-  return `${pageHead('🏆 Leaderboard', n ? `You vs ${n} friend${n === 1 ? '' : 's'} · resets every Monday` : 'Add friends to race them', `<button class="btn small" data-act="goto" data-v="friends">👥 Friends &amp; chats</button>`)}
+  return `${pageHead('🏆 Leaderboard', n ? `You vs ${n} friend${n === 1 ? '' : 's'} · resets every Monday` : 'Add friends to race them')}
     <div class="friends-top">${myWeekCard()}${highlightsCard()}</div>
     ${acct.configured && !acct.signedIn ? accountCard() : ''}
     <div class="friends-main">
-      <div class="stack">${viewBoard()}${seasonCard()}${athleticsBoardCard()}</div>
-      <div class="stack">${compCard()}${racesCard()}${gradeCard()}${challengesFriendsCard()}${!n ? `<div class="card">${friendSuggestHtml(true) || '<p class="muted">Add friends on the Friends &amp; chats page to see them here.</p>'}</div>` : ''}</div>
+      <div class="stack">${viewBoard()}</div>
+      <div class="stack">${compCard()}${racesCard()}${challengesFriendsCard()}${!n ? `<div class="card">${friendSuggestHtml(true) || '<p class="muted">Add friends on the Friends &amp; chats page to see them here.</p>'}</div>` : ''}</div>
     </div>`;
 }
 // fastest / strongest among your friends for one event

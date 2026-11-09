@@ -159,11 +159,14 @@ const hiPerkM = (it, m = 1) => it.b ? hiBuffTextM(it.b, m) : it.alone ? `Works a
 
 // ---------- page ----------
 function viewHouseIsland() {
-  const hs = hsState(), msg = (t, b) => isFrame('house', '', `<div class="ispanel iscentre"><div class="ispanel-h"><h3>${t}</h3></div><div class="ispanel-b">${b}</div></div>`);
-  if (!hs.id) return msg('🏰 House island', `<p class="muted">Join your house first, then build the house island together.</p><button class="btn primary" data-act="goto" data-v="house">Pick your house</button>`);
+  const hs = hsState();
+  // 2.55: the House page lives here now, as a panel on the house island
+  if (!hs.id) return isFrame('house', '', `<div class="ispanel iscentre iswide"><div class="ispanel-b">${hsPicker()}</div></div>`);
+  const hsBtn = `<div class="ishud is-bl"><button class="isbtn" data-hi="panel" data-v="house">🏰<span>House</span></button></div>`;
+  if (ui.isPanel === 'house') return isFrame('house', '', isPanel('🏰 Your house this week', viewHouse()).replace('class="ispanel"', 'class="ispanel iswide"'));
   hiLoad();
   const h = hsHouse(hs.id);
-  if (!HI.doc) return msg(`${h.e} ${h.name} island`, `<p class="muted">${HI.err === 'signin' ? 'The house island is shared, so you need to be signed in. Sign in on the Friends page.' : HI.err ? 'Couldn\'t reach the house island: ' + esc(HI.err) : 'Loading the house island…'}</p>${HI.err ? `<button class="btn" data-hi="reload">Try again</button>` : ''}`);
+  if (!HI.doc) return isFrame('house', hsBtn, `<div class="ispanel iscentre"><div class="ispanel-h"><h3>${h.e} ${h.name} island</h3></div><div class="ispanel-b">${`<p class="muted">${HI.err === 'signin' ? 'The house island is shared, so you need to be signed in. Sign in on the Friends page.' : HI.err ? 'Couldn\'t reach the house island: ' + esc(HI.err) : 'Loading the house island…'}</p>${HI.err ? `<button class="btn" data-hi="reload">Try again</button>` : ''}`}</div></div>`);
   const d = HI.doc, pool = hiPool(), L = hiLeaders(), lead = L.u.includes(HI.user), pr = hiProp(), hl = hiLevel(), busy = hiBusy(d);
   const nextT = HI_LVT[hl], tot = hiTotal(), prevT = HI_LVT[hl - 1] || 0;
   const P = ui.isPlace?.h ? ui.isPlace : null;
@@ -175,7 +178,7 @@ function viewHouseIsland() {
   const hud = `<div class="ishud is-tl"><div class="islvl house" style="--hc:${h.col}"><b>${hl}</b><div><span>${h.e} ${esc(h.name)} · house level ${hl}</span>${nextT ? `<i style="width:${Math.round((tot - prevT) / (nextT - prevT) * 100)}%"></i>` : ''}</div></div>
       <div class="isbuilders">🔨 ${HI_MAX_BUILDING - busy}/${HI_MAX_BUILDING} builders free · ${lead ? '👑 You lead' : `Leaders: ${L.u.map(esc).join(', ') || 'none yet'}`}</div></div>
     <div class="ishud is-tr">${isBar('cd-l', LUMEN, pool.l, 'House Lumen', 1, '')}${isBar('cd-e', EMBER, pool.e, 'House Ember', 1, '')}</div>
-    <div class="ishud is-bl"><button class="isbtn" data-hi="panel" data-v="pool">🏦<span>Pool</span></button><button class="isbtn" data-hi="panel" data-v="leaders">👑<span>Leaders</span></button><button class="isbtn ${pr?.open ? 'ping' : ''}" data-hi="panel" data-v="vote">🗳️<span>Vote</span></button><button class="isbtn" data-hi="panel" data-v="perks">✨<span>Perks</span></button></div>
+    <div class="ishud is-bl"><button class="isbtn" data-hi="panel" data-v="house">🏰<span>House</span></button><button class="isbtn" data-hi="panel" data-v="pool">🏦<span>Pool</span></button><button class="isbtn" data-hi="panel" data-v="leaders">👑<span>Leaders</span></button><button class="isbtn ${pr?.open ? 'ping' : ''}" data-hi="panel" data-v="vote">🗳️<span>Vote</span></button><button class="isbtn" data-hi="panel" data-v="perks">✨<span>Perks</span></button></div>
     ${P ? '' : `<div class="ishud is-br"><button class="isbtn big" data-hi="panel" data-v="shop">🛒<span>Projects</span></button></div>`}`;
   let extra = `<div class="isbubs">${bubs}</div>`, pn = ui.isPanel;
   if (P) extra += isPlaceBar(hiItem(P.id).n, P.ok);
