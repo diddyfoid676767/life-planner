@@ -3398,3 +3398,13 @@ body.dens-compact .item, body.dens-compact .todo-item { padding-top: 4px; paddin
 .settop { display: none; }
 @media (min-width: 861px) and (max-width: 1040px) { .fbrow { flex-direction: column; } }
 @media (max-width: 860px) { body .settop { display: block; } }
+
+/* 2.58 weekly cosmetic shop (You > Edit look > Shop) */
+.pfshophead { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; margin-bottom: 10px; font-size: 13px; color: var(--muted); }
+.pfshophead span:first-child { flex: 1; }
+.pfshop .shopitem { cursor: default; border-color: color-mix(in srgb, var(--rc) 55%, transparent); background: linear-gradient(180deg, color-mix(in srgb, var(--rc) 16%, var(--panel2)), var(--panel2) 70%); }
+.pfshop .shopitem.on { border-color: var(--accent); }
+.pfshop .shopitem.trying { border-color: #f59f00; border-style: dashed; }
+.pfshop .shoppic { width: 64px; height: 64px; border-radius: 50%; border: 2px solid var(--rc); background: radial-gradient(circle at 50% 35%, color-mix(in srgb, var(--rc) 35%, transparent), transparent 70%); font-size: 32px; display: grid; place-items: center; cursor: pointer; transition: transform .12s; }
+.pfshop .shoppic:hover { transform: scale(1.08); }
+.pfshop .shopitem small { font-size: 11px; font-weight: 600; }

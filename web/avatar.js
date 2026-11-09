@@ -104,7 +104,53 @@ const COSMETICS = [
   { id: 'p_bunny', cat: 'pet', name: 'Bunny', e: '🐰', coins: 250 }, { id: 'p_frog', cat: 'pet', name: 'Frog', e: '🐸', grit: 200 },
   { id: 'p_panda', cat: 'pet', name: 'Panda', e: '🐼', coins: 350 }, { id: 'p_lion', cat: 'pet', name: 'Lion', e: '🦁', grit: 600 },
   { id: 'p_robot', cat: 'pet', name: 'Robo pal', e: '🤖', coins: 600 }, { id: 'p_turtle', cat: 'pet', name: 'Wise turtle', e: '🐢', req: { streak: 30 } },
+  // 2.58 (round 3 part C): hero looks for the 3D avatar. Some are free; the rest
+  // are bought with Lumen (l) or Ember (e) from the weekly shop, which shows 6 of
+  // them each week. rar is the rarity; as2d is what the flat 2D avatar draws instead.
+  { id: 'h_topknot', cat: 'hair', name: 'Warrior top knot', as2d: 'h_bun' }, { id: 'h_hero', cat: 'hair', name: 'Hero spikes', as2d: 'h_spiky' },
+  { id: 'hat_hood', cat: 'hat', name: 'Ranger hood', as2d: 'hat_beanie' }, { id: 'eye_patch', cat: 'eyes', name: 'Eyepatch', as2d: 'eye_none' },
+  { id: 'x_scarf', cat: 'extra', name: 'Hero scarf', as2d: 'x_none' },
+  { id: 'hat_catears', cat: 'hat', name: 'Cat ears', rar: 'common', price: { l: 150 }, as2d: 'hat_none' },
+  { id: 'hc_mint', cat: 'hairCol', name: 'Mint dye', c: '#63e6be', dye: 1, rar: 'common', price: { l: 120 } },
+  { id: 'p_ghost', cat: 'pet', name: 'Ghost', e: '👻', rar: 'common', price: { l: 200 } },
+  { id: 'hat_antlers', cat: 'hat', name: 'Forest antlers', rar: 'rare', price: { e: 300 }, as2d: 'hat_none' },
+  { id: 'hat_ninja', cat: 'hat', name: 'Ninja mask', rar: 'rare', price: { e: 350 }, as2d: 'hat_bandana' },
+  { id: 'hat_jester', cat: 'hat', name: 'Jester hat', rar: 'rare', price: { l: 350 }, as2d: 'hat_party' },
+  { id: 'eye_cyber', cat: 'eyes', name: 'Cyber eye', rar: 'rare', price: { l: 400 }, as2d: 'eye_mono' },
+  { id: 'eye_mask', cat: 'eyes', name: 'Masquerade mask', rar: 'rare', price: { l: 300 }, as2d: 'eye_sport' },
+  { id: 'kit_royal', cat: 'kit', name: 'Royal tunic', c: '#7b1fa2', pattern: 'royal', rar: 'rare', price: { e: 400 } },
+  { id: 'hc_gold', cat: 'hairCol', name: 'Liquid gold dye', c: '#fab005', dye: 1, rar: 'rare', price: { e: 350 } },
+  { id: 'x_pauldrons', cat: 'extra', name: 'Shoulder guards', rar: 'rare', price: { e: 400 }, as2d: 'x_none' },
+  { id: 'x_sword', cat: 'extra', name: 'Sword on your back', rar: 'rare', price: { e: 450 }, as2d: 'x_none' },
+  { id: 'x_shield', cat: 'extra', name: 'Shield on your back', rar: 'rare', price: { e: 450 }, as2d: 'x_none' },
+  { id: 'p_dino', cat: 'pet', name: 'Dino', e: '🦖', rar: 'rare', price: { e: 450 } }, { id: 'p_octo', cat: 'pet', name: 'Octopus', e: '🐙', rar: 'rare', price: { l: 450 } },
+  { id: 'hat_knight', cat: 'hat', name: 'Knight helm', rar: 'epic', price: { e: 800 }, as2d: 'hat_viking' },
+  { id: 'hat_samurai', cat: 'hat', name: 'Samurai kabuto', rar: 'epic', price: { e: 850 }, as2d: 'hat_viking' },
+  { id: 'kit_circuit', cat: 'kit', name: 'Neon circuit', c: '#101828', pattern: 'circuit', rar: 'epic', price: { l: 700 } },
+  { id: 'sh_rocket', cat: 'shoes', name: 'Rocket boots', c: '#495057', rar: 'epic', price: { e: 900 } },
+  { id: 'x_staff', cat: 'extra', name: 'Mage staff', rar: 'epic', price: { l: 750 }, as2d: 'x_none' },
+  { id: 'x_capeRoyal', cat: 'extra', name: 'Royal cape', rar: 'epic', price: { l: 800 }, as2d: 'x_cape' },
+  { id: 'x_wingsLight', cat: 'extra', name: 'Wings of light', rar: 'epic', price: { l: 900 }, as2d: 'x_wings' },
+  { id: 'x_orbs', cat: 'extra', name: 'Orbiting orbs', rar: 'epic', price: { l: 850 }, as2d: 'x_sparkle' },
+  { id: 'hat_astro', cat: 'hat', name: 'Astronaut helmet', rar: 'legendary', price: { l: 1800 }, as2d: 'hat_helmet' },
+  { id: 'x_capeVoid', cat: 'extra', name: 'Void cape', rar: 'legendary', price: { l: 2000 }, as2d: 'x_cape' },
+  { id: 'x_wingsDragon', cat: 'extra', name: 'Dragon wings', rar: 'legendary', price: { e: 2000 }, as2d: 'x_wings' },
 ];
+const COS_RAR = { common: ['Common', '#868e96', 4], rare: ['Rare', '#1c7ed6', 3], epic: ['Epic', '#ae3ec9', 2], legendary: ['Legendary', '#f59f00', 1] };
+const cosPrice = c => c?.price ? (c.price.l ? `${LUMEN} ${c.price.l.toLocaleString()}` : `${EMBER} ${c.price.e.toLocaleString()}`) : '';
+// the weekly shop: 6 bought looks, picked by the week (the same for everyone), rarer ones less often
+function cosShop(wk = mondayOf(today())) {
+  let seed = 0; for (const ch of 'solis-shop-' + wk) seed = (seed * 31 + ch.charCodeAt(0)) >>> 0;
+  const rnd = () => { seed = (seed * 1664525 + 1013904223) >>> 0; return seed / 4294967296; };
+  const pool = COSMETICS.filter(c => c.price), out = [];
+  while (out.length < 6 && pool.length) {
+    const tot = pool.reduce((a, c) => a + COS_RAR[c.rar][2], 0); let r = rnd() * tot, i = 0;
+    for (; i < pool.length - 1; i++) { r -= COS_RAR[pool[i].rar][2]; if (r < 0) break; }
+    out.push(pool.splice(i, 1)[0]);
+  }
+  return out.sort((a, b) => COS_RAR[b.rar][2] - COS_RAR[a.rar][2]); // commons first, legendaries last
+}
+const cosInShop = id => cosShop().some(c => c.id === id);
 // unlocked by doing things: a level, a study streak, or a badge
 function cosReq(c) {
   const r = c?.req; if (!r) return null;
@@ -115,11 +161,23 @@ function cosReq(c) {
 const COS_CATS = [['look', '🪞 Look like me'], ['skin', 'Skin'], ['hair', 'Hair'], ['hairCol', 'Hair colour'], ['face', 'Face'], ['hat', 'Headwear'], ['eyes', 'Eyewear'], ['kit', 'Kit colour'], ['shoes', 'Shoes'], ['extra', 'Extras'], ['bg', 'Background'], ['pet', 'Pet']];
 const AV_DEFAULT = { skin: 'sk2', hair: 'h_short', hairCol: 'hc_brown', face: 'f_smile', hat: 'hat_none', eyes: 'eye_none', kit: 'kit_gear', shoes: 'sh_white', extra: 'x_none', bg: 'bg_none', pet: 'p_none' };
 const cos = id => COSMETICS.find(c => c.id === id);
-const cosFree = c => !c.req?.badge;
+const cosFree = c => !c.req?.badge && !c.price;
 const ownsCos = id => { const c = cos(id); if (!c) return false; if (cosFree(c) || (D.arena.owned || {})[id]) return true; const r = cosReq(c); if (r?.ok && !c.req.badge) { D.arena.owned = { ...(D.arena.owned || {}), [id]: new Date().toISOString() }; return true; } return !!r?.ok; };
 const myAv = () => Object.assign({}, AV_DEFAULT, D.arena.av || {});
 
-function buyCos(id) { wearCos(id); }
+function buyCos(id) {
+  const c = cos(id); if (!c) return;
+  if (ownsCos(id)) return wearCos(id);
+  if (!c.price) return;
+  if (!cosInShop(id)) { toast('🛒 Not in the shop this week', `${c.name} comes back to the shop in another week.`); return; }
+  const w = cdWallet(), l = c.price.l || 0, e = c.price.e || 0;
+  if (w.lumen < l || w.ember < e) { toast('Not enough yet', `${c.name} costs ${cosPrice(c)}. You have ${LUMEN} ${w.lumen.toLocaleString()} and ${EMBER} ${w.ember.toLocaleString()}.`); return; }
+  ftTake(l, e);
+  D.arena.owned = { ...(D.arena.owned || {}), [id]: new Date().toISOString() };
+  if (typeof ui === 'object' && ui.pfTry === id) ui.pfTry = null;
+  toast('🛒 Bought ' + c.name, 'It\'s yours to wear any time.');
+  wearCos(id);
+}
 function wearCos(id, quiet) {
   const c = cos(id); if (!c || !ownsCos(id)) return;
   D.arena.av = { ...myAv(), [c.cat]: id }; save(); render();
@@ -159,8 +217,9 @@ function setLook(k, v) { if (!(k in LOOK_DEFAULT)) return; D.arena.look = { ...m
 let avatarN = 0;
 function avatarFull(spec = avatarSpec(), { size = 140, cls = '', face = 'right' } = {}) {
   const C = id => cos(id) || {};
+  if (Object.values(spec).some(v => typeof v === 'string' && C(v).as2d)) { spec = { ...spec }; for (const [k, v] of Object.entries(spec)) if (typeof v === 'string' && C(v).as2d) spec[k] = C(v).as2d; } // 2.58: 3D-only looks draw as their nearest 2D style
   const L = Object.assign({}, LOOK_DEFAULT, spec.look || {});
-  const dyed = spec.hairCol && C(spec.hairCol).coins || C(spec.hairCol).grit; // a bought dye beats the natural colour
+  const dyed = spec.hairCol && (C(spec.hairCol).coins || C(spec.hairCol).grit || C(spec.hairCol).dye); // a bought dye beats the natural colour
   const skin = L.skinC || C(spec.skin).c || '#f1c9a5', hairC = (dyed ? C(spec.hairCol).c : L.hairC) || C(spec.hairCol).c || '#5c3a21', kit = spec.kitC || '#5c7cfa';
   const shade = (hex, f) => { const n = parseInt(hex.slice(1), 16); const ch = sh => Math.max(0, Math.min(255, Math.round(((n >> sh) & 255) * f))); return `rgb(${ch(16)},${ch(8)},${ch(0)})`; };
   const dark = shade(skin, .8), ink = '#3b2a1e';

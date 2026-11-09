@@ -13,7 +13,7 @@
    Settings sits behind the gear button. */
 
 const PF = {};
-const PF_CATS = [['look', '🪞 Look like me'], ['hair', '💇 Hair'], ['hairCol', '🎨 Hair colour'], ['face', '😀 Face'], ['hat', '🧢 Headwear'], ['eyes', '🕶️ Eyewear'], ['kit', '👕 Kit'], ['shoes', '👟 Shoes'], ['extra', '✨ Extras'], ['pet', '🐶 Pet'], ['bg', '🌄 Background'], ['skin', 'Skin tone']];
+const PF_CATS = [['look', '🪞 Look like me'], ['shop', '🛒 Shop'], ['hair', '💇 Hair'], ['hairCol', '🎨 Hair colour'], ['face', '😀 Face'], ['hat', '🧢 Headwear'], ['eyes', '🕶️ Eyewear'], ['kit', '👕 Kit'], ['shoes', '👟 Shoes'], ['extra', '✨ Extras'], ['pet', '🐶 Pet'], ['bg', '🌄 Background'], ['skin', 'Skin tone']];
 const YOU_LEFT = ['head', 'chest', 'hand'], YOU_RIGHT = ['legs', 'feet', 'charm'];
 function pfSpec() {
   const av = myAv(), tryId = ui.pfTry && cos(ui.pfTry), cat = ui.pfCat || 'look';
@@ -128,9 +128,24 @@ function viewProfile() {
 function pfBuyBtn(c) {
   if (!c) return '';
   if (ownsCos(c.id)) return `<button class="btn small primary" data-act="wearCos" data-id="${c.id}">Wear it</button>`;
+  if (c.price) return cosInShop(c.id) ? `<button class="btn small primary" data-act="buyCos" data-id="${c.id}">Buy for ${cosPrice(c)}</button>` : '<span class="tag">🛒 In the shop some weeks</span>';
   const r = cosReq(c); return r ? `<span class="tag">🔒 ${esc(r.label)}</span>` : '';
 }
+// 2.58 the weekly shop: 6 looks for Lumen or Ember, new ones every Monday
+const PF_SHOP_IC = { hair: '💇', hairCol: '🎨', hat: '🎩', eyes: '🕶️', kit: '👕', shoes: '👟', extra: '✨', pet: '🐾' };
+function pfShop(av) {
+  const w = cdWallet(), days = 7 - ((new Date(today() + 'T12:00').getDay() + 6) % 7);
+  return `<div class="pfshophead"><span>New looks every Monday · ${days === 1 ? 'new stock tomorrow' : `new stock in ${days} days`}</span><span class="cd-l">${LUMEN} <b>${w.lumen.toLocaleString()}</b></span><span class="cd-e">${EMBER} <b>${w.ember.toLocaleString()}</b></span></div>
+  <div class="pfgrid pfshop">${cosShop().map(c => {
+    const R = COS_RAR[c.rar], own = ownsCos(c.id), on = av[c.cat] === c.id, trying = ui.pfTry === c.id, can = (c.price.l || 0) <= w.lumen && (c.price.e || 0) <= w.ember;
+    return `<div class="pfitem shopitem ${on ? 'on' : ''} ${trying ? 'trying' : ''}" style="--rc:${R[1]}"><button type="button" class="shoppic" data-pf="pick" data-id="${c.id}" title="Try it on">${c.e || PF_SHOP_IC[c.cat] || '✨'}</button>
+      <b>${esc(c.name)}</b><small style="color:${R[1]}">${R[0]} · ${PF_CATS.find(x => x[0] === c.cat)?.[1].replace(/^\S+ /, '') || ''}</small>
+      ${own ? (on ? '<span class="tag green">Wearing</span>' : `<button class="btn small" data-act="wearCos" data-id="${c.id}">Wear</button>`) : `<button class="btn small ${can ? 'primary' : ''}" data-act="buyCos" data-id="${c.id}" ${can ? '' : 'title="Not enough yet"'}>${cosPrice(c)}</button>`}</div>`;
+  }).join('')}</div>
+  <p class="muted small-text">Click a look to try it on your 3D self first. Bought looks are yours for good. Lumen comes from study, Ember from training.</p>`;
+}
 function pfGrid(cat, av, spec) {
+  if (cat === 'shop') return pfShop(av);
   const items = COSMETICS.filter(c => c.cat === cat);
   const base = { ...spec, hat: av.hat, eyes: av.eyes };
   return `<div class="pfgrid">${items.map(c => {
@@ -138,10 +153,10 @@ function pfGrid(cat, av, spec) {
     const preview = { ...base, [cat]: c.id, ...(cat === 'kit' ? { kitC: c.id === 'kit_gear' ? avatarSpec({ ...av, kit: 'kit_gear' }).kitC : c.c } : {}) };
     const pic = cat === 'bg' ? `<div class="wbg" style="background:${BG_CSS[c.id] || 'var(--panel2)'}"></div>` : cat === 'pet' ? `<div class="wbg dance">${c.e || '🚫'}</div>`
       : `<div class="wmini">${avatarFull(preview, { size: 92 })}</div>`;
-    const tag = on ? '<span class="tag green">Wearing</span>' : own ? '<span class="tag">Owned</span>' : r ? `<span class="tag ${r.ok ? 'green' : ''}">🔒 ${esc(r.label)}</span>` : '';
+    const tag = on ? '<span class="tag green">Wearing</span>' : own ? '<span class="tag">Owned</span>' : c.price ? `<span class="tag" style="color:${COS_RAR[c.rar][1]}">${cosInShop(c.id) ? cosPrice(c) : '🛒 Shop'}</span>` : r ? `<span class="tag ${r.ok ? 'green' : ''}">🔒 ${esc(r.label)}</span>` : '';
     return `<button class="pfitem ${on ? 'on' : ''} ${own ? 'own' : 'locked'} ${trying ? 'trying' : ''}" data-pf="pick" data-id="${c.id}">${pic}<b>${esc(c.name)}</b>${tag}</button>`;
   }).join('')}</div>
-  <p class="muted small-text">Click anything to wear it. Everything is free.</p>`;
+  <p class="muted small-text">Click anything to wear it. Looks with a price are bought in the weekly 🛒 Shop with Lumen or Ember; click one to try it on first.</p>`;
 }
 
 // clicking an item wears it when it's yours, otherwise tries it on
