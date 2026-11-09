@@ -454,7 +454,13 @@ function render() {
   else v.classList.remove('enter'); // staying on the same page: no entrance animation, only the parts that changed are updated
   const page = { today: viewToday, calendar: viewCalendar, study: viewStudy, training: viewTraining, islands: viewIslands, friends: viewFriends, board: viewLeaderboard, profile: viewProfile, settings: viewSettings };
   if (!page[view]) view = 'today';
-  const html = page[view]();
+  // 2.57.3: a page that breaks shows what went wrong, never the last page you were on
+  let html;
+  try { html = page[view](); }
+  catch (e) {
+    console.error(e); if (typeof lpReportError === 'function') lpReportError('render ' + view + ': ' + (e && e.message), e);
+    html = `<div class="card pageerr"><h2>This page hit a problem</h2><p class="muted">Solis couldn't show this page, so nothing here changed. The details are saved in planner.log for fixing. Other pages still work.</p><pre class="small-text" style="white-space:pre-wrap">${esc((e && e.message) || e)}</pre></div>`;
+  }
   if (fresh || !v.firstChild) v.innerHTML = html; else morphHtml(v, html);
   if (typeof mountIsland3D === 'function') try { mountIsland3D(); } catch (e) { console.error(e); }
   if (typeof mountYou3D === 'function') try { mountYou3D(); } catch (e) { console.error(e); }
@@ -1976,22 +1982,24 @@ async function clearStudyBlocks() {
     bootId = '';
     D = migrate(x ? JSON.parse(x.d) : defaultData()); setOffline(true); if (x) { loaded = true; baseHash = x.base; baseJson = x.bj || ''; dirty = true; userEdited = true; }
   }
-  render();
+  // 2.57.3: one bad page or check at start-up must not stop the rest (saving, updates, friends)
+  const safe = (f, name) => { try { const r = f(); if (r && r.catch) r.catch(e => typeof lpReportError === 'function' && lpReportError('start ' + name + ': ' + (e && e.message), e)); } catch (e) { console.error(e); if (typeof lpReportError === 'function') lpReportError('start ' + name + ': ' + (e && e.message), e); } };
+  safe(render, 'render');
   try { localStorage.setItem('lpNoIntro', D.settings.bootIntro === false ? '1' : '0'); } catch { }
-  bootDone(D.settings.bootIntro === false);
+  safe(() => bootDone(D.settings.bootIntro === false), 'boot');
   // new or empty planner: run the setup (and the tour after it)
   if (loaded && !D.settings.setupDone && !D.assessments.length && !D.sessions.length && !D.workouts.length) {
     const seed = await fetch('/api/seed', { cache: 'no-store' }).then(r => r.json()).catch(() => null);
     openSetup(true); wiz.seed = !!(seed && seed.subjects); drawSetup();
   }
-  clearStudyBlocks();
-  if (typeof menuStart === 'function') menuStart();
-  renderFocusBar();
-  checkBrainfm().then(() => { if (view === 'settings' && !modal.open) render(); });
-  checkTempFolder();
-  checkClaudeLink();
-  aiLoad().then(() => { aiFab(); if (view === 'settings') render(); });
-  loadAccount().then(a => { if (a.signedIn) { publishMe(true); refreshFriends(true); } if (view === 'settings' && !modal.open) render(); });
+  safe(clearStudyBlocks, 'studyBlocks');
+  if (typeof menuStart === 'function') safe(menuStart, 'menu');
+  safe(renderFocusBar, 'focusBar');
+  safe(() => checkBrainfm().then(() => { if (view === 'settings' && !modal.open) render(); }), 'brainfm');
+  safe(checkTempFolder, 'temp');
+  safe(checkClaudeLink, 'claude');
+  safe(() => aiLoad().then(() => { aiFab(); if (view === 'settings') render(); }), 'ai');
+  safe(() => loadAccount().then(a => { if (a.signedIn) { publishMe(true); refreshFriends(true); } if (view === 'settings' && !modal.open) render(); }), 'account');
   checkUpdate();
   setInterval(checkUpdate, 60000); // cheap local check, so a downloaded update installs within a minute
   checkReminders();

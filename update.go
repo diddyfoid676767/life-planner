@@ -24,7 +24,7 @@ import (
 	"time"
 )
 
-const version = "2.57.2"
+const version = "2.57.3"
 
 var (
 	selfHashOnce sync.Once
@@ -208,4 +208,46 @@ func cleanupOld() {
 		}
 		time.Sleep(2 * time.Second)
 	}
+}
+
+// installNewAtStart (2.57.3): an update that was downloaded next to the exe
+// (Solis.new.exe) is put in place when the app starts, before anything else,
+// so an update can't get stuck waiting for the page to install it. Returns
+// true when it has started the new copy and this one should quit.
+func installNewAtStart(self string) bool {
+	dir := filepath.Dir(self)
+	for _, n := range []string{"Solis.new.exe", "LifePlanner.new.exe"} {
+		p := filepath.Join(dir, n)
+		b, err := os.ReadFile(p)
+		if err != nil || !isPE(b) {
+			continue
+		}
+		if sha256.Sum256(b) == hashOfSelf() {
+			os.Remove(p)
+			continue
+		}
+		staged := filepath.Join(dir, "Solis.staged.exe")
+		old := filepath.Join(dir, "Solis.old.exe")
+		if os.WriteFile(staged, b, 0o755) != nil {
+			os.Remove(staged)
+			return false
+		}
+		os.Remove(old)
+		if os.Rename(self, old) != nil {
+			os.Remove(staged)
+			return false
+		}
+		if os.Rename(staged, self) != nil {
+			os.Rename(old, self)
+			return false
+		}
+		os.Remove(p)
+		cmd := exec.Command(self)
+		cmd.Dir = dir
+		if cmd.Start() != nil {
+			return false
+		}
+		return true
+	}
+	return false
 }

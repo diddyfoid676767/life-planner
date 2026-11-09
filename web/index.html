@@ -11,6 +11,10 @@
 <title>Solis</title>
 <link rel="icon" href="icon.svg" type="image/svg+xml">
 <link rel="stylesheet" href="style.css">
+<script>/* 2.57.3: page errors go into planner.log, so a page that breaks on one computer can be looked into */
+(function () { var n = 0; window.lpReportError = function (msg, err) { try { if (n++ > 50 || !/^(127\.0\.0\.1|localhost)$/.test(location.hostname)) return; var v = (typeof view === 'string' ? view : '') , s = (err && err.stack ? String(err.stack) : '').slice(0, 1500); fetch('/api/log', { method: 'POST', body: '[' + v + '] ' + msg + (s ? '\n' + s : '') }).catch(function () { }); } catch (e) { } };
+  addEventListener('error', function (e) { if (e && e.message) lpReportError(e.message + ' @ ' + (e.filename || '').split('/').pop() + ':' + e.lineno, e.error); else if (e && e.target && e.target.src) lpReportError("couldn't load " + e.target.src); }, true);
+  addEventListener('unhandledrejection', function (e) { var r = e && e.reason; lpReportError('promise: ' + (r && r.message || r), r); }); })();</script>
 <script src="merge.js"></script>
 <script src="cloud.js"></script>
 </head>

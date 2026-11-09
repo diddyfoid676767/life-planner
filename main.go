@@ -21,6 +21,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 )
 
@@ -56,6 +57,9 @@ func main() {
 	}
 	exe, _ = filepath.EvalSymlinks(exe)
 	if handOverToSolis(exe) {
+		return
+	}
+	if !(len(os.Args) > 1 && os.Args[1] == "--restarted") && installNewAtStart(exe) {
 		return
 	}
 	dataDir = pickDataDir(exe)
@@ -109,6 +113,11 @@ func main() {
 		static.ServeHTTP(w, r)
 	}))
 	mux.HandleFunc("/api/ping", handlePing)
+	mux.HandleFunc("/api/log", func(w http.ResponseWriter, r *http.Request) {
+		if windowAllowed(w, r, key) {
+			handleClientLog(w, r)
+		}
+	})
 	mux.HandleFunc("/api/data", func(w http.ResponseWriter, r *http.Request) {
 		if windowAllowed(w, r, key) {
 			handleData(w, r)
@@ -234,6 +243,22 @@ func localOnly(h http.Handler) http.Handler {
 		}
 		h.ServeHTTP(w, r)
 	})
+}
+
+// handleClientLog writes page errors into planner.log, so a page that breaks
+// on someone's computer can be looked into afterwards (at most 200 a run)
+var clientLogs int32
+
+func handleClientLog(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "POST only", http.StatusMethodNotAllowed)
+		return
+	}
+	b, _ := io.ReadAll(io.LimitReader(r.Body, 4000))
+	if atomic.AddInt32(&clientLogs, 1) <= 200 {
+		log.Printf("page: %s", strings.ReplaceAll(string(b), "\n", " | "))
+	}
+	w.WriteHeader(http.StatusNoContent)
 }
 
 func handlePing(w http.ResponseWriter, r *http.Request) {
