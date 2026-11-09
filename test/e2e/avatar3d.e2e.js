@@ -57,11 +57,16 @@ let fails = 0; const ok = (c, m) => { console.log((c ? 'PASS ' : 'FAIL ') + m); 
   await p.click(`.shopitem button[data-act="buyCos"][data-id="${first.id}"]`); await sleep(600);
   const w2 = await p.evaluate(() => { const w = cdWallet(); return w.lumen + w.ember; });
   ok(await p.evaluate(id => ownsCos(id) && myAv()[cos(id).cat] === id, first.id), '7. buying makes it yours and you wear it');
-  ok(w1 - w2 === (first.price.l || first.price.e), `7b. the price is taken off (${w1} -> ${w2})`);
+  const cost = await p.evaluate(id => { const c = cosCost(cos(id)); return c.l + c.e; }, first.id);
+  ok(w1 - w2 === cost && cost < (first.price.l || first.price.e), `7b. the weekly deal price is taken off (${w1} -> ${w2}, ${cost})`);
   ok(await p.evaluate(id => !!D.arena.owned[id], first.id), '7c. it is saved as owned');
-  const notInShop = await p.evaluate(() => COSMETICS.find(c => c.price && !cosInShop(c.id))?.id);
+  // 2.59: every priced look can be bought any time, at full price outside the shop
+  const notInShop = await p.evaluate(() => COSMETICS.find(c => c.price && !cosInShop(c.id) && !ownsCos(c.id))?.id);
+  await p.evaluate(id => { const c = cos(id), s = cdState(); s.got = s.got || { l: 0, e: 0 }; s.got.l += c.price.l || 0; s.got.e += c.price.e || 0; }, notInShop);
+  const w3 = await p.evaluate(() => { const w = cdWallet(); return w.lumen + w.ember; });
   await p.evaluate(id => buyCos(id), notInShop);
-  ok(!(await p.evaluate(id => ownsCos(id), notInShop)), '8. a look that isn\'t in the shop this week can\'t be bought');
+  const w4 = await p.evaluate(() => { const w = cdWallet(); return w.lumen + w.ember; });
+  ok(await p.evaluate(id => ownsCos(id), notInShop) && w3 - w4 === (await p.evaluate(id => cos(id).price.l || cos(id).price.e, notInShop)), '8. a look outside this week\'s shop can be bought at full price');
   // free new looks are free
   ok(await p.evaluate(() => ['h_topknot', 'h_hero', 'hat_hood', 'eye_patch', 'x_scarf'].every(ownsCos)), '9. the new free looks are free');
   // 2D avatar stands in for 3D-only looks

@@ -112,10 +112,11 @@ function av3pattern(p, c) {
 // ---------- hair: one builder per style ----------
 // H(h) gets { g: head group, R: head radius, m: hair material, hat: true when a hat is on, K }
 const AV3_HAIR = (() => {
-  const cap = (h, frac = .58, k = 1.07, tilt = -.62) => { const c = av3mesh(h.g, av3dome(h.R * k, frac), h.m, 0, .02, -.02); c.rotation.x = tilt; return c; };
+  const cap = (h, frac = .58, k = 1.07, tilt = -.62) => { if (h.hat || h.band) k = Math.min(k, 1.045); h.capR = Math.max(h.capR || 0, h.R * k); const c = av3mesh(h.g, av3dome(h.R * k, frac), h.m, 0, .02, -.02); c.rotation.x = tilt; return c; }; // 2.59: tight under a hat so the two never fight
   const tuft = (h, x, y, z, s, rx = 0) => { if (h.hat && y > h.R * .6) return null; const t = av3mesh(h.g, av3sph(s, 16, 12), h.m, x, y, z); t.scale.set(1.3, .7, 1); t.rotation.x = rx; return t; };
-  const back = (h, len, w = 1, flare = 1) => { const b = av3mesh(h.g, av3lathe([[0, 0], [h.R * .82 * w, -.02], [h.R * .9 * w * flare, -len * .6], [h.R * .8 * w * flare, -len], [0, -len - .02]], 20), h.m, 0, .12, -.12); b.scale.z = .62; return b; };
-  const strands = (h, n, len, r, from = .45, spread = 1.15) => { for (let i = 0; i < n; i++) { const a = Math.PI * (from + (1 - from * 2) * 0) + (i / (n - 1) - .5) * Math.PI * spread, x = Math.sin(a) * h.R * .92, z = -Math.cos(a) * h.R * .92; const l = av3mesh(h.g, av3cap(r, len, 8), h.m, x, -.02 - len / 2, z); l.rotation.z = -Math.sin(a) * .18; l.rotation.x = Math.cos(a) * .18; } };
+  // 2.59: drawn bottom-up so it faces outwards (it showed as a black outline before), and narrower so long hair falls behind the shoulders, not into them
+  const back = (h, len, w = 1, flare = 1) => { const b = av3mesh(h.g, av3lathe([[0, -len - .02], [h.R * .8 * w * flare, -len], [h.R * .9 * w * flare, -len * .6], [h.R * .82 * w, -.02], [0, 0]], 20), h.m, 0, .12, -.15); b.scale.set(.84, 1, .6); return b; };
+  const strands = (h, n, len, r, from = .45, spread = 1.15) => { if (len > .35) spread = Math.min(spread, .66); /* long strands stay behind the shoulders */ for (let i = 0; i < n; i++) { const a = Math.PI * (from + (1 - from * 2) * 0) + (i / (n - 1) - .5) * Math.PI * spread, x = Math.sin(a) * h.R * .92, z = -Math.cos(a) * h.R * .92; const l = av3mesh(h.g, av3cap(r, len, 8), h.m, x, -.02 - len / 2, z); l.rotation.z = -Math.sin(a) * .18; l.rotation.x = Math.cos(a) * .18; } };
   const curls = (h, n, r, rad, y0, y1) => { for (let i = 0; i < n; i++) { const a = i * 2.39996, t = i / n, y = y0 + (y1 - y0) * t, rr = rad * Math.sqrt(Math.max(.05, 1 - Math.pow((y - y0) / (y1 - y0 + .001) * .9, 2))); const x = Math.cos(a) * rr, z = Math.sin(a) * rr - .03; if (z > h.R * .55 && y < .22) continue; av3mesh(h.g, av3sph(r, 12, 10), h.m, x, y, z); } };
   const S = {
     short: h => { cap(h); tuft(h, .08, h.R * .78, h.R * .5, .13, -.3); },
@@ -124,15 +125,15 @@ const AV3_HAIR = (() => {
     fringe: h => { cap(h); const f = av3mesh(h.g, av3dome(h.R * 1.02, .3), h.m, 0, .06, .12); f.rotation.x = .9; f.scale.set(1, 1, .7); },
     quiff: h => { cap(h); if (!h.hat) { const q = av3mesh(h.g, av3sph(.2, 20, 14), h.m, 0, h.R * .92, h.R * .42); q.scale.set(1.3, .8, 1.1); q.rotation.x = -.5; } },
     slick: h => { const c = cap(h, .55, 1.06, -.45); c.scale.y = .95; },
-    undercut: h => { cap(h, .3, 1.08, -.2); if (!h.hat) tuft(h, 0, h.R * .9, h.R * .3, .2, -.3); },
+    undercut: h => { const u = cap(h, .5, 1.02, -.3); u.material = av3mat(av3mix(h.K.hair, h.K.skin, .45)); cap(h, .36, 1.07, -.25); if (!h.hat) tuft(h, 0, h.R * .9, h.R * .3, .2, -.3); },
     frosted: h => { cap(h); const tip = av3mat('#f4e3a1'); if (!h.hat) for (let i = 0; i < 7; i++) { const c = av3mesh(h.g, av3cone(.06, .16, 8), i % 2 ? tip : h.m, (i - 3) * .075, h.R * .92 - Math.abs(i - 3) * .03, h.R * .3); c.rotation.x = .5; } },
     buzz: h => { const c = cap(h, .5, 1.025, -.3); c.material = av3mat(av3mix(h.K.hair, h.K.skin, .35)); },
-    long: h => { cap(h); back(h, .62); for (const s of [-1, 1]) { const l = av3mesh(h.g, av3cap(.09, .38, 10), h.m, s * h.R * .86, -.16, -.02); l.rotation.z = s * .08; } },
-    wavy: h => { cap(h); back(h, .52, 1.05, 1.15); for (const s of [-1, 1]) for (let i = 0; i < 3; i++) av3mesh(h.g, av3sph(.1, 12, 10), h.m, s * (h.R * .86 + (i % 2) * .03), -.08 - i * .15, -.04); },
+    long: h => { cap(h); back(h, .62); for (const s of [-1, 1]) { const l = av3mesh(h.g, av3cap(.085, .22, 10), h.m, s * h.R * .86, -.08, -.04); l.rotation.z = s * .08; } },
+    wavy: h => { cap(h); back(h, .52, 1.05, 1.1); for (const s of [-1, 1]) for (let i = 0; i < 3; i++) av3mesh(h.g, av3sph(.095, 12, 10), h.m, s * (h.R * .84 + (i % 2) * .03), -.04 - i * .11, -.05); },
     flow: h => { cap(h); back(h, .4, 1.05, 1.1); tuft(h, -.1, h.R * .72, h.R * .5, .14, -.2); for (const s of [-1, 1]) av3mesh(h.g, av3cap(.09, .22, 10), h.m, s * h.R * .88, -.12, 0); },
-    bob: h => { cap(h); const b = av3mesh(h.g, new THREE.SphereGeometry(h.R * 1.12, 28, 16, 0, Math.PI * 2, 0, Math.PI * .72), h.m, 0, .02, -.06); b.scale.z = .95; b.material = av3mat(h.K.hair, { ds: true }); const f = av3mesh(h.g, av3dome(h.R * 1.04, .28), h.m, 0, .05, .12); f.rotation.x = .95; },
+    bob: h => { cap(h, .58, 1.07, -.3); const b = av3mesh(h.g, new THREE.SphereGeometry(h.R * 1.12, 28, 16, 0, Math.PI * 2, 0, Math.PI * .72), h.m, 0, .02, -.06); b.scale.z = .95; b.material = av3mat(h.K.hair, { ds: true }); },
     curly: h => { cap(h, .5, 1.04); curls(h, h.hat ? 14 : 26, .1, h.R * 1.0, -.05, h.R * 1.0); },
-    afro: h => { if (h.hat) { cap(h, .55, 1.12); curls(h, 16, .12, h.R * 1.05, -.12, h.R * .5); return; } const a = av3mesh(h.g, av3sph(h.R * 1.4, 28, 20), h.m, 0, h.R * .4, -.2); a.scale.z = .85; },
+    afro: h => { if (h.hat) { cap(h, .55, 1.12); curls(h, 14, .11, h.R * 1.02, -.22, .0); return; } const a = av3mesh(h.g, av3sph(h.R * 1.4, 28, 20), h.m, 0, h.R * .4, -.2); a.scale.z = .85; },
     pony: h => { cap(h, .55, 1.06, -.5); const t = av3mesh(h.g, av3cap(.1, .42, 12), h.m, 0, -.08, -h.R * 1.05); t.rotation.x = .35; av3mesh(h.g, av3tor(.07, .025), av3mat('#e64980'), 0, .14, -h.R * 1.02).rotation.x = Math.PI / 2 - .3; },
     bun: h => { cap(h, .55, 1.06, -.5); if (!h.hat) av3mesh(h.g, av3sph(.15, 16, 12), h.m, 0, h.R * .82, -h.R * .62); },
     topknot: h => { cap(h, .5, 1.03, -.3).material = av3mat(av3mix(h.K.hair, h.K.skin, .2)); if (!h.hat) { av3mesh(h.g, av3sph(.14, 16, 12), h.m, 0, h.R * 1.08, -.05); av3mesh(h.g, av3tor(.07, .03), av3mat('#c92a2a'), 0, h.R * .98, -.05).rotation.x = Math.PI / 2; } },
@@ -157,14 +158,17 @@ const AV3_HAIR_OF = { h_short: 'short', h_crop: 'crop', h_side: 'side', h_fringe
 // T(h) gets the same { g, R, K } and builds on the head
 const AV3_HAT = (() => {
   const dome = (h, col, k = 1.12, frac = .5, y = .05, tilt = -.15) => { const d = av3mesh(h.g, av3dome(h.R * k, frac), av3mat(col), 0, y, -.01); d.rotation.x = tilt; return d; };
-  const brim = (h, col, r = .3, fwd = .3, y = .2, tilt = .18) => { const b = av3mesh(h.g, av3cyl(r, r, .035, 24), av3mat(col), 0, y, fwd); b.scale.z = .8; b.rotation.x = tilt; return b; };
+  // 2.59: a peak sits on the cap's rim at the forehead instead of cutting through the crown
+  const brim = (h, col, r = .3, fwd = .3, y = .11, tilt = .1) => { const b = av3mesh(h.g, av3cyl(r, r, .035, 24), av3mat(col), 0, y, fwd); b.scale.z = .8; b.rotation.x = tilt; return b; };
+  // a band round the head (sweatband, ninja band, headband gear) sits just outside the hair
+  const ringR = (h, y) => { const b = Math.max(h.capR || 0, h.R * h.K.head[0]); return Math.sqrt(Math.max(.01, b * b - (y - .02) ** 2)) + .022; };
   const horn = (h, col, s, big = 1) => { const c = av3mesh(h.g, av3cone(.07 * big, .3 * big, 10), av3mat(col), s * h.R * .62, h.R * .9, 0); c.rotation.z = -s * .55; return c; };
   return {
-    hat_band: h => av3mesh(h.g, av3tor(h.R * 1.0, .045), av3mat('#e03131'), 0, .16, 0).rotation.x = Math.PI / 2 + .25,
-    hat_cap: h => { dome(h, '#1c7ed6'); brim(h, '#1971c2', .3, h.R * .82, .2); av3mesh(h.g, av3sph(.03, 8, 6), av3mat('#1971c2'), 0, h.R * 1.12 + .03, 0, { ol: false }); },
-    hat_backcap: h => { dome(h, '#e03131'); brim(h, '#c92a2a', .28, -h.R * .82, .2, -.18); },
-    hat_snap: h => { dome(h, '#212529'); const b = brim(h, '#f1f3f5', .34, h.R * .9, .21, .02); b.scale.z = .7; },
-    hat_beta: h => { dome(h, '#7048e8'); brim(h, '#5f3dc4', .3, h.R * .82, .2); },
+    hat_band: h => { const b = av3mesh(h.g, av3tor(ringR(h, .22), .045), av3mat('#e03131'), 0, .22, -.01); b.rotation.x = Math.PI / 2 + .2; b.scale.y = .92; },
+    hat_cap: h => { dome(h, '#1c7ed6'); brim(h, '#1971c2', .3, h.R * .95); av3mesh(h.g, av3sph(.03, 8, 6), av3mat('#1971c2'), 0, h.R * 1.12 + .03, 0, { ol: false }); },
+    hat_backcap: h => { dome(h, '#e03131'); brim(h, '#c92a2a', .28, -h.R * .95, .1, -.18); },
+    hat_snap: h => { dome(h, '#212529'); const b = brim(h, '#f1f3f5', .34, h.R * .98, .08, .02); b.scale.z = .7; },
+    hat_beta: h => { dome(h, '#7048e8'); brim(h, '#5f3dc4', .3, h.R * .95); },
     hat_beanie: h => { dome(h, '#364fc7', 1.13, .52, .02, -.18); av3mesh(h.g, av3tor(h.R * 1.1, .06), av3mat('#4c6ef5'), 0, .07, -.01).rotation.x = Math.PI / 2 - .18; av3mesh(h.g, av3sph(.09, 14, 10), av3mat('#dbe4ff'), 0, h.R * 1.18, -.08); },
     hat_crown: h => { const g = av3mat('#fcc419', { e: '#7a5200', ei: .25 }); av3mesh(h.g, av3cyl(h.R * .78, h.R * .72, .14, 24, true), av3mat('#fcc419', { ds: true }), 0, h.R * .95, -.04); for (let i = 0; i < 5; i++) { const a = i / 5 * Math.PI * 2; av3mesh(h.g, av3cone(.06, .16, 6), g, Math.sin(a) * h.R * .75, h.R * .95 + .14, Math.cos(a) * h.R * .75 - .04); av3mesh(h.g, av3sph(.035, 8, 6), av3mat(['#e03131', '#1c7ed6', '#40c057'][i % 3]), Math.sin(a) * h.R * .78, h.R * .95, Math.cos(a) * h.R * .78 - .04, { ol: false }); } },
     hat_phones: h => { av3mesh(h.g, av3tor(h.R * 1.08, .04, Math.PI), av3mat('#212529'), 0, .02, 0); for (const s of [-1, 1]) { const c = av3mesh(h.g, av3cyl(.12, .12, .1, 20), av3mat('#e64980'), s * h.R * 1.05, 0, 0); c.rotation.z = Math.PI / 2; } },
@@ -174,11 +178,11 @@ const AV3_HAT = (() => {
     hat_halo: h => av3mesh(h.g, av3tor(.24, .03), av3mat('#ffe066', { flat: true }), 0, h.R * 1.45, -.04, { ol: false, sh: false }).rotation.x = Math.PI / 2,
     hat_horns: h => { for (const s of [-1, 1]) horn(h, '#e03131', s); },
     hat_goat: h => { for (const s of [-1, 1]) { const c = av3mesh(h.g, av3tor(.16, .045, Math.PI * 1.3, 8, 20), av3mat('#fcc419'), s * h.R * .55, h.R * .9, -.05); c.rotation.set(0, Math.PI / 2, s > 0 ? 0 : Math.PI); } },
-    hat_durag: h => { dome(h, '#212529', 1.06, .55, .02, -.25); const t = av3mesh(h.g, av3cap(.05, .3, 8), av3mat('#212529'), .05, -.12, -h.R * 1.0); t.rotation.x = .3; },
-    hat_bandana: h => { dome(h, '#c92a2a', 1.07, .5, .03, -.3); av3mesh(h.g, av3sph(.07, 10, 8), av3mat('#c92a2a'), 0, .05, -h.R * 1.02); for (const s of [-1, 1]) { const t = av3mesh(h.g, av3cap(.035, .16, 6), av3mat('#c92a2a'), s * .06, -.06, -h.R * 1.02); t.rotation.z = s * .5; } },
+    hat_durag: h => { dome(h, '#212529', 1.1, .55, .02, -.25); const t = av3mesh(h.g, av3cap(.05, .3, 8), av3mat('#212529'), .05, -.12, -h.R * 1.0); t.rotation.x = .3; },
+    hat_bandana: h => { dome(h, '#c92a2a', 1.1, .5, .03, -.3); av3mesh(h.g, av3sph(.07, 10, 8), av3mat('#c92a2a'), 0, .05, -h.R * 1.02); for (const s of [-1, 1]) { const t = av3mesh(h.g, av3cap(.035, .16, 6), av3mat('#c92a2a'), s * .06, -.06, -h.R * 1.02); t.rotation.z = s * .5; } },
     hat_beret: h => { const b = av3mesh(h.g, av3sph(h.R * 1.05, 24, 12), av3mat('#862e9c'), -.06, h.R * .78, 0); b.scale.y = .32; b.rotation.z = .2; },
     hat_flowers: h => { const cols = ['#f06595', '#fcc419', '#ffffff', '#74c0fc', '#ff8787']; for (let i = 0; i < 10; i++) { const a = i / 10 * Math.PI * 2; av3mesh(h.g, av3sph(.065, 10, 8), av3mat(cols[i % 5]), Math.sin(a) * h.R * .92, h.R * .55, Math.cos(a) * h.R * .92 - .03); } },
-    hat_helmet: h => { const d = dome(h, '#40c057', 1.14, .5, .04, -.12); d.scale.z = 1.15; for (let i = -1; i <= 1; i++) av3mesh(h.g, new THREE.BoxGeometry(.05, .03, .3), av3mat('#212529'), i * .12, h.R * 1.12, 0, { ol: false }); },
+    hat_helmet: h => { const d = dome(h, '#40c057', 1.14, .5, .04, -.12); d.scale.z = 1.15; for (let i = -1; i <= 1; i++) av3mesh(h.g, new THREE.BoxGeometry(.05, .03, .3), av3mat('#212529'), i * .12, h.R * 1.17, 0, { ol: false }); },
     hat_cowboy: h => { av3mesh(h.g, av3cyl(h.R * .78, h.R * .9, .3, 24), av3mat('#8b5a2b'), 0, h.R * .9, -.02); const b = av3mesh(h.g, new THREE.TorusGeometry(h.R * 1.15, .12, 8, 32), av3mat('#7a4a22'), 0, h.R * .72, -.02); b.rotation.x = Math.PI / 2; b.scale.z = .25; av3mesh(h.g, av3cyl(h.R * 1.15, h.R * 1.15, .03, 32), av3mat('#7a4a22'), 0, h.R * .7, -.02); },
     hat_tophat: h => { av3mesh(h.g, av3cyl(h.R * .72, h.R * .72, .5, 24), av3mat('#212529'), 0, h.R * 1.15, -.04); av3mesh(h.g, av3cyl(h.R * 1.05, h.R * 1.05, .03, 28), av3mat('#212529'), 0, h.R * .86, -.04); av3mesh(h.g, av3cyl(h.R * .73, h.R * .73, .08, 24, true), av3mat('#c92a2a', { ds: true }), 0, h.R * .96, -.04, { ol: false }); },
     hat_wizard: h => { const c = av3mesh(h.g, av3cone(h.R * .78, .8, 20), av3mat('#5f3dc4'), 0, h.R * .82 + .4, -.08); c.rotation.x = -.18; av3mesh(h.g, av3cyl(h.R * 1.2, h.R * 1.2, .03, 28), av3mat('#5f3dc4'), 0, h.R * .82, -.04); const s = av3mesh(h.g, av3star(.07), av3mat('#fcc419', { e: '#fcc419', ei: .4 }), .05, h.R * .82 + .25, h.R * .5, { ol: false }); s.rotation.x = -.2; },
@@ -186,9 +190,9 @@ const AV3_HAT = (() => {
     hat_hood: h => { const c = av3mesh(h.g, new THREE.SphereGeometry(h.R * 1.2, 28, 16, 0, Math.PI * 2, 0, Math.PI * .62), av3mat('#2b8a3e', { ds: true }), 0, .02, -.06); c.rotation.x = -.55; const t = av3mesh(h.g, av3cone(.1, .3, 10), av3mat('#2b8a3e'), 0, .2, -h.R * 1.15); t.rotation.x = -2.2; },
     hat_catears: h => { for (const s of [-1, 1]) { const e = av3mesh(h.g, av3cone(.11, .2, 4), av3mat(h.K.hair), s * h.R * .55, h.R * .95, -.02); e.rotation.z = -s * .35; av3mesh(e, av3cone(.06, .12, 4), av3mat('#ffa8c5'), 0, -.02, .035, { ol: false }); } },
     hat_antlers: h => { const m = av3mat('#8b5a2b'); for (const s of [-1, 1]) { const a = av3mesh(h.g, av3cap(.03, .32, 6), m, s * h.R * .6, h.R * 1.05, -.05); a.rotation.z = -s * .5; for (let i = 0; i < 2; i++) { const b = av3mesh(a, av3cap(.022, .14, 6), m, 0, i * .1, 0); b.position.x = s * .06; b.rotation.z = -s * .9; } } },
-    hat_ninja: h => { av3mesh(h.g, av3tor(h.R * 1.0, .05), av3mat('#212529'), 0, .16, 0).rotation.x = Math.PI / 2 + .2; for (const s of [-1, 1]) { const t = av3mesh(h.g, av3cap(.035, .24, 6), av3mat('#212529'), s * .07, .06, -h.R * 1.05); t.rotation.set(.4, 0, s * .6); } const m = av3mesh(h.g, new THREE.SphereGeometry(h.R * 1.03, 28, 12, -Math.PI * .5, Math.PI, Math.PI * .58, Math.PI * .42), av3mat('#343a40', { ds: true }), 0, 0, 0); m.scale.z = 1.02; },
+    hat_ninja: h => { const nb = av3mesh(h.g, av3tor(ringR(h, .22), .05), av3mat('#212529'), 0, .22, -.01); nb.rotation.x = Math.PI / 2 + .2; nb.scale.y = .92; for (const s of [-1, 1]) { const t = av3mesh(h.g, av3cap(.035, .24, 6), av3mat('#212529'), s * .07, .22, -(ringR(h, .3) + .03)); t.rotation.set(.4, 0, s * .6); } const m = av3mesh(h.g, new THREE.SphereGeometry(h.R * 1.03, 28, 12, -Math.PI * .5, Math.PI, Math.PI * .58, Math.PI * .42), av3mat('#343a40', { ds: true }), 0, 0, 0); m.scale.z = 1.02; },
     hat_knight: h => { const M = av3mat('#ced4da', { e: '#495057', ei: .2 }); dome(h, '#ced4da', 1.14, .62, .0, 0).material = M; for (let i = -1; i <= 1; i += 2) av3mesh(h.g, new THREE.BoxGeometry(.3, .02, .02), av3mat('#212529'), 0, .02 + i * .03, h.R * 1.1, { ol: false }); for (let i = 0; i < 6; i++) { const p = av3mesh(h.g, av3sph(.08, 12, 10), av3mat('#e03131'), 0, h.R * 1.1 + Math.sin(i / 5 * 2.4) * .14, .1 - i * .08); p.scale.set(.7, 1, 1.1); } },
-    hat_samurai: h => { dome(h, '#212529', 1.14, .5, .04, -.1); const s = av3mesh(h.g, av3cyl(h.R * 1.15, h.R * 1.45, .14, 24, true), av3mat('#343a40', { ds: true }), 0, -.02, -.04); s.rotation.x = -.15; const c = av3mesh(h.g, av3tor(.2, .03, Math.PI, 8, 20), av3mat('#fcc419', { e: '#7a5200', ei: .3 }), 0, h.R * .95, h.R * .5); c.rotation.x = -.3; av3mesh(h.g, av3sph(.05, 10, 8), av3mat('#e03131'), 0, h.R * .82, h.R * .82, { ol: false }); },
+    hat_samurai: h => { dome(h, '#212529', 1.14, .5, .04, -.1); const s = av3mesh(h.g, av3cyl(h.R * 1.15, h.R * 1.45, .14, 24, true), av3mat('#343a40', { ds: true }), 0, .1, -.06); s.rotation.x = -.5; /* the neck guard rises at the front so it never covers the eyes */ const c = av3mesh(h.g, av3tor(.2, .03, Math.PI, 8, 20), av3mat('#fcc419', { e: '#7a5200', ei: .3 }), 0, h.R * .95, h.R * .5); c.rotation.x = -.3; av3mesh(h.g, av3sph(.05, 10, 8), av3mat('#e03131'), 0, h.R * .82, h.R * .82, { ol: false }); },
     hat_astro: h => { av3mesh(h.g, av3sph(h.R * 1.38, 32, 20), av3mat('#a5d8ff', { op: .22 }), 0, .02, 0, { sh: false }); av3mesh(h.g, av3tor(h.R * 1.0, .08), av3mat('#f8f9fa'), 0, -h.R * .95, 0).rotation.x = Math.PI / 2; av3mesh(h.g, av3sph(.04, 8, 6), av3mat('#ff6b6b', { flat: true }), h.R * .9, -h.R * .9, h.R * .4, { ol: false }); },
     hat_jester: h => { dome(h, '#7048e8', 1.1, .5, .04, -.15); for (const [s, col] of [[-1, '#7048e8'], [1, '#fcc419']]) { const c = av3mesh(h.g, av3cone(.1, .4, 10), av3mat(col), s * h.R * .7, h.R * .95, -.05); c.rotation.z = -s * 1.1; av3mesh(c, av3sph(.05, 8, 6), av3mat('#ffffff'), 0, .22, 0); } },
   };
@@ -198,10 +202,11 @@ const AV3_HAT = (() => {
 const AV3_EYE = (() => {
   const pair = (h, geo, mat, z = .05, o) => [-1, 1].map(s => av3mesh(h.g, geo, mat, s * .15, h.eyY, h.fz(s * .15, h.eyY) + z, o));
   const bar = (h, col, w = .12, y = 0) => { const b = av3mesh(h.g, av3cap(.012, w, 6), av3mat(col), 0, h.eyY + y, h.fz(0, h.eyY) + .06, { ol: false }); b.rotation.z = Math.PI / 2; return b; };
-  const strap = (h, col, y = 0) => av3mesh(h.g, av3tor(h.R * h.K.head[0] * 1.0, .025), av3mat(col), 0, h.eyY + y, -.01, { ol: false }).rotation.x = Math.PI / 2;
+  const strapR = h => Math.max(h.capR || 0, h.R * h.K.head[0]) + .02; // 2.59: straps go round the hair, not through it
+  const strap = (h, col, y = 0) => av3mesh(h.g, av3tor(strapR(h), .025), av3mat(col), 0, h.eyY + y, -.01, { ol: false }).rotation.x = Math.PI / 2;
   const lens = (r, sy = .8, sz = .35) => { const g = av3sph(r, 18, 12); g.scale(1, sy, sz); return g; };
   return {
-    eye_sport: h => { const v = av3mesh(h.g, new THREE.CylinderGeometry(h.R * 1.14, h.R * 1.14, .1, 32, 1, true, -Math.PI * .32, Math.PI * .64), av3mat('#1c7ed6', { ds: true, e: '#0b3d91', ei: .3 }), 0, h.eyY + .01, -.02); v.scale.z = h.K.head[2] * 1.02; },
+    eye_sport: h => { const v = av3mesh(h.g, new THREE.CylinderGeometry(h.R * 1.22, h.R * 1.22, .1, 32, 1, true, -Math.PI * .3, Math.PI * .6), av3mat('#1c7ed6', { ds: true, e: '#0b3d91', ei: .3 }), 0, h.eyY + .01, -.02); v.scale.z = h.K.head[2] * 1.02; },
     eye_aviator: h => { pair(h, lens(.08, .85), av3mat('#343a40', { e: '#495057', ei: .2 })); bar(h, '#fcc419'); },
     eye_star: h => { pair(h, av3star(.1), av3mat('#f06595'), .06); },
     eye_heart: h => { pair(h, av3heart(.07), av3mat('#e64980'), .06); },
@@ -212,11 +217,11 @@ const AV3_EYE = (() => {
     eye_3d: h => { pair(h, new THREE.BoxGeometry(.19, .14, .02), av3mat('#f8f9fa'), .05); const [a, b] = pair(h, new THREE.BoxGeometry(.15, .1, .02), av3mat('#fa5252', { op: .9 }), .065); b.material = av3mat('#4dabf7', { op: .9 }); bar(h, '#f8f9fa', .06); },
     eye_mono: h => { av3mesh(h.g, av3tor(.085, .016, Math.PI * 2, 8, 22), av3mat('#fcc419'), .15, h.eyY, h.fz(.15, h.eyY) + .055, { ol: false }); },
     eye_ski: h => { const v = av3mesh(h.g, av3sph(.2, 24, 12), av3mat('#ff922b', { e: '#e8590c', ei: .3 }), 0, h.eyY, h.fz(0, h.eyY) - .02); v.scale.set(1.35, .5, .45); strap(h, '#212529'); },
-    eye_visor: h => { const v = av3mesh(h.g, new THREE.CylinderGeometry(h.R * 1.14, h.R * 1.14, .12, 32, 1, true, -Math.PI * .34, Math.PI * .68), av3mat('#3bc9db', { flat: true, op: .9, ds: true }), 0, h.eyY, -.02, { sh: false }); v.scale.z = h.K.head[2] * 1.03; },
+    eye_visor: h => { const v = av3mesh(h.g, new THREE.CylinderGeometry(h.R * 1.22, h.R * 1.22, .12, 32, 1, true, -Math.PI * .32, Math.PI * .64), av3mat('#3bc9db', { flat: true, op: .9, ds: true }), 0, h.eyY, -.02, { sh: false }); v.scale.z = h.K.head[2] * 1.03; },
     eye_vr: h => { const b = av3mesh(h.g, new THREE.BoxGeometry(.48, .2, .16), av3mat('#f8f9fa'), 0, h.eyY, h.fz(0, h.eyY) + .03); av3mesh(b, new THREE.BoxGeometry(.4, .12, .02), av3mat('#212529'), 0, 0, .085, { ol: false }); strap(h, '#343a40'); },
-    eye_titan: h => { const v = av3mesh(h.g, new THREE.CylinderGeometry(h.R * 1.15, h.R * 1.15, .12, 32, 1, true, -Math.PI * .3, Math.PI * .6), av3mat('#fcc419', { e: '#a87b00', ei: .4, ds: true }), 0, h.eyY, -.02); v.scale.z = h.K.head[2] * 1.03; },
+    eye_titan: h => { const v = av3mesh(h.g, new THREE.CylinderGeometry(h.R * 1.22, h.R * 1.22, .12, 32, 1, true, -Math.PI * .3, Math.PI * .6), av3mat('#fcc419', { e: '#a87b00', ei: .4, ds: true }), 0, h.eyY, -.02); v.scale.z = h.K.head[2] * 1.03; },
     // 2.58 new eyewear
-    eye_patch: h => { av3mesh(h.g, lens(.08, .9, .3), av3mat('#212529'), -.15, h.eyY, h.fz(-.15, h.eyY) + .04); const s = av3mesh(h.g, av3tor(h.R * 1.0, .012), av3mat('#212529'), 0, h.eyY + .05, -.01, { ol: false }); s.rotation.set(Math.PI / 2, .3, 0); },
+    eye_patch: h => { av3mesh(h.g, lens(.08, .9, .3), av3mat('#212529'), -.15, h.eyY, h.fz(-.15, h.eyY) + .04); const s = av3mesh(h.g, av3tor(strapR(h), .012), av3mat('#212529'), 0, h.eyY + .05, -.01, { ol: false }); s.rotation.set(Math.PI / 2, .3, 0); },
     eye_cyber: h => { av3mesh(h.g, av3cyl(.08, .08, .05, 20), av3mat('#343a40'), .15, h.eyY, h.fz(.15, h.eyY) + .04).rotation.x = Math.PI / 2; av3mesh(h.g, av3sph(.05, 12, 10), av3mat('#ff3b3b', { flat: true }), .15, h.eyY, h.fz(.15, h.eyY) + .07, { ol: false }); h.glow = '#ff3b3b'; },
     eye_mask: h => { const m = av3mesh(h.g, av3shape(s => { s.moveTo(-.3, 0); s.quadraticCurveTo(-.2, .14, 0, .05); s.quadraticCurveTo(.2, .14, .3, 0); s.quadraticCurveTo(.2, -.12, 0, -.03); s.quadraticCurveTo(-.2, -.12, -.3, 0); }, .015, .006), av3mat('#7048e8', { e: '#3b1f9a', ei: .3 }), 0, h.eyY + .01, h.fz(0, h.eyY) + .05); m.scale.set(1.05, 1.1, 1); },
   };
@@ -226,10 +231,12 @@ const AV3_EYE = (() => {
 // X(P, K) gets the figure's attach points
 const AV3_EXTRA = (() => {
   const T = AV3_STYLE;
-  const cape = (P, col, inner, trim) => { const c = new THREE.Group(); c.position.set(0, T.torsoH - .04, -.26); P.chest.add(c); const m = av3mesh(c, new THREE.CylinderGeometry(.34, .5, 1.05, 20, 4, true, Math.PI * .62, Math.PI * .76), av3mat(col, { ds: true }), 0, -.52, .26); m.material = av3mat(col, { ds: true }); if (trim) av3mesh(c, av3tor(.24, .055, Math.PI * 2, 8, 20), av3mat(trim), 0, .02, .2).rotation.x = Math.PI / 2; P.cape = c; return c; };
+  const cape = (P, col, inner, trim) => { const c = new THREE.Group(); c.position.set(0, T.torsoH - .04, -.26); c.scale.set(P.bulk || 1, 1, P.bulk || 1); P.chest.add(c); // 2.59: wider over bulky chest gear so it never cuts into it
+    const m = av3mesh(c, new THREE.CylinderGeometry(.34, .5, 1.05, 20, 4, true, Math.PI * .62, Math.PI * .76), av3mat(col, { ds: true }), 0, -.52, .26); m.material = av3mat(col, { ds: true }); if (trim) av3mesh(c, av3tor(.24, .055, Math.PI * 2, 8, 20), av3mat(trim), 0, .02, .2).rotation.x = Math.PI / 2; P.cape = c; return c; };
   const wings = (P, mk) => { const W = []; for (const s of [-1, 1]) { const w = new THREE.Group(); w.position.set(s * .1, T.torsoH * .82, -.28); w.scale.setScalar(1.4); P.chest.add(w); mk(w, s); W.push(w); } P.wings = W; };
   const feather = (w, s, col, op) => { for (let i = 0; i < 5; i++) { const f = av3mesh(w, av3cap(.07, .42 - i * .05, 10), av3mat(col, op ? { op, e: col, ei: .5 } : {}), s * (.2 + i * .07), .2 - i * .1, -.02 * i, op ? { ol: false } : {}); f.rotation.z = -s * (.95 - i * .28); f.scale.z = .35; } };
-  const onBack = (P, geo, mat, x, y, rz = 0) => { const m = av3mesh(P.chest, geo, mat, x, y, -.3); m.rotation.z = rz; return m; };
+  const backZ = P => -.3 - (P.backZ || 0); // things on your back sit further out over a hoodie or armour
+  const onBack = (P, geo, mat, x, y, rz = 0) => { const m = av3mesh(P.chest, geo, mat, x, y, backZ(P)); m.rotation.z = rz; return m; };
   const inHand = (P, i, geo, mat, x = 0, y = -.05, z = .1) => av3mesh(P.hands[i], geo, mat, x, y, z);
   return {
     x_chain: P => { av3mesh(P.chest, av3tor(.2, .025, Math.PI * 2, 8, 24), av3mat('#fcc419', { e: '#7a5200', ei: .2 }), 0, T.torsoH - .08, .1, { ol: false }).rotation.x = Math.PI / 2 - .5; },
@@ -243,16 +250,16 @@ const AV3_EXTRA = (() => {
     x_sparkle: P => { P.sparks = []; for (let i = 0; i < 8; i++) { const s = av3mesh(P.fig, av3star(.05), av3mat('#fcc419', { flat: true }), 0, 0, 0, { ol: false, sh: false }); s.userData = { a: i / 8 * Math.PI * 2, y: .4 + Math.random() * 1.4 }; P.sparks.push(s); } },
     x_belt: P => { av3mesh(P.chest, av3tor(.3, .05, Math.PI * 2, 8, 28), av3mat('#212529'), 0, .06, 0).rotation.x = Math.PI / 2; av3mesh(P.chest, new THREE.BoxGeometry(.22, .14, .04), av3mat('#fcc419', { e: '#7a5200', ei: .25 }), 0, .06, .3); },
     x_backpack: P => { onBack(P, av3cap(.2, .14, 12), av3mat('#1c7ed6'), 0, T.torsoH * .45).scale.z = .55; },
-    x_guitar: P => { const g = new THREE.Group(); g.position.set(0, T.torsoH * .45, -.32); g.rotation.z = .7; P.chest.add(g); const b = av3mesh(g, av3sph(.17, 18, 12), av3mat('#e8590c'), 0, -.15, 0); b.scale.z = .35; av3mesh(g, new THREE.BoxGeometry(.05, .5, .03), av3mat('#6b4423'), 0, .2, 0); },
+    x_guitar: P => { const g = new THREE.Group(); g.position.set(0, T.torsoH * .45, backZ(P) - .02); g.rotation.z = .7; P.chest.add(g); const b = av3mesh(g, av3sph(.17, 18, 12), av3mat('#e8590c'), 0, -.15, 0); b.scale.z = .35; av3mesh(g, new THREE.BoxGeometry(.05, .5, .03), av3mat('#6b4423'), 0, .2, 0); },
     x_skate: P => { const s = onBack(P, new THREE.BoxGeometry(.2, .7, .03), av3mat('#e64980'), 0, T.torsoH * .45, .3); for (const y of [-.25, .25]) av3mesh(s, av3cyl(.03, .03, .22, 10), av3mat('#fcc419'), 0, y, -.04).rotation.z = Math.PI / 2; },
-    x_jetpack: P => { P.jets = []; for (const s of [-1, 1]) { onBack(P, av3cap(.08, .26, 12), av3mat('#adb5bd'), s * .11, T.torsoH * .5); const f = av3mesh(P.chest, av3cone(.06, .22, 10), av3mat('#ff922b', { flat: true, op: .85 }), s * .11, T.torsoH * .5 - .3, -.3, { ol: false, sh: false }); f.rotation.x = Math.PI; P.jets.push(f); } },
+    x_jetpack: P => { P.jets = []; for (const s of [-1, 1]) { onBack(P, av3cap(.08, .26, 12), av3mat('#adb5bd'), s * .11, T.torsoH * .5); const f = av3mesh(P.chest, av3cone(.06, .22, 10), av3mat('#ff922b', { flat: true, op: .85 }), s * .11, T.torsoH * .5 - .3, backZ(P), { ol: false, sh: false }); f.rotation.x = Math.PI; P.jets.push(f); } },
     x_laptop: P => { inHand(P, 0, new THREE.BoxGeometry(.3, .02, .22), av3mat('#495057'), 0, .02, .1); },
     // 2.58 new extras
     x_scarf: P => { av3mesh(P.chest, av3tor(.2, .07, Math.PI * 2, 10, 24), av3mat('#e03131'), 0, T.torsoH - .02, .02).rotation.x = Math.PI / 2; const t = av3mesh(P.chest, av3cap(.055, .4, 8), av3mat('#e03131'), .12, T.torsoH - .1, -.25); t.rotation.set(-1.0, 0, -.3); t.scale.x = 1.4; P.scarf = t; },
-    x_pauldrons: P => { for (const A of P.arms) { const s = av3mesh(A, av3dome(.17, .5, 20), av3mat('#adb5bd', { e: '#343a40', ei: .15 }), 0, .03, 0); s.scale.y = .8; av3mesh(A, av3sph(.03, 8, 6), av3mat('#fcc419'), 0, .17, 0, { ol: false }); } },
-    x_sword: P => { const g = new THREE.Group(); g.position.set(0, T.torsoH * .5, -.34); g.rotation.z = -.6; P.chest.add(g); av3mesh(g, new THREE.BoxGeometry(.07, .78, .02), av3mat('#dee2e6', { e: '#495057', ei: .2 }), 0, .3, 0); av3mesh(g, new THREE.BoxGeometry(.24, .05, .05), av3mat('#fcc419'), 0, -.1, 0); av3mesh(g, av3cyl(.03, .03, .2, 8), av3mat('#5c4033'), 0, -.22, 0); },
+    x_pauldrons: P => { for (const A of P.arms) { const s = av3mesh(A, av3dome(P.pads ? .2 : .17, .5, 20), av3mat('#adb5bd', { e: '#343a40', ei: .15 }), 0, P.pads ? .05 : .03, 0); s.scale.y = .8; av3mesh(A, av3sph(.03, 8, 6), av3mat('#fcc419'), 0, .17, 0, { ol: false }); } },
+    x_sword: P => { const g = new THREE.Group(); g.position.set(0, T.torsoH * .5, backZ(P) - .04); g.rotation.z = -.6; P.chest.add(g); av3mesh(g, new THREE.BoxGeometry(.07, .78, .02), av3mat('#dee2e6', { e: '#495057', ei: .2 }), 0, .3, 0); av3mesh(g, new THREE.BoxGeometry(.24, .05, .05), av3mat('#fcc419'), 0, -.1, 0); av3mesh(g, av3cyl(.03, .03, .2, 8), av3mat('#5c4033'), 0, -.22, 0); },
     x_shield: P => { const s = onBack(P, av3cyl(.3, .3, .05, 24), av3mat('#1c7ed6'), 0, T.torsoH * .45); s.rotation.x = Math.PI / 2; av3mesh(s, av3tor(.28, .03, Math.PI * 2, 8, 28), av3mat('#fcc419'), 0, 0, 0, { ol: false }).rotation.x = Math.PI / 2; av3mesh(s, av3star(.12), av3mat('#f8f9fa'), 0, -.04, 0, { ol: false }).rotation.x = Math.PI / 2; },
-    x_staff: P => { const h = P.hands[1]; av3mesh(h, av3cyl(.03, .035, 1.4, 10), av3mat('#6b4423'), 0, .2, .08); av3mesh(h, av3sph(.1, 16, 12), av3mat('#9775fa', { flat: true }), 0, .95, .08, { ol: false }); P.glowAt = [h, 0, .95, .08, '#9775fa']; },
+    x_staff: P => { const h = new THREE.Group(); h.rotation.z = -.38; P.hands[1].add(h); /* leans out, away from your head */ av3mesh(h, av3cyl(.03, .035, 1.4, 10), av3mat('#6b4423'), 0, .2, .08); av3mesh(h, av3sph(.1, 16, 12), av3mat('#9775fa', { flat: true }), 0, .95, .08, { ol: false }); P.glowAt = [h, 0, .95, .08, '#9775fa']; P.charm.position.x = -.74; },
     x_capeRoyal: P => cape(P, '#a61e4d', '', '#f8f9fa'),
     x_capeVoid: P => { const c = cape(P, '#1a1033'); c.children[0].material = av3mat('#2b1d5c', { ds: true, e: '#5f3dc4', ei: .35 }); for (let i = 0; i < 14; i++) { const a = Math.PI * (.66 + Math.random() * .68), y = -.1 - Math.random() * .9; av3mesh(c, av3star(.025), av3mat('#ffffff', { flat: true }), Math.sin(a) * (.36 + (-y) * .15) * 1.04, y, .26 + Math.cos(a) * (.36 + (-y) * .15) * 1.04, { ol: false, sh: false }).lookAt(0, y, -2); } },
     x_wingsLight: P => wings(P, (w, s) => feather(w, s, '#66d9e8', .55)),
@@ -268,10 +275,10 @@ const AV3_GEAR = (() => {
   return {
     'Study Cap': (P, c) => { const g = P.head; av3mesh(g, av3dome(T.headR * 1.06, .4), av3mat('#212529'), 0, .12, 0); const b = av3mesh(g, new THREE.BoxGeometry(.72, .05, .72), av3mat('#212529'), 0, T.headR * .78 + .1, -.02); b.rotation.y = Math.PI / 4; av3mesh(g, av3sph(.04), av3mat(c), 0, T.headR * .78 + .14, -.02, { ol: false }); const t = av3mesh(g, av3cap(.02, .22, 6), av3mat(c), .3, T.headR * .78, .1); t.rotation.z = .1; },
     Helm: (P, c, M) => { const g = P.head, h = av3mesh(g, av3dome(T.headR * 1.16, .56), M, 0, .0, -.02); h.scale.y = 1.04; h.rotation.x = -.42; av3mesh(g, new THREE.BoxGeometry(.05, .16, .05), M, 0, .1, T.headR * 1.06); for (let i = 0; i < 5; i++) av3mesh(g, av3sph(.06, 10, 8), av3mat(c), 0, T.headR * 1.12 - i * .02, .16 - i * .12); for (const s of [-1, 1]) { const ch = av3mesh(g, av3sph(.14, 14, 10), M, s * T.headR * .98, -.1, -.04); ch.scale.set(.3, 1, .9); } },
-    Headband: (P, c) => { av3mesh(P.head, av3tor(T.headR * 1.0, .045), av3mat(c), 0, .16, 0).rotation.x = Math.PI / 2 + .25; for (const s of [-1, 1]) { const t = av3mesh(P.head, av3cap(.03, .2, 6), av3mat(c), s * .05, .02, -T.headR * 1.0); t.rotation.set(.5, 0, s * .6); } },
-    Hoodie: (P, c) => { const b = av3mesh(P.chest, av3lathe([[0, -.02], [.31, -.01], [.33, .12], [.39, .44], [.36, .58], [.2, .66], [0, .67]]), av3mat(c)); b.scale.z = .84; av3mesh(P.chest, av3tor(.2, .08, Math.PI * 2, 10, 20), av3mat(av3drk(c, .15)), 0, T.torsoH - .04, -.12).rotation.x = Math.PI / 2.6; av3mesh(P.chest, new THREE.BoxGeometry(.3, .12, .04), av3mat(av3drk(c, .12)), 0, .18, .29); for (const s of [-1, 1]) av3mesh(P.chest, av3cap(.012, .12, 6), av3mat('#f8f9fa'), s * .06, T.torsoH - .2, .3, { ol: false }); for (const A of P.arms) A.userData.sleeve.material = av3mat(c); },
-    Chestplate: (P, c, M, gl) => { const b = av3mesh(P.chest, av3lathe([[0, .1], [.32, .12], [.4, .42], [.38, .56], [.22, .64], [0, .65]]), M); b.scale.z = .86; av3mesh(P.chest, av3sph(.08, 14, 10), av3mat(c, gl), 0, .38, .34).scale.z = .4; for (const A of P.arms) { const s = av3mesh(A, av3dome(.18, .5, 20), M, 0, .03, 0); s.scale.y = .85; } },
-    Robe: (P, c) => { av3mesh(P.chest, av3lathe([[.3, -.62], [.36, -.3], [.31, 0], [.3, .2], [.38, .44], [.34, .58], [.2, .66], [0, .67]]), av3mat(c, { ds: true })).scale.z = .86; av3mesh(P.chest, av3tor(.31, .035, Math.PI * 2, 8, 28), av3mat('#fcc419'), 0, .06, 0, { ol: false }).rotation.x = Math.PI / 2; av3mesh(P.chest, av3cap(.03, .4, 6), av3mat('#fcc419'), 0, T.torsoH * .5, .33, { ol: false }); for (const A of P.arms) A.userData.sleeve.material = av3mat(c); P.robe = true; },
+    Headband: (P, c, M, gl, h) => { const hb = av3mesh(P.head, av3tor(h ? h.ringR(.22) : T.headR, .045), av3mat(c), 0, .22, -.01); hb.rotation.x = Math.PI / 2 + .2; hb.scale.y = .92; for (const s of [-1, 1]) { const t = av3mesh(P.head, av3cap(.03, .2, 6), av3mat(c), s * .05, .2, -(h ? h.ringR(.3) + .03 : T.headR * 1.05)); t.rotation.set(.5, 0, s * .6); } },
+    Hoodie: (P, c) => { P.bulk = 1.1; P.backZ = .12; const b = av3mesh(P.chest, av3lathe([[0, -.02], [.31, -.01], [.33, .12], [.39, .44], [.36, .58], [.2, .66], [0, .67]]), av3mat(c)); b.scale.z = .84; av3mesh(P.chest, av3tor(.2, .08, Math.PI * 2, 10, 20), av3mat(av3drk(c, .15)), 0, T.torsoH - .04, -.12).rotation.x = Math.PI / 2.6; av3mesh(P.chest, new THREE.BoxGeometry(.3, .12, .04), av3mat(av3drk(c, .12)), 0, .18, .29); for (const s of [-1, 1]) av3mesh(P.chest, av3cap(.012, .12, 6), av3mat('#f8f9fa'), s * .06, T.torsoH - .2, .3, { ol: false }); for (const A of P.arms) A.userData.sleeve.material = av3mat(c); },
+    Chestplate: (P, c, M, gl) => { P.bulk = 1.14; P.backZ = .06; P.pads = true; const b = av3mesh(P.chest, av3lathe([[0, .1], [.32, .12], [.4, .42], [.38, .56], [.22, .64], [0, .65]]), M); b.scale.z = .86; av3mesh(P.chest, av3sph(.08, 14, 10), av3mat(c, gl), 0, .38, .34).scale.z = .4; for (const A of P.arms) { const s = av3mesh(A, av3dome(.18, .5, 20), M, 0, .03, 0); s.scale.y = .85; } },
+    Robe: (P, c) => { P.bulk = 1.08; P.backZ = .03; av3mesh(P.chest, av3lathe([[.3, -.62], [.36, -.3], [.31, 0], [.3, .2], [.38, .44], [.34, .58], [.2, .66], [0, .67]]), av3mat(c, { ds: true })).scale.z = .86; av3mesh(P.chest, av3tor(.31, .035, Math.PI * 2, 8, 28), av3mat('#fcc419'), 0, .06, 0, { ol: false }).rotation.x = Math.PI / 2; av3mesh(P.chest, av3cap(.03, .4, 6), av3mat('#fcc419'), 0, T.torsoH * .5, .33, { ol: false }); for (const A of P.arms) A.userData.sleeve.material = av3mat(c); P.robe = true; },
     'Track Pants': (P, c) => { for (const L of P.legs) { L.userData.leg.material = av3mat(c); av3mesh(L, new THREE.BoxGeometry(.02, .42, .02), av3mat('#ffffff'), Math.sign(L.position.x) * T.legR * 1.02, -.24, 0, { ol: false }); } },
     Greaves: (P, c, M) => { for (const L of P.legs) { av3mesh(L, av3cyl(T.legR * 1.3, T.legR * 1.15, .2, 16), M, 0, -.38, .01); av3mesh(L, av3sph(.08, 12, 10), av3mat(c), 0, -.24, .12); } },
     'Training Shorts': (P, c) => { for (const L of P.legs) av3mesh(L, av3cyl(T.legR * 1.4, T.legR * 1.3, .2, 16), av3mat(c), 0, -.06, 0); },
@@ -283,7 +290,7 @@ const AV3_GEAR = (() => {
     Tape: (P) => { for (const H of P.hands) for (let i = 0; i < 2; i++) av3mesh(H, av3tor(.11, .03, Math.PI * 2, 8, 18), av3mat('#f8f9fa'), 0, .08 + i * .05, 0, { ol: false }).rotation.x = Math.PI / 2; },
     'Lucky Clover': (P) => { const g = new THREE.Group(); for (let i = 0; i < 4; i++) { const l = av3mesh(g, av3heart(.06), av3mat('#40c057', { e: '#2b8a3e', ei: .3 }), Math.cos(i * Math.PI / 2) * .06, Math.sin(i * Math.PI / 2) * .06, 0); l.rotation.z = i * Math.PI / 2 - Math.PI / 2; } P.charm.add(g); },
     'Seer Orb': (P, c) => { av3mesh(P.charm, av3sph(.12), av3mat(c, { e: c, ei: .9, op: .85 }), 0, 0, 0, { sh: false }); av3mesh(P.charm, av3sph(.05, 12, 8), av3mat('#ffffff', { flat: true }), .03, .03, .06, { ol: false }); },
-    Medal: (P, c) => { av3mesh(P.chest, av3cyl(.09, .09, .03, 20), av3mat('#fcc419', { e: '#7a5200', ei: .25 }), 0, .26, .33).rotation.x = Math.PI / 2; av3mesh(P.chest, new THREE.BoxGeometry(.06, .16, .01), av3mat(c), 0, .38, .31, { ol: false }); },
+    Medal: (P, c) => { const m = av3mesh(P.charm, av3cyl(.11, .11, .035, 24), av3mat('#fcc419', { e: '#7a5200', ei: .25 }), 0, 0, 0); m.rotation.x = Math.PI / 2; av3mesh(P.charm, av3star(.06), av3mat(c), 0, 0, .03, { ol: false }); av3mesh(P.charm, new THREE.BoxGeometry(.07, .14, .01), av3mat(c), 0, .17, 0, { ol: false }); }, // a charm: it floats beside you like the others
   };
 })();
 
@@ -393,10 +400,21 @@ function av3figure(spec, gear, clsCol) {
   const h = { g: head, R, K, eyY: -.02, m: av3mat(K.hair), hat: false,
     fz: (x, y) => sz * R * Math.sqrt(Math.max(.05, 1 - (x / (sx * R)) ** 2 - (y / (sy * R)) ** 2)) };
   av3face(h, spec, K); P.eyes = h.eyes;
-  // headwear: gear on your head wins over a cosmetic hat
+  // 2.59: cosmetics win where you've picked one (a hat over head gear, a kit
+  // colour over chest gear, shoes over feet gear, an extra in your hand over
+  // the Pen of Power), so the look you choose always shows; gear fills the
+  // rest. The piece you're previewing (force) always shows.
+  gear = { ...gear };
+  const force = spec.force || '', drop = (names, why) => { if (why) for (const b of names) if (b !== force) delete gear[b]; };
+  drop(['Study Cap', 'Helm', 'Headband'], spec.hat && spec.hat !== 'hat_none');
+  drop(['Hoodie', 'Chestplate', 'Robe'], spec.kit && spec.kit !== 'kit_gear');
+  drop(['Spikes', 'Boots', 'Slippers'], spec.shoes && spec.shoes !== 'sh_white');
+  drop(['Pen of Power'], ['x_trophy', 'x_staff'].includes(spec.extra));
+  // headwear: head gear (when no hat is picked, or while previewing it) replaces the hat
   const headGear = ['Study Cap', 'Helm', 'Headband'].some(b => gear[b]);
   const hatId = as3('hat', spec.hat), hatF = !headGear && AV3_HAT[hatId];
   h.hat = !!hatF || gear['Study Cap'] || gear.Helm;
+  h.band = gear.Headband || ['hat_band', 'hat_ninja'].includes(hatId) && !!hatF; // the hair sits tight so a band can go round it
   if (!K.bald && !gear.Helm) { const f = AV3_HAIR[AV3_HAIR_OF[spec.hair] || 'short']; try { f(h); } catch (e) { console.error(e); } }
   if (hatF) try { hatF(h); } catch (e) { console.error(e); }
   const eyF = AV3_EYE[as3('eyes', spec.eyes)]; if (eyF) try { eyF(h); } catch (e) { console.error(e); }
@@ -404,7 +422,8 @@ function av3figure(spec, gear, clsCol) {
   // charm floats beside you
   const charm = P.charm = new THREE.Group(); charm.position.set(.72, 1.45, .1); fig.add(charm);
   // gear, then extras
-  for (const [base, c] of Object.entries(gear)) { const f = AV3_GEAR[base]; if (!f) continue; const leg = c === '#f59f00', gl = leg ? { e: c, ei: .45 } : {}; try { f(P, c, av3mat(av3mix(c, '#9aa3ad', leg ? .3 : .5), leg ? { e: c, ei: .15 } : {}), gl); } catch (e) { console.error(e); } }
+  h.ringR = y => { const b = Math.max(h.capR || 0, R * sx); return Math.sqrt(Math.max(.01, b * b - (y - .02) ** 2)) + .022; };
+  for (const [base, c] of Object.entries(gear)) { const f = AV3_GEAR[base]; if (!f) continue; const leg = c === '#f59f00', gl = leg ? { e: c, ei: .45 } : {}; try { f(P, c, av3mat(av3mix(c, '#9aa3ad', leg ? .3 : .5), leg ? { e: c, ei: .15 } : {}), gl, h); } catch (e) { console.error(e); } }
   const xF = AV3_EXTRA[as3('extra', spec.extra)]; if (xF) try { xF(P, K); } catch (e) { console.error(e); }
   // pet: its emoji as a little sticker that hops beside you
   const pet = C(spec.pet).e;
@@ -423,12 +442,9 @@ function av3aura(col) {
   return g;
 }
 // the backdrop: a soft vertical glow, tinted by your class colour
-function av3sky(col) {
-  const c = document.createElement('canvas'); c.width = 4; c.height = 256; const x = c.getContext('2d'), g = x.createLinearGradient(0, 0, 0, 256);
-  const [top, bot] = AV3_STYLE.bg, mid = col ? av3mix(top, col, .35) : av3mix(top, '#5c6bc0', .25);
-  g.addColorStop(0, bot); g.addColorStop(.55, mid); g.addColorStop(1, bot); x.fillStyle = g; x.fillRect(0, 0, 4, 256);
-  if (AV3.S.background) AV3.S.background.dispose();
-  AV3.S.background = new THREE.CanvasTexture(c); AV3.S.background.encoding = THREE.sRGBEncoding;
+function av3sky() { // 2.59: the stage behind the canvas draws the sky (or your background cosmetic)
+  if (AV3.S.background) AV3.S.background.dispose?.();
+  AV3.S.background = null;
 }
 // a low stone plinth to stand on, with a rim in your class colour
 function av3plinth(col) {
@@ -444,9 +460,9 @@ function av3dispose(o) {
   for (const t of AV3.tex) t.dispose(); AV3.tex = [];
 }
 function av3init() {
-  const R = AV3.R = fxRenderer(); R.toneMapping = THREE.NoToneMapping; // flat toon colours, not film-graded
+  const R = AV3.R = fxRenderer({ alpha: true }); R.toneMapping = THREE.NoToneMapping; R.setClearColor(0x000000, 0); // flat toon colours; see-through so your background cosmetic shows behind you
   const S = AV3.S = new THREE.Scene();
-  AV3.cam = new THREE.PerspectiveCamera(30, 1, .1, 50); AV3.cam.position.set(0, 1.35, 6.1); AV3.cam.lookAt(0, 1.1, 0);
+  AV3.cam = new THREE.PerspectiveCamera(30, 1, .1, 50); AV3.cam.position.set(0, 1.15, 5.9); AV3.cam.lookAt(0, .98, 0); // 2.59: closer, so you fill the stage
   S.add(new THREE.HemisphereLight('#e3e8ff', '#3a2e4a', .35));
   const sun = new THREE.DirectionalLight('#fff6e8', .85); sun.position.set(2.5, 5, 4); sun.castShadow = true; sun.shadow.mapSize.set(1024, 1024); sun.shadow.bias = -.002;
   Object.assign(sun.shadow.camera, { left: -2, right: 2, top: 3, bottom: -1, near: .5, far: 15 }); S.add(sun); AV3.sun = sun;
@@ -500,7 +516,7 @@ function mountYou3D() {
     AV3.sig = sig;
     if (AV3.root.children.length) av3dispose(AV3.root);
     AV3.root.clear();
-    try { AV3.fig = av3figure(d.spec || avatarSpec(), d.gear || {}, d.cls || ''); AV3.root.add(AV3.fig); } catch (e) { console.error(e); AV3.fig = null; }
+    try { AV3.fig = av3figure({ ...(d.spec || avatarSpec()), force: d.force || '' }, d.gear || {}, d.cls || ''); AV3.root.add(AV3.fig); } catch (e) { console.error(e); AV3.fig = null; }
     AV3.root.add(av3plinth(d.cls || ''));
     AV3.aura = d.cls ? av3aura(d.cls) : null; if (AV3.aura) AV3.root.add(AV3.aura);
     av3sky(d.cls || '');

@@ -366,8 +366,8 @@ dialog[open] { animation: modalin .22s cubic-bezier(.2,.8,.2,1); }
 /* scene life */
 .scene .fall { animation-name: fall; animation-timing-function: linear; animation-iteration-count: infinite; }
 @keyframes fall { from { transform: translate(0, -20px); } to { transform: translate(var(--sway), 470px); } }
-.scene .aurora { animation: aurora 6s ease-in-out infinite alternate; }
-@keyframes aurora { from { opacity: .6; transform: translateY(0); } to { opacity: 1; transform: translateY(12px); } }
+.scene .aurora { animation: sceneAurora 6s ease-in-out infinite alternate; }
+@keyframes sceneAurora { from { opacity: .6; transform: translateY(0); } to { opacity: 1; transform: translateY(12px); } }
 .scene .birds { animation: birds 26s linear infinite; }
 @keyframes birds { from { transform: translate(-120px, 90px); } to { transform: translate(1100px, 40px); } }
 .scene .flap { transform-box: fill-box; transform-origin: center; animation: flap .5s ease-in-out infinite alternate; }
@@ -1473,9 +1473,9 @@ html[data-bg=stars] { background: radial-gradient(1200px 700px at 70% -10%, var(
 html[data-bg=stars][data-mode=light] { background: radial-gradient(1200px 700px at 70% -10%, var(--g1), transparent 70%), linear-gradient(180deg, var(--g2), var(--bg)) fixed; }
 html[data-bg=stars] body::before { content: ""; position: fixed; inset: 0; z-index: -1; pointer-events: none;
   background-image: radial-gradient(1.5px 1.5px at 20px 30px, #fff, transparent), radial-gradient(1px 1px at 80px 120px, #fff, transparent), radial-gradient(1.5px 1.5px at 160px 60px, #fff, transparent), radial-gradient(1px 1px at 230px 170px, #fff, transparent), radial-gradient(1px 1px at 120px 210px, #fff, transparent), radial-gradient(2px 2px at 280px 90px, #fff, transparent);
-  background-size: 300px 240px; opacity: .9; animation: twinkle 5s ease-in-out infinite alternate; }
+  background-size: 300px 240px; opacity: .9; animation: bgTwinkle 5s ease-in-out infinite alternate; }
 html[data-bg=stars][data-mode=light] body::before { opacity: .25; }
-@keyframes twinkle { from { opacity: .55; } to { opacity: 1; } }
+@keyframes bgTwinkle { from { opacity: .55; } to { opacity: 1; } }
 @media (prefers-reduced-motion: reduce) { html[data-bg] body::before { animation: none; } }
 html[data-glass] .card, html[data-glass] .sidebar { background: color-mix(in srgb, var(--panel) 68%, transparent); backdrop-filter: blur(16px) saturate(1.2); }
 .bgsw-row { display: grid; grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 10px; }
@@ -2833,7 +2833,8 @@ body.wm-on #toasts { top: max(64px, env(safe-area-inset-top)); bottom: auto; }
 .trend text { font-size: 7px; fill: var(--muted); }
 /* ===== 2.41 calm layout: five places, tabs on top, quieter surfaces ===== */
 :root { --sb-w: 232px; --r-card: 12px; --ease: cubic-bezier(.2,.8,.2,1); }
-body { background: var(--bg) !important; }
+/* 2.59: the calm flat background is only for Plain and Soft, so the other theme backgrounds (gradient, mesh, moving aurora, stars) show again */
+html:not([data-bg]) body, html[data-bg=soft] body { background: radial-gradient(1200px 500px at 10% -10%, color-mix(in srgb, var(--accent) 10%, transparent), transparent 60%), var(--bg); background-attachment: fixed; }
 body.places-on #tabs, body.places-on .sidebar .navgroup, body.places-on .navh-add { display: none !important; }
 .sidebar { width: var(--sb-w); padding: 16px 12px 12px; gap: 4px; background: var(--panel); backdrop-filter: none; }
 .content { margin-left: var(--sb-w); }
@@ -3408,3 +3409,116 @@ body.dens-compact .item, body.dens-compact .todo-item { padding-top: 4px; paddin
 .pfshop .shoppic { width: 64px; height: 64px; border-radius: 50%; border: 2px solid var(--rc); background: radial-gradient(circle at 50% 35%, color-mix(in srgb, var(--rc) 35%, transparent), transparent 70%); font-size: 32px; display: grid; place-items: center; cursor: pointer; transition: transform .12s; }
 .pfshop .shoppic:hover { transform: scale(1.08); }
 .pfshop .shopitem small { font-size: 11px; font-weight: 600; }
+
+/* ===== 2.59 You, Character: a full-screen stage like Islands ===== */
+main#view:has(> .youfull) { max-width: none; padding: 10px 14px 12px; }
+.youfull { --panel: rgba(18, 20, 44, .78); --panel2: rgba(255, 255, 255, .07); --border: rgba(255, 255, 255, .14); --text: #eef0f8; --muted: #a7adc6;
+  position: relative; height: calc(100vh - 24px); min-height: 600px; border-radius: 18px; overflow: hidden; background: var(--ysky); color: var(--text); user-select: none; }
+.youfull .ystage { position: absolute; top: 0; left: 0; right: 0; bottom: 0; height: auto; border-radius: 0; background: none; transition: bottom .25s var(--ease, ease); }
+.youfull.look .ystage { bottom: 44%; }
+.youfull .pf2d { padding-bottom: 40px; }
+.youfull .pfhint { position: static; color: rgba(255, 255, 255, .6); background: rgba(10, 12, 30, .5); }
+.youfull .ishud { z-index: 4; }
+.youfull .islvl span { display: flex; align-items: center; gap: 6px; font-size: .95rem; }
+.youfull .islvl small { display: block; font-size: .7rem; color: var(--muted); margin-top: 2px; }
+.youfull .islvl div { min-width: 170px; }
+.ychip { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 999px; font-size: .78rem; font-weight: 700; background: rgba(12, 14, 34, .62); border: 1px solid rgba(255, 255, 255, .12); backdrop-filter: blur(8px); color: #e9ecef; }
+.ychip.big { font-size: .95rem; padding: 7px 14px; }
+.ychip.cd-l b { color: #ffe066; } .ychip.cd-e b { color: #ff8787; }
+.youfull .is-tr { flex-direction: row; align-items: center; }
+.ygear { cursor: pointer; font-size: 1.05rem; padding: 6px 11px; }
+.ygear:hover { background: rgba(40, 44, 80, .85); }
+.youfull .ypanel { position: absolute; z-index: 3; top: 64px; bottom: 12px; width: 286px; display: flex; flex-direction: column; gap: 8px; padding: 12px; border-radius: 16px;
+  background: rgba(14, 16, 38, .66); border: 1px solid rgba(255, 255, 255, .12); backdrop-filter: blur(10px); overflow-y: auto; scrollbar-width: thin; }
+.youfull .yleft { left: 12px; } .youfull .yright { right: 12px; }
+.yph { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.yph b { font-size: .95rem; }
+.ylink { border: 0; background: none; color: #91a7ff; font-weight: 700; font-size: .78rem; cursor: pointer; padding: 2px 4px; }
+.ylink:hover { text-decoration: underline; }
+.ynote { margin: 0; font-size: .76rem; color: var(--muted); }
+.ytoggle { display: flex; align-items: center; gap: 6px; cursor: pointer; margin-top: auto; }
+.yslots { display: grid; gap: 7px; }
+.youfull .ygslot { min-height: 54px; padding: 6px 9px; border-width: 1.5px; background: rgba(255, 255, 255, .05); }
+.youfull .ygslot.on { background: color-mix(in srgb, var(--rc) 18%, rgba(255, 255, 255, .04)); }
+.youfull .yge { font-size: 1.35rem; width: 30px; }
+.youfull .ystats { border: 0; padding: 0; gap: 8px; }
+.youfull .yovr > div { background: rgba(255, 255, 255, .07); }
+.youfull .yovr small { color: var(--muted); }
+.youfull .yovr b { font-size: 1.35rem; }
+.youfull .ysbars { gap: 4px; }
+.youfull .ysb { margin: 1px 0; font-size: .76rem; grid-template-columns: 76px 1fr 24px; }
+.youfull .cdtrack { background: rgba(255, 255, 255, .12); }
+.youfull .ysets > div { background: rgba(255, 255, 255, .06); }
+.youfull .ysets > div.live { background: rgba(64, 192, 87, .2); }
+.youfull .up { color: #69db7c; } .youfull .down { color: #ff8787; }
+.ybuild { display: grid; gap: 5px; border-top: 1px solid rgba(255, 255, 255, .1); padding-top: 8px; }
+.ylbl { font-size: .72rem; font-weight: 800; letter-spacing: .04em; text-transform: uppercase; color: var(--muted); margin-top: 2px; }
+.ybrow { display: grid; grid-template-columns: repeat(3, 1fr); gap: 5px; }
+.ybslot { display: flex; flex-direction: column; align-items: center; gap: 1px; padding: 6px 3px; border-radius: 10px; border: 1px dashed rgba(255, 255, 255, .2); background: rgba(255, 255, 255, .05); color: var(--text); cursor: pointer; min-width: 0; font: inherit; }
+.ybslot span { font-size: 1.15rem; line-height: 1.2; }
+.ybslot b { font-size: .7rem; line-height: 1.15; text-align: center; overflow: hidden; text-overflow: ellipsis; max-width: 100%; white-space: nowrap; }
+.ybslot small { font-size: .62rem; color: var(--muted); }
+.ybslot:has(b) { border-style: solid; background: rgba(116, 143, 252, .14); }
+.ybslot.cl { cursor: default; border-style: solid; background: rgba(252, 196, 25, .12); }
+.ybrow .ynote { grid-column: 1 / -1; }
+.ywide { width: 100%; margin-top: 4px; }
+.ybottom { position: absolute; z-index: 4; left: 50%; bottom: 14px; transform: translateX(-50%); display: flex; flex-direction: column; align-items: center; gap: 8px; width: min(520px, calc(100% - 640px)); pointer-events: none; transition: bottom .25s var(--ease, ease); }
+.ybottom > * { pointer-events: auto; }
+.youfull.look .ybottom { bottom: calc(44% + 10px); }
+.youfull.look .pfhint { display: none; }
+.ybtns { display: flex; gap: 10px; }
+.youfull .isbtn { width: 82px; height: 62px; }
+.youfull .isbtn.on { background: linear-gradient(160deg, #ffb347, #e8590c); color: #2b1300; border-color: #ffd8a8; }
+.ytry { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; justify-content: center; padding: 8px 12px; border-radius: 14px; background: rgba(14, 16, 38, .9); border: 1px solid rgba(255, 196, 70, .5); font-size: .85rem; }
+.ylook { position: absolute; z-index: 3; left: 310px; right: 310px; bottom: 12px; height: calc(44% - 12px); display: flex; flex-direction: column; border-radius: 16px; background: rgba(14, 16, 38, .9); border: 1px solid rgba(255, 255, 255, .14); backdrop-filter: blur(12px); overflow: hidden; }
+.ylook-h { display: flex; align-items: flex-start; gap: 8px; padding: 10px 10px 0 12px; }
+.ylook-h .pfcats { flex: 1; flex-wrap: nowrap; overflow-x: auto; scrollbar-width: thin; margin-bottom: 8px; padding-bottom: 4px; }
+.ylook-h .pfcats button { flex: none; background: rgba(255, 255, 255, .06); color: var(--text); border-color: rgba(255, 255, 255, .14); }
+.ylook-h .pfcats button.on { background: linear-gradient(135deg, #ffb347, #ff7a3d); color: #221; border-color: transparent; }
+.ylook .pfopts { flex: 1; overflow-y: auto; padding: 0 12px 12px; scrollbar-width: thin; }
+.ylook .pfgrid { grid-template-columns: repeat(auto-fill, minmax(104px, 1fr)); gap: 8px; }
+.ylook .pfitem { background: rgba(255, 255, 255, .06); color: var(--text); padding: 8px 6px; }
+.ylook .pfitem[data-rar].locked { border-color: color-mix(in srgb, var(--rc) 55%, transparent); }
+.ylook .pfitem.on { border-color: #ffb347; background: rgba(255, 179, 71, .12); }
+.pfrar { font-size: .66rem; font-weight: 800; color: var(--rc); text-transform: uppercase; letter-spacing: .04em; }
+.pfprice small { font-weight: 800; color: #69db7c; }
+.pfgridhead { display: flex; align-items: center; gap: 14px; margin-bottom: 8px; font-size: 13px; color: var(--muted); }
+.pfgridhead span:first-child { flex: 1; }
+.pfshop s { opacity: .55; font-size: .85em; margin-right: 2px; }
+.ylook .wmini { height: 84px; }
+.ylook .muted { color: var(--muted); }
+.ylook input, .ylook select { background: rgba(255, 255, 255, .06); color: inherit; border: 1px solid rgba(255, 255, 255, .16); }
+.ypop { position: absolute; z-index: 5; left: 310px; top: 64px; width: min(430px, calc(100% - 640px)); max-height: calc(100% - 180px); display: flex; flex-direction: column; border-radius: 16px; background: rgba(14, 16, 38, .94); border: 1px solid rgba(255, 255, 255, .14); backdrop-filter: blur(12px); padding: 10px 12px; }
+.ypop-b { overflow-y: auto; scrollbar-width: thin; }
+.youfull .ygdrawer .ygrow { border-top-color: rgba(255, 255, 255, .1); }
+.ypanelbig { width: min(980px, calc(100% - 32px)); }
+.ypanelbig .ftbuild { background: transparent; border: 0; box-shadow: none; padding: 0; }
+.youfull .btn:not(.primary) { background: rgba(255, 255, 255, .08); color: var(--text); border-color: rgba(255, 255, 255, .16); }
+.youfull .tag { background: rgba(255, 255, 255, .1); color: var(--text); }
+.youfull .tag.green { background: rgba(64, 192, 87, .22); color: #8ce99a; }
+.youbelow { display: grid; grid-template-columns: 1fr; gap: 14px; margin-top: 14px; }
+.youbelow .yclass { margin-bottom: 0; }
+.youtabs { margin: 0 0 14px; display: flex; }
+.youtabs .isswitch { background: #1b1f38; }
+.setupd { display: inline-flex; align-items: center; gap: 8px; padding: 4px 4px 4px 12px; border: 1px solid var(--border); border-radius: 12px; background: var(--panel); }
+@media (max-width: 1180px) {
+  .youfull .ypanel { width: 240px; }
+  .ylook, .ypop { left: 262px; right: 262px; width: auto; }
+  .ybottom { width: calc(100% - 540px); }
+}
+@media (max-width: 920px) {
+  .youfull { height: auto; min-height: 0; overflow: visible; padding: 64px 10px 10px; display: flex; flex-direction: column; gap: 10px; }
+  .youfull .ystage { position: relative; height: 460px; inset: auto; }
+  .youfull.look .ystage { bottom: auto; height: 340px; }
+  .youfull .ypanel, .ylook, .ypop { position: relative; inset: auto; width: auto; height: auto; max-height: none; }
+  .ylook { height: 420px; }
+  .ybottom { position: relative; left: auto; bottom: auto; transform: none; width: auto; }
+  .youfull.look .ybottom { bottom: auto; }
+  .youfull .is-tc { top: 12px; left: 10px; right: 10px; transform: none; overflow-x: auto; }
+  .youfull .is-tl, .youfull .is-tr { display: none; }
+}
+.youfull .islvl span small { display: inline; margin: 0; font-weight: 500; }
+.youfull .islvl em { display: block; font-style: normal; font-weight: 800; font-size: .74rem; filter: brightness(1.3); }
+.pfshop .shoppic { overflow: hidden; }
+.shopav { display: flex; align-items: flex-end; justify-content: center; height: 100%; transform: translateY(14px) scale(1.5); }
+.shopbg { display: block; width: 100%; height: 100%; border-radius: 50%; }

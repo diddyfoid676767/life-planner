@@ -69,7 +69,8 @@ function placeBtn(v) { const p = placeOf(v); return p ? document.querySelector(`
       setAttr(b, 'data-badge', n ? (n > 99 ? '99+' : n) : bs.length ? '●' : '');
     }
     // one row of tabs: the place's main pages, plus an extra page (To-do, Class mode) while you're on it
-    const vs = here ? here.views.filter(v => !(here.extra || []).includes(v) || v === cur) : [];
+    // 2.59: Settings opens from the gear on its own, without a You | Settings row of tabs above it
+    const vs = here && !(here.extra || []).includes(cur) ? here.views.filter(v => !(here.extra || []).includes(v)) : [];
     sub.hidden = vs.length < 2;
     const html = vs.length < 2 ? '' : vs.map(v => `<button type="button" data-go="${v}" class="${v === cur ? 'active' : ''}"${badgeOf(v) ? ` data-badge="${badgeOf(v)}"` : ''}>${labelOf(v)}</button>`).join('');
     if (sub.innerHTML !== html) sub.innerHTML = html;
