@@ -58,7 +58,7 @@ addEventListener('pointerdown', () => { lastAct = Date.now(); }, true);
 addEventListener('keydown', () => { lastAct = Date.now(); }, true);
 let loaded = ONLINE; // the PC app's planner has been loaded into this tab (never save over it before that)
 function save() {
-  if (!loaded) return;
+  if (!loaded || TESTMODE) return;
   dirty = true;
   if (Date.now() - lastAct < 5000) userEdited = true;
   $('#saveState').textContent = 'Saving…';
@@ -66,6 +66,7 @@ function save() {
   saveTimer = setTimeout(flush, 300);
 }
 async function flush() {
+  if (TESTMODE) { dirty = false; return; }
   if (saving) { saveTimer = setTimeout(flush, 200); return; }
   saving = true; dirty = false;
   if (ONLINE) {
@@ -389,7 +390,7 @@ function miniByDay(items, empty) {
 
 // ---------- views ----------
 let view = 'today';
-const ui = { daySel: null, calMonth: null, calSel: null, calFilter: { study: true, training: true, personal: true, calendars: true }, studyAll: false, assessPast: false, evFilter: 'upcoming', evCat: '', showDoneTodos: false, studyWeek: 0, forestRange: 'all', trainWeek: 0, inboxCat: '', setTab: 'general' };
+const ui = { daySel: null, calMonth: null, calSel: null, calFilter: { study: true, training: true, personal: true, calendars: true }, studyAll: false, assessPast: false, evFilter: 'upcoming', evCat: '', showDoneTodos: false, studyWeek: 0, forestRange: 'all', trainWeek: 0, inboxCat: '', setTab: 'general', todoOpen: true };
 
 // Update a page in place: elements that are the same stay (with their focus,
 // cursor, scroll, 3D canvases and running animations), and only what changed
@@ -509,9 +510,6 @@ function viewToday() {
   const trainMins = items.filter(e => e.kind === 'workout').reduce((a, e) => a + (+e.mins || 0), 0);
 
   const welcome = D.settings.welcomed ? '' : `<div class="card welcome twelcome"><b>👋 Welcome to Solis.</b> <span class="muted">Type anything into Quick add (or press Q for the ＋ button), tick things off as you go, and press ▶ to time your study and earn Lumen.</span><button class="btn small" data-act="dismissWelcome">Got it</button></div>`;
-  const apps = D.links.filter(l => l.group === 'Apps').map(l => l.url
-    ? `<a class="appchip" href="${esc(safeUrl(l.url))}" target="_blank" rel="noopener noreferrer"><i style="background:${appColor(l.title)}">${esc(l.title[0] || '?')}</i>${esc(l.title)}</a>`
-    : `<button class="appchip" data-act="edit" data-kind="link" data-id="${l.id}" title="Click to add its web address"><i>?</i>${esc(l.title)} (set link)</button>`).join('');
   const cp = typeof currentPeriod === 'function' && (D.settings.school?.on || !D.settings.school) ? currentPeriod() : null, unr = typeof unrated === 'function' ? unrated().length : 0;
   const nowLine = cp ? (cp.b.brk ? `${esc(cp.b.n)} until ${fmtTime(cp.b.end)}` : `Now: <b>${esc(cp.b.n)}</b> · ${esc(subjLabel(periodSubj(t, cp.i)))} · ${Math.ceil(cp.left)} min left`) : '';
   const stat = (v, l, pct) => `<div class="hstat"><b>${v}</b><span>${l}</span><i style="--p:${Math.round(Math.min(1, pct || 0) * 100)}%"></i></div>`;
@@ -532,7 +530,7 @@ function viewToday() {
   const clsNow = typeof classNowCard === 'function' ? classNowCard() : '';
   return `<div class="tpage">${welcome}${sundayRecap()}${clsNow}${ui.clsAll && typeof clsAllCard === 'function' ? clsAllCard() : ''}${typeof hsTodayStrip === 'function' ? hsTodayStrip() : ''}${typeof todayRivals === 'function' ? todayRivals() : ''}
   <div class="hero slim thero ${tod}">
-    <div class="hero-text"><div class="hero-date">${fullDate(t)} ${now.getFullYear()}</div>
+    <div class="hero-text"><div class="hero-date">${fullDate(t)} ${now.getFullYear()}${typeof termLine === 'function' && termLine(t) ? ` · ${termLine(t)}` : ''}</div>
       <h1>${greet}${D.settings.name ? ', ' + esc(D.settings.name) : ''}</h1><p>${summary}</p>${nextUpLine(todays, nowT)}
       ${(nowLine && !clsNow) || unr ? `<button class="hnow" data-act="clsAll">🏫 ${nowLine}${nowLine && unr ? ' · ' : ''}${unr ? `${unr} period${unr === 1 ? '' : 's'} to rate` : ''} →</button>` : ''}</div>
     <button class="btn white thero-go" data-act="focusNew">▶ Start studying</button>
@@ -551,7 +549,16 @@ function viewToday() {
       <div class="card todaynext">${upItem('📝', 'Next SAC / exam', nextA, nextA ? `${subj(nextA.subjectId).name}: ${nextA.title}` : '', nextA ? subj(nextA.subjectId).color : 'var(--accent)')}${upItem('⏰', 'Next deadline', nextD, nextD?.title, CATS.Deadline)}${upItem('🏁', 'Next race / event', nextT, nextT?.name, TEVENT_COLOR)}</div>
     </div>
   </div>
-  <div class="apps-row">${apps}<button class="appchip add" data-act="new" data-kind="link" data-date="Apps" title="Add a quick-open button">＋</button></div></div>`;
+  </div>`;
+}
+// 2.60: the app shortcuts (Google Calendar, Garmin Connect...) live in Settings now
+function appsCard() {
+  const apps = D.links.filter(l => l.group === 'Apps').map(l => `<span class="lchip">${l.url
+    ? `<a class="appchip" href="${esc(safeUrl(l.url))}" target="_blank" rel="noopener noreferrer"><i style="background:${appColor(l.title)}">${esc(l.title[0] || '?')}</i>${esc(l.title)}</a>`
+    : `<span class="appchip"><i>?</i>${esc(l.title)} (no link yet)</span>`}<button class="iconbtn" data-act="edit" data-kind="link" data-id="${l.id}" title="Edit or remove">✎</button></span>`).join('');
+  return `<div class="card" data-sec="cal" style="grid-column:1/-1"><div class="card-head"><h2>Connected apps &amp; shortcuts</h2><button class="btn small primary" data-act="new" data-kind="link" data-date="Apps">＋ Add</button></div>
+    <p class="muted small-text" style="margin-top:0">Quick-open buttons for Google Calendar, Garmin Connect, Outlook, Teams and the sites you use for school and training. They open in your browser.</p>
+    <div class="apps-row" style="flex-wrap:wrap;overflow:visible">${apps || '<div class="empty">No shortcuts yet.</div>'}</div></div>`;
 }
 
 // "Next up": one small line on Today: the next thing with a time, else the next class, else the next task or exam
@@ -842,6 +849,9 @@ function viewSettings() {
     ${themeCard()}
     ${typeof menuCard === 'function' ? menuCard() : ''}
     ${soundCard()}
+    ${appsCard().replace('data-sec="cal"','data-sec="calendars"')}
+    ${typeof testModeCard === 'function' ? testModeCard() : ''}
+    ${typeof termsCard === 'function' ? termsCard() : ''}
     ${accountCard().replace('class="card acctcard"', 'class="card acctcard" data-sec="account"')}
     ${ONLINE && !CLOUD ? `<div class="card" data-sec="calendars" style="grid-column:1/-1"><div class="card-head"><h2>Calendars</h2><button class="btn small" data-act="gcalRefresh">Refresh</button><button class="btn small primary" data-act="gcalChoose">Choose calendars</button></div>
       <p class="muted small-text" style="margin-top:0">Shows your Google Calendar (${(D.settings.gcal?.ids || ['primary']).length} calendar(s) selected). The first time, claude.ai asks you to allow access to Google Calendar. To include your school Outlook or Garmin calendar, subscribe to its iCal link inside Google Calendar (Other calendars → + → From URL).</p>
@@ -1513,6 +1523,7 @@ async function refreshFeed(f) {
     const txt = await r.text();
     if (!r.ok) throw new Error(txt.trim() || r.statusText);
     D.feedCache[f.id] = { fetched: Date.now(), items: parseIcs(txt) };
+    if (typeof importTerms === 'function') importTerms(true);
   } catch (e) {
     D.feedCache[f.id] = { ...(D.feedCache[f.id] || {}), error: String(e.message || e).slice(0, 200) };
   }
@@ -1976,6 +1987,7 @@ async function clearStudyBlocks() {
     loaded = true;
     showAside();
     D = migrate(kept || d || freshData());
+    if (TESTMODE) D = migrate(freshData()); // 2.60 test mode: a brand-new player, nothing saved
     if (!d || kept) save();
     if (kept) userEdited = true;
     if (kept) setTimeout(() => toast('✅ Unsaved changes restored', "Solis closed before it could save your last changes, so they were kept here and are saved now."), 1500);

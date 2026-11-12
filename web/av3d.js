@@ -525,6 +525,9 @@ function mountYou3D() {
   const W = host.clientWidth, H = host.clientHeight;
   if (W && H && (AV3.w !== W || AV3.h !== H)) { AV3.w = W; AV3.h = H; AV3.R.setSize(W, H, false); AV3.cam.aspect = W / H; AV3.cam.updateProjectionMatrix(); }
   host.parentNode?.classList.add('has3d');
+  // 2.60: follow the host's size as it changes (the stage shrinks when the Customise drawer opens), so the picture never stretches
+  if (AV3.ro && AV3.roHost !== host) { AV3.ro.disconnect(); AV3.ro = null; }
+  if (!AV3.ro && typeof ResizeObserver === 'function') { AV3.roHost = host; AV3.ro = new ResizeObserver(() => { const w = host.clientWidth, h = host.clientHeight; if (w && h && (AV3.w !== w || AV3.h !== h)) { AV3.w = w; AV3.h = h; AV3.R.setSize(w, h, false); AV3.cam.aspect = w / h; AV3.cam.updateProjectionMatrix(); } }); AV3.ro.observe(host); }
   if (!AV3.raf) AV3.raf = requestAnimationFrame(av3loop);
 }
 document.addEventListener('visibilitychange', () => { if (!document.hidden && document.getElementById('av3host') && AV3.R && !AV3.raf) AV3.raf = requestAnimationFrame(av3loop); });

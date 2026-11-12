@@ -158,9 +158,8 @@ function viewProfile() {
         ${typeof myBadges !== 'undefined' && myBadges.length ? `<div class="pfbadges">${myBadges.filter(b => BADGES[b]).map(b => `<div class="pfbadge ${b}"><span>${BADGES[b][0]}</span><div><b>${BADGES[b][1]}</b><small>${esc(BADGES[b][2])}</small></div></div>`).join('')}</div>` : ''}
         <div class="row" style="margin-top:12px"><button class="btn" data-act="feedback">💬 Send feedback</button><button class="btn" data-act="goto" data-v="settings">⚙ All settings</button>${ONLINE ? '' : '<button class="btn" data-act="checkUpdateNow">Check for updates</button>'}</div></div></div>
       <div class="stack">${accountCard()}</div></div>`;
-  const SL = solisLevel();
-  return `${pageHead('You', `Level ${SL.n} · 🔥 ${studyStreak()}-day streak`, `<button class="iconbtn ysetbtn" data-act="goto" data-v="settings" title="Settings">⚙</button>`)}
-    <div class="youtabs">${youSwitch(tab)}</div>${body}`;
+  // 2.60: the tab bar sits exactly where it does on the Character stage, so it doesn't jump when you switch
+  return `<div class="youtabs">${youSwitch(tab)}<button class="ychip big ygear youtgear" data-act="goto" data-v="settings" title="Settings">⚙</button></div>${body}`;
 }
 function pfBuyBtn(c) {
   if (!c) return '';

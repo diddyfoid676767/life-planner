@@ -1426,9 +1426,10 @@ details.codes .friendbox { border: 0; margin-top: 6px; padding-top: 0; }
 .tweek .dpill .dn b { font-size: 1rem; color: var(--text); margin-left: 2px; }
 .tweek .dpill.sel .dn b { color: #fff; }
 .tweek .dpill .dbar { width: 80%; flex-basis: 80%; }
-.tgrid { display: grid; grid-template-columns: minmax(0, 1.5fr) minmax(260px, 1fr) minmax(260px, 1fr); gap: 12px; }
+.tgrid { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(300px, 1.1fr) minmax(250px, .8fr); gap: 12px; }
 .tgrid > .card, .tside > .card { display: flex; flex-direction: column; min-height: 0; padding: 14px 16px; }
-.tgrid .card-head { margin-bottom: 8px; }
+.tgrid .card-head { margin-bottom: 8px; flex-wrap: wrap; gap: 6px 8px; }
+.ttasks .card-head .small-text { flex: 1; }
 .tscroll { flex: 1; min-height: 0; overflow-y: auto; scrollbar-width: thin; }
 .tday .addrow { margin-top: 8px; padding-top: 8px; }
 .tday .addrow .row { gap: 4px; flex-wrap: wrap; }
@@ -1446,10 +1447,11 @@ details.codes .friendbox { border: 0; margin-top: 6px; padding-top: 0; }
 /* fit the whole page in the window on a laptop or bigger screen */
 @media (min-width: 1000px) and (min-height: 600px) {
   main:has(.tpage) { padding-top: 18px; padding-bottom: 18px; }
-  .tpage { height: calc(100vh - 36px); }
-  .content:has(#focusBar:not([hidden])) .tpage { height: calc(100vh - 90px); }
-  .tgrid { flex: 1 1 0; min-height: 0; }
-  .tgrid > * { min-height: 0; }
+  /* 2.60: the page fills the window when there is room, and scrolls instead of clipping when there isn't */
+  .tpage { min-height: calc(100vh - 36px); }
+  .content:has(#focusBar:not([hidden])) .tpage { min-height: calc(100vh - 90px); }
+  .tgrid { flex: 1 1 auto; min-height: 460px; }
+  .tgrid > * { min-height: 0; max-height: 78vh; }
 }
 @media (max-width: 999px) {
   .tgrid { grid-template-columns: 1fr; }
@@ -3258,7 +3260,8 @@ body #gqa .gqa-btn span, body #gqa .gqa-btn kbd { display: none; }
 #modal:has(textarea[name=body]) textarea { min-height: 70px; height: 70px; }
 
 /* 2.56: hourglass of light in the focus timer */
-.ff-tree .hourglass { width: 54%; height: auto; overflow: visible; filter: drop-shadow(0 0 22px rgba(255, 212, 59, .4)); }
+.ff-tree:has(.hourglass) { place-items: center; padding: 0; inset: 14%; }
+.ff-tree .hourglass { display: block; width: auto; height: 62%; max-width: 70%; overflow: visible; filter: drop-shadow(0 0 22px rgba(255, 212, 59, .4)); }
 .hourglass .hg-top, .hourglass .hg-bot { transform-box: fill-box; transition: transform 1s linear; }
 .hourglass .hg-top { transform-origin: bottom; transform: scaleY(calc(1 - var(--hp, 0))); }
 .hourglass .hg-bot { transform-origin: bottom; transform: scaleY(var(--hp, 0)); }
@@ -3414,7 +3417,7 @@ body.dens-compact .item, body.dens-compact .todo-item { padding-top: 4px; paddin
 main#view:has(> .youfull) { max-width: none; padding: 10px 14px 12px; }
 .youfull { --panel: rgba(18, 20, 44, .78); --panel2: rgba(255, 255, 255, .07); --border: rgba(255, 255, 255, .14); --text: #eef0f8; --muted: #a7adc6;
   position: relative; height: calc(100vh - 24px); min-height: 600px; border-radius: 18px; overflow: hidden; background: var(--ysky); color: var(--text); user-select: none; }
-.youfull .ystage { position: absolute; top: 0; left: 0; right: 0; bottom: 0; height: auto; border-radius: 0; background: none; transition: bottom .25s var(--ease, ease); }
+.youfull .ystage { position: absolute; top: 0; left: 0; right: 0; bottom: 0; height: auto; border-radius: 0; background: none; }
 .youfull.look .ystage { bottom: 44%; }
 .youfull .pf2d { padding-bottom: 40px; }
 .youfull .pfhint { position: static; color: rgba(255, 255, 255, .6); background: rgba(10, 12, 30, .5); }
@@ -3498,7 +3501,10 @@ main#view:has(> .youfull) { max-width: none; padding: 10px 14px 12px; }
 .youfull .tag.green { background: rgba(64, 192, 87, .22); color: #8ce99a; }
 .youbelow { display: grid; grid-template-columns: 1fr; gap: 14px; margin-top: 14px; }
 .youbelow .yclass { margin-bottom: 0; }
-.youtabs { margin: 0 0 14px; display: flex; }
+.youtabs { margin: 12px 0 14px; display: flex; justify-content: center; position: relative; }
+main#view:has(> .youtabs) { max-width: none; padding: 10px 14px 12px; }
+.youtabs .youtgear { position: absolute; right: 0; top: 0; background: var(--panel2); color: var(--text); border-color: var(--border); }
+@media (max-width: 920px) { .youtabs { justify-content: flex-start; overflow-x: auto; margin-top: 12px; } .youtabs .youtgear { display: none; } }
 .youtabs .isswitch { background: #1b1f38; }
 .setupd { display: inline-flex; align-items: center; gap: 8px; padding: 4px 4px 4px 12px; border: 1px solid var(--border); border-radius: 12px; background: var(--panel); }
 @media (max-width: 1180px) {
@@ -3522,3 +3528,60 @@ main#view:has(> .youfull) { max-width: none; padding: 10px 14px 12px; }
 .pfshop .shoppic { overflow: hidden; }
 .shopav { display: flex; align-items: flex-end; justify-content: center; height: 100%; transform: translateY(14px) scale(1.5); }
 .shopbg { display: block; width: 100%; height: 100%; border-radius: 50%; }
+
+/* 2.60: Today to-do tidy: add row and filters stay compact */
+.ttasks .todo-add { gap: 6px; margin-bottom: 8px; }
+.ttasks .todo-add input[type=text] { flex: 1 1 100%; }
+.ttasks .todo-add select { flex: 1 1 0; min-width: 0; padding: 6px 8px; }
+.ttasks .todo-add input[type=date] { flex: none; }
+.ttasks .todo-add .btn { flex: none; }
+.ttasks .catchips { margin-bottom: 8px; }
+.ttasks .catchips input[data-todo-search] { flex: 1 1 100%; max-width: none !important; margin-left: 0 !important; }
+.termrow { flex-wrap: wrap; gap: 8px; margin: 6px 0; }
+.termrow input { width: auto !important; flex: none; }
+
+/* ===== 2.60 motion: the sidebar, buttons, cards, dialogs and toasts ===== */
+:root { --spring: cubic-bezier(.34, 1.56, .64, 1); --smooth: cubic-bezier(.22, .8, .24, 1); }
+#places button { position: relative; transition: background .18s var(--smooth), color .18s var(--smooth), transform .22s var(--spring), padding .2s var(--smooth); }
+#places button svg { transition: transform .28s var(--spring); }
+#places button:hover { transform: translateX(3px); }
+#places button:hover svg { transform: scale(1.18) rotate(-6deg); }
+#places button:active { transform: translateX(1px) scale(.97); }
+#places button::before { content: ""; position: absolute; left: -4px; top: 50%; width: 3px; height: 0; border-radius: 3px; background: var(--accent); transform: translateY(-50%); transition: height .25s var(--spring); }
+#places button.active::before { height: 58%; }
+#places button.active svg { animation: placePop .45s var(--spring); }
+@keyframes placePop { 0% { transform: scale(.7); } 60% { transform: scale(1.25) rotate(-8deg); } 100% { transform: none; } }
+#subnav button, .isswitch button, .seg button, .stab, .cchip, .dpill { transition: background .18s var(--smooth), color .18s var(--smooth), transform .2s var(--spring), box-shadow .2s var(--smooth); }
+#subnav button:hover, .isswitch button:hover, .seg button:hover, .stab:hover, .cchip:hover, .dpill:hover { transform: translateY(-1px); }
+#subnav button:active, .isswitch button:active, .seg button:active, .stab:active, .cchip:active, .dpill:active { transform: scale(.95); }
+.btn, .iconbtn, .isbtn, .appchip { transition: background .16s var(--smooth), color .16s var(--smooth), transform .18s var(--spring), box-shadow .2s var(--smooth), filter .16s; }
+.btn:hover, .isbtn:hover { transform: translateY(-1px); }
+.btn:active, .iconbtn:active, .isbtn:active, .appchip:active { transform: scale(.94); }
+.btn.primary:hover { box-shadow: 0 6px 18px color-mix(in srgb, var(--accent) 40%, transparent); }
+.iconbtn:hover { transform: scale(1.12); }
+.card { transition: box-shadow .25s var(--smooth), transform .25s var(--smooth), border-color .25s; }
+.grid > .card:hover, .tside > .card:hover { box-shadow: 0 8px 26px rgba(20, 24, 60, .1); }
+.item { transition: background .15s, transform .18s var(--smooth); }
+.item:hover { transform: translateX(2px); }
+input[type=checkbox] { transition: transform .2s var(--spring); }
+input[type=checkbox]:active { transform: scale(.8); }
+input[type=checkbox]:checked { animation: tickPop .35s var(--spring); }
+@keyframes tickPop { 0% { transform: scale(.7); } 60% { transform: scale(1.25); } 100% { transform: none; } }
+/* Today cards come in one after another */
+#view.enter .tpage > * { animation: enter .42s var(--smooth) both; }
+#view.enter .tpage > *:nth-child(2) { animation-delay: .04s; } #view.enter .tpage > *:nth-child(3) { animation-delay: .08s; } #view.enter .tpage > *:nth-child(4) { animation-delay: .12s; }
+#view.enter .tgrid > * { animation: enter .45s var(--smooth) both; }
+#view.enter .tgrid > *:nth-child(2) { animation-delay: .08s; } #view.enter .tgrid > *:nth-child(3) { animation-delay: .16s; }
+/* dialogs pop in and the page behind them softens */
+dialog#modal[open] { animation: modalIn .3s var(--spring); }
+dialog#modal[open]::backdrop { animation: fadeIn .25s ease-out; }
+@keyframes modalIn { from { opacity: 0; transform: translateY(14px) scale(.94); } to { opacity: 1; transform: none; } }
+@keyframes fadeIn { from { opacity: 0; } }
+.toast { animation: toastIn .42s var(--spring) both; }
+@keyframes toastIn { from { opacity: 0; transform: translateX(40px) scale(.95); } to { opacity: 1; transform: none; } }
+.hstat i, .dbar i { transition: width .6s var(--smooth); }
+@media (prefers-reduced-motion: reduce) { #places button, #places button svg, .btn, .card, .item, dialog#modal, .toast { transition: none !important; animation: none !important; } }
+
+#testBar { position: fixed; top: 8px; left: 50%; transform: translateX(-50%); z-index: 9500; display: flex; align-items: center; gap: 10px; padding: 6px 8px 6px 14px; border-radius: 999px; background: #1b1f38; color: #fff; font-size: .8rem; box-shadow: 0 8px 24px rgba(0, 0, 0, .3); border: 1px solid #ffb347; }
+#testBar button { border: 0; border-radius: 999px; padding: 4px 11px; font: inherit; font-weight: 700; cursor: pointer; background: rgba(255, 255, 255, .14); color: #fff; }
+#testBar button:last-child { background: #ffb347; color: #2b1300; }

@@ -7,7 +7,7 @@ const DISTRACT_LIMIT = 3;
 
 // ---------- holidays ----------
 const holidays = () => D.settings.holidays || [];
-const isHoliday = d => holidays().some(h => h.from <= d && d <= h.to);
+const isHoliday = d => holidays().some(h => h.from <= d && d <= h.to) || (typeof termHoliday === 'function' && termHoliday(d));
 const isRestDay = () => false; // rest days belonged to the old forest
 function addHoliday() {
   const from = $('#holFrom')?.value, to = $('#holTo')?.value, name = ($('#holName')?.value || '').trim();
