@@ -3585,3 +3585,11 @@ dialog#modal[open]::backdrop { animation: fadeIn .25s ease-out; }
 #testBar { position: fixed; top: 8px; left: 50%; transform: translateX(-50%); z-index: 9500; display: flex; align-items: center; gap: 10px; padding: 6px 8px 6px 14px; border-radius: 999px; background: #1b1f38; color: #fff; font-size: .8rem; box-shadow: 0 8px 24px rgba(0, 0, 0, .3); border: 1px solid #ffb347; }
 #testBar button { border: 0; border-radius: 999px; padding: 4px 11px; font: inherit; font-weight: 700; cursor: pointer; background: rgba(255, 255, 255, .14); color: #fff; }
 #testBar button:last-child { background: #ffb347; color: #2b1300; }
+
+/* "are you still here?" check (only while a normal focus timer runs) */
+#stillHere { position: fixed; left: 50%; top: 84px; transform: translateX(-50%); z-index: 310; display: flex; gap: 12px; align-items: flex-start; max-width: min(440px, calc(100vw - 32px));
+  background: var(--panel); color: var(--text); border: 1px solid var(--border, rgba(127,127,127,.25)); border-left: 5px solid var(--warn, #e6a23c); border-radius: 14px; padding: 14px 16px; box-shadow: 0 12px 36px rgba(0,0,0,.3); animation: postureIn .35s ease; }
+#stillHere .pic { font-size: 30px; line-height: 1; }
+#stillHere .pmain { display: flex; flex-direction: column; gap: 4px; font-size: 14px; }
+#stillHere .row { margin-top: 6px; gap: 6px; }
+#stillHere #stillLeft { font-variant-numeric: tabular-nums; }
