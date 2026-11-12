@@ -4,7 +4,7 @@
    colour. Also the graphics quality switch (low drops the 3D shadows). It is
    one small card in Settings, Look & sound. Everything lives in
    D.settings.menu (and D.settings.lowQuality). */
-const MENU_CARDS = [['week', 'Week strip'], ['next', 'Next SAC, deadline and race'], ['apps', 'App shortcuts'], ['rivals', 'Friends race bar'], ['house', 'House boss strip']];
+const MENU_CARDS = [['week', 'Week strip'], ['next', 'Next SAC, deadline and race'], ['rivals', 'Friends race bar'], ['house', 'House boss strip']];
 const menuCfg = () => { const m = D.settings.menu = D.settings.menu || {}; m.order = m.order || []; m.hide = m.hide || []; m.cards = m.cards || {}; return m; };
 const placeIdsInOrder = () => { const o = menuCfg().order; return PLACES.map(p => p.id).sort((a, b) => { const x = o.indexOf(a), y = o.indexOf(b); return (x < 0 ? 99 : x) - (y < 0 ? 99 : y) || PLACES.findIndex(p => p.id === a) - PLACES.findIndex(p => p.id === b); }); };
 let menuSig = '';

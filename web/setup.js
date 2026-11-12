@@ -226,8 +226,7 @@ const TOUR_PAGES = {
     ['.tweek', 'Pick a day', 'Click any day to plan it. The dots show what\'s on and the green bar shows how much is ticked off. Use the arrows to move between days and weeks.'],
     ['.tday', 'The day, in time order', 'Tick things off as you go, press <b>▶ Focus</b> on a study block, and use the buttons underneath to add more.'],
     ['.ttasks', 'To-do', 'Type a task and press Enter to add it. <b>Show all</b> opens the full list. During a lesson, Class mode shows at the top of Today.'],
-    ['.tside', 'Coming up', 'Your next SAC, deadline and race.'],
-    ['.apps-row', 'Your apps', 'Shortcuts to the apps and websites you use for school and training.']]],
+    ['.tside', 'Coming up', 'Your next SAC, deadline and race.']]],
   calendar: ['📅 Calendar', 'The whole month at once.', [
     ['.calbar', 'Month and filters', 'Move between months, connect a Google or school calendar, and choose what to show.'],
     ['.cal', 'Month view', 'Click any day to see it underneath. Events from linked calendars show up here too.'],

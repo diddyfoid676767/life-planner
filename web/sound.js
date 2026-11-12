@@ -35,15 +35,29 @@ function hiss(c, { dur = .15, vol = .2, at = 0, type = 'bandpass', f = 2000, f2,
   g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(vol, t + attack); g.gain.exponentialRampToValueAtTime(.0001, t + dur);
   s.connect(fl); fl.connect(g); g.connect(SND.out); s.start(t, Math.random() * .5); s.stop(t + dur + .05);
 }
-const SFX_GROUP = { hover: 'ui', click: 'ui', tab: 'ui', toggle: 'ui', untoggle: 'ui', open: 'ui', close: 'ui', notify: 'ui', coin: 'ui', buy: 'ui', deny: 'ui', levelup: 'ui', box: 'ui', success: 'ui', undo: 'ui',
+const SFX_GROUP = { hover: 'ui', click: 'ui', tab: 'ui', toggle: 'ui', untoggle: 'ui', open: 'ui', close: 'ui', notify: 'ui', coin: 'ui', buy: 'ui', deny: 'ui', levelup: 'ui', box: 'ui', success: 'ui', undo: 'ui', nav: 'ui', check: 'ui', uncheck: 'ui', add: 'ui', trash: 'ui', sheet: 'ui', sheetclose: 'ui', start: 'ui', whoosh: 'ui', select: 'ui', error: 'ui', save: 'ui',
   pop: 'garden', rustle: 'garden', water: 'garden', plant: 'garden', pickup: 'garden', chirp: 'garden', cricket: 'garden' };
+const PENT = [523, 587, 659, 784, 880, 988, 1175];
 const SFX = {
-  hover: c => tone(c, { f: 2100, f2: 1900, dur: .035, vol: .022, type: 'sine' }),
-  click: c => { tone(c, { f: 720, f2: 360, dur: .07, vol: .09 }); hiss(c, { f: 3500, dur: .025, vol: .025 }); },
-  tab: c => { tone(c, { f: 660, dur: .06, vol: .06 }); tone(c, { f: 990, dur: .08, vol: .05, at: .045 }); },
+  // 2.60 softer, rounder menu sounds, each a little different so repeats don't sound identical
+  hover: c => tone(c, { f: 1700 + Math.random() * 500, f2: 1560, dur: .045, vol: .016, type: 'sine' }),
+  click: c => { const f = PENT[Math.floor(Math.random() * 4)] * .5; tone(c, { f, f2: f * .62, dur: .08, vol: .08, type: 'triangle' }); tone(c, { f: f * 2, dur: .05, vol: .025, at: .004 }); hiss(c, { f: 3200, dur: .02, vol: .018 }); },
+  tab: c => { const i = Math.floor(Math.random() * 3); tone(c, { f: PENT[i], dur: .09, vol: .05, type: 'triangle' }); tone(c, { f: PENT[i + 2], dur: .12, vol: .045, type: 'sine', at: .05 }); },
+  nav: c => { hiss(c, { f: 500, f2: 2600, dur: .16, vol: .03, q: .8, attack: .04 }); tone(c, { f: PENT[1], dur: .1, vol: .05, type: 'triangle', at: .02 }); tone(c, { f: PENT[4], dur: .16, vol: .045, type: 'sine', at: .08 }); },
+  check: c => { const f = PENT[Math.floor(Math.random() * 5)]; tone(c, { f, dur: .28, vol: .07, type: 'sine' }); tone(c, { f: f * 2, dur: .16, vol: .03, type: 'sine' }); tone(c, { f: f * 3, dur: .08, vol: .012, type: 'sine' }); },
+  uncheck: c => { tone(c, { f: 600, f2: 420, dur: .1, vol: .05, type: 'triangle' }); },
+  add: c => { tone(c, { f: 330, f2: 660, dur: .09, vol: .07, type: 'sine' }); tone(c, { f: 990, dur: .12, vol: .035, type: 'triangle', at: .07 }); },
+  trash: c => { hiss(c, { f: 3000, f2: 500, dur: .22, vol: .045, q: .8 }); tone(c, { f: 260, f2: 110, dur: .16, vol: .05, type: 'triangle' }); },
+  sheet: c => { hiss(c, { f: 400, f2: 3000, dur: .2, vol: .028, q: .7, attack: .06 }); tone(c, { f: 440, f2: 880, dur: .14, vol: .045, type: 'sine' }); tone(c, { f: 1320, dur: .12, vol: .02, type: 'triangle', at: .08 }); },
+  sheetclose: c => { hiss(c, { f: 2600, f2: 400, dur: .16, vol: .022, q: .7 }); tone(c, { f: 760, f2: 420, dur: .12, vol: .04, type: 'sine' }); },
+  start: c => { [262, 392, 523].forEach((f, i) => tone(c, { f, dur: .5, vol: .045, type: 'triangle', at: i * .09, attack: .03 })); hiss(c, { f: 300, f2: 2400, dur: .4, vol: .02, attack: .2 }); },
+  whoosh: c => { hiss(c, { f: 300, f2: 3200, dur: .22, vol: .04, q: .7, attack: .08 }); },
+  select: c => { tone(c, { f: PENT[3], dur: .07, vol: .055, type: 'triangle' }); tone(c, { f: PENT[5], dur: .09, vol: .04, type: 'sine', at: .035 }); },
+  error: c => { tone(c, { f: 196, f2: 150, dur: .2, vol: .06, type: 'sawtooth', filter: 'lowpass', q: 700 }); },
+  save: c => { tone(c, { f: PENT[2], dur: .1, vol: .04, type: 'sine' }); tone(c, { f: PENT[5], dur: .18, vol: .04, type: 'sine', at: .07 }); },
   toggle: c => { tone(c, { f: 880, f2: 1320, dur: .08, vol: .07, type: 'triangle' }); },
   untoggle: c => { tone(c, { f: 900, f2: 540, dur: .08, vol: .06, type: 'triangle' }); },
-  open: c => { tone(c, { f: 420, f2: 840, dur: .12, vol: .05 }); hiss(c, { f: 1200, f2: 4000, dur: .12, vol: .02 }); },
+  open: c => { tone(c, { f: 420, f2: 840, dur: .12, vol: .045, type: 'triangle' }); hiss(c, { f: 1200, f2: 4000, dur: .12, vol: .018 }); },
   close: c => { tone(c, { f: 700, f2: 380, dur: .1, vol: .045 }); },
   notify: c => { tone(c, { f: 1046, dur: .14, vol: .06, type: 'triangle' }); tone(c, { f: 1568, dur: .2, vol: .05, type: 'triangle', at: .08 }); },
   coin: c => { tone(c, { f: 1319, dur: .08, vol: .07, type: 'square', filter: 'lowpass', q: 3000 }); tone(c, { f: 1976, dur: .22, vol: .07, type: 'square', filter: 'lowpass', q: 3500, at: .07 }); },
@@ -149,16 +163,21 @@ document.addEventListener('pointerout', e => { if (SND.hoverEl && !SND.hoverEl.c
 document.addEventListener('click', e => {
   const el = e.target.closest?.(SND_TARGET); if (!el) return;
   if (el.disabled || el.matches('[disabled]')) { sfx('deny', { gap: 200 }); return; }
-  if (el.matches('input[type=checkbox]')) { sfx(el.checked ? 'toggle' : 'untoggle'); return; }
+  if (el.matches('input[type=checkbox]')) { if (el.closest('[data-toggle], .item, li, .todo-list')) sfx(el.checked ? 'check' : 'uncheck'); else sfx(el.checked ? 'toggle' : 'untoggle'); return; }
   const act = el.dataset?.act || '';
+  if (/^(del|remove|clear|drop|scrap|holDel)/i.test(act) || /^(del|remove|scrap)/i.test(el.dataset?.pf || el.dataset?.ft || '')) { sfx('trash', { gap: 120 }); return; }
+  if (/^(new|add|quick|log|save)/i.test(act)) { sfx('add', { gap: 120 }); return; }
+  if (/^(focusNew|focusStart|start)$/i.test(act) || el.dataset?.cls === 'start') { sfx('start', { gap: 300 }); return; }
   if (/^(buyUpg|buyLeafUpg|storeBuy)$/.test(act)) return; // these play "buy" when they go through
   if (act === 'openBox') return; // the unboxing plays its own build-up
   if (act === 'gift') { sfx('box'); return; }
-  if (el.closest('#places, #subnav')) return; // the hidden tab it clicks plays the sound
+  if (el.closest('#places, #subnav')) { sfx('nav', { gap: 120 }); return; }
   if (el.closest('.seg, .stabs, #tabs, .forest-tabs, .shoptabs, .revseg') || /Tab$|Page$|^goto$|^studyTab$/.test(act)) { sfx('tab'); return; }
   if (el.matches('summary')) { sfx(el.parentElement?.open ? 'close' : 'open'); return; }
   sfx('click', { gap: 30 });
 }, true);
+// dialogs: a soft sheet sound when one opens or closes
+try { const md = document.getElementById('modal'); if (md) new MutationObserver(() => sfx(md.open ? 'sheet' : 'sheetclose', { gap: 150 })).observe(md, { attributes: true, attributeFilter: ['open'] }); } catch (e) { }
 // coins going up, levels, purchases and toasts are checked after each page draw
 let sndCoins = null, sndLevel = null;
 function soundFeedback() {

@@ -22,7 +22,7 @@ function aiSettingsCard() {
   if (ONLINE) return '';
   const st = AI.st || {}, m = AI.mail || {};
   return `<div class="card" data-sec="app" style="grid-column:1/-1"><h2>✦ Claude in the planner</h2>
-    <p class="small-text" style="margin-top:0"><b>Ask Claude</b> (the ✦ button, bottom right) works for free: it opens your Claude app with the page copied in. Optional: add a Claude API key from <a href="https://console.anthropic.com/settings/keys" target="_blank" rel="noopener noreferrer">console.anthropic.com</a> to chat right inside the planner instead (billed to your API account, saved only on this PC).</p>
+    <p class="small-text" style="margin-top:0">Optional: add a Claude API key from <a href="https://console.anthropic.com/settings/keys" target="_blank" rel="noopener noreferrer">console.anthropic.com</a> so Claude can sort your new emails (billed to your API account, saved only on this PC).</p>
     <div class="row" style="margin-bottom:10px"><input type="password" id="aiKey" placeholder="${st.configured ? 'Key saved (paste a new one to replace it)' : 'Paste your API key (starts with sk-ant-)'}" autocomplete="off" style="flex:1;min-width:220px">
       <select id="aiModel" title="Which Claude answers">${AI_MODELS.map(([v, l]) => `<option value="${v}" ${(st.model || AI_MODELS[0][0]) === v ? 'selected' : ''}>${l}</option>`).join('')}</select>
       <button class="btn small primary" data-ai="saveKey">Save</button>${st.configured ? '<button class="btn small" data-ai="clearKey">Remove</button>' : ''}</div>
@@ -145,12 +145,8 @@ async function aiHandoff(q) {
   aiToggle(false);
   toast(copied ? `Copied, now paste it in ${app ? 'the Claude app' : 'Claude'}` : "Couldn't copy the page", copied ? 'Press Ctrl+V, then Enter.' : 'Type your question in Claude instead.', { timeout: 12000 });
 }
-function aiFab() {
-  if (ONLINE || document.getElementById('aiFab')) return;
-  const b = document.createElement('button'); b.id = 'aiFab'; b.title = 'Ask Claude about this page (Ctrl+J)'; b.innerHTML = '✦<span>Ask Claude</span>';
-  b.onclick = () => aiToggle(); document.body.appendChild(b);
-}
-document.addEventListener('keydown', e => { if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'j' && !ONLINE) { e.preventDefault(); aiToggle(); } });
+// 2.60: the Ask Claude button and Ctrl+J are gone
+function aiFab() { document.getElementById('aiFab')?.remove(); document.getElementById('aichat')?.remove(); }
 document.addEventListener('click', e => {
   const el = e.target.closest('[data-ai]'); if (!el) return;
   const a = el.dataset.ai;
@@ -162,7 +158,7 @@ document.addEventListener('click', e => {
     case 'goSettings': aiToggle(false); view = 'settings'; ui.setTab = 'app'; render(); break;
     case 'saveKey': case 'clearKey': {
       const body = a === 'clearKey' ? { key: '' } : { model: $('#aiModel').value, ...($('#aiKey').value.trim() ? { key: $('#aiKey').value.trim() } : {}) };
-      aiPut('/api/ai', body).then(j => { AI.st = j; render(); toast(j.configured ? '✓ Claude is ready' : 'API key removed', j.configured ? 'Try the ✦ button, bottom right.' : ''); })
+      aiPut('/api/ai', body).then(j => { AI.st = j; render(); toast(j.configured ? '✓ Claude is ready' : 'API key removed', j.configured ? 'It will sort your new emails.' : ''); })
         .catch(err => toast("Couldn't save the key", err.message, { cls: 'danger' }));
       break;
     }
