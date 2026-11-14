@@ -32,8 +32,7 @@ async function signUp(p, email) {
   await p.fill('#emForm [name=email]', email); await p.fill('#emForm [name=password]', 'password123');
   await p.click('#emForm [data-em="signup"]');
   await p.waitForFunction(() => acct.signedIn, null, { timeout: 15000 });
-  await openLink(email);
-  await p.waitForFunction(() => acct.verified, null, { timeout: 20000 }); // Solis notices the link by itself
+  await p.waitForFunction(() => acct.verified, null, { timeout: 20000 }); // 2.67.4: no emailed link
   await sleep(500);
 }
 

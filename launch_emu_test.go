@@ -42,12 +42,9 @@ func emuVerify(t *testing.T, email string) {
 	}
 }
 
+// check runs the sign-in check again (2.67.4: no emailed link)
 func check(t *testing.T, a *account) *account {
 	t.Helper()
-	ok, err := fbEmailVerified(a)
-	if err != nil || !ok {
-		t.Fatalf("not verified: %v", err)
-	}
 	n, err := forceRefresh(a)
 	if err != nil {
 		t.Fatal(err)
@@ -78,11 +75,6 @@ func TestEmuLaunch(t *testing.T) {
 	out := "someone" + sfx + "@gmail.com"
 	notOnList := "zz" + sfx + "@" + schoolDomain
 
-	// the owner can't load the list before verifying
-	if _, err := fsCommit(o.Access, fsSet("yr/"+yrHash(stu), map[string]any{"n": "x", "b": false}, false, "")); err == nil {
-		t.Fatal("unverified owner wrote the year list")
-	}
-	emuVerify(t, owner)
 	o = check(t, o)
 	if o.School {
 		t.Fatal("owner counted as school before the list is loaded")
@@ -110,22 +102,18 @@ func TestEmuLaunch(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	// can't read someone else's entry, or their own before verifying
-	if _, err := fsGet(s.Access, "yr/"+yrHash(stu)); err == nil {
-		t.Fatal("read the list before verifying")
-	}
+	// can't read someone else's entry
 	if _, err := fsGet(s.Access, "yr/"+yrHash(owner)); err == nil {
 		t.Fatal("read someone else's entry")
 	}
-	// can't mark themselves verified before opening the link
-	if _, err := fsCommit(s.Access, fsSet("profiles/"+s.UserID, map[string]any{"v": true, "eh": ehOf(stu)}, true, "old")); err == nil {
-		t.Fatal("self-verified")
+	// can't give themselves the dev badge
+	if _, err := fsCommit(s.Access, fsSet("profiles/"+s.UserID, map[string]any{"badges": []string{"dev", "beta"}}, true, "old")); err == nil {
+		t.Fatal("self-dev")
 	}
-	// can't give themselves beta
-	if _, err := fsCommit(s.Access, fsSet("profiles/"+s.UserID, map[string]any{"badges": []string{"beta"}}, true, "old")); err == nil {
-		t.Fatal("self-beta")
+	// the address is taken now: nobody else can sign up with it
+	if _, err := emailSignUp(strings.ToUpper(stu), "password456", "Imp", ""); err == nil {
+		t.Fatal("second account with the same address")
 	}
-	emuVerify(t, stu)
 	s = check(t, s)
 	p, _ := fsGet("", "profiles/"+s.UserID)
 	if !s.School || p.Fields["v"] != true || fmt.Sprint(p.Fields["badges"]) != "[beta]" || p.Fields["display"] != "Jules Deglas" || p.Fields["inv"] != o.UserID || p.Fields["ic"] != icOf(s.UserID) {
@@ -149,10 +137,13 @@ func TestEmuLaunch(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	emuVerify(t, out)
 	x = check(t, x)
 	if x.School {
 		t.Fatal("outsider counted as school")
+	}
+	// an outside address can't mark itself verified or read the list
+	if _, err := fsCommit(x.Access, fsSet("profiles/"+x.UserID, map[string]any{"v": true, "eh": ehOf(out)}, true, "old")); err == nil {
+		t.Fatal("outsider self-verified")
 	}
 	if _, err := publishProfile(x, "Pat", `{}`, map[string]any{"week": wk, "hs": map[string]any{"h": "pascoe", "wk": wk}}, time.Now()); err == nil {
 		// publishProfile drops hs and retries when the rules refuse it, so check what was stored
@@ -167,7 +158,6 @@ func TestEmuLaunch(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	emuVerify(t, notOnList)
 	if n = check(t, n); n.School {
 		t.Fatal("not on the list but counted")
 	}

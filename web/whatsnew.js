@@ -10,6 +10,7 @@
 // version since the last one they saw (up to 3). D.settings.seenVersion remembers what was last shown,
 // D.settings.guidesSeen which guides have played. A brand-new install never sees either.
 const CHANGELOG = [
+  { v: '2.67.4', notes: [{ t: 'Signing up with your school email no longer needs an emailed link: if you are on the Westbourne list you are in straight away', k: 'fix' }] },
   { v: '2.67.3', notes: [{ t: 'Logging in before you open the email link sends a fresh link', k: 'fix' }, { t: 'The sign-up email now always sends, even if saving your profile hiccups', k: 'fix' }] },
   { v: '2.67.2', notes: [
     { t: 'Fixed the sign-up and log-in boxes clearing what you typed', k: 'fix' },

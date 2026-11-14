@@ -34,7 +34,9 @@ service cloud.firestore {
     // salted hash of their school address (the readable list is never stored).
     // Only someone signed in with that verified address can read theirs.
     function email() { return request.auth.token.get('email', '').lower(); }
-    function emailOk() { return request.auth.token.get('email_verified', false) == true; }
+    // 2.67.4: no emailed link (school filters block it): a Westbourne address counts
+    // as is; the first account made with an address owns it
+    function emailOk() { return request.auth.token.get('email_verified', false) == true || email().matches('.*@westbourne[.]vic[.]edu[.]au$'); }
     function yrHash() { return hashing.sha256('solis-yr-2027|' + email()).toHexString().lower(); }
     function ehOf() { return hashing.sha256('solis-eh-2027|' + email()).toHexString().lower(); }
     function icOf() { return hashing.sha256('solis-ic|' + me()).toHexString().lower()[0:6]; }
