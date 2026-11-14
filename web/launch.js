@@ -4,7 +4,7 @@
      and their own island, no houses. Chosen at first run, and switched on by
      itself when someone verifies an email that isn't on the year list.
    - Accounts with a real email: Westbourne students sign up with their school
-     address and open the link Firebase emails them. The server checks the year
+     address (no emailed link since 2.67.4). The server checks the year
      list (launch.go). Old username accounts keep working until launch.
    - Invites: a 6-character code and a link; both people get Lumen and Ember
      when the new person finishes their first focus session.
@@ -33,7 +33,7 @@ function schoolReady() {
 function schoolNeeded() {
   toast('Verify your school email first', acct.signedIn && !acct.legacy && acct.verified
     ? "That email isn't on the Westbourne year list, so houses aren't open to it."
-    : 'Houses are for Westbourne students. Sign up with your school email in Settings, Account, and open the link we email you.', { cls: 'danger' });
+    : 'Houses are for Westbourne students. Sign up with your school email in Settings, Account.', { cls: 'danger' });
 }
 const firstName = n => String(n || '').trim().split(/\s+/)[0] || '';
 
@@ -56,7 +56,7 @@ function emailCard(inWizard) {
   return `<div class="card acctcard"><div class="acct-login">
     ${inWizard ? '' : '<div class="acct-hero">👥</div><h2>Your Solis account</h2>'}
     <p class="muted small-text">${school
-      ? `Use your <b>school email</b> (…@${SCHOOL_DOMAIN}). We email you a link to prove it's you, and that unlocks your house.`
+      ? `Use your <b>school email</b> (…@${SCHOOL_DOMAIN}). If it's on the Westbourne list, that unlocks your house straight away.`
       : 'Any email works. An account lets you add friends, race them on the leaderboards and chat. Only your name, avatar and leaderboard numbers are shared.'}</p>
     ${tabs}
     <form id="emForm" autocomplete="on">
@@ -73,10 +73,9 @@ function emailCard(inWizard) {
 function emailAcctCard() {
   if (!acct.verified) {
     emWatch();
-    return `<div class="card acctcard emwait"><div class="acct-hero">📬</div><h2>Check your inbox</h2>
-      <p>We sent a link to <b>${esc(acct.email)}</b>. Open it, then come back here. Solis notices by itself.</p>
-      <p class="muted small-text">Nothing there? Check junk or "Other". School inboxes can take a few minutes.</p>
-      <div class="row"><button class="btn primary" data-em="check" ${emBusy ? 'disabled' : ''}>I've opened it</button><button class="btn" data-em="resend">Send it again</button><button class="btn ghost" data-em="logout">Use a different email</button></div></div>`;
+    return `<div class="card acctcard emwait"><div class="acct-hero">⏳</div><h2>Finishing sign-up</h2>
+      <p>Checking <b>${esc(acct.email)}</b> against the Westbourne list. No email needed.</p>
+      <div class="row"><button class="btn primary" data-em="check" ${emBusy ? 'disabled' : ''}>Continue</button><button class="btn ghost" data-em="logout">Use a different email</button></div></div>`;
   }
   const status = acct.school ? '<span class="tag green">✅ Westbourne student</span>' : '<span class="tag">📅 Planner only</span>';
   return `<div class="card acctcard"><div class="card-head"><h2>Your account</h2>${status}</div>
@@ -147,13 +146,13 @@ document.addEventListener('click', async e => {
       emBusy = false; emForget();
       if (f.name?.value && !D.settings.name) { D.settings.name = f.name.value.trim(); save(); }
       if (acct.verified) emVerified();
-      else toast(a === 'signup' ? '📬 Check your inbox' : '👋 Welcome back', a === 'signup' ? `We sent a link to ${email}. Open it to finish.` : 'Open the link we emailed you to finish.');
+      else toast('👋 Signed in', 'Press Continue on the account card to finish.');
       await publishMe(true); await refreshFriends(true);
     } catch (err) { emBusy = false; toast(a === 'signup' ? "Couldn't create the account" : "Couldn't log in", err.message, { cls: 'danger' }); }
     emRedraw();
   } else if (a === 'check') {
     emBusy = true; emRedraw();
-    try { await emPost({ action: 'check' }); if (!acct.verified) toast('Not yet', "The link hasn't been opened yet. It can take a minute to arrive."); }
+    try { await emPost({ action: 'check' }); if (!acct.verified) toast('Not yet', "Couldn't finish just now. Try again in a minute."); }
     catch (err) { toast("Couldn't check", err.message, { cls: 'danger' }); }
     emBusy = false; emRedraw();
   } else if (a === 'resend') {
@@ -342,7 +341,7 @@ setTimeout(async () => { if (ONLINE || typeof D !== 'object' || !D) return; awai
 if (typeof GUIDES === 'object') GUIDES.launch = {
   name: 'School email accounts and invites',
   steps: [
-    { title: 'Accounts with your school email 🏫', text: 'New Solis accounts use your <b>school email</b>. We email you a link, you open it, and you\'re a verified Westbourne student with your real name. Usernames stop working at launch (1 Feb), so make your new account any time before then.', view: 'settings', sel: '[data-sec="account"]' },
+    { title: 'Accounts with your school email 🏫', text: 'New Solis accounts use your <b>school email</b>. Sign up with it and you\'re a Westbourne student with your real name straight away. Usernames stop working at launch (1 Feb), so make your new account any time before then.', view: 'settings', sel: '[data-sec="account"]' },
     { title: 'Planner only, for everyone else', text: 'Friends from other schools can use Solis too: they pick <b>Just the planner</b> and get to-dos, study, fitness and their own island. Houses stay for verified Westbourne students. Switch here any time.', view: 'settings', sel: '[data-mode]' },
     { title: 'Invite friends, both get rewards 🎟️', text: 'Once you have your new account, Friends shows your invite link. When a friend finishes their first focus session you <b>both</b> get 50 Lumen and 50 Ember. Find friends by name or school email.', view: 'friends' },
     { title: 'Getting Solis is one link', text: 'Send people to <b>tinyurl.com/solis-download</b>: one button, a how-to-start guide and help with the blue Windows warning.' },

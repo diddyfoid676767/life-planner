@@ -164,10 +164,14 @@ func emailSignUp(email, pw, name, inviter string) (*account, error) {
 	if inviter != "" && inviter != a.UserID {
 		f["inv"] = inviter
 	}
-	// send the link first: a profile hiccup shouldn't stop the email
-	fbSendVerify(a)
 	if err := createProfile(a, f, nil); err != nil {
-		return a, nil // logging in later makes the profile
+		return nil, fmt.Errorf("Couldn't save your profile: %v", err)
+	}
+	// 2.67.4: no emailed link (school filters ate it). A Westbourne address on
+	// the year list counts straight away; the first account made with an
+	// address owns it.
+	if _, err := finishVerify(a); err != nil {
+		return nil, err
 	}
 	return a, nil
 }
@@ -188,14 +192,8 @@ func emailLogIn(email, pw string) (*account, error) {
 	if p, _ := fsGet(a.Access, "profiles/"+a.UserID, "username"); p == nil {
 		createProfile(a, map[string]any{"ic": icOf(a.UserID)}, nil)
 	}
-	if ok, _ := fbEmailVerified(a); ok {
-		if n, err := forceRefresh(a); err == nil {
-			a = n
-			a.Verified = true
-			finishVerify(a)
-		}
-	} else {
-		fbSendVerify(a) // not opened yet: send a fresh link
+	if _, err := finishVerify(a); err != nil {
+		return nil, err
 	}
 	return a, nil
 }
@@ -341,16 +339,7 @@ func handleAccountEmail(w http.ResponseWriter, r *http.Request) {
 			json.NewEncoder(w).Encode(map[string]any{"ok": true})
 			return
 		}
-		ok, e := fbEmailVerified(a)
-		if e != nil {
-			writeErr(w, http.StatusBadGateway, e.Error())
-			return
-		}
-		if ok {
-			if a, err = forceRefresh(a); err == nil {
-				_, err = finishVerify(a)
-			}
-		}
+		_, err = finishVerify(a)
 	default:
 		writeErr(w, http.StatusBadRequest, "unknown action")
 		return
