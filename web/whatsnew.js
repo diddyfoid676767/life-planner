@@ -10,6 +10,12 @@
 // version since the last one they saw (up to 3). D.settings.seenVersion remembers what was last shown,
 // D.settings.guidesSeen which guides have played. A brand-new install never sees either.
 const CHANGELOG = [
+  { v: '2.66.0', guide: 'hexhouse', notes: [
+    { t: 'The house island is on hexagons now, and leaders place and drag buildings the same way as on your own island', k: 'new' },
+    { t: 'House perks need a road to the great hall (every building got a free one), and the temple parts cover 3 and 7 hexes', k: 'new' },
+    { t: 'New house buildings: Lumen and Ember Banks that earn interest, a Vault, a Treasury, towers, traps and guard posts', k: 'new' },
+    { t: 'A closed ring of wall round the great hall now keeps the Friday boss raid out', k: 'tweak' },
+  ] },
   { v: '2.65.1', notes: [
     { t: 'Fixed house island perks and house boss fights after the hex island update', k: 'fix' },
   ] },

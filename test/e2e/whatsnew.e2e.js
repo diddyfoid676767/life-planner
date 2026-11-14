@@ -28,7 +28,7 @@ const S = process.argv[2]; const sleep = ms => new Promise(r => setTimeout(r, ms
   await run(() => { D.settings.seenVersion = '2.60.1'; });
   ok(await shown(), '3. card shows after an update');
   const txt = await p.evaluate(() => document.getElementById('whatsNew').innerText);
-  ok(txt.includes(cur) && txt.includes('2.63.0'), '3b. shows the new version and the skipped versions\' notes');
+  ok(txt.includes(cur) && txt.includes('2.65.0'), '3b. shows the new version and the skipped versions\' notes');
   ok(await p.evaluate(v => D.settings.seenVersion === v, cur), '3c. remembers it was shown');
   await p.screenshot({ path: S + '/whatsnew.png' });
   await p.click('[data-wn=ok]'); await sleep(300);

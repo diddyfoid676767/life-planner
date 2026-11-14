@@ -15,7 +15,7 @@ const S = process.argv[2]; const sleep = ms => new Promise(r => setTimeout(r, ms
   await p.goto('http://127.0.0.1:47921/?k=' + fs.readFileSync(S + '/data/window.key', 'utf8').trim());
   await p.waitForFunction(() => typeof D === 'object' && D && loaded, null, { timeout: 20000 }); await sleep(1500);
   await p.evaluate(() => { document.getElementById('boot')?.remove(); document.getElementById('wizfx')?.remove(); try { wiz = null; } catch { } if (modal.open) modal.close(); ui.clsSeen = true; D.settings.setupDone = true;
-    const c = cdState(); c.got = { l: 5000, e: 5000 }; c.isl = { items: { hut: { lv: 2 }, shed: { lv: 1 } } }; delete c.hx; D.settings.guidesSeen = []; save(); });
+    const c = cdState(); c.got = { l: 5000, e: 5000 }; c.isl = { items: { hut: { lv: 2 }, shed: { lv: 1 } } }; delete c.hx; D.settings.guidesSeen = ['hexhouse']; save(); });
   // 1. What's new: badge, notes tagged, guide offered
   await p.evaluate(() => { D.settings.seenVersion = '2.64.0'; document.querySelectorAll('dialog[open]').forEach(d => d.close()); whatsNewCheck(); }); await sleep(900);
   ok(await p.evaluate(() => document.getElementById('whatsNew')?.open), '1. What\'s new card shows');

@@ -14,21 +14,32 @@ const HI_SHARE = .1, HI_LEADERS = 2, HI_ELIG = 200, HI_VOTE_DAYS = 14, HI_PROP_D
 const HI_WEAR = 28, HI_BREAK = 56, HI_LEN = { week: 7, month: 28, term: 56 };
 // at = extra house fights a week; other keys are FT_BUFF battle buffs (house fights only)
 const HI_ITEMS = [
-  { id: 'banner', u: 1, sz: 3, n: 'Banner Hall', e: '🚩', m: 'hut', col: '#ffd43b', l: 300, x: 100, t: 'week', b: { sp: .03, mv: .03 } },
-  { id: 'yard', u: 1, sz: 3, n: 'Training Yard', e: '🥋', m: 'wall', col: '#c9a26b', l: 100, x: 300, t: 'week', b: { hp: 20 } },
-  { id: 'tent', u: 2, sz: 3, n: 'Healer\'s Tent', e: '⛺', m: 'spring', col: '#63e6be', l: 200, x: 200, t: 'week', b: { rg: 1 } },
-  { id: 'signal', u: 2, sz: 3, n: 'Signal Fire', e: '🔥', m: 'fire', col: '#ff922b', l: 150, x: 150, t: 'week', b: { cr: .02 } },
-  { id: 'library', u: 3, sz: 3, n: 'Great Library', e: '📚', m: 'dome', col: '#748ffc', l: 1200, x: 400, t: 'month', b: { sp: .06, wk: .05 } },
-  { id: 'warforge', u: 4, sz: 3, n: 'War Forge', e: '⚒️', m: 'forge', col: '#868e96', l: 400, x: 1200, t: 'month', b: { mv: .06 } },
-  { id: 'bastion', u: 4, sz: 3, n: 'Bastion', e: '🏯', m: 'tower', col: '#a0785a', l: 800, x: 800, t: 'month', b: { dr: .05, at: 1 } },
-  { id: 'pier', u: 3, sz: 3, n: 'Pier', e: '⚓', m: 'wall', col: '#8d6e4c', l: 400, x: 400, t: 'week', ch: 'harbour', alone: { dg: .01 } },
-  { id: 'beacon', u: 5, sz: 3, n: 'Harbour Beacon', e: '🗼', m: 'light', col: '#f8f9fa', l: 1000, x: 1000, t: 'month', ch: 'harbour', req: 'pier' },
-  { id: 'steps', u: 5, sz: 3, n: 'Temple Steps', e: '🪜', m: 'wall', col: '#e9ecef', l: 700, x: 700, t: 'month', ch: 'temple' },
-  { id: 'pillars', u: 6, sz: 3, n: 'Temple Pillars', e: '⛩️', m: 'shrine', col: '#f08c00', l: 900, x: 900, t: 'month', ch: 'temple', req: 'steps' },
-  { id: 'sundome', u: 7, sz: 4, n: 'Sun Dome', e: '☀️', m: 'dome', col: '#ffa94d', l: 1500, x: 1500, t: 'term', ch: 'temple', req: 'pillars' },
+  { id: 'banner', u: 1, n: 'Banner Hall', e: '🚩', m: 'hut', col: '#ffd43b', l: 300, x: 100, t: 'week', b: { sp: .03, mv: .03 } },
+  { id: 'yard', u: 1, n: 'Training Yard', e: '🥋', m: 'wall', col: '#c9a26b', l: 100, x: 300, t: 'week', b: { hp: 20 } },
+  { id: 'tent', u: 2, n: 'Healer\'s Tent', e: '⛺', m: 'spring', col: '#63e6be', l: 200, x: 200, t: 'week', b: { rg: 1 } },
+  { id: 'signal', u: 2, n: 'Signal Fire', e: '🔥', m: 'fire', col: '#ff922b', l: 150, x: 150, t: 'week', b: { cr: .02 } },
+  { id: 'library', u: 3, n: 'Great Library', e: '📚', m: 'dome', col: '#748ffc', l: 1200, x: 400, t: 'month', b: { sp: .06, wk: .05 } },
+  { id: 'warforge', u: 4, n: 'War Forge', e: '⚒️', m: 'forge', col: '#868e96', l: 400, x: 1200, t: 'month', b: { mv: .06 } },
+  { id: 'bastion', u: 4, n: 'Bastion', e: '🏯', m: 'tower', col: '#a0785a', l: 800, x: 800, t: 'month', b: { dr: .05, at: 1 } },
+  { id: 'pier', u: 3, n: 'Pier', e: '⚓', m: 'wall', col: '#8d6e4c', l: 400, x: 400, t: 'week', ch: 'harbour', alone: { dg: .01 } },
+  { id: 'beacon', u: 5, n: 'Harbour Beacon', e: '🗼', m: 'light', col: '#f8f9fa', l: 1000, x: 1000, t: 'month', ch: 'harbour', req: 'pier' },
+  { id: 'steps', u: 5, n: 'Temple Steps', e: '🪜', m: 'wall', col: '#e9ecef', l: 700, x: 700, t: 'month', ch: 'temple' },
+  { id: 'pillars', u: 6, n: 'Temple Pillars', e: '⛩️', m: 'shrine', col: '#f08c00', l: 900, x: 900, t: 'month', ch: 'temple', req: 'steps' },
+  { id: 'sundome', u: 7, n: 'Sun Dome', e: '☀️', m: 'dome', col: '#ffa94d', l: 1500, x: 1500, t: 'term', ch: 'temple', req: 'pillars' },
+  // 2.66: banks, vault, treasury and defences (hxhouse.js has how they look). Defences do nothing until sieges arrive.
+  { id: 'lbank', u: 3, n: 'Lumen Bank', e: '🏦', l: 600, x: 200, t: 'week', bank: 'l', d: 'Earns the house 1% a day on up to 500 × its level of House Lumen' },
+  { id: 'ebank', u: 3, n: 'Ember Bank', e: '🏦', l: 200, x: 600, t: 'week', bank: 'e', d: 'Earns the house 1% a day on up to 500 × its level of House Ember' },
+  { id: 'vault', u: 4, n: 'Vault', e: '🔐', l: 500, x: 500, t: 'week', d: 'A safe store for when sieges arrive: space 2,000 × the Treasury\'s level' },
+  { id: 'treasury', u: 5, n: 'Treasury', e: '💰', l: 800, x: 400, t: 'week', d: 'Gives the Vault its space, and will guard the pool from siege loot' },
+  { id: 'archer', u: 3, n: 'Archer tower', e: '🏹', l: 150, x: 400, t: 'week', slot: 'tower', d: 'Fast single shots at attackers, when sieges arrive' },
+  { id: 'magetw', u: 4, n: 'Mage tower', e: '🔮', l: 400, x: 150, t: 'week', slot: 'tower', d: 'Slow splash spells at attackers, when sieges arrive' },
+  { id: 'spike', u: 4, n: 'Spike pit', e: '📌', l: 150, x: 150, t: 'week', slot: 'trap', d: 'A hidden trap that hurts attackers, when sieges arrive' },
+  { id: 'snare', u: 4, n: 'Snare', e: '🪢', l: 150, x: 150, t: 'week', slot: 'trap', d: 'A hidden trap that roots attackers, when sieges arrive' },
+  { id: 'rune', u: 4, n: 'Rune trap', e: '🔯', l: 150, x: 150, t: 'week', slot: 'trap', d: 'A hidden trap that silences spells, when sieges arrive' },
+  { id: 'guard', u: 5, n: 'Guard post', e: '🛡️', l: 200, x: 200, t: 'week', slot: 'guard', d: 'Holds a housemate standing guard, when sieges arrive' },
 ];
 const HI_CHAINS = { harbour: { n: 'Harbour', b: { wk: .08, cr: .03 } }, temple: { n: 'Sun Temple', b: { hp: 40, sp: .08, mv: .08, at: 1 } } };
-const hiItem = id => HI_ITEMS.find(x => x.id === id);
+const hiItem = id => HI_ITEMS.find(x => x.id === String(id).split('.')[0]);
 const hiBig = it => it.t !== 'week';
 const hiBuffText = b => Object.entries(b).map(([k, v]) => k === 'at' ? `+${v} house fight a week` : `${FT_BUFF[k][1]} ${FT_BUFF[k][2](v)}`).join(' · ');
 const hiCost = (it, f = 1) => [it.l && `${LUMEN} ${Math.round(it.l * f)}`, it.x && `${EMBER} ${Math.round(it.x * f)}`].filter(Boolean).join(' + ');
@@ -71,8 +82,11 @@ async function hiTidy() {
   const d = HI.doc, mine = hiMine(), c = d.c?.[HI.uid];
   const needC = !c || mine.l > (c.l || 0) || mine.e > (c.e || 0) || c.n !== HI.user;
   const t = hiTerm(), lock = today() >= t.voteEnd && d.ld?.t !== t.id;
-  if (!needC && !lock) return;
+  const mig = typeof hhMigrated === 'function' && !hhMigrated(d), bank = typeof hhBankDue === 'function' && hhBankDue(d);
+  if (!needC && !lock && !mig && !bank) return;
   await hiWrite(doc => {
+    if (mig && !hhMigrated(doc)) hhMigrate(doc); // 2.66: the island moves onto hexes, once
+    if (bank) hhBankTick(doc);
     if (needC) { const o = doc.c?.[HI.uid] || {}; doc.c = doc.c || {}; doc.c[HI.uid] = { n: HI.user, l: Math.max(mine.l, o.l || 0), e: Math.max(mine.e, o.e || 0) }; }
     if (lock) doc.ld = { t: t.id, u: hiTally(doc, t.id) };
   }, true, true);
@@ -81,6 +95,7 @@ async function hiTidy() {
 // ---------- pool, terms, leaders and votes ----------
 function hiPool(d = HI.doc || {}) {
   let l = 0, e = 0; for (const x of Object.values(d.c || {})) { l += +x.l || 0; e += +x.e || 0; }
+  l += +d.b?.lbank?.i || 0; e += +d.b?.ebank?.i || 0; // 2.66: bank interest
   return { l: Math.max(0, Math.round(l - (+d.sp?.l || 0))), e: Math.max(0, Math.round(e - (+d.sp?.e || 0))), n: Object.keys(d.c || {}).length };
 }
 function hiTerm(d = today()) {
@@ -129,8 +144,9 @@ function hiActDays(id) { const s = HI.doc?.b?.[id]; if (!s) return 0; const reps
 function hiPerks() {
   if (!HI.doc) return hiLocal().perks || {};
   const g = {}, add = (b, m) => { for (const [k, v] of Object.entries(b)) g[k] = (g[k] || 0) + (k === 'hp' || k === 'rg' || k === 'at' ? Math.round(v * m) : v * m); };
-  for (const it of HI_ITEMS) { const m = isMult(hiCond(it.id)) * IS_LVM[Math.max(0, hiLvOn(HI.doc.b?.[it.id]) - 1)]; if (!m) continue; if (it.b) add(it.b, m); if (it.alone) add(it.alone, m); }
-  for (const [cid, ch] of Object.entries(HI_CHAINS)) { const ms = HI_ITEMS.filter(x => x.ch === cid).map(x => isMult(hiCond(x.id))); if (ms.every(m => m)) add(ch.b, Math.min(...ms)); }
+  const lk = typeof hhLinkedKeys === 'function' ? hhLinkedKeys(HI.doc) : null, on = id => isMult(hiCond(id)) * (!lk || lk.has(id) ? 1 : 0); // 2.66: roads link perks
+  for (const it of HI_ITEMS) { const m = on(it.id) * IS_LVM[Math.max(0, hiLvOn(HI.doc.b?.[it.id]) - 1)]; if (!m) continue; if (it.b) add(it.b, m); if (it.alone) add(it.alone, m); }
+  for (const [cid, ch] of Object.entries(HI_CHAINS)) { const ms = HI_ITEMS.filter(x => x.ch === cid).map(x => on(x.id)); if (ms.every(m => m)) add(ch.b, Math.min(...ms)); }
   return g;
 }
 // your gear buffs plus the house island's, for house boss fights
@@ -146,16 +162,10 @@ const hiNeedLv = (it, lv) => it.u + (lv - 1) * 2;
 const hiLvOn = (s, d = today()) => s ? (s.up && d >= s.up.r ? s.up.lv : s.lv || 1) : 0;
 const hiSmash = act => act >= HI_WEAR ? Math.max(act, HI_BREAK) : HI_WEAR;
 const hiRepsOn = (s, d = today()) => [...(s.reps || []), ...(s.up && d >= s.up.r ? [s.up.r] : [])];
-const hiBusy = (d, now = today()) => HI_ITEMS.filter(x => { const s = d.b?.[x.id]; return s && (now < s.r || (s.up && now < s.up.r)); }).length;
+const hiBusy = (d, now = today()) => Object.keys(d.b || {}).filter(k => { const s = d.b[k]; return k[0] !== '_' && hiItem(k) && s && (now < s.r || (s.up && now < s.up.r)); }).length;
 const hiUpDays = (it, lv) => Math.ceil(HI_LEN[it.t] * HI_UPD[lv - 1]);
-function hiLayout() {
-  const d = HI.doc || {}, L = { N: HI_N, centre: [9, 9, 4], items: [] };
-  for (const it of HI_ITEMS) { const s = d.b?.[it.id]; if (s) L.items.push({ id: it.id, sz: it.sz, at: s.at }); }
-  for (const o of L.items) if (!o.at || !isFits(L, o.id, o.sz, ...o.at)) { o.at = null; o.at = isSpot(L, o.id, o.sz) || [0, 0]; }
-  return L;
-}
 const hiBuffTextM = (b, m) => Object.entries(b).map(([k, v]) => k === 'at' ? `+${v} house fight a week` : `${FT_BUFF[k][1]} ${FT_BUFF[k][2](k === 'hp' || k === 'rg' ? Math.round(v * m) : v * m)}`).join(' · ');
-const hiPerkM = (it, m = 1) => it.b ? hiBuffTextM(it.b, m) : it.alone ? `Works alone: ${hiBuffTextM(it.alone, m)}` : `Part of ${HI_CHAINS[it.ch].n}`;
+const hiPerkM = (it, m = 1) => it.d ? it.d : it.b ? hiBuffTextM(it.b, m) : it.alone ? `Works alone: ${hiBuffTextM(it.alone, m)}` : `Part of ${HI_CHAINS[it.ch].n}`;
 
 // ---------- page ----------
 function viewHouseIsland() {
@@ -169,57 +179,72 @@ function viewHouseIsland() {
   if (!HI.doc) return isFrame('house', hsBtn, `<div class="ispanel iscentre"><div class="ispanel-h"><h3>${h.e} ${h.name} island</h3></div><div class="ispanel-b">${`<p class="muted">${HI.err === 'signin' ? 'The house island is shared, so you need to be signed in. Sign in on the Friends page.' : HI.err ? 'Couldn\'t reach the house island: ' + esc(HI.err) : 'Loading the house island…'}</p>${HI.err ? `<button class="btn" data-hi="reload">Try again</button>` : ''}`}</div></div>`);
   const d = HI.doc, pool = hiPool(), L = hiLeaders(), lead = L.u.includes(HI.user), pr = hiProp(), hl = hiLevel(), busy = hiBusy(d);
   const nextT = HI_LVT[hl], tot = hiTotal(), prevT = HI_LVT[hl - 1] || 0;
-  const P = ui.isPlace?.h ? ui.isPlace : null;
-  const bubs = HI_ITEMS.filter(it => d.b?.[it.id]).map(it => {
-    const s = d.b[it.id], c = hiCond(it.id);
-    const t = c === 'build' ? `⏳ ${isTimeLeft(s.r)}` : s.up && today() < s.up.r ? `⬆️ ${isTimeLeft(s.up.r)}` : (c === 'broken' || c === 'worn') && (s.hit || []).some(x => x >= addDays(today(), -7)) ? '💥 Smashed' : c === 'broken' ? '🔴 Repair' : c === 'worn' ? '🟠 Worn' : '';
-    return t ? `<button class="isbub" data-b="${it.id}" data-is="sel" data-id="${it.id}">${t}</button>` : '';
+  const P = ui.hxP, lk = hhLinkedKeys(d);
+  const bubs = hiKeys(d).map(key => {
+    const it = hiItem(key), s = d.b[key], c = hiCond(key);
+    const t = c === 'build' ? `⏳ ${isTimeLeft(s.r)}` : s.up && today() < s.up.r ? `⬆️ ${isTimeLeft(s.up.r)}` : (c === 'broken' || c === 'worn') && (s.hit || []).some(x => x >= addDays(today(), -7)) ? '💥 Smashed' : c === 'broken' ? '🔴 Repair' : c === 'worn' ? '🟠 Worn' : lk && !lk.has(key) ? (hhItem(key.split('.')[0]).need ? '🌊 Needs water' : '🛣️ No road') : '';
+    return t ? `<button class="isbub" data-b="${key}" data-is="sel" data-id="${key}">${t}</button>` : '';
   }).join('');
   const hud = `<div class="ishud is-tl"><div class="islvl house" style="--hc:${h.col}"><b>${hl}</b><div><span>${h.e} ${esc(h.name)} · house level ${hl}</span>${nextT ? `<i style="width:${Math.round((tot - prevT) / (nextT - prevT) * 100)}%"></i>` : ''}</div></div>
       <div class="isbuilders">🔨 ${HI_MAX_BUILDING - busy}/${HI_MAX_BUILDING} builders free · ${lead ? '👑 You lead' : `Leaders: ${L.u.map(esc).join(', ') || 'none yet'}`}</div></div>
     <div class="ishud is-tr">${isBar('cd-l', LUMEN, pool.l, 'House Lumen', 1, '')}${isBar('cd-e', EMBER, pool.e, 'House Ember', 1, '')}</div>
-    <div class="ishud is-bl"><button class="isbtn" data-hi="panel" data-v="house">🏰<span>House</span></button><button class="isbtn" data-hi="panel" data-v="pool">🏦<span>Pool</span></button><button class="isbtn" data-hi="panel" data-v="leaders">👑<span>Leaders</span></button><button class="isbtn ${pr?.open ? 'ping' : ''}" data-hi="panel" data-v="vote">🗳️<span>Vote</span></button><button class="isbtn" data-hi="panel" data-v="perks">✨<span>Perks</span></button></div>
-    ${P ? '' : `<div class="ishud is-br"><button class="isbtn big" data-hi="panel" data-v="shop">🛒<span>Projects</span></button></div>`}`;
+    ${P ? '' : `<div class="ishud is-bl"><button class="isbtn" data-hi="panel" data-v="house">🏰<span>House</span></button><button class="isbtn" data-hi="panel" data-v="pool">🏦<span>Pool</span></button><button class="isbtn" data-hi="panel" data-v="leaders">👑<span>Leaders</span></button><button class="isbtn ${pr?.open ? 'ping' : ''}" data-hi="panel" data-v="vote">🗳️<span>Vote</span></button><button class="isbtn" data-hi="panel" data-v="perks">✨<span>Perks</span></button></div>`}
+    ${P ? '' : `<div class="ishud is-br hxtools">${lead ? `<button class="isbtn" data-hi="tool" data-v="road" title="Lay roads by dragging">🛣️<span>Roads</span></button>${hl >= HH_WALL_LV ? '<button class="isbtn" data-hi="tool" data-v="wall" title="Lay walls by dragging">🧱<span>Walls</span></button><button class="isbtn" data-hi="tool" data-v="gate" title="Lay gates by dragging">🚪<span>Gates</span></button>' : ''}` : ''}<button class="isbtn big" data-hi="panel" data-v="shop">🛒<span>Projects</span></button></div>`}`;
   let extra = `<div class="isbubs">${bubs}</div>`, pn = ui.isPanel;
-  if (P) extra += isPlaceBar(hiItem(P.id).n, P.ok);
+  if (P) extra += hhPlaceBar(P, P.mode === 'tool');
   else if (pn === 'shop') extra += isPanel(`🛒 House projects · level ${hl}`, hiShopHtml(d, pool, lead, pr, hl, busy));
   else if (pn === 'pool') extra += isPanel(`🏦 ${h.name} house pool`, hiPoolHtml(pool));
   else if (pn === 'leaders') extra += isPanel(`👑 Leaders · ${cdTermName(hiTerm().id)}`, hiLeadHtml(d, L));
   else if (pn === 'vote') extra += isPanel('🗳️ House vote', hiVoteHtml(d, pr, lead));
-  else if (pn === 'perks' || pn === 'hall') { const pk = hiPerks(); extra += isPanel(pn === 'hall' ? `${h.e} ${h.name} great hall` : '✨ House perks', `${pn === 'hall' ? `<p>House level <b>${hl}</b>. ${nextT ? `${(nextT - tot).toLocaleString()} more in the pool (from anyone) for level ${hl + 1}.` : 'Top level!'} New projects and upgrades unlock as the house levels up.</p>` : ''}${Object.keys(pk).length ? `<p>${hiBuffText(pk)}</p>` : '<p class="muted small-text">Nothing built yet.</p>'}<p class="muted small-text">House perks only count in weekly house boss fights (on the <a href="#" data-act="goto" data-v="house">House</a> page), for everyone in ${h.name}.</p>`); }
-  else if (ui.isSel && d.b?.[ui.isSel]) extra += hiPopHtml(hiItem(ui.isSel), d, pool, lead, hl, busy);
+  else if (pn === 'perks' || pn === 'hall') {
+    const pk = hiPerks(), sl = hhSlots(hl), ring = hhRingOf(d), off = lk ? hiKeys(d).filter(k => !lk.has(k) && hiCond(k) && hiCond(k) !== 'build').length : 0;
+    const slots = `<p class="small-text">🛡️ Defence space at house level ${hl}: ${hhSlotUsed(d, 'wall')}/${sl.wall} wall hexes · ${hhSlotUsed(d, 'tower')}/${sl.tower} towers · ${hhSlotUsed(d, 'trap')}/${sl.trap} traps · ${hhSlotUsed(d, 'guard')}/${sl.guard} guard posts</p>`;
+    extra += isPanel(pn === 'hall' ? `${h.e} ${h.name} great hall` : '✨ House perks', `${pn === 'hall' ? `<p>House level <b>${hl}</b>. ${nextT ? `${(nextT - tot).toLocaleString()} more in the pool (from anyone) for level ${hl + 1}.` : 'Top level!'} New projects, upgrades and defence space unlock as the house levels up.</p>` : ''}${Object.keys(pk).length ? `<p>${hiBuffText(pk)}</p>` : '<p class="muted small-text">No house perks working yet.</p>'}
+      ${off ? `<p class="small-text">🛣️ ${off} building${off === 1 ? ' isn\'t' : 's aren\'t'} joined to the great hall by road, so ${off === 1 ? 'its perk is' : 'their perks are'} off.</p>` : ''}
+      <p class="small-text">${ring ? '🧱 The walls close a ring round the great hall: the Friday boss raid can\'t get in.' : '🧱 Close a ring of wall round the great hall to keep the Friday boss raid out.'}</p>${pn === 'hall' ? slots : ''}
+      <p class="muted small-text">House perks only count in weekly house boss fights (on the <a href="#" data-act="goto" data-v="house">House</a> page), for everyone in ${h.name}.</p>`);
+  }
+  else if (ui.isSel && String(ui.isSel).startsWith('hex:')) extra += hhHexPop(ui.isSel.slice(4));
+  else if (ui.isSel && d.b?.[ui.isSel]) extra += hiPopHtml(ui.isSel, d, pool, lead, hl, busy);
   return isFrame('house', hud, extra);
 }
 function hiShopHtml(d, pool, lead, pr, hl, busy) {
+  const sl = hhSlots(hl);
   const card = it => {
-    const s = d.b?.[it.id], lock = hl < it.u, reqOk = !it.req || ['ok', 'worn', 'broken'].includes(hiCond(it.req)), can = pool.l >= it.l && pool.e >= it.x && busy < HI_MAX_BUILDING;
+    const s = !it.slot && d.b?.[it.id], lock = hl < it.u, reqOk = !it.req || ['ok', 'worn', 'broken'].includes(hiCond(it.req)), can = pool.l >= it.l && pool.e >= it.x && busy < HI_MAX_BUILDING;
+    const used = it.slot ? hhSlotUsed(d, it.slot) : 0, full = it.slot && used >= sl[it.slot];
     let act;
     if (s) act = '<span class="tag">Built</span>';
+    else if (full && !lock) act = `<span class="muted small-text">${sl[it.slot] ? `All ${sl[it.slot]} ${HH_SLOT_N[it.slot]} spaces used` : 'No space yet'}</span>`;
     else if (lock) act = `<span class="tag">House level ${it.u}</span>`;
     else if (!reqOk) act = `<span class="muted small-text">Needs ${hiItem(it.req).n}</span>`;
     else if (hiBig(it) && !(pr?.b === it.id && pr.passed)) act = pr?.b === it.id ? `<span class="muted small-text">${pr.open ? 'House vote open' : 'Vote failed'}</span>` : lead && !(pr?.open) ? `<button class="btn small" data-hi="propose" data-id="${it.id}">Put to a vote</button>` : `<span class="muted small-text">Needs a house vote</span>`;
     else act = lead ? `<button class="btn small ${can ? 'primary' : ''}" data-hi="start" data-id="${it.id}" ${can ? '' : 'disabled'}>${hiCost(it)}</button>` : `<span class="muted small-text">${hiCost(it)} · leaders start it</span>`;
-    return `<div class="isitem ${lock ? 'locked' : ''} ${s ? 'owned' : ''}"><div class="isitem-e">${lock ? '🔒' : it.e}</div><b>${it.n}</b><div class="muted small-text">${lock ? `Unlocks at house level ${it.u}` : hiPerkM(it)}</div><div class="small-text">${lock ? '&nbsp;' : `${it.sz}×${it.sz} · ${HI_LEN[it.t]} days${hiBig(it) ? ' · vote' : ''}`}</div>${act}</div>`;
+    return `<div class="isitem ${lock ? 'locked' : ''} ${s ? 'owned' : ''}"><div class="isitem-e">${lock ? '🔒' : it.e}</div><b>${it.n}</b><div class="muted small-text">${lock ? `Unlocks at house level ${it.u}` : hiPerkM(it)}</div><div class="small-text">${lock ? '&nbsp;' : `${hhItem(it.id).hz > 1 ? hhItem(it.id).hz + ' hexes · ' : ''}${HI_LEN[it.t]} days${hiBig(it) ? ' · vote' : ''}${it.slot ? ` · ${used}/${sl[it.slot]} ${HH_SLOT_N[it.slot]}s` : ''}`}</div>${act}</div>`;
   };
-  return `<p class="muted small-text">Leaders start projects from the pool, ${HI_MAX_BUILDING} at a time. Month and term projects need a house vote first. Chains give their perk once every part is built.</p>
-    <div class="isshop">${HI_ITEMS.filter(x => !x.ch).map(card).join('')}</div>
+  return `<p class="muted small-text">Leaders start projects from the pool, ${HI_MAX_BUILDING} at a time, and drop them on a hex. Month and term projects need a house vote first. Chains give their perk once every part is built. Perks need a road to the great hall.</p>
+    <div class="isshop">${HI_ITEMS.filter(x => !x.ch && !x.d).map(card).join('')}</div>
+    <div class="ftlbl">🏦 Treasury</div><div class="isshop">${HI_ITEMS.filter(x => x.d && !x.slot).map(card).join('')}</div>
+    <div class="ftlbl">🛡️ Defences · ready for sieges later · space grows with house level</div><div class="isshop">${HI_ITEMS.filter(x => x.slot).map(card).join('')}</div>
     ${Object.entries(HI_CHAINS).map(([cid, ch]) => `<div class="ftlbl">⛓️ ${ch.n} chain · when complete: ${hiBuffText(ch.b)}</div><div class="isshop">${HI_ITEMS.filter(x => x.ch === cid).map(card).join('')}</div>`).join('')}`;
 }
-function hiPopHtml(it, d, pool, lead, hl, busy) {
-  const s = d.b[it.id], c = hiCond(it.id), cur = hiLvOn(s), nx = cur + 1, upping = s.up && today() < s.up.r;
+function hiPopHtml(key, d, pool, lead, hl, busy) {
+  const it = hiItem(key), s = d.b[key], c = hiCond(key), lk = hhLinkedKeys(d), cur = hiLvOn(s), nx = cur + 1, upping = s.up && today() < s.up.r;
   let acts = '';
   if (c === 'build') acts = `<span class="muted small-text">Ready in ${isTimeLeft(s.r)}</span>`;
   else if (upping) acts = `<span class="muted small-text">Upgrading to level ${s.up.lv}, ready in ${isTimeLeft(s.up.r)}</span>`;
   else {
-    if (c === 'worn' || c === 'broken') { const f = IS_REPAIR[c], ok = pool.l >= Math.round(it.l * f) && pool.e >= Math.round(it.x * f); acts += lead ? `<button class="btn small ${ok ? 'primary' : ''}" data-hi="repair" data-id="${it.id}" ${ok ? '' : 'disabled'}>🔧 Repair · ${hiCost(it, f)}</button>` : `<span class="muted small-text">Leaders can repair (${hiCost(it, f)})</span>`; }
+    if (c === 'worn' || c === 'broken') { const f = IS_REPAIR[c], ok = pool.l >= Math.round(it.l * f) && pool.e >= Math.round(it.x * f); acts += lead ? `<button class="btn small ${ok ? 'primary' : ''}" data-hi="repair" data-id="${key}" ${ok ? '' : 'disabled'}>🔧 Repair · ${hiCost(it, f)}</button>` : `<span class="muted small-text">Leaders can repair (${hiCost(it, f)})</span>`; }
     if (nx <= HI_MAXLV) {
       const need = hiNeedLv(it, nx), f = IS_UPC[nx - 1], ok = pool.l >= Math.round(it.l * f) && pool.e >= Math.round(it.x * f) && busy < HI_MAX_BUILDING;
-      acts += hl < need ? `<span class="tag">🔒 House level ${need} to upgrade</span>` : lead ? `<button class="btn small ${ok ? 'primary' : ''}" data-hi="upgrade" data-id="${it.id}" ${ok ? '' : 'disabled'}>⬆️ Level ${nx} · ${hiCost(it, f)} · ${hiUpDays(it, nx)}d</button>` : `<span class="muted small-text">Leaders can upgrade (${hiCost(it, f)})</span>`;
+      acts += hl < need ? `<span class="tag">🔒 House level ${need} to upgrade</span>` : lead ? `<button class="btn small ${ok ? 'primary' : ''}" data-hi="upgrade" data-id="${key}" ${ok ? '' : 'disabled'}>⬆️ Level ${nx} · ${hiCost(it, f)} · ${hiUpDays(it, nx)}d</button>` : `<span class="muted small-text">Leaders can upgrade (${hiCost(it, f)})</span>`;
     } else acts += '<span class="tag">⭐ Max level</span>';
   }
-  if (lead) acts += `<button class="btn small ghost" data-hi="move" data-id="${it.id}">✥ Move</button>`;
-  return `<div class="ishud is-bc ispop"><div class="ispop-h"><span class="ise">${it.e}</span><div><b>${it.n}</b> <span class="tag">Level ${cur}</span> <span class="tag">${IS_LABEL[c]}</span>
-      <div class="muted small-text">${hiPerkM(it, IS_LVM[cur - 1])}${nx <= HI_MAXLV && (it.b || it.alone) ? ` · next level: ${hiPerkM(it, IS_LVM[nx - 1])}` : ''} · built by ${esc(s.by || '?')}</div></div><button class="isx" data-is="close" title="Close">✕</button></div>
+  if (lead) acts += `<button class="btn small ghost" data-hi="move" data-id="${key}">✥ Move</button>`;
+  const hh = hhItem(key.split('.')[0]), off = lk && !lk.has(key) && c !== 'build';
+  const info = it.bank ? ` · earned so far: ${it.bank === 'l' ? LUMEN : EMBER} ${Math.round(+s.i || 0).toLocaleString()} · interest on up to ${hhBankCap(s).toLocaleString()}` : it.id === 'vault' ? ` · space now: ${hhVaultSpace(d).toLocaleString()}${hhVaultSpace(d) ? '' : ' (build a Treasury)'}` : it.id === 'treasury' ? ` · Vault space ${(HH_VAULT * cur).toLocaleString()}` : '';
+  return `<div class="ishud is-bc ispop"><div class="ispop-h"><span class="ise">${it.e}</span><div><b>${it.n}</b> <span class="tag">Level ${cur}</span> <span class="tag">${IS_LABEL[c]}</span>${off ? ` <span class="tag hxbad">${hh.need ? '🌊 Must touch the water' : '🛣️ Needs a road to the great hall'}</span>` : ''}
+      <div class="muted small-text">${hiPerkM(it, IS_LVM[cur - 1])}${nx <= HI_MAXLV && (it.b || it.alone) ? ` · next level: ${hiPerkM(it, IS_LVM[nx - 1])}` : ''}${info} · built by ${esc(s.by || '?')}</div></div><button class="isx" data-is="close" title="Close">✕</button></div>
     <div class="ispop-a">${acts}</div></div>`;
 }
 function hiPoolHtml(pool) {
@@ -241,26 +266,10 @@ function hiVoteHtml(d, pr, lead) {
   return `<h4>${it.e} ${it.n}</h4><p class="small-text">${hiPerkM(it)} · ${hiCost(it)} · ${HI_LEN[it.t]} days</p><p class="small-text">Put forward by ${esc(pr.by)} on ${fmtDate(pr.at)}. ${pr.open ? `Open until ${fmtDate(addDays(pr.at, HI_PROP_DAYS))}.` : pr.passed ? 'Passed: a leader can start it.' : 'Didn\'t pass.'} 👍 ${pr.y} · 👎 ${pr.n}</p>
     ${pr.open ? `<div class="row" style="gap:8px"><button class="btn small ${myVote.p?.k === pr.k && myVote.p.y > 0 ? 'primary' : ''}" data-hi="pvote" data-y="1">👍 Yes</button><button class="btn small ${myVote.p?.k === pr.k && myVote.p.y < 0 ? 'primary' : ''}" data-hi="pvote" data-y="-1">👎 No</button></div>` : lead && !pr.passed ? `<button class="btn small ghost" data-hi="clearprop">Clear</button>` : ''}`;
 }
-// placing a new project or moving a building (leaders), after the spot is picked on the grid
-async function hiPlaceDone(P) {
-  const it = hiItem(P.id), now = today(); ui.isPlace = null;
-  if (!hiAmLeader()) { render(); return; }
-  let ok;
-  if (P.mode === 'new') {
-    ok = await hiWrite(d => {
-      const p = hiPool(d); if (d.b?.[it.id] || p.l < it.l || p.e < it.x || hiBusy(d, now) >= HI_MAX_BUILDING || hiLevel(d) < it.u) return false;
-      if (hiBig(it)) { const pr = hiProp(d); if (pr?.b !== it.id || !pr.passed) return false; delete d.pr; }
-      d.sp = { l: (+d.sp?.l || 0) + it.l, e: (+d.sp?.e || 0) + it.x }; d.b = d.b || {}; d.b[it.id] = { s: now, r: addDays(now, HI_LEN[it.t]), reps: [], by: HI.user, lv: 1, at: P.at };
-    });
-    if (ok) toast(`${it.e} ${it.n} started`, `Ready ${fmtDate(addDays(now, HI_LEN[it.t]))}.`);
-  } else ok = await hiWrite(d => { if (!d.b?.[it.id]) return false; d.b[it.id].at = P.at; });
-  if (ok) ui.isSel = it.id;
-  render();
-}
 
 document.addEventListener('click', async e => {
-  const el = e.target.closest('[data-hi]'); if (!el) return;
-  const it = hiItem(el.dataset.id), now = today();
+  const el = !e.hxDone && e.target.closest('[data-hi]'); if (!el) return;
+  const key = el.dataset.id, it = hiItem(key), now = today();
   let ok = false;
   switch (el.dataset.hi) {
     case 'reload': HI.at = 0; HI.err = ''; render(); hiLoad(true); return;
@@ -276,14 +285,16 @@ document.addEventListener('click', async e => {
     case 'propose': if (!it || !hiAmLeader() || hiProp()?.open) return; if (!confirm(`Put ${it.n} (${hiCost(it)}, ${HI_LEN[it.t]} days) to a house vote?`)) return;
       ok = await hiWrite(d => { d.pr = { b: it.id, at: now, by: HI.user }; }); ui.isPanel = 'vote'; break;
     case 'clearprop': if (!hiAmLeader()) return; ok = await hiWrite(d => { delete d.pr; }); break;
-    case 'start': if (!it || !hiAmLeader()) return; ui.isPanel = null; isPlaceStart({ id: it.id, sz: it.sz, mode: 'new', L: hiLayout(), h: 1 }); return;
-    case 'move': { if (!it || !hiAmLeader()) return; const L = hiLayout(); ui.isSel = null; isPlaceStart({ id: it.id, sz: it.sz, mode: 'move', L, h: 1, at: L.items.find(o => o.id === it.id)?.at }); return; }
+    case 'start': { if (!it || !hiAmLeader()) return; const why = hiCanStart(HI.doc, it, now); if (why) { toast('Can\'t start that now', why); return; } hxStartPlace({ id: it.id, mode: 'new', rot: 0 }); return; }
+    case 'move': { const s = HI.doc?.b?.[key]; if (!it || !s || !hiAmLeader() || typeof s.at !== 'string') return; hxStartPlace({ id: it.id, key, mode: 'move', from: s.at, rot: s.rot || 0, rot0: s.rot || 0 }); return; }
+    case 'tool': if (!hiAmLeader()) return; hxStartPlace({ id: el.dataset.v, mode: 'tool', n: 0, ops: ui.hxP?.ops || [], was: ui.hxP?.id }); return;
+    case 'unhex': hhRemoveHex(el.dataset.k); return;
     case 'upgrade': {
       if (!it || !hiAmLeader()) return;
-      const s0 = HI.doc.b?.[it.id], nx = hiLvOn(s0) + 1, f = IS_UPC[nx - 1], days = hiUpDays(it, nx);
+      const s0 = HI.doc.b?.[key], nx = hiLvOn(s0) + 1, f = IS_UPC[nx - 1], days = hiUpDays(it, nx);
       if (!confirm(`Upgrade ${it.n} to level ${nx} for ${hiCost(it, f)} from the house pool? It takes ${days} days and keeps working meanwhile.`)) return;
       ok = await hiWrite(d => {
-        const s = d.b?.[it.id], p = hiPool(d), l = Math.round(it.l * f), x = Math.round(it.x * f);
+        const s = d.b?.[key], p = hiPool(d), l = Math.round(it.l * f), x = Math.round(it.x * f);
         if (!s || now < s.r || (s.up && now < s.up.r) || hiLvOn(s) + 1 !== nx || nx > HI_MAXLV || hiLevel(d) < hiNeedLv(it, nx) || p.l < l || p.e < x || hiBusy(d, now) >= HI_MAX_BUILDING) return false;
         if (s.up) { s.lv = s.up.lv; s.reps = [...(s.reps || []), s.up.r]; }
         d.sp = { l: (+d.sp?.l || 0) + l, e: (+d.sp?.e || 0) + x }; s.up = { lv: nx, s: now, r: addDays(now, days) };
@@ -293,9 +304,9 @@ document.addEventListener('click', async e => {
     case 'repair': {
       if (!it || !hiAmLeader()) return;
       ok = await hiWrite(d => {
-        const f = IS_REPAIR[hiCond(it.id, now, d)], p = hiPool(d); if (!f) return false;
+        const f = IS_REPAIR[hiCond(key, now, d)], p = hiPool(d); if (!f) return false;
         const l = Math.round(it.l * f), x = Math.round(it.x * f); if (p.l < l || p.e < x) return false;
-        d.sp = { l: (+d.sp?.l || 0) + l, e: (+d.sp?.e || 0) + x }; const s = d.b[it.id]; s.reps = [...(s.reps || []).filter(r => r >= addDays(now, -400)), now];
+        d.sp = { l: (+d.sp?.l || 0) + l, e: (+d.sp?.e || 0) + x }; const s = d.b[key]; s.reps = [...(s.reps || []).filter(r => r >= addDays(now, -400)), now];
       });
       if (ok) toast(`${it.e} ${it.n} repaired`, 'Its perk is back to full for the whole house.'); break;
     }
