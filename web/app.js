@@ -2019,6 +2019,7 @@ async function clearStudyBlocks() {
   safe(() => aiLoad().then(() => { aiFab(); if (view === 'settings') render(); }), 'ai');
   safe(() => loadAccount().then(a => { if (a.signedIn) { publishMe(true); refreshFriends(true); } if (view === 'settings' && !modal.open) render(); }), 'account');
   checkUpdate();
+  safe(whatsNewCheck, 'whatsnew'); // once per update
   setInterval(checkUpdate, 60000); // cheap local check, so a downloaded update installs within a minute
   checkReminders();
   setInterval(checkReminders, 30000);
