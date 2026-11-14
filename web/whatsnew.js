@@ -10,6 +10,10 @@
 // version since the last one they saw (up to 3). D.settings.seenVersion remembers what was last shown,
 // D.settings.guidesSeen which guides have played. A brand-new install never sees either.
 const CHANGELOG = [
+  { v: '2.67.2', notes: [
+    { t: 'Fixed the sign-up and log-in boxes clearing what you typed', k: 'fix' },
+    { t: 'The invite code box now says what it does', k: 'tweak' },
+  ] },
   { v: '2.67.1', notes: [
     { t: 'The Solis download page has a short address now: tinyurl.com/solis-download', k: 'tweak' },
   ] },

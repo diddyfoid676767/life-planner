@@ -39,13 +39,18 @@ const firstName = n => String(n || '').trim().split(/\s+/)[0] || '';
 
 // ---------- the sign-up / log-in card ----------
 let emTab = 'signup', emBusy = false, emPoll = 0;
+// 2.67.2: what you've typed, so the page redrawing itself (it does every so often) can't wipe it
+const emDraft = {};
+const emV = (form, name, dflt) => esc(emDraft[form + '.' + name] ?? dflt ?? '');
+document.addEventListener('input', e => { const f = e.target.form; if (f && (f.id === 'emForm' || f.id === 'acctForm') && e.target.name) emDraft[f.id + '.' + e.target.name] = e.target.value; });
+const emForget = () => { for (const k in emDraft) delete emDraft[k]; };
 function emailCard(inWizard) {
   const school = !plannerOnly();
   const inv = D.settings.invite || '';
   if (emTab === 'old') return `<div class="card acctcard"><div class="acct-login"><h2>Log in with your old username</h2>
     <p class="muted small-text">Old username accounts work until launch (1 Feb). After that everyone uses a school email account.</p>
-    <form id="acctForm" autocomplete="on"><label>Username<input name="username" autocomplete="username" required minlength="3" maxlength="20" pattern="[A-Za-z0-9_]+"></label>
-      <label>Password<input name="password" type="password" autocomplete="current-password" required minlength="8" maxlength="72"></label>
+    <form id="acctForm" autocomplete="on"><label>Username<input name="username" value="${emV('acctForm', 'username')}" autocomplete="username" required minlength="3" maxlength="20" pattern="[A-Za-z0-9_]+"></label>
+      <label>Password<input name="password" type="password" value="${emV('acctForm', 'password')}" autocomplete="current-password" required minlength="8" maxlength="72"></label>
       <div class="row"><button class="btn primary" data-acct="login" ${acctBusy ? 'disabled' : ''}>Log in</button><a href="#" class="small-text" data-em="tab" data-v="login">Back</a></div></form></div></div>`;
   const tabs = `<div class="seg emtabs"><button class="${emTab === 'signup' ? 'on' : ''}" data-em="tab" data-v="signup">Sign up</button><button class="${emTab === 'login' ? 'on' : ''}" data-em="tab" data-v="login">Log in</button></div>`;
   return `<div class="card acctcard"><div class="acct-login">
@@ -55,10 +60,10 @@ function emailCard(inWizard) {
       : 'Any email works. An account lets you add friends, race them on the leaderboards and chat. Only your name, avatar and leaderboard numbers are shared.'}</p>
     ${tabs}
     <form id="emForm" autocomplete="on">
-      ${emTab === 'signup' && !school ? `<label>First name<input name="name" maxlength="30" value="${esc(D.settings.name || '')}" placeholder="e.g. Sam"></label>` : ''}
-      <label>Email<input name="email" type="email" autocomplete="email" required maxlength="120" placeholder="${school ? 'you@' + SCHOOL_DOMAIN : 'you@example.com'}"></label>
-      <label>Password<input name="password" type="password" autocomplete="${emTab === 'signup' ? 'new-password' : 'current-password'}" required minlength="8" maxlength="72" placeholder="8+ characters"></label>
-      ${emTab === 'signup' ? `<label>Invite code <span class="muted">(optional)</span><input name="invite" maxlength="6" value="${esc(inv)}" placeholder="e.g. 3F9A1C" style="text-transform:uppercase"></label>` : ''}
+      ${emTab === 'signup' && !school ? `<label>First name<input name="name" maxlength="30" value="${emV('emForm', 'name', D.settings.name)}" placeholder="e.g. Sam"></label>` : ''}
+      <label>Email<input name="email" type="email" value="${emV('emForm', 'email')}" autocomplete="email" required maxlength="120" placeholder="${school ? 'you@' + SCHOOL_DOMAIN : 'you@example.com'}"></label>
+      <label>Password<input name="password" type="password" value="${emV('emForm', 'password')}" autocomplete="${emTab === 'signup' ? 'new-password' : 'current-password'}" required minlength="8" maxlength="72" placeholder="8+ characters"></label>
+      ${emTab === 'signup' ? `<label>Invite code <span class="muted">(optional)</span><input name="invite" maxlength="6" value="${emV('emForm', 'invite', inv)}" placeholder="e.g. 3F9A1C" style="text-transform:uppercase"><small class="muted">Got one from a friend? Type it here and you both get ${INVITE_REWARD} Lumen and ${INVITE_REWARD} Ember after your first focus session, and they're added as your friend.</small></label>` : ''}
       <div class="row"><button class="btn primary" data-em="${emTab}" ${emBusy ? 'disabled' : ''}>${emTab === 'signup' ? 'Create account' : 'Log in'}</button>
         ${emTab === 'login' ? '<a href="#" class="small-text" data-em="forgot">Forgot your password?</a>' : ''}</div>
       ${emTab === 'login' && !acct.launch?.reset ? '<p class="small-text"><a href="#" data-em="tab" data-v="old">Log in with an old username instead</a></p>' : ''}
@@ -139,7 +144,7 @@ document.addEventListener('click', async e => {
     emBusy = true; el.textContent = a === 'signup' ? 'Creating…' : 'Logging in…';
     try {
       await emPost({ action: a, email, password, name: f.name?.value || D.settings.name || '', inviter });
-      emBusy = false;
+      emBusy = false; emForget();
       if (f.name?.value && !D.settings.name) { D.settings.name = f.name.value.trim(); save(); }
       if (acct.verified) emVerified();
       else toast(a === 'signup' ? '📬 Check your inbox' : '👋 Welcome back', a === 'signup' ? `We sent a link to ${email}. Open it to finish.` : 'Open the link we emailed you to finish.');
