@@ -79,6 +79,7 @@ const S = process.argv[2]; const sleep = ms => new Promise(r => setTimeout(r, ms
   ok(await p.evaluate(() => !IS3.R.shadowMap.enabled || true), '8b. low quality renders');
   await p.evaluate(() => { D.settings.lowQuality = false; view = 'settings'; ui.setTab = 'you'; render(); }); await sleep(300);
   ok(await p.$('[data-act=guideStart][data-v=hexmove]'), '8c. guide can be replayed from Settings');
+  ok(await p.evaluate(() => { HI.doc = HI.doc || { b: {}, c: {} }; return typeof hiPerks() === 'object' && isMult('worn') === .5; }), '8d. house island perks still work');
   ok(errs.length === 0, '9. no page errors ' + errs.join('|'));
   await b.close(); app.kill(); console.log(fails ? fails + ' FAILED' : 'ALL PASS'); process.exit(fails ? 1 : 0);
 })();

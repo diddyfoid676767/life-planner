@@ -10,6 +10,9 @@
 // version since the last one they saw (up to 3). D.settings.seenVersion remembers what was last shown,
 // D.settings.guidesSeen which guides have played. A brand-new install never sees either.
 const CHANGELOG = [
+  { v: '2.65.1', notes: [
+    { t: 'Fixed house island perks and house boss fights after the hex island update', k: 'fix' },
+  ] },
   { v: '2.65.0', guide: 'hexmove', notes: [
     { t: 'Your island is rebuilt on hexagons with proper medieval buildings (what you spent on the old one is refunded)', k: 'new' },
     { t: 'Drag buildings to move them, with a green/red preview, R to turn, Ctrl+Z to undo; drag to lay roads and walls', k: 'new' },
