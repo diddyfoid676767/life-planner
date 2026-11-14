@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#4f6df5">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Solis">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon-180.png">
+<title>Solis</title>
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="style.css">
+<script>/* 2.57.3: page errors go into planner.log, so a page that breaks on one computer can be looked into */
+(function () { var n = 0; window.lpReportError = function (msg, err) { try { if (n++ > 50 || !/^(127\.0\.0\.1|localhost)$/.test(location.hostname)) return; var v = (typeof view === 'string' ? view : '') , s = (err && err.stack ? String(err.stack) : '').slice(0, 1500); fetch('/api/log', { method: 'POST', body: '[' + v + '] ' + msg + (s ? '\n' + s : '') }).catch(function () { }); } catch (e) { } };
+  addEventListener('error', function (e) { if (e && e.message) lpReportError(e.message + ' @ ' + (e.filename || '').split('/').pop() + ':' + e.lineno, e.error); else if (e && e.target && e.target.src) lpReportError("couldn't load " + e.target.src); }, true);
+  addEventListener('unhandledrejection', function (e) { var r = e && e.reason; lpReportError('promise: ' + (r && r.message || r), r); }); })();</script>
+<script src="merge.js"></script>
+<script src="cloud.js"></script>
+<script src="testmode.js"></script>
+</head>
+<body>
+<div id="boot" aria-hidden="true"><div class="boot-in">
+  <div class="boot-logo"><i class="sp em" style="--x:-197px;--y:72px;--d:0.00s"></i><i class="sp em" style="--x:-186px;--y:167px;--d:0.04s"></i><i class="sp em" style="--x:-127px;--y:261px;--d:0.09s"></i><i class="sp em" style="--x:-15px;--y:209px;--d:0.14s"></i><i class="sp em" style="--x:77px;--y:238px;--d:0.18s"></i><i class="sp em" style="--x:186px;--y:222px;--d:0.22s"></i><i class="sp em" style="--x:185px;--y:99px;--d:0.27s"></i><i class="sp em" style="--x:249px;--y:26px;--d:0.32s"></i><i class="sp em" style="--x:279px;--y:-80px;--d:0.36s"></i><i class="sp lu" style="--x:197px;--y:-72px;--d:0.00s"></i><i class="sp lu" style="--x:186px;--y:-167px;--d:0.04s"></i><i class="sp lu" style="--x:127px;--y:-261px;--d:0.09s"></i><i class="sp lu" style="--x:15px;--y:-209px;--d:0.14s"></i><i class="sp lu" style="--x:-77px;--y:-238px;--d:0.18s"></i><i class="sp lu" style="--x:-186px;--y:-222px;--d:0.22s"></i><i class="sp lu" style="--x:-185px;--y:-99px;--d:0.27s"></i><i class="sp lu" style="--x:-249px;--y:-26px;--d:0.32s"></i><i class="sp lu" style="--x:-279px;--y:80px;--d:0.36s"></i><i class="boot-flash"></i>
+    <svg viewBox="0 0 64 64" width="132" height="132"><defs><linearGradient id="bb" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#241441"/><stop offset="1" stop-color="#0c0e1c"/></linearGradient><linearGradient id="ce" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#ffb347"/><stop offset="1" stop-color="#e02f3a"/></linearGradient><linearGradient id="cl" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#ffffff"/><stop offset="1" stop-color="#6fd0ff"/></linearGradient><radialGradient id="cg"><stop offset="0" stop-color="#ff9a5a" stop-opacity=".45"/><stop offset="1" stop-color="#ff9a5a" stop-opacity="0"/></radialGradient></defs><g transform="rotate(-35 32 32)"><path class="b-flame" d="M32 12A20 20 0 0 0 32 52Z" fill="url(#ce)"/><path class="b-star" d="M32 12A20 20 0 0 1 32 52Z" fill="url(#cl)"/></g><circle class="b-core" cx="32" cy="32" r="7" fill="#fff"/></svg></div>
+  <div class="boot-title">Solis</div><div class="boot-hello" id="bootHello">&nbsp;</div></div><div class="boot-skip">Click or press any key to skip</div></div>
+<script>try { if (localStorage.getItem('lpNoIntro') === '1') document.getElementById('boot').remove(); } catch (e) { }</script>
+<aside class="sidebar">
+  <div class="brand"><img src="icon.svg" alt="" width="28" height="28"><span>Solis</span></div>
+  <!-- the pages (hidden; places.js shows them as the sidebar and the tabs above each page) -->
+  <nav id="tabs">
+    <button data-view="today" class="active"><span>Today</span></button>
+    <button data-view="calendar"><span>Calendar</span></button>
+    <button data-view="study"><span>Study</span></button>
+    <button data-view="training"><span>Fitness</span></button>
+    <button data-view="islands"><span>Islands</span></button>
+    <button data-view="friends"><span>Chats</span></button>
+    <button data-view="profile"><span>You</span></button>
+    <button data-view="settings"><span>Settings</span></button>
+    <div class="navspacer"></div>
+  </nav>
+  <div class="sidefoot">
+    <div id="sideStats"></div>
+    <button id="notifyBtn" class="small ghost" hidden>Turn on reminders</button>
+    <span id="saveState" class="muted small-text"></span>
+  </div>
+</aside>
+<div class="content">
+<div id="updateBar" class="banner good" hidden></div>
+<div id="focusBar" hidden></div>
+<div id="tempWarn" class="banner danger" hidden></div>
+<div id="offline" class="banner danger" hidden><b>Solis has closed.</b> Double-click <b>LifePlanner.exe</b> to open it again. Anything you do now is kept in this tab and saves by itself once it's open.</div>
+<main id="view"></main>
+</div>
+<div id="toasts"></div>
+<dialog id="modal"><form method="dialog" id="modalForm"></form></dialog>
+<script src="days.js"></script>
+<script src="terms.js"></script>
+<script src="prs.js"></script>
+<script src="posture.js"></script>
+<script src="stillhere.js"></script>
+<script src="whatsnew.js"></script>
+<script src="avatar.js"></script>
+  <script src="board.js"></script>
+  <script src="school.js"></script>
+  <script src="setup.js"></script>
+  <script src="strava.js"></script>
+<script src="focusfx.js"></script>
+<script src="theme.js"></script>
+<script src="miniplayer.js"></script>
+<script src="account.js"></script>
+<script src="launch.js"></script>
+<script src="body.js"></script>
+<script src="fitness.js"></script>
+<script src="workout.js"></script>
+<script src="friends.js"></script>
+<script src="chats.js"></script>
+<script src="social2.js"></script>
+<script src="profile.js"></script>
+<script src="challenges.js"></script>
+<script src="quickadd.js"></script>
+<script src="todo.js"></script>
+<script src="sound.js"></script>
+<script src="exams.js"></script>
+<script src="askclaude.js"></script>
+<script src="houses.js"></script>
+<script src="cards.js"></script>
+<script src="level.js"></script>
+<script src="fight.js"></script>
+<script src="islands.js"></script>
+<script src="hexworld.js"></script>
+<script src="hxhouse.js"></script>
+<script src="hisland.js"></script>
+<script src="bisland.js"></script>
+<script src="terms2.js"></script>
+<script src="av3d.js"></script>
+<script src="app.js"></script>
+<script src="places.js"></script>
+<script src="menu.js"></script>
+<script src="mobilenav.js"></script>
+<script src="cmdk.js"></script>
+</body>
+</html>
