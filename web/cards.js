@@ -106,7 +106,7 @@ const CD_INT = { Easy: .8, Moderate: 1, Hard: 1.3 };
 const CD_CAP_STUDY = 360, CD_CAP_TRAIN = 180, CD_MIN = 15, CD_LOCK_RATE = .3;
 
 const cdState = () => { const c = D.cards = Object.assign({ since: '', cls: '', scores: {} }, D.cards || {}); if (!c.since) c.since = today(); return c; };
-const cdTerm = (d = today()) => `${d.slice(0, 4)}-T${Math.ceil(+d.slice(5, 7) / 3)}`;
+const cdTerm = (d = today()) => typeof termOf === 'function' ? termOf(d).key : `${d.slice(0, 4)}-T${Math.ceil(+d.slice(5, 7) / 3)}`; // 2.63: real school terms
 const cdTermName = t => `Term ${t.slice(-1)} ${t.slice(0, 4)}`;
 const cdRate = f => Math.round(5 + 94 * Math.max(0, Math.min(1, f)));
 const cdAvg = o => { const v = Object.values(o); return v.length ? Math.round(v.reduce((a, b) => a + b, 0) / v.length) : 0; };

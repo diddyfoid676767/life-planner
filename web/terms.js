@@ -33,6 +33,27 @@ function termData() {
 }
 const termHoliday = d => { const m = termData(); return m.days.has(d) || m.gaps.some(g => g.from <= d && d <= g.to); };
 function termAt(d) { return termList().find(t => (t.from || '0000') <= d && d <= (t.to || '9999') && t.from && t.to) || null; }
+// 2.63: the term a day belongs to. The real term it falls in, or the one that just ended
+// (holidays belong to it). Calendar quarters only when there are no term dates for it.
+function termOf(d = today()) {
+  const T = termList().filter(t => t.from && t.to);
+  let t = T.find(t => t.from <= d && d <= t.to);
+  if (!t) { const p = T.filter(x => x.to < d).pop(); if (p && diffDays(p.to, d) <= 90) t = p; }
+  if (t) return { y: t.y, n: t.n, from: t.from, to: t.to, key: `${t.y}-T${t.n}`, real: true };
+  const y = +d.slice(0, 4), q = Math.ceil(+d.slice(5, 7) / 3), from = `${y}-${String((q - 1) * 3 + 1).padStart(2, '0')}-01`;
+  const to = addDays(q === 4 ? `${y + 1}-01-01` : `${y}-${String(q * 3 + 1).padStart(2, '0')}-01`, -1);
+  return { y, n: q, from, to, key: `${y}-T${q}`, real: false };
+}
+// the next real term that hasn't started yet
+const termNext = (d = today()) => termList().find(t => t.from && t.to && t.from > d) || null;
+// 2.63: the house boss week. 'rest' = a whole school-holiday week (the boss rests),
+// 'term' = the last week of a term (the Term Boss: double health, 3 extra fights, double rewards)
+function bossWeek(wk = mondayOf(today())) {
+  if ([0, 1, 2, 3, 4].every(i => termHoliday(addDays(wk, i)))) return 'rest';
+  const t = termAt(wk) || termAt(addDays(wk, 4));
+  return t && mondayOf(t.to) === wk ? 'term' : '';
+}
+const bossBackOn = (wk = mondayOf(today())) => { let w = wk; for (let i = 0; i < 12 && bossWeek(w) === 'rest'; i++) w = addDays(w, 7); return w; };
 function termWeek(d) { const t = termAt(d); return t ? Math.floor(diffDays(mondayOf(t.from), d) / 7) + 1 : 0; }
 function termLine(d) {
   if (isHoliday(d) && !isSchoolDay(d)) { if (dayOffName(d)) return `🌴 ${dayOffName(d)}`; const g = termData().gaps.find(g => g.from <= d && d <= g.to); if (g) return `🌴 School holidays · back ${fmtDate(addDays(g.to, 1))}`; return '🌴 Day off'; }

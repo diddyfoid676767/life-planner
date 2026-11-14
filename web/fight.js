@@ -117,12 +117,14 @@ const ftRar = r => FT_RAR.find(x => x[0] === r) || FT_RAR[0];
 const ftSkillLv = s => s.lv || (!s.c ? 1 : s.r === 'legendary' ? 18 : s.r === 'epic' ? 12 : s.c <= 120 ? 2 : s.c <= 160 ? 3 : s.c <= 200 ? 4 : s.c <= 240 ? 6 : 8);
 const FT_GEAR_LV = { common: 1, rare: 3, epic: 6, legendary: 10 };
 const ftGearLv = p => FT_GEAR_LV[p.r] || 1;
-const ftWeekDmg = wk => Math.min(FT_WEEK_CAP, Math.round(ftState().dmg[wk] || 0));
+const ftTermX = (wk = mondayOf(today())) => bossWeek(wk) === 'term' ? 2 : 1; // 2.63: Term Boss week doubles the caps and rewards
+const ftWeekDmg = wk => Math.min(FT_WEEK_CAP * ftTermX(wk), Math.round(ftState().dmg[wk] || 0));
 function ftAttempts() {
   const st = ftState(), wk = mondayOf(today()); let week = 0;
   for (const [d, n] of Object.entries(st.att)) { if (d >= wk) week += n; else if (d < addDays(wk, -14)) delete st.att[d]; }
   const day = st.att[today()] || 0;
-  const extra = typeof hiPerks === 'function' ? hiPerks().at || 0 : 0; // 2.50: house island perks
+  const extra = (typeof hiPerks === 'function' ? hiPerks().at || 0 : 0) + (bossWeek(wk) === 'term' ? 3 : 0); // 2.50: house island perks; 2.63: 3 extra Term Boss fights
+  if (bossWeek(wk) === 'rest') return { left: 0, week, day, extra, rest: true };
   return { left: Math.max(0, Math.min(FT_WEEK_ATT + extra - week, FT_DAY_ATT - day)), week, day, extra };
 }
 // total buffs from what you're wearing
@@ -194,10 +196,11 @@ function ftStart(kind, opt = {}) {
     E = { n: b.n, e: b.e, hp, max: hp, stun: 0, blind: 0, confuse: 0, dot: [], mark: 0, shield: 0, awake: 0, seen: 0, boss: 1 };
     bossDef.init?.(E);
   }
-  FT = { kind, round: 1, maxR: kind === 'house' ? FT_ROUNDS : FT_SPAR_ROUNDS, P, E, B: bossDef, bossName: name, log: [], dealt: 0, over: false, scale: kind === 'spar' ? 1.6 : kind === 'house' ? .75 : 1, opt };
+  const tb = kind === 'house' && bossWeek() === 'term';
+  FT = { kind, round: 1, maxR: kind === 'house' ? FT_ROUNDS : FT_SPAR_ROUNDS, P, E, B: bossDef, bossName: name, log: [], dealt: 0, over: false, scale: kind === 'spar' ? 1.6 : tb ? 1 : kind === 'house' ? .75 : 1, opt, tb };
   const st = ftState();
   // the stake and attempt are taken up front, so closing the app mid-fight can't dodge a loss
-  if (kind === 'house') { st.att[today()] = (st.att[today()] || 0) + 1; ftLog(FT, `⚔️ ${name} appears! ${FT_ROUNDS} rounds: hit as hard as you can.`); }
+  if (kind === 'house') { st.att[today()] = (st.att[today()] || 0) + 1; ftLog(FT, tb ? `👑 Term Boss: ${name} appears, stronger than ever! ${FT_ROUNDS} rounds, and it hits harder.` : `⚔️ ${name} appears! ${FT_ROUNDS} rounds: hit as hard as you can.`); }
   if (kind === 'spar') { FT.stake = ftTake(25, 25); ftLog(FT, `⚔️ Spar: ${name} (champion). Stake ${FT.stake.l} ${LUMEN} ${FT.stake.e} ${EMBER}.`); }
   if (kind === 'duel') { FT.stake = ftTake(15, 15); FT.rd = 16; st.r -= FT.rd; st.l++; ftLog(FT, `⚔️ Duel vs ${E.n}. Stake ${FT.stake.l} ${LUMEN} ${FT.stake.e} ${EMBER}.`); }
   if (bossDef) ftLog(FT, `💡 Weak to ${bossDef.wn}. ${bossDef.sp}`, 'hint');
@@ -326,11 +329,11 @@ function ftCheck(F) {
 function ftEnd(F, how) {
   F.over = true; const st = ftState(), out = [];
   if (F.kind === 'house') {
-    const wk = mondayOf(today()), before = st.dmg[wk] || 0, n = Math.min(FT_ATT_CAP, Math.round(F.dealt)), add = Math.max(0, Math.min(n, FT_WEEK_CAP - before));
+    const wk = mondayOf(today()), x = ftTermX(wk), before = st.dmg[wk] || 0, n = Math.min(FT_ATT_CAP * x, Math.round(F.dealt)), add = Math.max(0, Math.min(n, FT_WEEK_CAP * x - before));
     st.dmg[wk] = before + add; for (const k in st.dmg) if (k < addDays(wk, -35)) delete st.dmg[k];
-    out.push(`<b>${add.toLocaleString()}</b> damage added to ${esc(F.bossName)}'s shared health bar${add < F.dealt ? ` (capped at ${FT_ATT_CAP} a fight, ${FT_WEEK_CAP.toLocaleString()} a week)` : ''}.`);
+    out.push(`<b>${add.toLocaleString()}</b> damage added to ${esc(F.bossName)}'s shared health bar${add < F.dealt ? ` (capped at ${FT_ATT_CAP * x} a fight, ${(FT_WEEK_CAP * x).toLocaleString()} a week)` : ''}.`);
     out.push(how === 'down' ? 'It knocked you out, but every hit you landed still counts.' : 'You lasted all the rounds.');
-    if (Math.random() < Math.min(.6, .2 + add / 1200)) { const p = ftRollGear(); out.push(`Gear drop: ${ftGearChip(p)}`); }
+    if (Math.random() < Math.min(.6, .2 + add / 1200) * x) { const p = ftRollGear(x > 1 ? 1 : 0); out.push(`Gear drop: ${ftGearChip(p)}`); }
     hsLoad(true);
   } else {
     const won = how === 'win';
@@ -413,17 +416,19 @@ function ftBattlesHtml() {
 }
 // the boss panel on the House page
 function ftHouseHtml() {
-  const b = hsBoss(mondayOf(today())), B = FT_BOSS[b.n], a = ftAttempts(), wk = mondayOf(today());
-  return `<div class="card ftbossinfo"><div class="row" style="justify-content:space-between"><h3>⚔️ Fight ${esc(b.n)}</h3><div class="row" style="gap:8px"><button class="btn" data-is="tab" data-v="boss">🏝️ Boss island</button><button class="btn primary" data-ft="house" ${a.left ? '' : 'disabled'}>${a.left ? `Fight (${a.left} left)` : 'No fights left'}</button></div></div>
+  const b = hsBoss(mondayOf(today())), B = FT_BOSS[b.n], a = ftAttempts(), wk = mondayOf(today()), tb = bossWeek(wk) === 'term';
+  return `<div class="card ftbossinfo"><div class="row" style="justify-content:space-between"><h3>${tb ? '👑 Fight the Term Boss,' : '⚔️ Fight'} ${esc(b.n)}</h3><div class="row" style="gap:8px"><button class="btn" data-is="tab" data-v="boss">🏝️ Boss island</button><button class="btn primary" data-ft="house" ${a.left ? '' : 'disabled'}>${a.left ? `Fight (${a.left} left)` : (a.rest ? '🌴 Resting' : 'No fights left')}</button></div></div>
     <p class="small-text"><b>Weak to:</b> ${B.wn} · <b>Special:</b> ${esc(B.sp)}</p>
     <p class="small-text"><b>Attacks:</b> ${[...B.atk, ...(B.big ? [B.big] : [])].map(x => esc(x[0])).join(', ')}</p>
-    <p class="muted small-text">${FT_WEEK_ATT + a.extra} fights a week${a.extra ? ' (house island perk included)' : ''}, up to ${FT_DAY_ATT} a day, ${FT_ROUNDS} rounds each. It hits back lightly. Your fights this week: ${a.week}, ${ftWeekDmg(wk).toLocaleString()} damage on the shared bar. Set your build on the <a href="#" data-act="goto" data-v="character">Character</a> page.</p></div>`;
+    <p class="muted small-text">${FT_WEEK_ATT + a.extra} fights a week${a.extra ? (tb ? ' (3 extra for the Term Boss)' : ' (house island perk included)') : ''}, up to ${FT_DAY_ATT} a day, ${FT_ROUNDS} rounds each. It hits back lightly. Your fights this week: ${a.week}, ${ftWeekDmg(wk).toLocaleString()} damage on the shared bar. Set your build on the <a href="#" data-act="goto" data-v="character">Character</a> page.</p></div>`;
 }
 // called when your house takes the boss down
 function ftHouseKill(wk) {
   const st = ftState(); if (st.kill[wk] || !(st.dmg[wk] > 0)) return;
   st.kill[wk] = 1; for (const k in st.kill) if (k < addDays(wk, -70)) delete st.kill[k];
-  const p = ftRollGear(1); toast('🎁 Boss reward', `You fought, so you get ${p.e} ${p.n}.`);
+  if (bossWeek(wk) === 'term') { // 2.63: a Term Boss kill is the main way to get the term's legendary
+    const p = ftRollGear(3); ftAddCurrency(100, 100); toast('👑 Term Boss reward', `You fought, so you get ${p.e} ${p.n}, plus 100 Lumen and 100 Ember.`);
+  } else { const p = ftRollGear(1); toast('🎁 Boss reward', `You fought, so you get ${p.e} ${p.n}.`); }
   if (Math.random() < CD_RESPEC_DROP) { const c = cdState(); c.respec = (c.respec || 0) + 1; setTimeout(() => toast('📜 Respec Scroll!', 'A very rare drop. Use it on the You page to change your class once.'), 1500); }
 }
 

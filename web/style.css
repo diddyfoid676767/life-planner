@@ -3605,3 +3605,39 @@ dialog#modal[open]::backdrop { animation: fadeIn .25s ease-out; }
 #whatsNew ul { margin: 6px 0; padding-left: 20px; display: flex; flex-direction: column; gap: 5px; font-size: .95rem; }
 #whatsNew .wn-body { max-height: 52vh; overflow: auto; }
 #whatsNew .modal-actions { position: static; }
+
+/* 2.63 term features: Term card, season, Chronicle, Term Boss */
+.t2card { margin-bottom: 14px; }
+.t2card h3 { margin: 4px 0 8px; font-size: .95rem; }
+.t2term { height: 6px; border-radius: 99px; background: var(--border); overflow: hidden; margin: 0 0 12px; }
+.t2term i { display: block; height: 100%; background: linear-gradient(90deg, var(--accent, #6c8cff), #b197fc); border-radius: inherit; }
+.t2cols { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+@media (max-width: 860px) { .t2cols { grid-template-columns: 1fr; } }
+.t2goal, .t2tg { margin-bottom: 9px; }
+.t2goal .row, .t2tg .row { justify-content: space-between; gap: 8px; flex-wrap: nowrap; }
+.t2goal .row > span:first-child { flex: 1; }
+.t2bar { height: 8px; border-radius: 99px; background: var(--border); overflow: hidden; margin-top: 4px; }
+.t2bar i { display: block; height: 100%; background: var(--c, #40c057); border-radius: inherit; transition: width .4s; }
+.t2goal.hit .t2bar i { background: #fab005; }
+.t2add { gap: 6px; flex-wrap: wrap; margin: 6px 0; }
+.t2add select, .t2add input { width: auto; flex: 0 1 auto; margin: 0; }
+.t2tg.row { justify-content: flex-start; gap: 8px; }
+.t2tg.row > span:first-child { min-width: 120px; }
+.t2season { margin-bottom: 14px; }
+.t2season .hsrank li { grid-template-columns: 28px 14px 1fr auto auto; }
+.hsboss.rest { background: linear-gradient(135deg, rgba(64, 192, 87, .12), rgba(34, 139, 230, .1)); }
+.hsboss.termboss { border: 2px solid #fab005; box-shadow: 0 0 0 4px rgba(250, 176, 5, .15); }
+#chronicle { width: min(620px, 94vw); padding: 20px 22px 14px; border-top: 5px solid #fab005; }
+#chronicle .ch-head { display: flex; gap: 12px; align-items: center; margin-bottom: 12px; }
+#chronicle .ch-pic { font-size: 38px; line-height: 1; }
+#chronicle .ch-kicker { font-size: 12px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: #e8a400; }
+#chronicle h2 { margin: 0; font-size: 1.35rem; }
+#chronicle .ch-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin: 6px 0 10px; }
+@media (max-width: 560px) { #chronicle .ch-grid { grid-template-columns: repeat(2, 1fr); } }
+#chronicle .ch-grid > div { display: flex; flex-direction: column; gap: 2px; padding: 10px; border-radius: 12px; background: var(--bg2, rgba(127, 127, 127, .08)); border: 1px solid var(--border); }
+#chronicle .ch-grid span { font-size: 20px; }
+#chronicle .ch-grid b { font-size: 1.15rem; }
+#chronicle .ch-grid small { color: var(--muted, #888); font-size: .75rem; line-height: 1.2; }
+#chronicle .modal-actions { position: static; display: flex; gap: 8px; }
+#testBar .tmdate { display: flex; align-items: center; gap: 5px; }
+#testBar input, #testBar select { font: inherit; border-radius: 999px; border: 0; padding: 2px 8px; background: rgba(255, 255, 255, .14); color: #fff; color-scheme: dark; }
