@@ -3593,3 +3593,15 @@ dialog#modal[open]::backdrop { animation: fadeIn .25s ease-out; }
 #stillHere .pmain { display: flex; flex-direction: column; gap: 4px; font-size: 14px; }
 #stillHere .row { margin-top: 6px; gap: 6px; }
 #stillHere #stillLeft { font-variant-numeric: tabular-nums; }
+
+/* "What's new" card after an update */
+#whatsNew { width: min(460px, 94vw); padding: 20px 22px 14px; border-top: 5px solid var(--accent, #6c8cff); }
+#whatsNew[open] { animation: modalin .3s cubic-bezier(.2,.8,.2,1); }
+#whatsNew .wn-head { display: flex; gap: 12px; align-items: center; margin-bottom: 10px; }
+#whatsNew .wn-pic { font-size: 34px; line-height: 1; }
+#whatsNew .wn-kicker { font-size: 12px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--muted, #888); }
+#whatsNew h2 { margin: 0; font-size: 1.25rem; }
+#whatsNew h3 { margin: 12px 0 2px; font-size: .9rem; color: var(--muted, #888); }
+#whatsNew ul { margin: 6px 0; padding-left: 20px; display: flex; flex-direction: column; gap: 5px; font-size: .95rem; }
+#whatsNew .wn-body { max-height: 52vh; overflow: auto; }
+#whatsNew .modal-actions { position: static; }
