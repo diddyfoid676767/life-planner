@@ -15,6 +15,7 @@ const IS_EARN = { lp: [.08, 'Collects Lumen', v => `+${Math.round(v * 100)}% of 
 function isLv() { try { if (typeof solisLevel === 'function') return solisLevel().n; } catch (e) { } return 1; }
 const isFmt = (k, v) => { const f = IS_EARN[k] || FT_BUFF[k]; return f ? `${f[1]} ${f[2](Math.round(v * 100) / 100)}` : ''; };
 const isBuffText = (b, m = 1) => Object.entries(b).map(([k, v]) => isFmt(k, k === 'hp' || k === 'rg' || k === 'cl' || k === 'ce' ? Math.round(v * m) : v * m)).join(' · ');
+const isMult = c => c === 'ok' ? 1 : c === 'worn' ? .5 : 0; // how much of a perk works in each condition
 const isNeedLv = (it, lv) => it.u + (lv - 1) * 3; // player level needed for building level lv
 
 // days when wear stands still: holidays, and an exam's day plus the 3 days before it
