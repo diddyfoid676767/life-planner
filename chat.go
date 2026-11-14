@@ -470,12 +470,18 @@ func reportUser(a *account, args map[string]any) (any, error) {
 // feedbackChat returns your chat with the developer, starting it (or
 // bringing the developer back into it) when needed.
 func feedbackChat(a *account, _ map[string]any) (any, error) {
-	if a.Username == devName {
+	if a.Username == devName || (a.Verified && isOwnerEmail(a.Email)) {
 		return nil, userErr("You're the developer: feedback from everyone else arrives in your chats.")
 	}
-	dev, err := uidsOf(a, []string{devName})
-	if err != nil {
-		return nil, userErr("Feedback isn't switched on yet.")
+	// 2.67: the owner's new (school email) account once it's verified, the old username until then
+	var dev []string
+	if o, _ := fsGet("", "config/owner"); o != nil && str(o.Fields["uid"]) != "" {
+		dev = []string{str(o.Fields["uid"])}
+	} else {
+		var err error
+		if dev, err = uidsOf(a, []string{devName}); err != nil {
+			return nil, userErr("Feedback isn't switched on yet.")
+		}
 	}
 	id := "fb-" + a.UserID
 	ch, err := fsGet(a.Access, "chats/"+id)
@@ -483,7 +489,7 @@ func feedbackChat(a *account, _ map[string]any) (any, error) {
 		return nil, err
 	}
 	if ch == nil && err == nil {
-		if err := newChat(a, id, []string{a.UserID, dev[0]}, cut("Feedback · @"+a.Username, 40), true, "feedback"); err != nil {
+		if err := newChat(a, id, []string{a.UserID, dev[0]}, cut("Feedback · "+feedbackName(a), 40), true, "feedback"); err != nil {
 			return nil, slowDown(err)
 		}
 		return id, nil
@@ -533,4 +539,16 @@ func handleAccountJersey(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	writeErr(w, http.StatusBadGateway, err.Error())
+}
+
+// feedbackName is how a feedback chat is titled: the name for new accounts
+// (their username is a hidden handle), @username for old ones.
+func feedbackName(a *account) string {
+	if a.Email != "" {
+		if a.Name != "" {
+			return a.Name
+		}
+		return a.Email
+	}
+	return "@" + a.Username
 }

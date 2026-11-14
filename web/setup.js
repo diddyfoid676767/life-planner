@@ -3,9 +3,13 @@
    name, classes, bell times and training week. It also re-runs from Settings
    to change those things without touching anything else. */
 
-const WIZ_ALL = [['you', 'You'], ['account', 'Account'], ['classes', 'Classes'], ['calendar', 'Calendar'], ['school', 'School day'], ['tt', 'Timetable'], ['train', 'Training'], ['habits', 'Habits']];
-// the account step is only there when accounts are switched on
-const wizKeys = () => WIZ_ALL.filter(([k]) => k !== 'account' || !ONLINE).map(([k]) => k);
+const WIZ_ALL = [['you', 'You'], ['account', 'Account'], ['classes', 'Classes'], ['timer', 'First timer'], ['house', 'House'], ['calendar', 'Calendar'], ['school', 'School day'], ['tt', 'Timetable'], ['train', 'Training'], ['habits', 'Habits']];
+// 2.67: the first run is the 3-step welcome (account, then classes, a first timer and your house);
+// the rest is in "Set up more" from Settings. Planner-only skips the house and the school day.
+const wizKeys = () => {
+  if (wiz && wiz.first) return ['account', 'classes', 'timer', 'house'].filter(k => (k !== 'account' || !ONLINE) && (k !== 'house' || !plannerOnly()));
+  return WIZ_ALL.map(([k]) => k).filter(k => !['account', 'timer', 'house'].includes(k) && !(plannerOnly() && (k === 'school' || k === 'tt')));
+};
 const wizStepOf = k => Math.max(0, wizKeys().indexOf(k));
 // for a 2-week timetable we ask which week it is, and anchor Day 1 to a Monday so the days can't slip
 const wizWeekStart = () => { let d = mondayOf(today()); if (parseYmd(today()).getDay() === 6 || parseYmd(today()).getDay() === 0) d = addDays(d, 7); const sd = schoolCfg().days; while (!sd.includes(parseYmd(d).getDay())) d = addDays(d, 1); return d; };
@@ -25,7 +29,7 @@ function openSetup(first) {
   const s = D.settings, sc = schoolCfg();
   wiz = {
     first, step: first ? -1 : 0,
-    name: s.name || '', school: s.schoolName || '', year: s.yearLevel || '', house: s.house || '',
+    invite: s.invite || '', name: s.name || '', school: s.schoolName || '', year: s.yearLevel || '', house: s.house || '',
     subjects: D.subjects.map(x => ({ id: x.id, name: x.name, color: x.color })),
     bells: sc.bells.map(b => ({ ...b })), cycle: sc.cycle.len || 0, cday: sc.cycle.len ? cycleDay(today()) || 1 : 1, days: [...sc.days],
     goal: s.trainingGoal || '', week: [1, 2, 3, 4, 5, 6, 0].map(d => ({ d, sport: '', time: '16:30', mins: 45 })), weeks: 6,
@@ -64,10 +68,11 @@ function drawSetup() {
   const dots = st < 0 ? '' : `<div class="wizdots">${keys.map((k, i) => `<span class="${i === st ? 'on' : i < st ? 'done' : ''}">${i < st ? '✓' : i + 1} ${WIZ_ALL.find(x => x[0] === k)[1]}</span>`).join('')}</div>`;
   let body = '';
   if (st === -1) {
-    body = `<div class="wizhero">📅</div><h2>Welcome to Solis</h2>
+    body = `<div class="wizhero">☀️</div><h2>Welcome to Solis</h2>
       <p>Your study, classes, training and tasks in one place, with Lumen for every study session, Ember for every workout, and islands you build with them.</p>
-      <p class="muted">A few quick questions set it up for you. You can change everything later in Settings.</p>
-      <div class="row wizbtns"><button class="btn primary big" data-w="next">Set up my planner →</button></div>
+      <div class="modepick"><button class="btn big primary" data-w="mode" data-v="school"><b>🏫 I'm at Westbourne</b><small>Planner, islands and your house. Sign up with your school email.</small></button>
+        <button class="btn big" data-w="mode" data-v="planner"><b>📅 Just the planner</b><small>Not at Westbourne? To-dos, study, fitness and your own island. No school email needed.</small></button></div>
+      <div class="field wizinv"><label>Got an invite code? <span class="muted">(optional)</span></label><input type="text" data-wf="invite" value="${esc(W.invite || '')}" maxlength="6" placeholder="e.g. 3F9A1C" style="text-transform:uppercase;max-width:160px"></div>
       ${W.seed ? `<p class="muted small-text" style="text-align:center;margin-top:14px">Moving your own planner to a new PC? <a href="#" data-w="starter">Load the built-in plan instead</a></p>` : ''}`;
   } else if (key === 'you') {
     body = `<h2>About you</h2>
@@ -76,6 +81,24 @@ function drawSetup() {
         <div class="field"><label>Year level</label><input type="number" min="1" max="12" data-wf="year" value="${esc(W.year)}" placeholder="11"></div>
         <div class="field"><label>House (optional)</label><input type="text" data-wf="house" value="${esc(W.house)}" maxlength="30"></div></div>
       <p class="muted small-text">Year level and house are used to hide school calendar events meant for other years and houses.</p>`;
+  } else if (key === 'account' && W.first) {
+    if (!acctLoaded) loadAccount().then(() => { if (wiz) drawSetup(); });
+    const school = !plannerOnly();
+    body = !acctLoaded ? '<h2>Your account</h2><p class="muted">Loading…</p>' : !acct.configured ? '<h2>Your account</h2><p class="muted">Accounts aren\'t switched on for this copy of Solis. Press Next to carry on.</p>'
+      : acct.signedIn && !acct.legacy ? `<h2>${acct.verified ? (acct.school ? `✅ You're in${acct.name ? ', ' + esc(firstName(acct.name)) : ''}` : '📅 Planner-only account') : 'Nearly there'}</h2>${emailAcctCard()}`
+      : `<h2>${school ? 'Sign up with your school email' : 'Make an account (optional)'}</h2>${emailCard(true)}${school ? '' : '<p class="muted small-text">You can skip this and use Solis on its own. Add an account later in Settings to add friends.</p>'}`;
+  } else if (key === 'timer') {
+    const subs = W.subjects.filter(x => x.name.trim());
+    body = `<div class="wizhero">⏱️</div><h2>Your first focus session</h2>
+      <p>Every minute you focus earns ${LUMEN} Lumen to build your island${plannerOnly() ? '' : ' and hits your house\'s weekly boss'}. Pick a subject and Solis starts a timer as soon as you finish here.</p>
+      <div class="wizsubs">${subs.map((x, i) => `<button class="btn ${W.timer === x.name ? 'primary' : ''}" data-w="timer" data-v="${esc(x.name)}">${esc(x.name)}</button>`).join('')}<button class="btn ${W.timer === '' ? 'primary' : 'ghost'}" data-w="timer" data-v="">Not now</button></div>
+      <p class="muted small-text">Your first session of 10 minutes or more also pays out your invite reward, if a friend invited you.</p>`;
+  } else if (key === 'house') {
+    const ok = schoolReady() && acct.school, inv = D.settings.inviteHouse;
+    body = `<div class="wizhero">🏰</div><h2>Join your house</h2>
+      ${ok ? `<p>Pick the house you're really in at school. Your study and workouts become hits on its weekly boss. You can't switch later.</p>
+        <div class="hspick">${HS_HOUSES.map(h => `<button type="button" data-w="house" data-v="${h.id}" class="${W.house2 === h.id ? 'on' : ''}" style="--hc:${h.col};--hi:${h.ink};${W.house2 && W.house2 !== h.id ? 'opacity:.45' : ''}"><b>${h.e}</b><span>${h.name}</span><small>${h.team}${inv === h.id ? ' · your friend\'s' : ''}</small></button>`).join('')}</div>`
+      : `<p class="muted">Houses open once your school email is verified. Open the link we emailed you, then pick your house on Islands, House island. You can finish setting up now.</p>${acct.signedIn && !acct.verified ? '<div class="row"><button class="btn" data-em="check">I\'ve opened the link</button></div>' : ''}`}`;
   } else if (key === 'account') {
     if (!acctLoaded) loadAccount().then(() => { if (wiz) drawSetup(); });
     body = !acctLoaded ? '<h2>Your account</h2><p class="muted">Loading…</p>' : !acct.configured ? '<h2>Your account</h2><p class="muted">Accounts aren\'t switched on for this copy of Solis, so friends and chats are off. Press Next to carry on.</p>' : acct.signedIn ? `<h2>You're signed in</h2><p class="muted">You're <b>@${esc(acct.username)}</b>. Add some friends so you can race them on the leaderboards. You can always add more on the Friends page.</p>${friendSuggestHtml(true)}`
@@ -86,7 +109,8 @@ function drawSetup() {
       <button class="btn small" data-w="feedAdd">+ Add a calendar link</button>
       <p class="muted small-text">In Google Calendar: Settings, your calendar, "Secret address in iCal format". In Outlook: Settings, Calendar, Shared calendars, Publish.</p>`;
   } else if (key === 'classes') {
-    body = `<h2>Your classes</h2><p class="muted">Add the subjects you study. Each gets its own colour.</p>
+    if (W.first && !W.name) W.name = D.settings.name || firstName(acct.name);
+    body = `${W.first ? `<div class="field"><label>Your first name</label><input type="text" data-wf="name" value="${esc(W.name)}" placeholder="e.g. Sam" maxlength="40"></div>` : ''}<h2>Your classes</h2><p class="muted">Add the subjects you study. Each gets its own colour.</p>
       <div class="wizlist">${W.subjects.map((x, i) => {
         const used = x.id && (D.assessments.some(a => a.subjectId === x.id) || D.sessions.some(a => a.subjectId === x.id));
         return `<div class="row"><span class="dot" style="background:${x.color || SUBJ_COLORS[i % SUBJ_COLORS.length]}"></span><input type="text" data-wf="subjects.${i}.name" value="${esc(x.name)}" placeholder="e.g. ${['English', 'Maths', 'Biology', 'History', 'Art'][i % 5]}" maxlength="40">
@@ -133,11 +157,19 @@ async function wizClick(e) {
   switch (el.dataset.w) {
     case 'next':
       { const k = wizKeys()[W.step];
-        if (k === 'you' && !W.name.trim()) { toast('Add your name first', ''); return; }
-        if (k === 'account' && W.first && acct.configured && !acct.signedIn) { toast('Make an account first', 'Pick a username and password, then press Create account. Already have one? Log in.'); return; }
+        if ((k === 'you' || (k === 'classes' && W.first)) && !W.name.trim()) { toast('Add your name first', ''); return; }
+        if (k === 'account' && W.first && acct.configured && !acct.signedIn && !plannerOnly()) { toast('Sign up first', 'Use your school email and a password, then press Create account. Already have one? Log in.'); return; }
         if (k === 'classes' && !W.subjects.some(x => x.name.trim())) { toast('Add at least one class', ''); return; } }
       W.step++; break;
     case 'back': W.step--; break;
+    case 'mode': { // 2.67: Westbourne or planner only
+      const code = String(W.invite || '').trim().toLowerCase();
+      if (code) D.settings.invite = code;
+      D.settings.mode = el.dataset.v; applyMode(); if (el.dataset.v === 'planner' && typeof emTab !== 'undefined') emTab = 'signup';
+      W.step = 0; break;
+    }
+    case 'timer': W.timer = el.dataset.v; break;
+    case 'house': W.house2 = el.dataset.v; break;
     case 'close': document.getElementById('wizfx')?.remove(); wiz = null; return;
     case 'starter':
       if (await loadStarter(true)) { D.settings.setupDone = true; save(); document.getElementById('wizfx')?.remove(); wiz = null; render(); toast('Built-in plan loaded', ''); }
@@ -209,10 +241,18 @@ function finishSetup() {
   s.dailyGoal = +W.daily || 60;
   s.bedtime = Object.assign({}, bedCfg(), { on: !!W.bed, time: W.bedTime || '22:00' });
   const first = W.first;
+  // 2.67: planner only has no school day; a house picked in the welcome; the launch is already behind a new player
+  if (first && plannerOnly()) sc.on = false;
+  if (first && W.house2 && !plannerOnly() && schoolReady()) { const st = hsState(); if (!st.id) { st.id = W.house2; st.since = today(); } }
+  if (first && acct.launch?.at) s.launchAt = acct.launch.at;
   s.setupDone = true; if (first) s.welcomed = true;
   save(); document.getElementById('wizfx')?.remove(); wiz = null;
   view = 'today'; render(); renderFocusBar?.();
-  if (first) { toast(`🎉 Welcome, ${s.name}!`, `${D.subjects.length} classes${added ? ` and ${added} workouts` : ''} are in. Here's a quick tour.`); startTour(); }
+  if (first) {
+    const sub = W.timer && D.subjects.find(x => x.name === W.timer.trim());
+    toast(`🎉 Welcome, ${s.name}!`, sub ? `Your first focus session on ${sub.name} has started. Calendar, timetable and training are in Settings, Set up more.` : `${D.subjects.length} classes are in. Calendar, timetable and training are in Settings, Set up more.`);
+    if (sub) startFocus(sub.id); else startTour();
+  }
   else toast('✓ Setup saved', added ? `${added} workouts added.` : '');
 }
 

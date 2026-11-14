@@ -10,7 +10,7 @@ function myWeekCard() {
   const stat = (icon, v, label) => `<div class="fwstat"><span>${icon}</span><b>${v}</b><small>${label}</small></div>`;
   return `<div class="card fme"><div class="fme-top">${safeBadge(r.av, 96)}<div class="fme-name">
       <h2>${esc(D.settings.name || 'You')}${badgeTags(myBadges)}</h2>
-      <div class="muted">${acct.signedIn ? `@${esc(acct.username)}` : acct.configured && !ONLINE ? '<a href="#" data-act="friendsLogin">Log in to race friends</a>' : 'Just you for now'} · Level ${lv.n}</div></div></div>
+      <div class="muted">${acct.signedIn ? `${atU(acct.username)}` : acct.configured && !ONLINE ? '<a href="#" data-act="friendsLogin">Log in to race friends</a>' : 'Just you for now'} · Level ${lv.n}</div></div></div>
     <div class="fwstats">${stat('📚', fmtMins(r.study.mins) || '0m', 'studied')}${stat('🏃', fmtMins(r.work.mins) || '0m', 'trained')}${stat('🔥', r.study.streak, 'day streak')}${stat('✦', r.study.trees, 'focus sessions')}</div></div>`;
 }
 
@@ -119,14 +119,15 @@ function viewFriends() {
   if (!acctLoaded) loadAccount().then(() => { if (view === 'friends') render(); });
   const n = friendsCount();
   if (acct.configured && !acct.signedIn) return `${pageHead('👥 Friends & chats', 'Log in to add friends and message them')}${accountCard()}`;
-  return `${pageHead('👥 Friends &amp; chats', n ? `${n} friend${n === 1 ? '' : 's'}` : 'Find your friends and message them', `${acct.signedIn ? `<span class="acct-chip">@${esc(acct.username)}</span>` : ''}<button class="btn small" data-act="goto" data-v="board">🏆 Leaderboard</button>`)}
+  return `${pageHead('👥 Friends &amp; chats', n ? `${n} friend${n === 1 ? '' : 's'}` : 'Find your friends and message them', `${acct.signedIn ? `<span class="acct-chip">${atU(acct.username)}</span>` : ''}<button class="btn small" data-act="goto" data-v="board">🏆 Leaderboard</button>`)}
     <div class="social-grid">
       <div class="social-chats">${typeof viewChats === 'function' ? viewChats(true) : ''}</div>
       <div class="stack">
+        ${typeof inviteCard === 'function' ? inviteCard() : ''}
         <div class="card"><div class="card-head"><h2>Friends</h2>${n ? `<span class="muted small-text">${n}</span>` : ''}<span style="flex:1"></span>${onlineSummary()}</div>
           ${acct.signedIn ? friendSearchHtml().replace('<h3>👥 Friends', '<h3 hidden>').replace('class="friendbox"', 'class="friendbox flat"') : ''}
           ${friendSuggestHtml()}
-          ${friendCards() || (friendNames().length ? '' : '<p class="muted small-text">No friends yet. Search for a username above, or swap friend codes below.</p>')}
+          ${friendCards() || (friendNames().length ? '' : '<p class="muted small-text">No friends yet. Search for a name or school email above, or send your invite link.</p>')}
           <details class="codes"><summary>${acct.signedIn ? 'Friends without an account? Swap friend codes' : 'Swap friend codes (no account needed)'}</summary>${boardSetupHtml().replace('<h3>👥 Friends</h3>', '')}</details>
         </div>
       </div>

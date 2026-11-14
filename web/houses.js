@@ -126,6 +126,7 @@ function hsPicker() {
 
 function viewHouse() {
   const st = hsState();
+  if (plannerOnly()) return `<div class="card"><p class="muted">Houses are for Westbourne students. Solis is in planner-only mode on this computer (Settings, Account).</p></div>`;
   if (!st.id) return hsPicker();
   hsLoad();
   const h = hsHouse(st.id), wk = mondayOf(today()), boss = hsBoss(wk), f = hsFight(st.id), c = hsCards(), w = hsWeek(wk, c);
@@ -190,6 +191,7 @@ function hsRecord(f) {
 // a slim strip on Today
 function hsTodayStrip() {
   const st = hsState();
+  if (plannerOnly()) return ''; // 2.67
   if (!st.id) return `<div class="card hsstrip"><b>🏰 Join your house</b><span class="muted">Your study and workouts become hits on a weekly boss.</span><button class="btn small" data-act="gotoIsland" data-v="house">Pick house</button></div>`;
   if (bossWeek() === 'rest') return `<div class="card hsstrip"><b>🌴 The house boss is resting</b><span class="muted">School holidays. It's back on ${fmtDate(bossBackOn())}.</span><button class="btn small ghost" data-act="gotoIsland" data-v="house">Open</button></div>`;
   hsLoad();
@@ -203,6 +205,7 @@ document.addEventListener('click', e => {
   switch (el.dataset.hs) {
     case 'pick': {
       const h = hsHouse(el.dataset.h); if (!h || st.id) return;
+      if (!schoolReady()) { schoolNeeded(); return; } // 2.67: verified Westbourne students only
       if (!confirm(`Join ${h.name} ${h.team}? You can't switch house later.`)) return;
       st.id = h.id; st.since = today(); save(); hsLoad(true); render();
       const w = hsWeek(mondayOf(today()));

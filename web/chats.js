@@ -198,12 +198,12 @@ function chatPaneHtml(c) {
   const sub = c.is_group ? (c.members || []).map(m => m.u === acct.username ? 'you' : '@' + m.u).join(', ') : o[0] ? '@' + o[0].u : '';
   return `<div class="chathead"><button class="iconbtn chatback" data-chat="back" title="Back">‹</button>${chatAvatar(c, 40)}<div class="main"><b>${esc(chatTitle(c))}${!c.is_group ? badgeTags(o[0]?.b) : ''}</b><small>${esc(sub)}</small></div>
       <details class="chatmenu"><summary class="iconbtn" title="More">⋯</summary><div class="chatmenu-pop">
-        ${c.is_group ? `<button data-chat="rename">✏️ Rename group</button><button data-chat="add">➕ Add people</button><button data-chat="members">👥 People</button>` : o[0] ? `<button data-chat="block" data-u="${esc(o[0].u)}">${chatBlocks.includes(o[0].u) ? '✅ Unblock' : '🚫 Block'} @${esc(o[0].u)}</button><button data-chat="report" data-u="${esc(o[0].u)}">🚩 Report @${esc(o[0].u)}</button>` : ''}
+        ${c.is_group ? `<button data-chat="rename">✏️ Rename group</button><button data-chat="add">➕ Add people</button><button data-chat="members">👥 People</button>` : o[0] ? `<button data-chat="block" data-u="${esc(o[0].u)}">${chatBlocks.includes(o[0].u) ? '✅ Unblock' : '🚫 Block'} ${atU(o[0].u)}</button><button data-chat="report" data-u="${esc(o[0].u)}">🚩 Report ${atU(o[0].u)}</button>` : ''}
         <button data-chat="pin">${chatPinned(c.id) ? '📌 Unpin' : '📌 Pin to top'}</button>
         <button data-chat="mute">${chatMuted(c.id) ? '🔔 Unmute' : '🔕 Mute'} ${c.is_group ? 'group' : 'chat'}</button>
         <button data-chat="leave" class="danger">🚪 ${c.is_group ? 'Leave group' : 'Delete chat'}</button></div></details></div>
     <div class="chatmsgs" id="chatMsgs">${chatMsgsHtml(c)}</div>
-    ${!c.is_group && o[0] && chatBlocks.includes(o[0].u) ? `<p class="muted small-text chatnote">You blocked @${esc(o[0].u)}. Unblock them to send messages.</p>` :
+    ${!c.is_group && o[0] && chatBlocks.includes(o[0].u) ? `<p class="muted small-text chatnote">You blocked ${atU(o[0].u)}. Unblock them to send messages.</p>` :
       `<form class="chatsend" id="chatSend"><textarea id="chatInput" rows="1" maxlength="2000" placeholder="Message${c.is_group ? ' the group' : ' ' + esc(o[0]?.d || '@' + (o[0]?.u || ''))}…">${esc(chatDrafts[c.id] || '')}</textarea><button class="btn primary" data-chat="send">Send</button></form>`}`;
 }
 function fbPaneHtml(c) {
@@ -212,8 +212,8 @@ function fbPaneHtml(c) {
       <details class="chatmenu"><summary class="iconbtn" title="More">⋯</summary><div class="chatmenu-pop"><button data-chat="mute">${chatMuted(FB) ? '🔔 Unmute' : '🔕 Mute'} feedback</button><button data-chat="fbcopy">📋 Copy feedback since…</button></div></details></div>
     <details class="fbideas" ${D.settings.fbIdeasOpen ? 'open' : ''}><summary>📝 My ideas <span class="muted small-text">only you see these, nothing is sent</span></summary><textarea id="fbIdeas" rows="6" maxlength="20000" placeholder="Jot down your own ideas and to-dos for the app…">${esc(D.settings.fbIdeas || '')}</textarea></details>
     <div class="chatmsgs" id="chatMsgs">${chatMsgsHtml(c)}</div>
-    ${to ? `<div class="fbto small-text muted">Replying to <b>@${esc(fbSender(to))}</b>. Press ↩ on a message to reply to someone else.</div>
-    <form class="chatsend" id="chatSend"><textarea id="chatInput" rows="1" maxlength="2000" placeholder="Reply to @${esc(fbSender(to))}…">${esc(chatDrafts[FB + fbTo] || '')}</textarea><button class="btn primary" data-chat="send">Send</button></form>` : ''}`;
+    ${to ? `<div class="fbto small-text muted">Replying to <b>${atU(fbSender(to))}</b>. Press ↩ on a message to reply to someone else.</div>
+    <form class="chatsend" id="chatSend"><textarea id="chatInput" rows="1" maxlength="2000" placeholder="Reply to ${atU(fbSender(to))}…">${esc(chatDrafts[FB + fbTo] || '')}</textarea><button class="btn primary" data-chat="send">Send</button></form>` : ''}`;
 }
 function chatMsgsHtml(c) {
   if (!chatMsgs.length) return `<p class="muted small-text chatnote">No messages yet. Say hi 👋</p>`;
@@ -265,7 +265,7 @@ function chatPicker(mode) {
   const names = friendNames().filter(n => !inChat.has(n) && !chatBlocks.includes(n));
   mform.innerHTML = `<h2>${mode === 'add' ? 'Add people' : 'New chat'}</h2>
     <p class="muted small-text">${mode === 'add' ? 'Pick friends to add to the group.' : 'Pick one friend for a DM, or a few for a group chat.'}</p>
-    ${names.length ? `<ul class="chatpick">${names.map(n => { const f = friendRows.find(x => x.user === n); return `<li><label>${safeBadge(f?.av, 32)}<b>${esc(f?.name || n)}</b><span class="muted small-text">@${esc(n)}</span><span style="flex:1"></span><input type="checkbox" value="${esc(n)}" data-chatpick></label></li>`; }).join('')}</ul>` : `<p class="muted">${friendNames().length ? 'All your friends are already here.' : 'Add friends on the Friends page first, then come back to chat with them.'}</p>`}
+    ${names.length ? `<ul class="chatpick">${names.map(n => { const f = friendRows.find(x => x.user === n); return `<li><label>${safeBadge(f?.av, 32)}<b>${esc(f?.name || n)}</b><span class="muted small-text">${atU(n)}</span><span style="flex:1"></span><input type="checkbox" value="${esc(n)}" data-chatpick></label></li>`; }).join('')}</ul>` : `<p class="muted">${friendNames().length ? 'All your friends are already here.' : 'Add friends on the Friends page first, then come back to chat with them.'}</p>`}
     ${mode === 'add' ? '' : `<div class="field" id="chatGroupName" hidden><label>Group name</label><input id="chatTitle" maxlength="40" placeholder="e.g. Footy squad"></div>`}
     <div class="modal-actions"><button type="button" class="btn" data-mact="cancel">Cancel</button>${names.length ? `<button type="button" class="btn primary" data-chat="${mode === 'add' ? 'addGo' : 'create'}">${mode === 'add' ? 'Add' : 'Start chat'}</button>` : `<button type="button" class="btn primary" data-chat="toFriends">Find friends</button>`}</div>`;
   modal.showModal();
@@ -306,7 +306,7 @@ async function chatAction(el) {
   }
   if (a === 'members') {
     el.closest('details')?.removeAttribute('open');
-    mform.innerHTML = `<h2>${esc(chatTitle(c))}</h2><ul class="chatpick">${(c.members || []).map(m => `<li><label>${safeBadge(m.av, 32)}<b>${esc(m.d || m.u)}</b>${badgeTags(m.b, true)}<span class="muted small-text">@${esc(m.u)}${m.u === acct.username ? ' (you)' : ''}</span><span style="flex:1"></span>${m.u !== acct.username ? `<button type="button" class="btn small" data-chat="dm" data-u="${esc(m.u)}">Message</button><button type="button" class="btn small" data-chat="block" data-u="${esc(m.u)}">${chatBlocks.includes(m.u) ? 'Unblock' : 'Block'}</button>` : ''}</label></li>`).join('')}</ul>
+    mform.innerHTML = `<h2>${esc(chatTitle(c))}</h2><ul class="chatpick">${(c.members || []).map(m => `<li><label>${safeBadge(m.av, 32)}<b>${esc(m.d || m.u)}</b>${badgeTags(m.b, true)}<span class="muted small-text">${atU(m.u)}${m.u === acct.username ? ' (you)' : ''}</span><span style="flex:1"></span>${m.u !== acct.username ? `<button type="button" class="btn small" data-chat="dm" data-u="${esc(m.u)}">Message</button><button type="button" class="btn small" data-chat="block" data-u="${esc(m.u)}">${chatBlocks.includes(m.u) ? 'Unblock' : 'Block'}</button>` : ''}</label></li>`).join('')}</ul>
       <div class="modal-actions"><button type="button" class="btn primary" data-mact="cancel">Close</button></div>`;
     modal.showModal(); return;
   }
@@ -376,7 +376,7 @@ function openIdeas() {
   formCtx = { fields: [], onSave() { } }; modal.showModal();
 }
 function openFeedback() {
-  if (!ONLINE && acct.signedIn && acct.username === DEV_NAME) return openIdeas();
+  if (!ONLINE && acct.signedIn && (acct.username === DEV_NAME || acct.owner)) return openIdeas();
   if (ONLINE) { toast('Send feedback from the PC app', 'Feedback goes through your chats, which are on the PC for now.'); return; }
   if (!acct.signedIn) {
     mform.innerHTML = `<h2>💬 Send feedback</h2><p>Bug reports and ideas go straight to the developer as a chat, so you'll see their reply. Log in (or make an account) first, under Settings, Account.</p>

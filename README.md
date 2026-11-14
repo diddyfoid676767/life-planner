@@ -38,12 +38,26 @@ needs `supabase-2.29-phone-sync.sql` run once in the Supabase SQL Editor.
 
 ## Download
 
-1. Go to [Releases](../../releases/latest) and download **LifePlanner.zip**.
-2. Unzip it anywhere (a USB stick works too) and run **LifePlanner.exe**.
-3. Your planner opens in your browser.
+The download page is <https://diddyfoid676767.github.io/life-planner/download/>:
+one button for the newest **Solis.exe**, a how-to-start guide, help with the
+Windows SmartScreen warning, a QR code and a privacy page (source in
+`web/download/`). Or go to [Releases](../../releases/latest) and download
+**Solis.exe** yourself. Put it anywhere and run it; no installer or admin
+rights are needed.
 
 Windows may warn that the app is from an unknown publisher. Click
 **More info**, then **Run anyway**.
+
+## Accounts (2.67)
+
+New accounts use a real email. Westbourne students use their school address:
+Firebase emails them a link, and once it's opened the address is checked
+against the year list, which is stored only as salted hashes (`yr/<hash>`
+documents that only the owner of that address can read). Everyone else gets
+planner-only mode, with no houses. The owner loads the list with Settings,
+Owner tools (the file is made by `go run ./tools/yrlist`, which reads the list
+from stdin and never writes it anywhere). Old username accounts keep working
+until the owner presses Launch, which also resets the game world on every copy.
 
 ## Updates
 

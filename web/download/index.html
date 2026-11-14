@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Get Solis</title>
+<meta name="description" content="Solis: your study, classes, training and tasks in one place, with islands you build as you work. Free for Windows.">
+<link rel="icon" href="../icon.svg">
+<style>
+  :root { --bg: #0e0b1a; --bg2: #171230; --card: #1d1838; --line: #2e2752; --text: #f1eefc; --muted: #a9a2c8; --sun: #ffb347; --sun2: #e02f3a; --sky: #6fd0ff; }
+  * { box-sizing: border-box; }
+  body { margin: 0; font: 16px/1.55 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; color: var(--text); background: radial-gradient(1200px 600px at 50% -200px, #3a1f5c 0%, var(--bg) 60%) fixed, var(--bg); }
+  a { color: var(--sky); }
+  .wrap { max-width: 960px; margin: 0 auto; padding: 0 16px; }
+  header { text-align: center; padding: 56px 0 28px; }
+  header img { width: 88px; height: 88px; filter: drop-shadow(0 8px 30px rgba(255, 150, 70, .45)); }
+  h1 { font-size: clamp(2.4rem, 7vw, 3.6rem); margin: 10px 0 4px; letter-spacing: -.02em; }
+  .tag { color: var(--muted); font-size: 1.15rem; max-width: 560px; margin: 0 auto; }
+  .dl { display: inline-flex; align-items: center; gap: 12px; margin-top: 26px; padding: 18px 34px; border-radius: 16px; font-size: 1.2rem; font-weight: 700; color: #1b0d05; text-decoration: none;
+        background: linear-gradient(135deg, var(--sun), #ff7a45); box-shadow: 0 12px 40px rgba(255, 140, 60, .35); transition: transform .15s, box-shadow .15s; }
+  .dl:hover { transform: translateY(-2px); box-shadow: 0 16px 50px rgba(255, 140, 60, .5); }
+  .dl svg { width: 22px; height: 22px; }
+  .small { color: var(--muted); font-size: .9rem; margin-top: 12px; }
+  .invite { display: none; margin: 22px auto 0; max-width: 520px; padding: 14px 18px; border-radius: 14px; background: rgba(111, 208, 255, .1); border: 1px solid rgba(111, 208, 255, .35); }
+  .invite b.code { font-size: 1.5rem; letter-spacing: 4px; font-family: ui-monospace, Consolas, monospace; }
+  .invite button { margin-left: 10px; }
+  button { font: inherit; cursor: pointer; border-radius: 10px; border: 1px solid var(--line); background: var(--card); color: var(--text); padding: 6px 12px; }
+  h2 { font-size: 1.6rem; margin: 52px 0 16px; text-align: center; }
+  .steps { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 14px; counter-reset: s; }
+  .step { background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 18px; position: relative; }
+  .step::before { counter-increment: s; content: counter(s); position: absolute; top: -12px; left: 16px; width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center; font-weight: 800; color: #1b0d05; background: var(--sun); }
+  .step h3 { margin: 6px 0 6px; font-size: 1.05rem; }
+  .step p { margin: 0; color: var(--muted); font-size: .95rem; }
+  .ss { display: grid; grid-template-columns: 1fr 1fr; gap: 22px; align-items: center; background: var(--bg2); border: 1px solid var(--line); border-radius: 18px; padding: 22px; }
+  .ss ol { margin: 0; padding-left: 1.2em; } .ss li { margin-bottom: 6px; }
+  .win { background: #0b5ec9; color: #fff; border-radius: 6px; padding: 22px 22px 16px; font-family: "Segoe UI", system-ui, sans-serif; box-shadow: 0 14px 40px rgba(0, 0, 0, .5); font-size: .9rem; }
+  .win .t { font-size: 1.45rem; font-weight: 300; margin-bottom: 10px; }
+  .win u { cursor: default; }
+  .win .hl { outline: 3px solid var(--sun); outline-offset: 3px; border-radius: 2px; }
+  .win .btns { display: flex; justify-content: flex-end; gap: 8px; margin-top: 22px; }
+  .win .btns span { border: 2px solid #fff; padding: 4px 16px; }
+  .cards { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 18px 20px; }
+  .card h3 { margin: 0 0 6px; font-size: 1.05rem; } .card p { margin: 0; color: var(--muted); font-size: .95rem; }
+  .share { display: flex; gap: 22px; align-items: center; justify-content: center; flex-wrap: wrap; }
+  .share img { width: 170px; height: 170px; border-radius: 12px; background: #fff; padding: 8px; }
+  .share code { background: var(--card); border: 1px solid var(--line); border-radius: 8px; padding: 6px 10px; word-break: break-all; }
+  footer { text-align: center; color: var(--muted); font-size: .9rem; padding: 48px 0 40px; }
+  @media (max-width: 680px) { .ss, .cards { grid-template-columns: 1fr; } header { padding-top: 36px; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <img src="../icon.svg" alt="">
+    <h1>Solis</h1>
+    <p class="tag">Your study, classes, training and to-dos in one place. Earn Lumen for every study session and Ember for every workout, and build your island with them.</p>
+    <div class="invite" id="invite">🎟️ A friend invited you. Your invite code is <b class="code" id="code"></b><button id="copy" type="button">Copy</button>
+      <div class="small" style="margin-top:6px">Type it in when Solis asks, and you both get Lumen and Ember after your first focus session.</div></div>
+    <a class="dl" id="dl" href="https://github.com/diddyfoid676767/life-planner/releases/latest/download/Solis.exe">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12M6 11l6 6 6-6M4 21h16"/></svg>
+      Download Solis for Windows</a>
+    <div class="small">Free · Windows 10 or 11 · one file, no installer, no admin needed · updates itself</div>
+  </header>
+
+  <h2>How to start</h2>
+  <div class="steps">
+    <div class="step"><h3>Download Solis.exe</h3><p>Put it somewhere you'll find it, like Documents or the desktop. Your planner is saved in a <b>data</b> folder next to it.</p></div>
+    <div class="step"><h3>Open it</h3><p>Windows may show a blue warning the first time. Click <b>More info</b>, then <b>Run anyway</b> (see below).</p></div>
+    <div class="step"><h3>Sign up</h3><p>At Westbourne? Use your <b>school email</b> and open the link we send you. Not at Westbourne? Pick <b>Just the planner</b>.</p></div>
+    <div class="step"><h3>Add your classes, start a timer</h3><p>Then join your house and start building your island. Add friends by name and send them your invite link.</p></div>
+  </div>
+
+  <h2>The blue "Windows protected your PC" screen</h2>
+  <div class="ss">
+    <div>
+      <p>Solis is new, so Windows doesn't recognise it yet and shows this once. It's safe to open:</p>
+      <ol><li>Click <b>More info</b> (under the text).</li><li>Click <b>Run anyway</b> (it appears bottom right).</li></ol>
+      <p class="small">If your laptop doesn't show Run anyway, ask your parent or IT to allow it, or use Solis on another computer.</p>
+    </div>
+    <div class="win" aria-hidden="true"><div class="t">Windows protected your PC</div>
+      Microsoft Defender SmartScreen prevented an unrecognised app from starting. Running this app might put your PC at risk.<br><u class="hl">More info</u>
+      <div style="margin-top:12px;opacity:.9">App: Solis.exe<br>Publisher: Unknown publisher</div>
+      <div class="btns"><span class="hl">Run anyway</span><span>Don't run</span></div></div>
+  </div>
+
+  <h2>Good to know</h2>
+  <div class="cards">
+    <div class="card"><h3>🏫 For Westbourne students</h3><p>Verify your school email to join your house, fight the weekly house boss together and climb the house rankings.</p></div>
+    <div class="card"><h3>📅 Not at Westbourne?</h3><p>Choose <b>Just the planner</b>: to-dos, calendar, study timer and stats, exam countdowns, fitness and your own island. No school email needed.</p></div>
+    <div class="card"><h3>🔒 Your data</h3><p>Your planner lives on your own computer. An account shares only your name, avatar and leaderboard numbers with friends. No ads, nothing sold. <a href="privacy.html">Privacy</a></p></div>
+    <div class="card"><h3>🔄 Updates</h3><p>Solis checks for updates by itself and installs them with a restart. You never need to download it again.</p></div>
+  </div>
+
+  <h2>Share Solis</h2>
+  <div class="share">
+    <img src="qr.svg" alt="QR code for this page">
+    <div><p>Scan the code, or send this link:</p><p><code>diddyfoid676767.github.io/life-planner/download</code></p>
+      <p class="small">Inside Solis, Friends has your own invite link: you both get Lumen and Ember.</p></div>
+  </div>
+
+  <footer>Solis · <a href="privacy.html">Privacy and info for parents and teachers</a></footer>
+</div>
+<script>
+  // an invite link: ?i=CODE&h=house
+  (function () {
+    var q = new URLSearchParams(location.search), c = (q.get('i') || '').replace(/[^0-9a-f]/gi, '').slice(0, 6).toUpperCase();
+    if (c.length !== 6) return;
+    document.getElementById('code').textContent = c;
+    document.getElementById('invite').style.display = 'block';
+    document.getElementById('copy').onclick = function () { navigator.clipboard && navigator.clipboard.writeText(c).then(function () { document.getElementById('copy').textContent = 'Copied'; }); };
+  })();
+</script>
+</body>
+</html>

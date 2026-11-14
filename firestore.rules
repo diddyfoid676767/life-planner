@@ -22,7 +22,46 @@ service cloud.firestore {
 
     // ---------- the developer: gets the Dev badge and everyone's feedback
     function devName() { return 'foidkilla67'; }
-    function devUid() { return get(/databases/$(db)/documents/usernames/$(devName())).data.uid; }
+    // 2.67: the owner's new account (school email) once it's verified; the old username until then
+    function devUid() {
+      return exists(/databases/$(db)/documents/config/owner)
+        ? get(/databases/$(db)/documents/config/owner).data.uid
+        : get(/databases/$(db)/documents/usernames/$(devName())).data.uid;
+    }
+
+    // ---------- 2.67 launch: real emails, the year list and planner-only.
+    // yr/<hash> is one document per student on the year list, named by a
+    // salted hash of their school address (the readable list is never stored).
+    // Only someone signed in with that verified address can read theirs.
+    function email() { return request.auth.token.get('email', '').lower(); }
+    function emailOk() { return request.auth.token.get('email_verified', false) == true; }
+    function yrHash() { return hashing.sha256('solis-yr-2027|' + email()).toHexString().lower(); }
+    function ehOf() { return hashing.sha256('solis-eh-2027|' + email()).toHexString().lower(); }
+    function icOf() { return hashing.sha256('solis-ic|' + me()).toHexString().lower()[0:6]; }
+    function handleOf() { return 'u_' + me().lower()[0:18]; }
+    function isOwner() { return signedIn() && emailOk() && yrHash() == '1b448bb28f2dff805d95d9061ffaf234a2ea6ede4463b0b1d8f69eb38b9fc3a8'; }
+    function onYearList() { return emailOk() && exists(/databases/$(db)/documents/yr/$(yrHash())); }
+    // old username accounts (made-up emails) stop working when the owner presses Launch
+    function legacy() { return email().matches('.*@users[.]lifeplanner[.]app$'); }
+    function launched() { return exists(/databases/$(db)/documents/config/launch) && get(/databases/$(db)/documents/config/launch).data.get('reset', false) == true; }
+    function legacyOk() { return !legacy() || !launched(); }
+    // a profile save: old accounts only until launch; house stats only when verified
+    // (email accounts always have an invite code, old username accounts never do)
+    function gateOk() { return inc().get('v', false) == true || ('ic' in inc() ? !('hs' in inc().stats) : !launched()); }
+    // houses are for verified Westbourne students (and old accounts until launch)
+    function schoolOk(p) { return p.get('v', false) == true || (legacy() && !launched()); }
+
+    match /yr/{h} {
+      allow get: if signedIn() && emailOk() && h == yrHash();
+      allow write: if isOwner() && h.matches('[0-9a-f]{64}')
+        && inc().keys().hasOnly(['n', 'b']) && inc().n is string && inc().n.size() <= 300 && inc().b is bool;
+    }
+    match /config/{k} {
+      allow read: if true;
+      allow write: if isOwner() && (
+        (k == 'owner' && inc().keys().hasOnly(['uid']) && inc().uid == me())
+        || (k == 'launch' && inc().keys().hasOnly(['reset', 'at']) && inc().reset is bool && inc().at is string && inc().at.size() <= 40));
+    }
 
     function signedIn() { return request.auth != null; }
     function me() { return request.auth.uid; }
@@ -115,14 +154,16 @@ service cloud.firestore {
       allow read: if true;
       allow create: if signedIn() && name.matches('[a-z0-9_]{3,20}')
         && inc().keys().hasOnly(['uid']) && inc().uid == me()
-        && request.auth.token.email == name + '@users.lifeplanner.app';
+        && ((request.auth.token.email == name + '@users.lifeplanner.app' && !launched())
+            || (!legacy() && name == handleOf()));
       allow delete: if signedIn() && cur().uid == me();
     }
 
     // ---------- profiles: what friends and the leaderboard see
     function profileOk() {
-      return inc().keys().hasOnly(['username', 'display', 'avatar', 'stats', 'badges', 'jersey', 'born', 'updated_at'])
+      return inc().keys().hasOnly(['username', 'display', 'avatar', 'stats', 'badges', 'jersey', 'born', 'updated_at', 'v', 'eh', 'dl', 'ic', 'inv', 'fs'])
         && inc().display is string && inc().display.size() <= 30
+        && gateOk()
         && inc().avatar is string && inc().avatar.size() <= 6000
         && statsShape(inc().stats) && weekOk(inc().stats) && lifeOk(inc().stats)
         && inc().updated_at == request.time;
@@ -133,22 +174,49 @@ service cloud.firestore {
             && getAfter(/databases/$(db)/documents/jerseys/$(string(inc().jersey))).data.uid == me());
     }
     function badgesOk() {
-      return inc().badges == [] || inc().badges == ['beta']
+      return inc().badges == [] || (legacy() && inc().badges == ['beta'])
         || (inc().username == devName() && (inc().badges == ['dev'] || inc().badges == ['dev', 'beta']));
+    }
+    // 2.67: a new profile starts unverified; its invite code is fixed
+    function newProfileOk() {
+      return !('v' in inc()) && !('eh' in inc()) && !('dl' in inc()) && !('fs' in inc())
+        && (!('ic' in inc()) || inc().ic == icOf())
+        && (!('inv' in inc()) || (!legacy() && inc().inv is string && inc().inv.size() <= 40 && inc().inv != me()));
+    }
+    // 2.67: confirming a school email on the year list: verified, the name
+    // from the list, the beta badge for beta testers, the Dev badge for the owner
+    function verifyOk() {
+      let y = get(/databases/$(db)/documents/yr/$(yrHash())).data;
+      let beta = y.get('b', false) == true || 'beta' in cur().badges;
+      return onYearList()
+        && inc().v == true && inc().eh == ehOf()
+        && inc().display is string && inc().display.size() <= 30
+        && (!('dl' in inc()) || inc().dl == inc().display.lower())
+        && (inc().badges == cur().badges
+          || inc().badges == (isOwner() ? (beta ? ['dev', 'beta'] : ['dev']) : (beta ? ['beta'] : [])));
     }
     match /profiles/{uid} {
       allow read: if true;
-      allow create: if signedIn() && uid == me() && profileOk() && badgesOk() && jerseyOk()
+      allow create: if signedIn() && uid == me() && profileOk() && badgesOk() && jerseyOk() && newProfileOk()
         && getAfter(/databases/$(db)/documents/usernames/$(inc().username)).data.uid == me()
         && inc().born == request.time;
-      // a jersey number on its own
-      allow update: if signedIn() && uid == me() && changed().hasOnly(['jersey']) && jerseyOk();
-      // a leaderboard save: at most every 20 seconds, numbers climbing no faster than riseOk
-      allow update: if signedIn() && uid == me() && profileOk()
-        && inc().username == cur().username && inc().badges == cur().badges && inc().born == cur().born
-        && (!('jersey' in changed()) || jerseyOk())
-        && request.time > cur().updated_at + duration.value(20, 's')
-        && riseOk(inc().stats, cur().stats, (request.time.toMillis() - cur().updated_at.toMillis()) / 60000);
+      // One update rule that picks a branch, because Firestore counts every
+      // expression of every allow statement towards one limit per request.
+      allow update: if signedIn() && (uid != me()
+        // 2.67: the owner sets badges by hand
+        ? (isOwner() && changed().hasOnly(['badges']) && inc().badges is list && inc().badges.size() <= 3
+            && inc().badges.toSet().difference(['beta', 'dev'].toSet()).size() == 0)
+        // a jersey number on its own
+        : changed().hasOnly(['jersey']) ? (jerseyOk() && legacyOk())
+        // 2.67: verifying a school email
+        : changed().hasAny(['v', 'eh', 'dl', 'badges']) ? (!legacy() && changed().hasOnly(['v', 'eh', 'display', 'dl', 'badges']) && verifyOk())
+        // a leaderboard save: at most every 20 seconds, numbers climbing no faster than riseOk
+        : (profileOk()
+          && changed().hasOnly(cur().get('v', false) == true ? ['avatar', 'stats', 'updated_at', 'jersey', 'fs'] : ['display', 'avatar', 'stats', 'updated_at', 'jersey', 'fs'])
+          && (!('fs' in changed()) || inc().fs == true)
+          && (!('jersey' in changed()) || jerseyOk())
+          && request.time > cur().updated_at + duration.value(20, 's')
+          && riseOk(inc().stats, cur().stats, (request.time.toMillis() - cur().updated_at.toMillis()) / 60000)));
       allow delete: if signedIn() && uid == me();
     }
 
@@ -164,7 +232,8 @@ service cloud.firestore {
     // contributions only going up. The pool spend (sp) can only go up too.
     // Who is a leader is worked out by the app from the votes.
     function inHouse(h) {
-      return get(/databases/$(db)/documents/profiles/$(me())).data.stats.get('hs', {}).get('h', '') == h;
+      let p = get(/databases/$(db)/documents/profiles/$(me())).data;
+      return p.stats.get('hs', {}).get('h', '') == h && schoolOk(p);
     }
     function ownOnly(k) {
       return resource == null

@@ -3698,3 +3698,21 @@ dialog#modal[open]::backdrop { animation: fadeIn .25s ease-out; }
 .hxtools { display: flex; gap: 8px; align-items: flex-end; }
 .isfull .hxbar .btn:not(.primary):not(.ghost) { color: #f1f3f5; background: rgba(255, 255, 255, .14); border-color: rgba(255, 255, 255, .2); }
 .isfull .hxchip.ok { color: #8ce99a; } .isfull .hxchip.warn { color: #ffd43b; } .isfull .hxbar .hxwhy.ok { color: #8ce99a; } .isfull .hxbar .hxwhy.bad { color: #ff8787; }
+
+/* 2.67 launch: first-run choice, email sign-up, invites, owner tools */
+.modepick { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin: 18px 0 10px; }
+.modepick .btn { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; text-align: left; white-space: normal; padding: 16px; height: auto; }
+.modepick .btn b { font-size: 1.05rem; }
+.modepick .btn small { font-weight: 400; opacity: .85; line-height: 1.35; }
+@media (max-width: 560px) { .modepick { grid-template-columns: 1fr; } }
+.wizinv { margin-top: 8px; }
+.wizsubs { display: flex; flex-wrap: wrap; gap: 8px; margin: 14px 0; }
+.hspick button.on { outline: 3px solid var(--text, #222); outline-offset: 2px; }
+.emtabs { margin: 6px 0 10px; }
+.emwait .row, .acctcard .row { flex-wrap: wrap; gap: 8px; }
+.emlegacy { border-left: 4px solid var(--accent); font-size: .92rem; }
+.invcard input[readonly] { font-family: ui-monospace, monospace; font-size: .85rem; }
+.owngrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 18px; }
+.owngrid h3 { margin: 0 0 4px; }
+.howto { padding-left: 1.2em; line-height: 1.5; }
+.howto li { margin-bottom: 6px; }
