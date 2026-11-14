@@ -1543,7 +1543,7 @@ async function refreshFeeds(force) {
 
 // ---------- updates ----------
 let appVersion = '';
-let autoUpdateTimer = 0, updateAt = 0, updating = false;
+let autoUpdateTimer = 0, updateAt = 0, updating = false, firstUpdateCheck = true;
 async function checkUpdate() {
   try {
     const u = await (await fetch('/api/update', { cache: 'no-store' })).json();
@@ -1555,6 +1555,12 @@ async function checkUpdate() {
     const bar = $('#updateBar');
     if (updating) return;
     bar.hidden = !u.available;
+    // a mandatory update blocks the app behind an "Updating Solis" screen until it is installed
+    const must = !!u.mandatory, first = firstUpdateCheck; firstUpdateCheck = false;
+    updateOverlay(must || (first && u.available) ? (u.available ? 'Installing the new version…' : (u.checkedOK === false && u.checkedAt ? "Couldn't reach the update server. Retrying… (this version is no longer supported, so Solis needs the update to continue)" : 'Downloading the new version…')) : '');
+    if (must && !u.available) { setTimeout(checkUpdate, 4000); return; }
+    // opening Solis with an update waiting: install it right away, no countdown
+    if (u.available && (first || must) && !autoUpdateTimer) { applyUpdate(); return; }
     // updates are a must: it saves everything, installs and restarts by itself
     // a minute after one arrives (waiting while a form is open), so nobody
     // keeps working in an old copy and loses it
@@ -1562,6 +1568,13 @@ async function checkUpdate() {
     const v = $('#verText'); if (v) v.textContent = 'Version ' + u.version;
     const v2 = $('#verText2'); if (v2) v2.textContent = 'Solis ' + u.version;
   } catch { }
+}
+// full-screen "Updating Solis" screen ('' hides it)
+function updateOverlay(msg) {
+  let o = document.getElementById('updateOverlay');
+  if (!msg) { if (o) o.remove(); return; }
+  if (!o) { o = document.createElement('div'); o.id = 'updateOverlay'; o.style.cssText = 'position:fixed;inset:0;z-index:99999;background:#0e1424;color:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;font:16px system-ui,sans-serif;text-align:center;padding:24px'; o.innerHTML = '<div style="font-size:42px">🔄</div><h1 style="margin:0;font-size:26px">Updating Solis</h1><p id="updateOverlayMsg" style="margin:0;max-width:440px;opacity:.8"></p>'; document.body.appendChild(o); }
+  o.querySelector('#updateOverlayMsg').textContent = msg;
 }
 function updateTick() {
   clearTimeout(autoUpdateTimer); autoUpdateTimer = 0;
@@ -1579,6 +1592,7 @@ async function applyUpdate(restartOnly) {
   if (updating) return;
   updating = true; clearTimeout(autoUpdateTimer); autoUpdateTimer = 0;
   const bar = $('#updateBar'); bar.hidden = false;
+  if (!restartOnly) updateOverlay('Saving your work, then installing the new version…');
   bar.textContent = 'Saving your work…';
   if (!(await saveNow())) {
     updating = false; bar.textContent = "Couldn't save yet, so Solis didn't restart. Trying again in a few seconds…";
@@ -1586,7 +1600,7 @@ async function applyUpdate(restartOnly) {
   }
   bar.textContent = restartOnly ? 'Restarting… the planner reloads in a few seconds.' : 'Updating… the planner reloads in a few seconds.';
   try { const r = await fetch(restartOnly ? '/api/restart' : '/api/update', { method: 'POST' }); if (!r.ok) throw new Error(await r.text()); }
-  catch (e) { updating = false; bar.textContent = (restartOnly ? 'Restart' : 'Update') + ' failed: ' + (e.message || e); return; }
+  catch (e) { updating = false; updateOverlay(''); bar.textContent = (restartOnly ? 'Restart' : 'Update') + ' failed: ' + (e.message || e); setTimeout(checkUpdate, 15000); return; }
   await new Promise(r => setTimeout(r, 1500));
   for (let i = 0; i < 40; i++) {
     try { const r = await fetch('/api/ping', { cache: 'no-store' }); if (r.ok) { location.reload(); return; } } catch { }

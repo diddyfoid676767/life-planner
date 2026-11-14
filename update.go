@@ -24,7 +24,7 @@ import (
 	"time"
 )
 
-const version = "2.63.0"
+const version = "2.64.0"
 
 var (
 	selfHashOnce sync.Once
@@ -131,7 +131,7 @@ func handleUpdate(w http.ResponseWriter, r *http.Request) {
 	defer updateMu.Unlock()
 	c := findUpdate()
 	if r.Method == http.MethodGet {
-		resp := map[string]any{"version": version, "available": c != nil}
+		resp := map[string]any{"version": version, "available": c != nil, "mandatory": updateMandatory(), "minVersion": minVersion, "checking": checkingNow.Load(), "checkedOK": lastCheckOK.Load(), "checkedAt": lastCheckAt.Load()}
 		if c != nil {
 			resp["source"] = c.path
 		}

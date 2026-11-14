@@ -17,6 +17,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"sync/atomic"
 	"time"
 )
 
@@ -63,7 +64,43 @@ func ghGet(url string, limit int64) ([]byte, error) {
 	return io.ReadAll(io.LimitReader(res.Body, limit))
 }
 
+// minVersion is the oldest version still allowed to run (min-version.txt on
+// main). Anything older is blocked by the page until it has updated.
+var (
+	minVersion  string
+	checkingNow atomic.Bool
+	lastCheckAt atomic.Int64 // unix seconds of the last finished check
+	lastCheckOK atomic.Bool
+)
+
+func fetchMinVersion() {
+	b, err := ghGet("https://raw.githubusercontent.com/"+githubRepo+"/main/min-version.txt", 256)
+	if err != nil {
+		return // keep what we knew; offline never blocks anyone
+	}
+	v := strings.TrimPrefix(strings.TrimSpace(string(b)), "v")
+	if v != "" && strings.Trim(v, "0123456789.") == "" {
+		minVersion = v
+	}
+}
+
+// updateMandatory: this version is older than the minimum the release owner set.
+func updateMandatory() bool { return minVersion != "" && newerVersion(minVersion, version) }
+
+// checkGitHub looks for a newer release and downloads it (one check at a time).
 func checkGitHub() error {
+	if !checkingNow.CompareAndSwap(false, true) {
+		return nil
+	}
+	defer checkingNow.Store(false)
+	err := checkGitHub1()
+	lastCheckOK.Store(err == nil)
+	lastCheckAt.Store(time.Now().Unix())
+	return err
+}
+
+func checkGitHub1() error {
+	fetchMinVersion()
 	b, err := ghGet("https://api.github.com/repos/"+githubRepo+"/releases/latest", 1<<20)
 	if err != nil {
 		return err
@@ -128,14 +165,19 @@ func checkGitHub() error {
 // latestTag is the newest release GitHub reported, for Settings → App.
 var latestTag string
 
-// watchGitHub checks for a new release shortly after start, then every 10 minutes.
+// watchGitHub checks for a new release right at launch, then every 10 minutes
+// (every minute while a mandatory update is still missing, e.g. after a failed download).
 func watchGitHub() {
-	time.Sleep(20 * time.Second)
+	time.Sleep(1 * time.Second)
 	for {
 		if err := checkGitHub(); err != nil {
 			log.Printf("github update check: %v", err)
 		}
-		time.Sleep(10 * time.Minute)
+		if updateMandatory() {
+			time.Sleep(time.Minute)
+		} else {
+			time.Sleep(10 * time.Minute)
+		}
 	}
 }
 

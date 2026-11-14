@@ -5,6 +5,10 @@
 // version since the last one they saw (up to 3). D.settings.seenVersion remembers what was last shown.
 // A brand-new install never sees it (the setup wizard marks the current version as seen).
 const CHANGELOG = [
+  { v: '2.64.0', notes: [
+    'Solis now checks for updates every time it opens and installs them straight away',
+    'Important updates can be marked required, so the old version can\'t be used until it updates',
+  ] },
   { v: '2.63.0', notes: [
     'Term goals and weekly study targets per subject, on the Study page',
     'The Chronicle: a recap of your term, saved, with an image to share',
