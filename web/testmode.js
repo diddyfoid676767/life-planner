@@ -9,7 +9,7 @@ const TESTMODE = (() => { try { return localStorage.getItem('solisTest') === '1'
 const solisBeta = () => TESTMODE || (() => { try { return localStorage.getItem('solisBeta') === '1'; } catch { return false; } })();
 // 2.63: a pretend date, only inside test mode, to see term weeks, the Term Boss, holidays and the Chronicle
 const solisFakeDate = () => { if (!TESTMODE) return ''; try { return localStorage.getItem('solisDate') || ''; } catch { return ''; } };
-const solisDevOn = () => TESTMODE || (() => { try { return localStorage.getItem('solisDev') === '1'; } catch { return false; } })();
+const solisDevOn = () => TESTMODE || (typeof acct === 'object' && acct.owner) || (() => { try { return localStorage.getItem('solisDev') === '1'; } catch { return false; } })();
 if (TESTMODE) {
   const realFetch = window.fetch.bind(window);
   window.fetch = (input, init) => {

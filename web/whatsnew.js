@@ -10,6 +10,12 @@
 // version since the last one they saw (up to 3). D.settings.seenVersion remembers what was last shown,
 // D.settings.guidesSeen which guides have played. A brand-new install never sees either.
 const CHANGELOG = [
+  { v: '2.67.0', guide: 'launch', notes: [
+    { t: 'New accounts use your school email: open the link we email you and you\'re a verified Westbourne student', k: 'new' },
+    { t: 'Not at Westbourne? "Just the planner" mode gives friends from other schools everything except houses', k: 'new' },
+    { t: 'Invite friends with your own link: you both get 50 Lumen and 50 Ember after their first focus session', k: 'new' },
+    { t: 'Find friends by name or school email, and a quicker 3-step welcome for new players', k: 'tweak' },
+  ] },
   { v: '2.66.0', guide: 'hexhouse', notes: [
     { t: 'The house island is on hexagons now, and leaders place and drag buildings the same way as on your own island', k: 'new' },
     { t: 'House perks need a road to the great hall (every building got a free one), and the temple parts cover 3 and 7 hexes', k: 'new' },

@@ -185,7 +185,7 @@ func handleBackups(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		if req.Snapshot != "" {
-			if req.Snapshot != "before-import" && req.Snapshot != "manual" {
+			if req.Snapshot != "before-import" && req.Snapshot != "manual" && req.Snapshot != "before-launch" {
 				http.Error(w, "bad request", http.StatusBadRequest)
 				return
 			}

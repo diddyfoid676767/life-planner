@@ -20,6 +20,7 @@ import (
 	"regexp"
 	"strings"
 	"time"
+	"unicode/utf8"
 )
 
 var (
@@ -49,6 +50,11 @@ type account struct {
 	Access   string `json:"access_token"`
 	Refresh  string `json:"refresh_token"`
 	Expires  int64  `json:"expires_at"`
+	// 2.67: accounts with a real email (launch.go). Username is then a hidden handle.
+	Email    string `json:"email,omitempty"`
+	Verified bool   `json:"verified,omitempty"` // the email link was opened
+	School   bool   `json:"school,omitempty"`   // a verified Westbourne student on the year list
+	Name     string `json:"name,omitempty"`     // their name from the year list
 }
 
 func accountPath() string { return filepath.Join(dataDir, "account.json") }
@@ -139,9 +145,7 @@ func session() (*account, error) {
 		}
 		return nil, err
 	}
-	if n.UserID == "" {
-		n.UserID = a.UserID
-	}
+	keepAcct(n, a)
 	return n, saveAccount(n)
 }
 
@@ -158,9 +162,11 @@ func handleAccount(w http.ResponseWriter, r *http.Request) {
 		if a != nil && a.Backend != "fb" {
 			a = nil // signed in on the old server: show the log in form, which moves the account
 		}
-		resp := map[string]any{"configured": true, "signedIn": a != nil, "rt": realtimeConfig()}
+		resp := map[string]any{"configured": true, "signedIn": a != nil, "rt": realtimeConfig(), "launch": launchInfo()}
 		if a != nil {
-			resp["username"] = a.Username
+			for k, v := range acctState(a) {
+				resp[k] = v
+			}
 			resp["sync"] = syncInfo()
 		} else if old := loadAccount(); old != nil {
 			resp["moved"] = old.Username
@@ -371,6 +377,13 @@ func createProfile(a *account, f map[string]any, badges []string) error {
 	disp, _ := f["display"].(string)
 	p := map[string]any{"username": a.Username, "display": cut(disp, 30), "avatar": av, "stats": clampStats(nil, stats, 0, time.Now()),
 		"badges": badges, "jersey": nil}
+	// 2.67: invite code and who invited you (email accounts only)
+	if ic, _ := f["ic"].(string); ic != "" {
+		p["ic"] = ic
+	}
+	if inv, _ := f["inv"].(string); inv != "" {
+		p["inv"] = inv
+	}
 	_, err := fsCommit(a.Access,
 		fsSet("usernames/"+a.Username, map[string]any{"uid": a.UserID}, false, "new"),
 		fsSet("profiles/"+a.UserID, p, false, "new", "born", "updated_at"))
@@ -538,6 +551,7 @@ func handleAccountProfile(w http.ResponseWriter, r *http.Request) {
 		Display string          `json:"display"`
 		Avatar  json.RawMessage `json:"avatar"`
 		Stats   json.RawMessage `json:"stats"`
+		Fs      bool            `json:"fs"` // 2.67: finished a first focus session (for invite rewards)
 	}
 	if json.NewDecoder(io.LimitReader(r.Body, 24<<10)).Decode(&in) != nil || len(in.Avatar) > 5500 || len(in.Stats) > 14000 {
 		writeErr(w, http.StatusBadRequest, "bad request")
@@ -556,6 +570,7 @@ func handleAccountProfile(w http.ResponseWriter, r *http.Request) {
 	if len(in.Avatar) > 0 && string(in.Avatar) != "null" {
 		av = string(in.Avatar)
 	}
+	firstDone = in.Fs
 	later, err := publishProfile(a, in.Display, av, stats, time.Now())
 	if err != nil {
 		writeErr(w, http.StatusBadGateway, err.Error())
@@ -563,6 +578,9 @@ func handleAccountProfile(w http.ResponseWriter, r *http.Request) {
 	}
 	json.NewEncoder(w).Encode(map[string]any{"ok": true, "later": later})
 }
+
+// firstDone: the page says you've finished a first focus session.
+var firstDone bool
 
 // publishProfile saves your board row, with the numbers clamped to what the
 // rules accept. later is true when the last save was too recent (the server
@@ -582,6 +600,12 @@ func publishProfile(a *account, display, av string, stats map[string]any, now ti
 	}
 	old, _ := cur.Fields["stats"].(map[string]any)
 	body := map[string]any{"display": cut(display, 30), "avatar": av, "stats": clampStats(old, stats, mins, now)}
+	if cur.Fields["v"] == true { // 2.67: a verified student keeps the name from the year list
+		delete(body, "display")
+	}
+	if firstDone && cur.Fields["fs"] != true && a.Email != "" {
+		body["fs"] = true
+	}
 	_, err = fsCommit(a.Access, fsSet("profiles/"+a.UserID, body, true, cur.Updated, "updated_at"))
 	// rules from before 2.44 don't know the house stats yet
 	if fe, ok := err.(*fbErr); ok && fe.Status == "PERMISSION_DENIED" && body["stats"].(map[string]any)["hs"] != nil {
@@ -700,7 +724,7 @@ func cleanNewStats(out map[string]any, old map[string]any, mins float64) {
 // profileRow is a profile as the page wants it.
 func profileRow(d *fsDoc) map[string]any {
 	f := d.Fields
-	row := map[string]any{"username": f["username"], "display": f["display"], "stats": f["stats"], "updated_at": f["updated_at"], "badges": f["badges"], "jersey": f["jersey"]}
+	row := map[string]any{"username": f["username"], "display": f["display"], "stats": f["stats"], "updated_at": f["updated_at"], "badges": f["badges"], "jersey": f["jersey"], "v": f["v"] == true}
 	if row["badges"] == nil {
 		row["badges"] = []any{}
 	}
@@ -721,6 +745,7 @@ func handleAccountPeople(w http.ResponseWriter, r *http.Request) {
 	from := []map[string]string{{"collectionId": "profiles"}}
 	var docs []*fsDoc
 	var err error
+	withUID := false
 	if wk := r.URL.Query().Get("houseweek"); wk != "" {
 		// everyone in a house who has played this week, for the house bosses
 		if !regexp.MustCompile(`^[0-9]{4}-[0-9]{2}-[0-9]{2}$`).MatchString(wk) {
@@ -732,14 +757,49 @@ func handleAccountPeople(w http.ResponseWriter, r *http.Request) {
 		// people who were on most recently, for "people you might know"
 		docs, err = fsQuery("", "", map[string]any{"from": from, "limit": 24,
 			"orderBy": []any{map[string]any{"field": map[string]string{"fieldPath": "updated_at"}, "direction": "DESCENDING"}}})
-	} else if q := strings.ToLower(strings.TrimSpace(r.URL.Query().Get("q"))); q != "" {
-		if !regexp.MustCompile(`^[a-z0-9_]{1,20}$`).MatchString(q) {
+	} else if ic := strings.ToLower(strings.TrimSpace(r.URL.Query().Get("ic"))); ic != "" {
+		// 2.67: who an invite code belongs to
+		if !regexp.MustCompile(`^[0-9a-f]{6}$`).MatchString(ic) {
 			w.Write([]byte("[]"))
 			return
 		}
-		docs, err = fsQuery("", "", map[string]any{"from": from, "limit": 10,
-			"where":   fsAnd(fsWhere("username", "GREATER_THAN_OR_EQUAL", q), fsWhere("username", "LESS_THAN", q+"")),
-			"orderBy": []any{map[string]any{"field": map[string]string{"fieldPath": "username"}}}})
+		docs, err = fsQuery("", "", map[string]any{"from": from, "limit": 1, "where": fsWhere("ic", "EQUAL", ic)})
+		withUID = true
+	} else if r.URL.Query().Get("invited") != "" {
+		// 2.67: the people you invited, for the invite rewards
+		a, e := session()
+		if e != nil || a.Email == "" {
+			w.Write([]byte("[]"))
+			return
+		}
+		docs, err = fsQuery("", "", map[string]any{"from": from, "limit": 100, "where": fsWhere("inv", "EQUAL", a.UserID)})
+		withUID = true
+	} else if q := strings.ToLower(strings.TrimSpace(r.URL.Query().Get("q"))); q != "" {
+		// 2.67: by school email (exact), by name (starts with), or an old username
+		if strings.Contains(q, "@") {
+			if emailRe.MatchString(q) {
+				docs, err = fsQuery("", "", map[string]any{"from": from, "limit": 5, "where": fsWhere("eh", "EQUAL", ehOf(q))})
+			}
+		} else if utf8.RuneCountInString(q) <= 30 {
+			docs, err = fsQuery("", "", map[string]any{"from": from, "limit": 10,
+				"where":   fsAnd(fsWhere("dl", "GREATER_THAN_OR_EQUAL", q), fsWhere("dl", "LESS_THAN", q+"\uf8ff")),
+				"orderBy": []any{map[string]any{"field": map[string]string{"fieldPath": "dl"}}}})
+			if err == nil && regexp.MustCompile(`^[a-z0-9_]{3,20}$`).MatchString(q) && !strings.HasPrefix(q, "u_") {
+				var more []*fsDoc
+				more, err = fsQuery("", "", map[string]any{"from": from, "limit": 10,
+					"where":   fsAnd(fsWhere("username", "GREATER_THAN_OR_EQUAL", q), fsWhere("username", "LESS_THAN", q+"\uf8ff")),
+					"orderBy": []any{map[string]any{"field": map[string]string{"fieldPath": "username"}}}})
+				for _, m := range more {
+					dup := false
+					for _, d := range docs {
+						dup = dup || d.ID == m.ID
+					}
+					if !dup {
+						docs = append(docs, m)
+					}
+				}
+			}
+		}
 	} else {
 		var names []any
 		for _, u := range strings.Split(r.URL.Query().Get("u"), ",") {
@@ -763,6 +823,12 @@ func handleAccountPeople(w http.ResponseWriter, r *http.Request) {
 	}
 	out := []map[string]any{}
 	for _, d := range docs {
+		if withUID { // invite lookups also need the account id, their house and whether they've done a session
+			row := profileRow(d)
+			row["uid"], row["fs"], row["inv"] = d.ID, d.Fields["fs"] == true, d.Fields["inv"]
+			out = append(out, row)
+			continue
+		}
 		if r.URL.Query().Get("houseweek") != "" { // just what the house page needs
 			st, _ := d.Fields["stats"].(map[string]any)
 			out = append(out, map[string]any{"username": d.Fields["username"], "display": d.Fields["display"], "hs": st["hs"], "updated_at": d.Fields["updated_at"]})

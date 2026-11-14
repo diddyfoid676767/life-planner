@@ -79,7 +79,7 @@ const youSwitch = tab => `<div class="isswitch youswitch">${YOU_TABS.map(([k, l]
 function youHero() {
   const spec = pfSpec(), SL = solisLevel(), cls = cdClassInfo(), st = ftState(), w = cdWallet(), cat = ui.pfCat || 'look';
   const av = JSON.stringify(youAvData(spec)).replace(/"/g, '&quot;');
-  const tryP = ui.gearTry && st.gear.find(x => x.id === ui.gearTry), user = acct.signedIn ? `@${esc(acct.username)}` : '';
+  const tryP = ui.gearTry && st.gear.find(x => x.id === ui.gearTry), user = acct.signedIn ? `${atU(acct.username)}` : '';
   const sky = BG_CSS[spec.bg] || `radial-gradient(ellipse at 50% 38%, ${cls ? cls.col + '55' : '#4a5296'}, #1b1f38 55%, #0d0f1f)`;
   const tryBar = tryP ? `<div class="ytry"><span>Previewing <b>${tryP.e} ${esc(tryP.n)}</b></span><button class="btn small primary" data-ft="wear" data-id="${tryP.id}">Wear it</button><button class="btn small" data-ft="try" data-id="${tryP.id}">Cancel</button></div>`
     : ui.pfTry ? `<div class="ytry"><span>Trying on <b>${esc(cos(ui.pfTry)?.name || '')}</b></span>${pfBuyBtn(cos(ui.pfTry))}<button class="btn small" data-pf="untry">Take off</button></div>` : '';

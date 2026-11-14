@@ -42,7 +42,7 @@ function isSpot(L, id, sz) {
 // ---------- page ----------
 const isTimeLeft = d => { const ms = new Date(d + 'T00:00').getTime() - Date.now(); if (ms <= 0) return 'soon'; const h = Math.floor(ms / 36e5), dd = Math.floor(h / 24); return dd ? `${dd}d ${h % 24}h` : `${h}h ${Math.floor(ms / 6e4) % 60}m`; };
 const IS_LABEL = { build: '🏗️ Building', ok: '✅ Working', worn: '🟠 Worn: half perk', broken: '🔴 Broken: no perk' };
-const isSwitch = tab => `<div class="ishud is-tc"><div class="isswitch">${[['personal', '🏝️', 'Your island'], ['house', '🏰', 'House island'], ['boss', typeof hsBoss === 'function' ? hsBoss(mondayOf(today())).e : '💀', 'Boss island'], ['rank', '🏆', 'Rankings']].map(([id, e, n]) => `<button class="${tab === id ? 'on' : ''}" data-is="tab" data-v="${id}">${e} ${n}</button>`).join('')}</div></div>`;
+const isSwitch = tab => `<div class="ishud is-tc"><div class="isswitch">${[['personal', '🏝️', 'Your island'], ['house', '🏰', 'House island'], ['boss', typeof hsBoss === 'function' ? hsBoss(mondayOf(today())).e : '💀', 'Boss island'], ['rank', '🏆', 'Rankings']].filter(([id]) => id !== 'house' || !plannerOnly()).map(([id, e, n]) => `<button class="${tab === id ? 'on' : ''}" data-is="tab" data-v="${id}">${e} ${n}</button>`).join('')}</div></div>`;
 const isCtl = () => `<div class="g3ctl isctl"><button data-is="view" data-v="left" title="Turn left (or drag)">⟲</button><button data-is="view" data-v="right" title="Turn right">⟳</button><button data-is="view" data-v="in" title="Zoom in (or scroll)">＋</button><button data-is="view" data-v="out" title="Zoom out">−</button><button data-is="view" data-v="reset" title="Reset view">⌂</button></div>`;
 // a resource bar: amount, and how full the store is
 const isBar = (cls, ico, amt, sub, fill, act) => `<div class="isres ${cls}" ${act ? `data-is="${act}" role="button" tabindex="0"` : ''}><span class="isico">${ico}</span><div><b>${amt.toLocaleString()}</b><i style="width:${Math.max(0, Math.min(100, fill * 100))}%"></i></div><small>${sub}</small></div>`;
@@ -57,7 +57,8 @@ const isPanel = (title, body) => `<div class="ispanel-bg" data-is="close"></div>
 const isPlaceBar = (n, ok) => `<div class="ishud is-bc isplace"><span>Tap a spot for <b>${esc(n)}</b>. Drag to turn the island.</span><button class="btn small primary" data-is="placeok" id="isPlaceOk" ${ok ? '' : 'disabled'}>✔ Place here</button><button class="btn small ghost" data-is="placeno">✖ Cancel</button></div>`;
 
 function viewIslands() {
-  const tab = ui.isTab || 'personal';
+  let tab = ui.isTab || 'personal';
+  if (tab === 'house' && plannerOnly()) tab = ui.isTab = 'personal'; // 2.67: houses are for Westbourne students
   if (tab === 'house') return viewHouseIsland();
   if (tab === 'boss') return viewBossIsland();
   if (tab === 'rank') return `<div class="rankpage"><div class="rank-sw">${isSwitch(tab).replace(/^<div class="ishud is-tc">|<\/div>$/g, '')}</div>${viewLeaderboard()}</div>`;

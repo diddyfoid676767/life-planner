@@ -5,6 +5,13 @@
    row is published when you open the leaderboard and every 10 minutes. */
 
 let acct = { configured: false, signedIn: false, username: '' }, acctLoaded = false;
+// 2.67: new accounts have a hidden handle (u_ + account id), shown as the person's name instead
+const atSub = u => String(u || '').startsWith('u_') ? '' : '@' + esc(u); // the small grey name under someone in a list
+function atU(u) {
+  u = String(u || ''); if (!u.startsWith('u_')) return '@' + esc(u);
+  if (u === acct.username) return esc(acct.name || (typeof D === 'object' && D?.settings?.name) || 'you');
+  const f = friendRows.find(x => x.user === u); return esc(f ? f.name : 'a friend');
+}
 let friendRows = [], friendRowsAt = 0, acctSearch = [], acctBusy = false, acctPublishedAt = 0;
 
 async function loadAccount() {
@@ -22,7 +29,7 @@ async function acctPost(body) {
 
 function myStatsRow() {
   const r = myBoardRow();
-  return { display: (D.settings.name || '').slice(0, 30), avatar: r.av, stats: { week: r.week, study: r.study, work: r.work, health: r.health, ...chalPublish(), fit: typeof fitPublish === 'function' ? fitPublish() : undefined, fr: friendNames().slice(0, 60), hs: typeof housePublish === 'function' ? housePublish() : undefined, ...(typeof myStatus === 'function' ? { st: myStatus(), ...seasonStats(), ...compPublish(), gr: gradePublish(), fo: forestPublish() } : {}) } };
+  return { fs: typeof firstSessionDone === 'function' && firstSessionDone(), display: (D.settings.name || '').slice(0, 30), avatar: r.av, stats: { week: r.week, study: r.study, work: r.work, health: r.health, ...chalPublish(), fit: typeof fitPublish === 'function' ? fitPublish() : undefined, fr: friendNames().slice(0, 60), hs: typeof housePublish === 'function' ? housePublish() : undefined, ...(typeof myStatus === 'function' ? { st: myStatus(), ...seasonStats(), ...compPublish(), gr: gradePublish(), fo: forestPublish() } : {}) } };
 }
 async function publishMe(force) {
   if (!acct.signedIn || (!force && Date.now() - acctPublishedAt < 4.5 * 60000)) return;
@@ -50,6 +57,8 @@ function accountCard() {
   if (ONLINE) return '';
   if (!acctLoaded) { loadAccount().then(() => render()); return '<div class="card acctcard"><p class="muted">Loading your account…</p></div>'; }
   if (!acct.configured) return '';
+  if (!acct.signedIn) return emailCard(); // 2.67: new accounts use an email; old usernames can't be made any more
+  if (!acct.legacy) return emailAcctCard();
   if (!acct.signedIn) return `<div class="card acctcard"><div class="acct-login">
       <div class="acct-hero">👥</div><h2>Log in to Solis</h2>
       <p class="muted small-text">Make an account to find friends by username and race them on the leaderboards. Only your username, avatar and leaderboard numbers are shared.</p>
@@ -61,9 +70,9 @@ function accountCard() {
         <p class="muted small-text">There's no email on the account, so write your password down somewhere safe.</p>
       </form></div></div>`;
   return `<div class="card acctcard"><div class="card-head"><h2>Your account</h2></div>
-    <div class="row"><span class="acct-chip">${safeBadge(avatarSpec(), 36)}<b>@${esc(acct.username)}</b>${typeof badgeTags === 'function' ? badgeTags(myBadges) : ''}</span><span style="flex:1"></span>
+    <div class="row"><span class="acct-chip">${safeBadge(avatarSpec(), 36)}<b>${atU(acct.username)}</b>${typeof badgeTags === 'function' ? badgeTags(myBadges) : ''}</span><span style="flex:1"></span>
       <button class="btn small" data-acct="logout">Log out</button><button class="btn small danger" data-acct="delete">Delete account</button></div>
-    <p class="muted small-text">Friends can find you by searching <b>${esc(acct.username)}</b> on the leaderboard.</p></div>`;
+    <p class="muted small-text">Friends can find you by searching <b>${esc(acct.username)}</b> on the leaderboard.</p></div>${legacyBanner()}`;
 }
 
 // friend suggestions: friends of your friends first, then people who were on recently
@@ -84,34 +93,35 @@ function friendSuggestHtml(big) {
   if (!acct.signedIn) return '';
   if (acctSuggest === null) { loadSuggest(); return '<p class="muted small-text">Finding people you might know…</p>'; }
   const list = friendSuggestions();
-  if (!list.length) return big ? '<p class="muted small-text">No suggestions yet. Search for a friend\'s username on the Friends page.</p>' : '';
-  return `<div class="suggest ${big ? 'big' : ''}"><div class="daygroup">✨ People you might know</div><ul class="friendlist">${list.map(p => `<li>${safeBadge(p.avatar, 28)}<b>${esc(p.display || p.username)}</b>${badgeTags(p.badges, true)}<span class="muted small-text">@${esc(p.username)}${p.via ? ` · friends with ${esc(p.via)}` : ''}</span><span style="flex:1"></span><button class="btn small primary" data-acct="friend" data-u="${esc(p.username)}">+ Add</button></li>`).join('')}</ul></div>`;
+  if (!list.length) return big ? '<p class="muted small-text">No suggestions yet. Search for a friend\'s name on the Friends page.</p>' : '';
+  return `<div class="suggest ${big ? 'big' : ''}"><div class="daygroup">✨ People you might know</div><ul class="friendlist">${list.map(p => `<li>${safeBadge(p.avatar, 28)}<b>${esc(p.display || p.username)}</b>${badgeTags(p.badges, true)}<span class="muted small-text">${atSub(p.username)}${p.via ? ` · friends with ${esc(p.via)}` : ''}</span><span style="flex:1"></span><button class="btn small primary" data-acct="friend" data-u="${esc(p.username)}">+ Add</button></li>`).join('')}</ul></div>`;
 }
 
 // friend search on the leaderboard
 function friendSearchHtml() {
   if (ONLINE || !acct.configured) return '';
-  if (!acct.signedIn) return `<div class="friendbox"><h3>👥 Friends</h3><p class="muted small-text">Log in to add friends by username and see their numbers live.</p><button class="btn primary" data-act="friendsLogin">Log in or create an account</button></div>`;
+  if (!acct.signedIn) return `<div class="friendbox"><h3>👥 Friends</h3><p class="muted small-text">Log in to add friends by name or school email and see their numbers live.</p><button class="btn primary" data-act="friendsLogin">Log in or create an account</button></div>`;
   const names = friendNames();
-  return `<div class="friendbox"><h3>👥 Friends <span class="muted small-text">you're @${esc(acct.username)}</span></h3>
-    <div class="row"><input id="friendSearch" placeholder="Search usernames…" autocomplete="off" style="flex:1;min-width:200px"></div>
+  return `<div class="friendbox"><h3>👥 Friends <span class="muted small-text">you're ${atU(acct.username)}</span></h3>
+    <div class="row"><input id="friendSearch" placeholder="Search names or school emails…" autocomplete="off" style="flex:1;min-width:200px"></div>
     <ul class="friendlist" id="friendResults">${searchRowsHtml()}</ul>
-    ${names.length ? `<div class="daygroup">Your friends</div><ul class="friendlist">${names.map(n => { const f = friendRows.find(x => x.user === n); return `<li>${safeBadge(f?.av, 28)}<b>${esc(f?.name || n)}</b>${badgeTags(f?.badges, true)}<span class="muted small-text">@${esc(n)}${f ? ` · updated ${esc(ago(new Date(f.updated).toISOString()))}` : ' · not found'}</span><span style="flex:1"></span><button class="iconbtn" data-acct="unfriend" data-u="${esc(n)}" title="Remove">✕</button></li>`; }).join('')}</ul>` : ''}</div>`;
+    ${names.length ? `<div class="daygroup">Your friends</div><ul class="friendlist">${names.map(n => { const f = friendRows.find(x => x.user === n); return `<li>${safeBadge(f?.av, 28)}<b>${esc(f?.name || n)}</b>${badgeTags(f?.badges, true)}<span class="muted small-text">${atSub(n)}${f ? ` · updated ${esc(ago(new Date(f.updated).toISOString()))}` : ' · not found'}</span><span style="flex:1"></span><button class="iconbtn" data-acct="unfriend" data-u="${esc(n)}" title="Remove">✕</button></li>`; }).join('')}</ul>` : ''}</div>`;
 }
 function searchRowsHtml() {
   const names = friendNames();
-  return acctSearch.filter(p => p.username !== acct.username).map(p => `<li>${safeBadge(p.avatar, 28)}<b>${esc(p.display || p.username)}</b>${badgeTags(p.badges, true)}<span class="muted small-text">@${esc(p.username)}</span><span style="flex:1"></span>${names.includes(p.username) ? '<span class="tag green">Friend</span>' : `<button class="btn small primary" data-acct="friend" data-u="${esc(p.username)}">Add</button>`}</li>`).join('');
+  return acctSearch.filter(p => p.username !== acct.username).map(p => `<li>${safeBadge(p.avatar, 28)}<b>${esc(p.display || p.username)}</b>${badgeTags(p.badges, true)}<span class="muted small-text">${atSub(p.username)}</span><span style="flex:1"></span>${names.includes(p.username) ? '<span class="tag green">Friend</span>' : `<button class="btn small primary" data-acct="friend" data-u="${esc(p.username)}">Add</button>`}</li>`).join('');
 }
 let searchTimer = 0;
 document.addEventListener('input', e => {
   if (e.target.id !== 'friendSearch') return;
   clearTimeout(searchTimer);
   const q = e.target.value.trim().toLowerCase().replace(/^@/, '');
+  if (q.includes('@') && !/^[^@\s]+@[^@\s]+\.[^@\s]{2,}$/.test(q)) return; // wait for the whole email
   searchTimer = setTimeout(async () => {
     if (!q) acctSearch = [];
     else try { acctSearch = await (await fetch('/api/account/people?q=' + encodeURIComponent(q), { cache: 'no-store' })).json(); } catch { acctSearch = []; }
     if (!Array.isArray(acctSearch)) acctSearch = [];
-    const ul = document.getElementById('friendResults'); if (ul) ul.innerHTML = searchRowsHtml() || (q ? '<li class="muted small-text">No one with that username yet.</li>' : '');
+    const ul = document.getElementById('friendResults'); if (ul) ul.innerHTML = searchRowsHtml() || (q ? '<li class="muted small-text">No one found. Try their full school email.</li>' : '');
   }, 250);
 });
 document.addEventListener('click', async e => {

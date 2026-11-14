@@ -853,7 +853,7 @@ function viewSettings() {
     ${appsCard().replace('data-sec="cal"','data-sec="calendars"')}
     ${typeof testModeCard === 'function' ? testModeCard() : ''}
     ${typeof termsCard === 'function' ? termsCard() : ''}
-    ${accountCard().replace('class="card acctcard"', 'class="card acctcard" data-sec="account"')}
+    ${accountCard().replace('class="card acctcard"', 'class="card acctcard" data-sec="account"')}${typeof modeCard === 'function' ? modeCard() + ownerCard() : ''}
     ${typeof whatsNewCard === 'function' && !ONLINE ? whatsNewCard() : ''}
     ${ONLINE && !CLOUD ? `<div class="card" data-sec="calendars" style="grid-column:1/-1"><div class="card-head"><h2>Calendars</h2><button class="btn small" data-act="gcalRefresh">Refresh</button><button class="btn small primary" data-act="gcalChoose">Choose calendars</button></div>
       <p class="muted small-text" style="margin-top:0">Shows your Google Calendar (${(D.settings.gcal?.ids || ['primary']).length} calendar(s) selected). The first time, claude.ai asks you to allow access to Google Calendar. To include your school Outlook or Garmin calendar, subscribe to its iCal link inside Google Calendar (Other calendars → + → From URL).</p>
@@ -870,7 +870,7 @@ function viewSettings() {
         <p><b>School portal</b>: in its calendar, look for <i>Subscribe</i>, <i>iCal</i> or <i>Export</i> and copy that link. If it only lets you download a file, use <b>Import .ics file</b> instead (that's a one-off snapshot).</p>
         <p><b>Going the other way:</b> use <b>Export to calendar (.ics)</b> below, then import that file into Google Calendar (Settings → Import &amp; export) or Outlook (Add calendar → Upload from file).</p>
         <p class="muted">Keep the secret links private: anyone with one can see that calendar.</p></div></details></div>
-    <div class="card" data-sec="general" style="grid-column:1/-1"><div class="card-head"><h2>Setup and guide</h2><button class="btn small" data-act="tourStart">🧭 Take the tour</button><button class="btn small primary" data-act="setupOpen">Change my setup</button></div>
+    <div class="card" data-sec="general" style="grid-column:1/-1"><div class="card-head"><h2>Setup and guide</h2><button class="btn small" data-act="tourStart">🧭 Take the tour</button><button class="btn small primary" data-act="setupOpen">Set up more</button><button class="btn small" data-act="howto">📖 How to start</button></div>
       <p class="muted small-text" style="margin:0">Change your name, classes, bell times and timetable, or add a training week. Nothing else is touched.</p>
       ${ONLINE ? '' : `<details style="margin-top:10px"><summary><b>Share the planner with a friend</b></summary><div class="small-text"><p>Send them <b>LifePlanner-share.zip</b>. It's the same app with none of your data in it. When they first open it, they get the setup and the tour, then everything they add is saved only on their PC.</p>
         <p>Don't send your own Solis folder: its <b>data</b> folder holds your planner.</p></div></details>`}</div>
@@ -1360,14 +1360,14 @@ function gEventItem(ev) {
 // the sync is working; on the phone it says who's logged in.
 function phoneCard() {
   if (CLOUD) return `<div class="card" data-sec="app"><h2>Phone app</h2>
-      <p class="small-text" style="margin-top:0">Logged in as <b>@${esc(OL.user())}</b>. Your planner syncs with the PC app whenever it's open and logged in to the same account.</p>
+      <p class="small-text" style="margin-top:0">Logged in as <b>${atU(OL.user())}</b>. Your planner syncs with the PC app whenever it's open and logged in to the same account.</p>
       <p class="muted small-text">The email check, Strava and calendar syncing run on the PC, and what they find shows up here after the PC app has been open. Friends, chats and battles are in the PC app for now.</p>
       <button class="btn small" data-act="cloudLogout">Log out on this phone</button></div>`;
   if (ONLINE) return '';
   const s = acct.sync || {};
   const status = !acct.signedIn ? 'Log in under <b>Account</b> first. The phone uses the same account, and your planner syncs while you\'re logged in.'
     : s.error ? `Sync isn't working yet: ${esc(s.error)}`
-    : s.at ? `Syncing as <b>@${esc(acct.username)}</b>. Last synced ${esc(new Date(s.at).toLocaleString())}.` : `Syncing as <b>@${esc(acct.username)}</b>. Your first sync happens in a moment.`;
+    : s.at ? `Syncing as <b>${atU(acct.username)}</b>. Last synced ${esc(new Date(s.at).toLocaleString())}.` : `Syncing as <b>${atU(acct.username)}</b>. Your first sync happens in a moment.`;
   return `<div class="card" data-sec="app"><h2>Phone app</h2>
       <p class="small-text" style="margin-top:0">${status}</p>
       <p class="small-text">On your phone, open <a href="${PHONE_URL}" target="_blank" rel="noopener noreferrer">${PHONE_URL.replace('https://', '')}</a> and log in.<br>

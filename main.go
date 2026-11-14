@@ -136,6 +136,8 @@ func main() {
 	mux.HandleFunc("/api/mail", handleMail)
 	mux.HandleFunc("/api/account", handleAccount)
 	mux.HandleFunc("/api/account/profile", handleAccountProfile)
+	mux.HandleFunc("/api/account/email", handleAccountEmail)
+	mux.HandleFunc("/api/account/owner", handleAccountOwner)
 	mux.HandleFunc("/api/account/people", handleAccountPeople)
 	mux.HandleFunc("/api/account/jersey", handleAccountJersey)
 	mux.HandleFunc("/api/account/house", handleAccountHouse)
