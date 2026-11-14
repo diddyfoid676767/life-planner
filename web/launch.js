@@ -42,6 +42,11 @@ let emTab = 'signup', emBusy = false, emPoll = 0;
 function emailCard(inWizard) {
   const school = !plannerOnly();
   const inv = D.settings.invite || '';
+  if (emTab === 'old') return `<div class="card acctcard"><div class="acct-login"><h2>Log in with your old username</h2>
+    <p class="muted small-text">Old username accounts work until launch (1 Feb). After that everyone uses a school email account.</p>
+    <form id="acctForm" autocomplete="on"><label>Username<input name="username" autocomplete="username" required minlength="3" maxlength="20" pattern="[A-Za-z0-9_]+"></label>
+      <label>Password<input name="password" type="password" autocomplete="current-password" required minlength="8" maxlength="72"></label>
+      <div class="row"><button class="btn primary" data-acct="login" ${acctBusy ? 'disabled' : ''}>Log in</button><a href="#" class="small-text" data-em="tab" data-v="login">Back</a></div></form></div></div>`;
   const tabs = `<div class="seg emtabs"><button class="${emTab === 'signup' ? 'on' : ''}" data-em="tab" data-v="signup">Sign up</button><button class="${emTab === 'login' ? 'on' : ''}" data-em="tab" data-v="login">Log in</button></div>`;
   return `<div class="card acctcard"><div class="acct-login">
     ${inWizard ? '' : '<div class="acct-hero">👥</div><h2>Your Solis account</h2>'}
@@ -56,6 +61,7 @@ function emailCard(inWizard) {
       ${emTab === 'signup' ? `<label>Invite code <span class="muted">(optional)</span><input name="invite" maxlength="6" value="${esc(inv)}" placeholder="e.g. 3F9A1C" style="text-transform:uppercase"></label>` : ''}
       <div class="row"><button class="btn primary" data-em="${emTab}" ${emBusy ? 'disabled' : ''}>${emTab === 'signup' ? 'Create account' : 'Log in'}</button>
         ${emTab === 'login' ? '<a href="#" class="small-text" data-em="forgot">Forgot your password?</a>' : ''}</div>
+      ${emTab === 'login' && !acct.launch?.reset ? '<p class="small-text"><a href="#" data-em="tab" data-v="old">Log in with an old username instead</a></p>' : ''}
     </form></div></div>`;
 }
 // signed in with an email: waiting for the link, or done
