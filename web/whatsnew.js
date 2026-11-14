@@ -10,6 +10,9 @@
 // version since the last one they saw (up to 3). D.settings.seenVersion remembers what was last shown,
 // D.settings.guidesSeen which guides have played. A brand-new install never sees either.
 const CHANGELOG = [
+  { v: '2.67.1', notes: [
+    { t: 'The Solis download page has a short address now: tinyurl.com/solis-download', k: 'tweak' },
+  ] },
   { v: '2.67.0', guide: 'launch', notes: [
     { t: 'New accounts use your school email: open the link we email you and you\'re a verified Westbourne student', k: 'new' },
     { t: 'Not at Westbourne? "Just the planner" mode gives friends from other schools everything except houses', k: 'new' },

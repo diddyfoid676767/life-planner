@@ -38,7 +38,7 @@ needs `supabase-2.29-phone-sync.sql` run once in the Supabase SQL Editor.
 
 ## Download
 
-The download page is <https://diddyfoid676767.github.io/life-planner/download/>:
+The download page is <https://tinyurl.com/solis-download> (which opens <https://diddyfoid676767.github.io/life-planner/download/>):
 one button for the newest **Solis.exe**, a how-to-start guide, help with the
 Windows SmartScreen warning, a QR code and a privacy page (source in
 `web/download/`). Or go to [Releases](../../releases/latest) and download

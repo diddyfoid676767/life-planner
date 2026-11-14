@@ -340,6 +340,6 @@ if (typeof GUIDES === 'object') GUIDES.launch = {
     { title: 'Accounts with your school email 🏫', text: 'New Solis accounts use your <b>school email</b>. We email you a link, you open it, and you\'re a verified Westbourne student with your real name. Usernames stop working at launch (1 Feb), so make your new account any time before then.', view: 'settings', sel: '[data-sec="account"]' },
     { title: 'Planner only, for everyone else', text: 'Friends from other schools can use Solis too: they pick <b>Just the planner</b> and get to-dos, study, fitness and their own island. Houses stay for verified Westbourne students. Switch here any time.', view: 'settings', sel: '[data-mode]' },
     { title: 'Invite friends, both get rewards 🎟️', text: 'Once you have your new account, Friends shows your invite link. When a friend finishes their first focus session you <b>both</b> get 50 Lumen and 50 Ember. Find friends by name or school email.', view: 'friends' },
-    { title: 'Getting Solis is one link', text: 'Send people to <b>diddyfoid676767.github.io/life-planner/download</b>: one button, a how-to-start guide and help with the blue Windows warning.' },
+    { title: 'Getting Solis is one link', text: 'Send people to <b>tinyurl.com/solis-download</b>: one button, a how-to-start guide and help with the blue Windows warning.' },
   ],
 };
