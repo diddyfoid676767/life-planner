@@ -88,7 +88,7 @@ function isPlaceStart(P) {
 
 // ---------- 3D (three.js, rotate and zoom only, drawn on demand) ----------
 const IS3 = { yaw: Math.PI / 4, pitch: .62, dist: 34, sig: '' };
-const is3home = house => house === 'hex' ? { yaw: Math.PI / 5, pitch: .78, dist: 40 } : ({ yaw: Math.PI / 4, pitch: house === 'boss' ? .42 : .62, dist: house === 'boss' ? 30 : house ? 50 : 34 });
+const is3home = house => house === 'hexh' ? { yaw: Math.PI / 5, pitch: .8, dist: 50 } : house === 'hex' ? { yaw: Math.PI / 5, pitch: .78, dist: 40 } : ({ yaw: Math.PI / 4, pitch: house === 'boss' ? .42 : .62, dist: house === 'boss' ? 30 : house ? 50 : 34 });
 // 2.56: the Low graphics switch in Settings drops the 3D shadows (works live)
 function applyQuality() {
   if (typeof IS3 !== 'object' || !IS3.R) return;
@@ -220,23 +220,15 @@ function mountIsland3D() {
   is3resize();
   if (ui.isTab === 'boss') {
     if (HX3.ghost) { IS3.scene.remove(HX3.ghost); HX3.ghost = null; HX3.ghostModel = null; }
-    if (IS3.house === 'hex') { IS3.sig = ''; IS3.sun.position.set(16, 30, 10); IS3.distK = 1; }
+    if (IS3.house === 'hex' || IS3.house === 'hexh') { IS3.sig = ''; IS3.sun.position.set(16, 30, 10); IS3.distK = 1; }
     if (IS3.house !== 'boss') { IS3.house = 'boss'; Object.assign(IS3, is3home('boss')); }
     IS3.layout = null; IS3.grid = null; const sig = 'b' + biSig();
     if (sig !== IS3.sig) { IS3.sig = sig; is3bossBuild(); }
     is3ghost(null); is3draw(); return;
   }
-  const house = ui.isTab === 'house' && typeof hiLayout === 'function' && HI.doc;
-  if (!house) { if (IS3.house !== 'hex') HX3.sig = ''; if (!mountHex3D()) is3draw(); return; }
-  if (HX3.ghost) { IS3.scene.remove(HX3.ghost); HX3.ghost = null; HX3.ghostModel = null; }
-  if (IS3.house === 'hex') { IS3.sig = ''; IS3.sun.position.set(16, 30, 10); IS3.distK = 1; }
-  const L = hiLayout(), cond = hiCond, lvOf = id => hiLvOn(HI.doc.b?.[id]);
-  const sig = 'h' + hsState().id + hiLevel() + 't' + biTrophies().length + L.items.map(o => o.id + ':' + (cond(o.id) || '') + lvOf(o.id) + (o.at || []).join('.')).join();
-  if (IS3.house !== true) { IS3.house = true; Object.assign(IS3, is3home(true)); }
-  IS3.layout = L;
-  if (sig !== IS3.sig) { IS3.sig = sig; is3build(true, L); }
-  const P = ui.isPlace; is3ghost(P ? P.at : null, P?.sz, P ? isFits(P.L, P.id, P.sz, ...P.at) : true);
-  is3draw();
+  // 2.66: the house island is on hexes too (hxhouse.js), drawn by the same code as your own island
+  const house = ui.isTab === 'house' && typeof hhSt === 'function' && HI.doc;
+  if (!mountHex3D(house ? 'hexh' : 'hex')) is3draw();
 }
 // shared low-poly materials, made once
 const is3mat = (col, glow) => { const k = col + (glow ? '*' : ''); return (IS3.mats = IS3.mats || {})[k] || (IS3.mats[k] = new THREE.MeshStandardMaterial({ color: col, flatShading: true, roughness: .9, ...(glow ? { emissive: col, emissiveIntensity: .8 } : {}) })); };

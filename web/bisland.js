@@ -10,7 +10,8 @@
    Firestore rule change is needed).
    Raids: some bosses attack the house island. If a raider still has more than
    half its health on Friday, it smashes one building (it jumps one stage of wear:
-   working -> worn -> broken). A working Bastion holds raids off. Repair as usual. */
+   working -> worn -> broken). 2.66: a closed ring of wall round the great hall holds raids off
+   (before 2.66 a working Bastion did). Repair as usual. */
 
 const BI_RAIDERS = { 'Doomscroll Kraken': 'drags it under with its tentacles', 'Snooze Golem': 'slams it flat', 'Couch Troll': 'throws the couch at it', 'Excuse Hydra': 'chews on it with every head' };
 const BI_RAID_DAY = 4; // Friday (days after Monday)
@@ -39,10 +40,10 @@ async function biTick(f) {
       d.b = d.b || {}; const x = d.b._boss = Object.assign({ t: {}, r: {} }, d.b._boss || {});
       if (needT && !x.t[wk]) x.t[wk] = b.n;
       if (needR && !x.r[wk]) {
-        const bastion = ['ok', 'worn'].includes(hiCond('bastion', today(), d));
-        const pool = HI_ITEMS.filter(it => ['ok', 'worn'].includes(hiCond(it.id, today(), d)));
-        const rnd = seeded('raid-' + f.hid + wk), t = !bastion && pool.length ? pool[Math.floor(rnd() * pool.length)] : null;
-        x.r[wk] = t ? t.id : bastion ? 'bastion' : '-';
+        const ring = typeof hhRingOf === 'function' && hhRingOf(d);
+        const pool = HI_ITEMS.filter(it => !it.slot && it.id !== 'treasury' && ['ok', 'worn'].includes(hiCond(it.id, today(), d)));
+        const rnd = seeded('raid-' + f.hid + wk), t = !ring && pool.length ? pool[Math.floor(rnd() * pool.length)] : null;
+        x.r[wk] = t ? t.id : ring ? 'wall' : '-';
         if (t) { const s = d.b[t.id]; s.hit = [...(s.hit || []).filter(h => h >= addDays(today(), -120)), today()]; hit = t.id; }
       }
       for (const k of Object.keys(x.r)) if (k < addDays(wk, -70)) delete x.r[k];
@@ -61,9 +62,9 @@ function viewBossIsland() {
   let f = null;
   if (hs.id) { hsLoad(); if (typeof hiLoad === 'function') hiLoad(); f = hsFight(hs.id); hsRecord(f); biTick(f); }
   const h = hs.id ? hsHouse(hs.id) : null, pct = f ? Math.max(0, Math.round(f.left / f.hp * 100)) : 100;
-  const raid = biDoc().r?.[wk], raided = raid && raid !== '-' && raid !== 'bastion' ? hiItem(raid) : null;
+  const raid = biDoc().r?.[wk], raided = raid && raid !== '-' && raid !== 'bastion' && raid !== 'wall' ? hiItem(raid) : null;
   let warn = '';
-  if (raider && f && !f.dead) warn = raided ? `💥 ${esc(b.n)} raided the house island and damaged the ${raided.e} ${raided.n}.` : raid === 'bastion' ? `🏯 The Bastion held ${esc(b.n)}'s raid off.` : raid ? '' : today() < addDays(wk, BI_RAID_DAY) ? `⚠️ Raider: if it still has over half its health on Friday, it smashes a building on the house island.` : '';
+  if (raider && f && !f.dead) warn = raided ? `💥 ${esc(b.n)} raided the house island and damaged the ${raided.e} ${raided.n}.` : raid === 'bastion' ? `🏯 The Bastion held ${esc(b.n)}'s raid off.` : raid === 'wall' ? `🧱 The house walls held ${esc(b.n)}'s raid off.` : raid ? '' : today() < addDays(wk, BI_RAID_DAY) ? `⚠️ Raider: if it still has over half its health on Friday, it smashes a building on the house island.` : '';
   const hud = `<div class="ishud is-tl"><div class="islvl boss ${f?.dead ? 'dead' : ''}"><b>${b.e}</b><div><span>${esc(b.n)}</span><small>${bossWeek(wk) === 'rest' ? `🌴 Resting for the holidays · back ${fmtDate(bossBackOn(wk))}` : f?.dead ? `Defeated by ${esc(h.name)} 🎉` : `${bossWeek(wk) === 'term' ? '👑 Term Boss · ' : ''}${daysLeft} day${daysLeft === 1 ? '' : 's'} left · ${f ? `${f.left.toLocaleString()} / ${f.hp.toLocaleString()} HP` : 'weekly boss'}`}</small>${f ? `<i class="bihp" style="width:${pct}%"></i>` : ''}</div></div>
       <div class="isbuilders">💡 Weak to ${esc(B.wn)}${f ? ` · you: ${ftWeekDmg(wk).toLocaleString()} dmg` : ''}</div></div>
     <div class="ishud is-tr">${isBar('cd-l', LUMEN, w.lumen, 'Lumen', 1, '')}${isBar('cd-e', EMBER, w.ember, 'Ember', 1, '')}</div>
@@ -84,7 +85,7 @@ function biInfoHtml(b, B, a, f, raider) {
     ${f ? hsBar(f) : ''}
     <p class="small-text"><b>Weak to:</b> ${B.wn}</p><p class="small-text"><b>Special:</b> ${esc(B.sp)}</p>
     <p class="small-text"><b>Attacks:</b> ${[...B.atk, ...(B.big ? [B.big] : [])].map(x => esc(x[0])).join(', ')}</p>
-    ${raider ? `<p class="small-text"><b>⚠️ Raider:</b> if it still has more than half its health on Friday, it ${raider}: one building on the house island takes damage. A working Bastion stops it.</p>` : ''}
+    ${raider ? `<p class="small-text"><b>⚠️ Raider:</b> if it still has more than half its health on Friday, it ${raider}: one building on the house island takes damage. A closed ring of wall round the great hall stops it.</p>` : ''}
     <p class="muted small-text">${FT_WEEK_ATT + a.extra} fights a week${a.extra ? ' (house island perk included)' : ''}, up to ${FT_DAY_ATT} a day, ${FT_ROUNDS} rounds each, and it hits back lightly. Your study, revision, workouts and PBs also do damage. Beat it as a house and it becomes a gold trophy on your house island, and everyone who fought gets a rare or better piece of gear. Set your build on the <a href="#" data-act="goto" data-v="character">Character</a> page.</p>
     <button class="btn primary" data-ft="house" ${hsState().id && a.left ? '' : 'disabled'}>⚔️ ${a.left ? `Fight (${a.left} left)` : (a.rest ? '🌴 Resting' : 'No fights left')}</button>`;
 }

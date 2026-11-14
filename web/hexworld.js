@@ -110,12 +110,20 @@ function hxLand() {
 const hxState = () => { const c = cdState(); return (c.hx = Object.assign({ v: 1, b: {}, road: ['1,0', '1,-1', '0,-1', '-1,0', '-1,1', '0,1'], clr: [], mark: { l: 0, e: 0 } }, c.hx || {})); };
 const hxItem = id => HX_ITEMS.find(x => x.id === id);
 const hxFree = id => HX_FREE.find(x => x.id === id);
-const hxFreeAt = k => HX_FREE.find(x => x.at === k);
+// 2.66: the same hex code drives the shared house island (hxhouse.js). A state can carry its own
+// world in __w: land, item lookup, page buildings, how a building looks, and its owner's colour.
+const HX_HOME_W = { land: () => hxLand(), item: id => HX_ITEMS.find(x => x.id === id), free: HX_FREE, home: true };
+const hxW = st => (st && st.__w) || HX_HOME_W;
+const hxFreeAt = (k, st) => hxW(st).free.find(x => x.at === k);
+const hxHouseOn = () => IS3.house === 'hexh';
+const hxCur = () => hxHouseOn() && typeof hhSt === 'function' ? hhSt() : hxState();
+// the hexes a building covers: 1, or a 3-hex or 7-hex cluster for big house projects
+const hxFoot = (it, k) => { const n = hxNb(k); return it?.hz === 7 ? [k, ...n] : it?.hz === 3 ? [k, n[0], n[1]] : [k]; };
 // what's on a hex: { kind: 'free'|'b'|'road'|'tree'|'rock'|'hill'|'mount'|'river'|'water'|'grass', ... }
 function hxAt(k, st = hxState()) {
-  const h = hxLand().get(k); if (!h) return { kind: 'off' };
-  const f = hxFreeAt(k); if (f) return { kind: 'free', it: f };
-  if (st.b[k]) return { kind: 'b', s: st.b[k], it: hxItem(st.b[k].id) };
+  const W = hxW(st), h = W.land().get(k); if (!h) return { kind: 'off' };
+  const f = hxFreeAt(k, st); if (f) return { kind: 'free', it: f };
+  const mk = st.__occ?.[k] || (st.b[k] && k); if (mk && st.b[mk]) return { kind: 'b', s: st.b[mk], it: W.item(st.b[mk].id), main: mk };
   if (st.road.includes(k)) return { kind: 'road', bridge: h.t === 'river' };
   if ((h.t === 'forest' || h.t === 'rock') && st.clr.includes(k)) return { kind: 'grass' };
   return { kind: h.t === 'forest' ? 'tree' : h.t };
@@ -138,11 +146,11 @@ function hxLinks(st = hxState()) {
   while (todo.length) { const k = todo.pop(); for (const n of hxNb(k)) if (roads.has(n) && !seen.has(n)) { seen.add(n); todo.push(n); } }
   return seen;
 }
-const hxLinked = (k, net = hxLinks()) => hxNb(k).some(n => n === '0,0' || net.has(n));
+const hxLinked = (k, net = hxLinks(), st) => { const s = st?.b?.[k], fp = s ? hxFoot(hxW(st).item(s.id), k) : [k]; return fp.some(f => hxNb(f).some(n => n === '0,0' || net.has(n))); };
 // a closed ring of wall round the hall: the hall can't reach the water without crossing a wall
 function hxRingClosed(st = hxState()) {
-  const walls = new Set(Object.entries(st.b).filter(([, s]) => s.id === 'wall').map(([k]) => k)); if (walls.size < 6) return false;
-  const L = hxLand(), seen = new Set(['0,0']), todo = ['0,0'];
+  const W = hxW(st), walls = new Set(Object.entries(st.b).filter(([, s]) => W.item(s.id)?.wall).map(([k]) => k)); if (walls.size < 6) return false;
+  const L = hxW(st).land(), seen = new Set(['0,0']), todo = ['0,0'];
   while (todo.length) { const k = todo.pop(); for (const n of hxNb(k)) { if (seen.has(n) || walls.has(n) || !L.has(n)) continue; if (L.get(n).t === 'water') return false; seen.add(n); todo.push(n); } }
   return true;
 }
@@ -172,7 +180,7 @@ const hxWearLeft = k => { hxCond(k); for (const [kk, v] of HX_TL) if (kk.startsW
 function hxPerkM(k, st = hxState(), net = hxLinks(st), d = today()) {
   const s = st.b[k], it = s && hxItem(s.id); if (!it || it.field || it.wall) return 0;
   const c = hxCond(k, d, st), m = c === 'ok' ? 1 : c === 'worn' ? .5 : 0;
-  if (!m || !hxLinked(k, net)) return 0;
+  if (!m || !hxLinked(k, net, st)) return 0;
   if (it.need && !hxNb(k).some(n => hxTerr(n, st) === it.need)) return 0;
   return m * IS_LVM[Math.max(0, hxLvOn(s, d) - 1)];
 }
@@ -234,22 +242,28 @@ function hxMigrate() {
 // ---------- what can go where ----------
 // { ok, why, warn: [], good: [], bonus: [hex keys] } for building id (or 'road') on hex k
 function hxCheck(id, k, st = hxState(), moving) {
-  const a = hxAt(k, st), it = hxItem(id), out = { ok: false, warn: [], good: [], bonus: [] };
+  const it = hxW(st).item(id), out = { ok: false, warn: [], good: [], bonus: [] };
+  // a cluster: every hex it covers must be free
+  if (it?.hz > 1) { for (const f of hxFoot(it, k)) { const c = hxCheck('_one', f, st, moving); if (!c.ok) return { ...out, why: it.hz + '-hex project: ' + c.why.charAt(0).toLowerCase() + c.why.slice(1) }; } return hxCheckPost(it, k, st, { ...out, ok: true }); }
+  const a = hxAt(k, st);
   if (a.kind === 'off' || a.kind === 'water') return { ...out, why: 'That\'s off the island' };
   if (id === 'road') {
     if (a.kind === 'road' || a.kind === 'free' || a.kind === 'b') return { ...out, why: a.kind === 'road' ? 'Already a road' : 'Something\'s already here' };
     if (a.kind === 'river') return { ...out, ok: true, why: '', good: [`Bridge: ${hxCost(HX_BRIDGE.l, HX_BRIDGE.x)}`] };
   }
+  if ((a.kind === 'tree' || a.kind === 'rock') && hxW(st).noClear) return { ...out, why: a.kind === 'tree' ? 'Trees are in the way' : 'Rocks are in the way' };
   if (a.kind === 'tree') return { ...out, why: `Clear the trees first (${hxCost(HX_CLEAR.tree.l, HX_CLEAR.tree.x)}, tap them)` };
   if (a.kind === 'rock') return { ...out, why: `Clear the rocks first (${hxCost(HX_CLEAR.rock.l, HX_CLEAR.rock.x)}, tap them)` };
   if (a.kind === 'hill' || a.kind === 'mount') return { ...out, why: 'Can\'t build on hills or mountains' };
   if (a.kind === 'river') return { ...out, why: 'Can\'t build on the river (roads can bridge it)' };
-  if (a.kind === 'free' || (a.kind === 'b' && k !== moving) || a.kind === 'road') return { ...out, why: a.kind === 'road' ? 'There\'s a road here' : 'Something\'s already here' };
-  if (id === 'road') return { ...out, ok: true };
+  if (a.kind === 'free' || (a.kind === 'b' && a.main !== moving) || a.kind === 'road') return { ...out, why: a.kind === 'road' ? 'There\'s a road here' : 'Something\'s already here' };
+  if (id === 'road' || id === '_one') return { ...out, ok: true };
   if (!it) return { ...out, why: '?' };
   if (it.need && !hxNb(k).some(n => hxTerr(n, st) === it.need)) return { ...out, why: `A ${it.n.toLowerCase()} must touch the ${it.need}` };
-  out.ok = true;
-  if (!it.field && !it.wall) { const net = hxLinks(st); if (hxLinked(k, net)) out.good.push('Linked to your hall'); else out.warn.push('Needs a road to your hall to work'); }
+  return hxCheckPost(it, k, st, { ...out, ok: true });
+}
+function hxCheckPost(it, k, st, out) {
+  if (!it.field && !it.wall && !it.noRoad) { const net = hxLinks(st), tmp = { ...st, b: { ...st.b, [k]: { id: it.id } } }; if (hxLinked(k, net, tmp)) out.good.push('Linked to your hall'); else out.warn.push('Needs a road to the hall to work'); }
   if (it.near) { const ns = hxNb(k).filter(n => hxTerr(n, st) === HX_NEAR[it.near][0]); if (ns.length) { out.good.push(HX_NEAR[it.near][1]); out.bonus.push(...ns); } else out.warn.push(`${HX_NEAR[it.near][1]} (none here)`); }
   if (it.fields) { const ns = hxNb(k).filter(n => st.b[n]?.id === 'field'); out.bonus.push(...ns); out.good.push(`${Math.min(3, ns.length)} field${ns.length === 1 ? '' : 's'} touching (+${Math.min(3, ns.length)}% each)`); }
   if (it.field) { const ns = hxNb(k).filter(n => st.b[n]?.id === 'windmill'); out.bonus.push(...ns); if (ns.length) out.good.push('Boosts the windmill next to it'); }
@@ -305,6 +319,7 @@ function viewHexHome() {
   return isFrame('personal', hud, extra);
 }
 function hxPlaceBar(P, tool) {
+  if (hxHouseOn()) return hhPlaceBar(P, tool);
   if (tool) {
     const n = P.id === 'road' ? 'road' : P.id === 'wall' ? 'wall' : '';
     return `<div class="ishud is-bc isplace hxbar"><span>${P.id === 'erase' ? '🧽 Drag over roads and walls to remove them (roads give their cost back).' : `Drag across hexes to lay ${n} (${P.id === 'road' ? hxCost(HX_ROAD.l, HX_ROAD.x) : hxCost(0, hxItem('wall').x)} each).${P.n ? ` <b>${P.n} laid</b>` : ''}`} ${P.why ? `<b class="hxwhy bad">${esc(P.why)}</b>` : ''}</span>
@@ -367,6 +382,7 @@ function hxOpen(id) {
 
 // ---------- actions ----------
 function hxPlace(P, k) {
+  if (hxHouseOn()) return hhPlace(P, k);
   const st = hxState(), it = hxItem(P.id); if (!it) return false;
   const ch = hxCheck(P.id, k, st, P.from); if (!ch.ok) { if (typeof sfx === 'function') sfx('deny'); toast('Can\'t go there', ch.why); return false; }
   if (P.mode === 'move') {
@@ -383,6 +399,7 @@ function hxPlace(P, k) {
 }
 // lay or remove a road or wall on one hex while dragging; returns why not, or ''
 function hxPaint(tool, k) {
+  if (hxHouseOn()) return hhPaint(tool, k);
   const st = hxState(), a = hxAt(k, st);
   if (tool === 'erase') {
     if (a.kind === 'road') { st.road = st.road.filter(x => x !== k); const c = a.bridge ? HX_BRIDGE : HX_ROAD; ftAddCurrency(c.l, c.x); return ''; }
@@ -402,7 +419,7 @@ function hxPaint(tool, k) {
   return '';
 }
 function hxStartPlace(P) {
-  Object.assign(ui, { hxP: P, hxSel: null, isPanel: null });
+  Object.assign(ui, { hxP: P, hxSel: null, isPanel: null }, hxHouseOn() ? { isSel: null } : {});
   if (typeof sfx === 'function') sfx('pickup');
   render(); if (HX3.hover) hxHover(HX3.hover, true);
 }
@@ -413,6 +430,7 @@ function hxUndo() {
 }
 document.addEventListener('click', e => {
   const el = e.target.closest('[data-hx]'); if (!el) return;
+  e.hxDone = true; // render() reuses DOM nodes, so later click handlers mustn't read this button again
   const st = hxState(), k = el.dataset.k, a = el.dataset.hx;
   switch (a) {
     case 'panel': Object.assign(ui, { isPanel: el.dataset.v, hxSel: null }); render(); break;
@@ -446,8 +464,14 @@ document.addEventListener('click', e => {
   }
 });
 document.addEventListener('keydown', e => {
-  if (view !== 'islands' || (ui.isTab || 'personal') !== 'personal' || (typeof guideOn === 'function' && guideOn())) return;
+  if (view !== 'islands' || (typeof guideOn === 'function' && guideOn())) return;
   if (e.target.closest?.('input, textarea, select')) return;
+  if ((ui.isTab || 'personal') === 'house') { // the house island: islands.js closes panels, this handles placing
+    if (e.key === 'Escape' && ui.hxP) { e.preventDefault(); hxCancel(); }
+    else if ((e.key === 'r' || e.key === 'R') && ui.hxP && ui.hxP.mode !== 'tool') { ui.hxP.rot = ((ui.hxP.rot || 0) + 1) % 6; hxGhostDraw(); }
+    return;
+  }
+  if ((ui.isTab || 'personal') !== 'personal') return;
   if (e.key === 'Escape' && (ui.hxP || ui.hxSel || ui.isPanel)) { e.preventDefault(); if (ui.hxP) hxCancel(); else { Object.assign(ui, { isPanel: null, hxSel: null }); render(); } }
   else if ((e.key === 'r' || e.key === 'R') && ui.hxP && ui.hxP.mode !== 'tool') { ui.hxP.rot = ((ui.hxP.rot || 0) + 1) % 6; hxGhostDraw(); }
   else if ((e.ctrlKey || e.metaKey) && e.key === 'z' && ui.hxUndo) { e.preventDefault(); hxUndo(); }
@@ -476,6 +500,7 @@ function hxKit() {
       const tex = new THREE.CanvasTexture(cv); tex.flipY = false; tex.encoding = THREE.sRGBEncoding; tex.needsUpdate = true; URL.revokeObjectURL(url);
       HX3.kit = { buf, base, idx, tex, mat: new THREE.MeshStandardMaterial({ map: tex, roughness: .75, metalness: 0 }) };
       HX3.kit.ghost = { ok: new THREE.MeshStandardMaterial({ map: tex, transparent: true, opacity: .7, emissive: '#3ad06b', emissiveIntensity: .35, depthWrite: false }), bad: new THREE.MeshStandardMaterial({ map: tex, transparent: true, opacity: .55, emissive: '#ff3b3b', emissiveIntensity: .5, depthWrite: false }) };
+      HX3.kit.ghostP = { ok: new THREE.MeshStandardMaterial({ color: '#7be495', transparent: true, opacity: .6, depthWrite: false }), bad: new THREE.MeshStandardMaterial({ color: '#ff6b6b', transparent: true, opacity: .5, depthWrite: false }) };
       HX3.kit.worn = new THREE.MeshStandardMaterial({ map: tex, roughness: .9, color: '#b9a58f' });
       ok(); if (view === 'islands') render();
     };
@@ -508,29 +533,46 @@ function hxModel(name, col, mat = HX3.kit.mat, shadow = true) {
   return g;
 }
 const hxLow = () => !!(D.settings && D.settings.lowQuality);
-function mountHex3D() {
+// mode 'hex' is your island, 'hexh' the shared house island (hxhouse.js); both are drawn by the same code
+function mountHex3D(mode = 'hex') {
   if (!hxKit()) return false;
   IS3.layout = null; IS3.hexMode = true;
-  if (IS3.house !== 'hex') { IS3.house = 'hex'; Object.assign(IS3, { yaw: Math.PI / 5, pitch: .78, dist: 40, tgt: [0, 0] }); }
-  const st = hxState();
-  const sig = [hxCol(), hxLow(), JSON.stringify(st.b), st.road.join(';'), st.clr.join(';'), Object.keys(st.b).map(k => hxCond(k) + hxLvOn(st.b[k])).join(), Math.floor(Date.now() / 36e5), ui.hxP?.mode === 'move' ? ui.hxP.from : ''].join('|');
+  if (IS3.house !== mode) { IS3.house = mode; HX3.sig = ''; Object.assign(IS3, is3home(mode), { tgt: [0, 0] }); if (HX3.ghost) { IS3.scene.remove(HX3.ghost); HX3.ghost = null; HX3.ghostModel = null; } }
+  const st = hxCur(), W0 = hxW(st);
+  const sig = [mode, W0.col || hxCol(), hxLow(), W0.sig ? W0.sig(st) : [JSON.stringify(st.b), st.road.join(';'), st.clr.join(';'), Object.keys(st.b).map(k => hxCond(k) + hxLvOn(st.b[k])).join()].join('|'), Math.floor(Date.now() / 36e5), ui.hxP?.mode === 'move' ? ui.hxP.from : ''].join('|');
   if (sig !== HX3.sig) { HX3.sig = sig; hxBuild(); }
   hxGhostDraw(); hxLoop(); is3draw(); return true;
 }
+// how a building on your own island looks right now: condition, level, upgrading, build progress
+function hxLookHome(k, s, st) {
+  const c = hxCond(k, today(), st), t0 = new Date(s.start + 'T00:00').getTime(), t1 = new Date(s.ready + 'T00:00').getTime();
+  return { c, lv: hxLvOn(s), up: !!(s.up && today() < s.up.r), p: (Date.now() - (s.t || t0)) / Math.max(1, t1 - t0) };
+}
+// a building's model: a KayKit model, a custom one (it.make), plus any extra props (it.add)
+function hxMakeModel(it, col, mat, shadow = true) {
+  let g; col = it.col || col;
+  if (it.make) { g = it.make(col); if (mat && mat !== HX3.kit.mat) { const pm = mat === HX3.kit.ghost.ok ? HX3.kit.ghostP.ok : mat === HX3.kit.ghost.bad ? HX3.kit.ghostP.bad : null; g.traverse(o => { if (o.isMesh) { o.material = o.material.map ? mat : pm || o.material; o.castShadow = shadow && o.castShadow; } }); } }
+  else { g = hxModel(it.m, col, mat, shadow); if (it.s) { const w = new THREE.Group(); g.scale.setScalar(it.s); w.add(g); g = w; } }
+  for (const [m, dx, dz, r = 0, s = 1] of it.add || []) { const p = hxModel(m === '@flag' ? 'flag_' + col : m, col, mat, shadow); p.position.set(dx, 0, dz); p.rotation.y = r; p.scale.setScalar(s); g.add(p); }
+  return g;
+}
+// the middle of the hexes a building covers
+const hxMid = (it, k) => { const fp = hxFoot(it, k); let x = 0, z = 0; for (const f of fp) { const [a, b] = hxPos(...hxQR(f)); x += a; z += b; } return [x / fp.length, z / fp.length]; };
 // the whole island, rebuilt when something on it changes
 function hxBuild() {
-  const W = IS3.world, st = hxState(), col = hxCol(), L = hxLand(), rnd = seeded('solis-hex-dress'), low = hxLow();
+  const W = IS3.world, st = hxCur(), W0 = hxW(st), col = W0.col || hxCol(), L = W0.land(), R = W0.R || HX_R, S = (R + 1) / (HX_R + 1), rnd = seeded('solis-hex-dress' + (W0.seed || '')), low = hxLow();
   is3clear(); HX3.anim = []; IS3.marks = {};
   IS3.top = 0;
-  Object.assign(IS3.sun.shadow.camera, { left: -17, right: 17, top: 17, bottom: -17, near: 1, far: 120 }); IS3.sun.shadow.camera.updateProjectionMatrix();
+  Object.assign(IS3.sun.shadow.camera, { left: -17 * S, right: 17 * S, top: 17 * S, bottom: -17 * S, near: 1, far: 120 }); IS3.sun.shadow.camera.updateProjectionMatrix();
   IS3.sun.position.set(18, 34, 12); IS3.sun.shadow.mapSize.set(low ? 512 : 2048, low ? 512 : 2048); if (IS3.sun.shadow.map) { IS3.sun.shadow.map.dispose(); IS3.sun.shadow.map = null; }
   const add = (name, k, rot = 0, y = 0, s = 1, c = col, mat) => { const [x, z] = hxPos(...hxQR(k)); const g = hxModel(name, c, mat); g.position.set(x, y, z); g.rotation.y = -rot * Math.PI / 3; g.scale.setScalar(s); W.add(g); return g; };
   const roads = new Set(st.road), rivers = new Set([...L].filter(([, h]) => h.t === 'river').map(([k]) => k));
+  const joins = n => roads.has(n) || n === '0,0' || !!hxFreeAt(n, st);
   // the rock under the island: a craggy hexagonal point with glowing crystals, like the other islands
-  const base = is3mesh(is3rock(new THREE.CylinderGeometry(15.4, 15.6, 1.2, 6, 1), seeded('hxb'), .02), '#7a5a3e', 0, -1.6, 0, W); base.rotation.y = Math.PI / 6;
-  const und = is3mesh(is3rock(new THREE.ConeGeometry(15, 13, 6, 6), seeded('hxu'), .22, .1), '#6d5f73', 0, -8.7, 0, W); und.rotation.set(Math.PI, Math.PI / 6, 0);
-  for (let i = 0; i < 7; i++) { const a = rnd() * 6.28, r = 4 + rnd() * 6, h = 1 + rnd() * 2; const cr = is3mesh(new THREE.ConeGeometry(.35 + rnd() * .3, h, 5), ['#4ee6ff', '#ffb347'][i % 2], Math.cos(a) * r, -3 - rnd() * 5 - h / 2, Math.sin(a) * r, W, true); cr.rotation.set(Math.PI + (rnd() - .5) * .5, 0, (rnd() - .5) * .5); }
-  for (let i = 0; i < 6; i++) { const a = i / 6 * 6.28 + rnd(), r = 22 + rnd() * 6, s = .7 + rnd() * .8, g = new THREE.Group(); g.position.set(Math.cos(a) * r, -3 + rnd() * 6, Math.sin(a) * r); g.add(hxModel(rnd() < .5 ? 'hex_grass' : 'hex_grass_bottom', col)); if (rnd() < .6) { const t = hxModel(rnd() < .5 ? 'trees_A_small' : 'tree_single_B', col); g.add(t); } g.scale.setScalar(s); W.add(g); HX3.anim.push({ o: g, bob: rnd() * 6, y: g.position.y }); }
+  const base = is3mesh(is3rock(new THREE.CylinderGeometry(15.4 * S, 15.6 * S, 1.2, 6, 1), seeded('hxb'), .02), '#7a5a3e', 0, -1.6, 0, W); base.rotation.y = Math.PI / 6;
+  const und = is3mesh(is3rock(new THREE.ConeGeometry(15 * S, 13 * S, 6, 6), seeded('hxu'), .22, .1), '#6d5f73', 0, -2.2 - 6.5 * S, 0, W); und.rotation.set(Math.PI, Math.PI / 6, 0);
+  for (let i = 0; i < 7; i++) { const a = rnd() * 6.28, r = (4 + rnd() * 6) * S, h = 1 + rnd() * 2; const cr = is3mesh(new THREE.ConeGeometry(.35 + rnd() * .3, h, 5), ['#4ee6ff', '#ffb347'][i % 2], Math.cos(a) * r, -3 - rnd() * 5 * S - h / 2, Math.sin(a) * r, W, true); cr.rotation.set(Math.PI + (rnd() - .5) * .5, 0, (rnd() - .5) * .5); }
+  for (let i = 0; i < 6; i++) { const a = i / 6 * 6.28 + rnd(), r = (22 + rnd() * 6) * S, s = .7 + rnd() * .8, g = new THREE.Group(); g.position.set(Math.cos(a) * r, -3 + rnd() * 6, Math.sin(a) * r); g.add(hxModel(rnd() < .5 ? 'hex_grass' : 'hex_grass_bottom', col)); if (rnd() < .6) { const t = hxModel(rnd() < .5 ? 'trees_A_small' : 'tree_single_B', col); g.add(t); } g.scale.setScalar(s); W.add(g); HX3.anim.push({ o: g, bob: rnd() * 6, y: g.position.y }); }
   // ground tiles
   for (const [k, h] of L) {
     const a = hxAt(k, st);
@@ -538,56 +580,55 @@ function hxBuild() {
     if (h.t === 'river') {
       const m = hxNb(k).reduce((mm, n, i) => mm | (rivers.has(n) || L.get(n)?.t === 'water' ? 1 << i : 0), 0), [v, t] = hxTileFor(m);
       add('hex_river_' + v, k, t);
-      if (roads.has(k)) { const rm = hxNb(k).reduce((mm, n, i) => mm | (roads.has(n) || n === '0,0' || hxFreeAt(n) ? 1 << i : 0), 0), e = [0, 1, 2, 3, 4, 5].find(i => rm & 1 << i) ?? 0; add('building_bridge_A', k, e + 1.5, 0); }
+      if (roads.has(k)) { const rm = hxNb(k).reduce((mm, n, i) => mm | (joins(n) ? 1 << i : 0), 0), e = [0, 1, 2, 3, 4, 5].find(i => rm & 1 << i) ?? 0; add('building_bridge_A', k, e + 1.5, 0); }
       continue;
     }
-    if (a.kind === 'road') { const m = hxNb(k).reduce((mm, n, i) => mm | (roads.has(n) || n === '0,0' || hxFreeAt(n) ? 1 << i : 0), 0), [v, t] = hxTileFor(m); add('hex_road_' + v, k, t); }
+    if (a.kind === 'road') { const m = hxNb(k).reduce((mm, n, i) => mm | (joins(n) ? 1 << i : 0), 0), [v, t] = hxTileFor(m); add('hex_road_' + v, k, t); }
     else add('hex_grass', k, Math.floor(h.v * 6));
-    if (a.kind === 'tree') { const g = add(['trees_A_large', 'trees_B_large', 'trees_A_medium', 'trees_B_medium'][Math.floor(h.v * 4)], k, Math.floor(h.v * 60) % 6); IS3.marks[k] = null; void g; }
+    if (a.kind === 'tree') { add(['trees_A_large', 'trees_B_large', 'trees_A_medium', 'trees_B_medium'][Math.floor(h.v * 4)], k, Math.floor(h.v * 60) % 6); IS3.marks[k] = null; }
     else if (a.kind === 'rock') { for (let i = 0; i < 3; i++) { const g = add(['rock_single_A', 'rock_single_B', 'rock_single_C', 'rock_single_D', 'rock_single_E'][Math.floor(rnd() * 5)], k, 0, 0, 1.6 + rnd() * .8); g.position.x += (rnd() - .5) * 1.1; g.position.z += (rnd() - .5) * 1.1; g.rotation.y = rnd() * 6.28; } }
     else if (a.kind === 'hill') add(['hills_A', 'hills_B_trees', 'hills_C', 'hill_single_A'][Math.floor(h.v * 4)], k, Math.floor(h.v * 60) % 6);
     else if (a.kind === 'mount') add(['mountain_A_grass_trees', 'mountain_B_grass', 'mountain_C_grass_trees'][Math.floor(h.v * 3)], k, Math.floor(h.v * 60) % 6);
     else if (a.kind === 'grass' && !low && h.v > .82) { const g = add(['tree_single_A', 'rock_single_B', 'tree_single_B'][Math.floor(h.v * 30) % 3], k, 0, 0, .8); g.position.x += (rnd() - .5) * 1.2; g.position.z += (rnd() - .5) * 1.2; }
   }
-  // page buildings
-  for (const f of HX_FREE) {
-    const g = add(f.m, f.at, f.id === 'hall' ? 0 : [3, 4, 2, 5, 1][HX_FREE.indexOf(f) - 1] || 0);
-    const [x, z] = hxPos(...hxQR(f.at)); IS3.marks[f.at] = [x, f.id === 'hall' ? 5.2 : 2.4, z];
+  // page buildings (the house island has only its great hall)
+  W0.free.forEach((f, i) => {
+    const g = add(f.m, f.at, f.rot ?? (f.id === 'hall' ? 0 : [3, 4, 2, 5, 1][i - 1] || 0), 0, f.s || 1);
+    const [x, z] = hxPos(...hxQR(f.at)); IS3.marks[f.at] = [x, f.at === '0,0' ? 5.2 * (f.s || 1) : 2.4, z];
     if (f.id === 'hall') { const o = is3mesh(new THREE.IcosahedronGeometry(.42, 1), '#ffb347', 0, 4.65, 0, g, true); HX3.anim.push({ o, orb: 1 }); const ring = is3mesh(new THREE.TorusGeometry(.7, .04, 4, 20), '#ffe8a3', 0, 4.65, 0, g, true); HX3.anim.push({ o: ring, ring: 1 }); }
-  }
-  // your buildings, by stage
+  });
+  if (W0.dress) W0.dress(W, add, rnd, col);
+  // the buildings, by stage
   const net = hxLinks(st);
-  const walls = new Set(Object.entries(st.b).filter(([, s]) => s.id === 'wall').map(([k]) => k));
+  const walls = new Set(Object.entries(st.b).filter(([, s]) => W0.item(s.id)?.wall).map(([k]) => k));
   const lifted = ui.hxP?.mode === 'move' ? ui.hxP.from : null; // the one being moved is drawn as the ghost instead
   for (const [k, s] of Object.entries(st.b)) {
-    const it = hxItem(s.id); if (!it || k === lifted) continue;
-    const [x, z] = hxPos(...hxQR(k)), c = hxCond(k), lv = hxLvOn(s), rot = s.rot || 0;
+    const it = W0.item(s.id); if (!it || k === lifted) continue;
+    const fp = hxFoot(it, k), [x, z] = hxMid(it, k), lk = W0.look ? W0.look(k, s, st) : hxLookHome(k, s, st), c = lk.c, lv = lk.lv, rot = s.rot || 0, mk = s.key || k;
     if (it.wall) {
       const ns = hxNb(k); let any = false;
+      if (it.gate) { const i = Math.max(0, ns.findIndex(n => walls.has(n))); const g = add('wall_straight_gate', k, i); g.position.x += Math.cos(i * Math.PI / 3) * .5; g.position.z += Math.sin(i * Math.PI / 3) * .5; continue; }
       ns.forEach((n, i) => { if (walls.has(n) && i < 3) { any = true; const g = add('wall_straight', k, i); g.position.x += Math.cos(i * Math.PI / 3); g.position.z += Math.sin(i * Math.PI / 3); } });
       if (!any || ns.some((n, i) => walls.has(n) && i >= 3)) add('wall_corner_A_outside', k, 0, 0, .55);
       continue;
     }
-    if (it.field) { const g = add('building_grain', k, rot); if (c === 'grow') { const p = Math.min(1, Math.max(.15, (Date.now() - new Date(s.start + 'T00:00').getTime()) / (new Date(s.ready + 'T00:00').getTime() - new Date(s.start + 'T00:00').getTime()))); g.scale.set(1, p, 1); } IS3.marks[k] = [x, 1, z]; continue; }
-    IS3.marks[k] = [x, 2.6, z];
+    if (it.field) { const g = add('building_grain', k, rot); if (c === 'grow') g.scale.set(1, Math.min(1, Math.max(.15, lk.p)), 1); IS3.marks[mk] = [x, 1, z]; continue; }
+    IS3.marks[mk] = [x, it.hz === 7 ? 4.4 : 2.6, z];
     if (c === 'build') {
-      const p = (Date.now() - (s.t || new Date(s.start + 'T00:00').getTime())) / (new Date(s.ready + 'T00:00').getTime() - new Date(s.start + 'T00:00').getTime());
-      add('building_dirt', k, rot);
-      if (p < .5) { add('building_stage_A', k, rot); add('resource_lumber', k, rot + 2, 0, 1).position.x += .5; }
-      else add('building_scaffolding', k, rot);
+      fp.forEach((f, i) => { add('building_dirt', f, rot); if (i) return; if (lk.p < .5) { add('building_stage_A', f, rot); add('resource_lumber', f, rot + 2, 0, 1).position.x += .5; } else add('building_scaffolding', f, rot); });
       if (!low) hxWorkers(W, x, z, rnd);
-    } else if (c === 'broken') add('building_destroyed', k, rot);
+    } else if (c === 'broken') fp.forEach(f => add('building_destroyed', f, rot));
     else {
-      add(it.m, k, rot, 0, 1 + (lv - 1) * .06, col, c === 'worn' ? HX3.kit.worn : undefined);
-      if (s.up && today() < s.up.r) { add('ladder', k, rot + 1, 0, 1).position.x += .6; if (!low) hxWorkers(W, x, z, rnd); }
-      if (!hxLinked(k, net)) { const r = is3mesh(new THREE.RingGeometry(1.55, 1.75, 6), '#ff8f5a', x, .03, z, W, true); r.rotation.set(-Math.PI / 2, 0, Math.PI / 6); }
+      const g = hxMakeModel(it, col, c === 'worn' ? HX3.kit.worn : undefined); g.position.set(x, 0, z); g.rotation.y = -rot * Math.PI / 3; g.scale.setScalar(1 + (lv - 1) * .06); W.add(g);
+      if (lk.up) { add('ladder', k, rot + 1, 0, 1).position.x += .6; if (!low) hxWorkers(W, x, z, rnd); }
+      if (!it.noRoad && !hxLinked(k, net, st)) for (const f of fp) { const [fx, fz] = hxPos(...hxQR(f)), r = is3mesh(new THREE.RingGeometry(1.55, 1.75, 6), '#ff8f5a', fx, .03, fz, W, true); r.rotation.set(-Math.PI / 2, 0, Math.PI / 6); }
     }
     for (let i = 1; i < lv; i++) { const g = add('flag_' + col, k, 0, 0, .8); g.position.x += .7 - i * .25; g.position.z += .55; }
   }
   // clouds drifting past, and chimney smoke
-  if (!low) for (let i = 0; i < 5; i++) { const g = hxModel(i % 2 ? 'cloud_small' : 'cloud_big', col, HX3.kit.mat, false); const a = rnd() * 6.28, r = 10 + rnd() * 14; g.position.set(Math.cos(a) * r, 7 + rnd() * 4, Math.sin(a) * r); g.scale.setScalar(1 + rnd()); W.add(g); HX3.anim.push({ o: g, cloud: .2 + rnd() * .3, a, r }); }
+  if (!low) for (let i = 0; i < 5; i++) { const g = hxModel(i % 2 ? 'cloud_small' : 'cloud_big', col, HX3.kit.mat, false); const a = rnd() * 6.28, r = (10 + rnd() * 14) * S; g.position.set(Math.cos(a) * r, 7 + rnd() * 4, Math.sin(a) * r); g.scale.setScalar(1 + rnd()); W.add(g); HX3.anim.push({ o: g, cloud: .2 + rnd() * .3, a, r }); }
   // invisible ground the mouse lands on
-  const pick = IS3.grid = new THREE.Mesh(new THREE.CircleGeometry(20, 6), new THREE.MeshBasicMaterial({ visible: false })); pick.rotation.x = -Math.PI / 2; W.add(pick);
+  const pick = IS3.grid = new THREE.Mesh(new THREE.CircleGeometry(20 * S, 6), new THREE.MeshBasicMaterial({ visible: false })); pick.rotation.x = -Math.PI / 2; W.add(pick);
   IS3.ghost.visible = false;
 }
 // little builders hammering by a site
@@ -601,35 +642,38 @@ function hxWorkers(W, x, z, rnd) {
 // the building following the mouse while placing, with a coloured hex outline and its bonus hexes lit up
 function hxGhostDraw() {
   if (!HX3.kit || !IS3.world) return;
-  if (HX3.ghost) { IS3.scene.remove(HX3.ghost); HX3.ghost = null; }
+  if (HX3.ghost) { IS3.scene.remove(HX3.ghost); HX3.ghost = null; HX3.ghostModel = null; }
   const P = ui.hxP, k = HX3.hover; if (!P || !k || view !== 'islands') { is3draw(); return; }
   const g = HX3.ghost = new THREE.Group(), [x, z] = hxPos(...hxQR(k));
   const outline = (kk, c, o = .9) => { const [xx, zz] = hxPos(...hxQR(kk)), r = new THREE.Mesh(new THREE.RingGeometry(1.5, 1.72, 6), new THREE.MeshBasicMaterial({ color: c, transparent: true, opacity: o, depthWrite: false })); r.rotation.set(-Math.PI / 2, 0, Math.PI / 6); r.position.set(xx - x, .06, zz - z); g.add(r); return r; };
   g.position.set(x, 0, z); IS3.scene.add(g);
   if (P.mode === 'tool') { outline(k, P.why ? '#ff5252' : P.id === 'erase' ? '#ffa94d' : '#51cf66'); is3draw(); return; }
-  const ch = P.chk || hxCheck(P.id, k, hxState(), P.from), it = hxItem(P.id);
-  outline(k, ch.ok ? (ch.warn.length && !ch.good.length ? '#ffd43b' : '#51cf66') : '#ff5252');
-  const fill = new THREE.Mesh(new THREE.CircleGeometry(1.6, 6), new THREE.MeshBasicMaterial({ color: ch.ok ? '#51cf66' : '#ff5252', transparent: true, opacity: .22, depthWrite: false })); fill.rotation.set(-Math.PI / 2, 0, Math.PI / 6); fill.position.y = .05; g.add(fill);
+  const st = hxCur(), ch = P.chk || hxCheck(P.id, k, st, P.from), it = hxW(st).item(P.id); if (!it) { is3draw(); return; }
+  const fp = hxFoot(it, k), [mx, mz] = hxMid(it, k);
+  for (const f of fp) {
+    outline(f, ch.ok ? (ch.warn.length && !ch.good.length ? '#ffd43b' : '#51cf66') : '#ff5252');
+    const [fx, fz] = hxPos(...hxQR(f)), fill = new THREE.Mesh(new THREE.CircleGeometry(1.6, 6), new THREE.MeshBasicMaterial({ color: ch.ok ? '#51cf66' : '#ff5252', transparent: true, opacity: .22, depthWrite: false })); fill.rotation.set(-Math.PI / 2, 0, Math.PI / 6); fill.position.set(fx - x, .05, fz - z); g.add(fill);
+  }
   for (const b of ch.bonus || []) outline(b, '#ffd43b', .8);
-  const m = hxModel(it.m, hxCol(), ch.ok ? HX3.kit.ghost.ok : HX3.kit.ghost.bad, false); m.rotation.y = -(P.rot || 0) * Math.PI / 3; m.position.y = .5; g.add(m); HX3.ghostModel = m;
+  const m = hxMakeModel(it, hxW(st).col || hxCol(), ch.ok ? HX3.kit.ghost.ok : HX3.kit.ghost.bad, false); m.rotation.y = -(P.rot || 0) * Math.PI / 3; m.position.set(mx - x, .5, mz - z); g.add(m); HX3.ghostModel = m;
   is3draw();
 }
 function hxHover(k, force) {
   const P = ui.hxP; if (k === HX3.hover && !force) return;
   HX3.hover = k;
   if (P && P.mode !== 'tool') {
-    P.chk = k ? hxCheck(P.id, k, hxState(), P.from) : null;
+    P.chk = k ? hxCheck(P.id, k, hxCur(), P.from) : null;
     const bar = document.querySelector('#isfull .hxbar'); if (bar) { const tmp = document.createElement('div'); tmp.innerHTML = hxPlaceBar(P, false); bar.replaceWith(tmp.firstElementChild); }
     if (typeof sfx === 'function' && k) sfx('hover', { gap: 40 });
   }
   hxGhostDraw();
 }
-// pointer handling, called from islands.js's canvas listeners while the hex island shows
+// pointer handling, called from islands.js's canvas listeners while a hex island shows
 function hxKey(e) { const r = IS3.canvas.getBoundingClientRect(), m = new THREE.Vector2((e.clientX - r.left) / r.width * 2 - 1, -(e.clientY - r.top) / r.height * 2 + 1); IS3.ray.setFromCamera(m, IS3.cam); const hit = IS3.grid && IS3.ray.intersectObject(IS3.grid)[0]; return hit ? hxFromXZ(hit.point.x, hit.point.z) : null; }
 function hxPointer(type, e) {
-  if (IS3.house !== 'hex') return false;
+  if (IS3.house !== 'hex' && IS3.house !== 'hexh') return false;
   if (typeof guideOn === 'function' && guideOn()) return type !== 'move'; // a guide is showing: look, don't build
-  const P = ui.hxP;
+  const P = ui.hxP, house = IS3.house === 'hexh';
   if (type === 'context') { if (P) { hxCancel(); return true; } return false; }
   if (type === 'down') {
     HX3.down = { x: e.clientX, y: e.clientY, k: hxKey(e), btn: e.button };
@@ -639,11 +683,11 @@ function hxPointer(type, e) {
   if (type === 'move') {
     const k = hxKey(e);
     if (HX3.paint) { hxPaintAt(k); return true; }
-    // press on one of your buildings and drag: pick it up
+    // press on one of your buildings and drag: pick it up (on the house island, leaders only)
     const D0 = HX3.down;
     if (D0 && !P && D0.btn === 0 && Math.abs(e.clientX - D0.x) + Math.abs(e.clientY - D0.y) > 8) {
-      const s = D0.k && hxState().b[D0.k];
-      if (s && !hxItem(s.id)?.wall) { HX3.down = null; HX3.dragged = true; hxStartPlace({ id: s.id, mode: 'move', from: D0.k, rot: s.rot || 0, rot0: s.rot || 0, drag: true }); hxHover(k, true); return true; }
+      const st = hxCur(), a = D0.k ? hxAt(D0.k, st) : null, s = a?.kind === 'b' ? a.s : null;
+      if (s && !a.it?.wall && (!house || hhCanEdit())) { HX3.down = null; HX3.dragged = true; hxStartPlace({ id: s.id, key: s.key, mode: 'move', from: a.main, rot: s.rot || 0, rot0: s.rot || 0, drag: true }); hxHover(k, true); return true; }
     }
     if (ui.hxP && !HX3.down) { hxHover(k); return true; }
     if (ui.hxP && ui.hxP.drag) { hxHover(k); return true; }
@@ -651,11 +695,12 @@ function hxPointer(type, e) {
   }
   if (type === 'up') {
     const D0 = HX3.down; HX3.down = null;
-    if (HX3.paint) { HX3.paint = null; save(); render(); return true; }
-    if (P && P.drag) { const k = hxKey(e); if (k && hxPlace(P, k)) { ui.hxP = null; ui.hxSel = k; render(); } else hxCancel(); return true; }
+    if (HX3.paint) { HX3.paint = null; if (house) hhPaintDone(); else { save(); render(); } return true; }
+    if (P && P.drag) { const k = hxKey(e); if (k && hxPlace(P, k)) { ui.hxP = null; if (!house) ui.hxSel = k; render(); } else hxCancel(); return true; }
     if (!D0 || Math.abs(e.clientX - D0.x) + Math.abs(e.clientY - D0.y) > 6 || D0.btn !== 0) return !!P;
     const k = hxKey(e);
-    if (P) { if (k && hxPlace(P, k)) { ui.hxP = null; ui.hxSel = P.mode === 'new' && hxItem(P.id).field ? null : k; render(); } return true; }
+    if (P) { if (k && hxPlace(P, k)) { ui.hxP = null; if (!house) ui.hxSel = P.mode === 'new' && hxItem(P.id).field ? null : k; render(); } return true; }
+    if (house) { hhTap(k); return true; }
     // a tap: select what's there
     const a = k ? hxAt(k) : { kind: 'off' };
     const sel = ['free', 'b', 'tree', 'rock', 'road'].includes(a.kind) ? k : null;
@@ -670,7 +715,7 @@ function hxPaintAt(k) {
   let why = '';
   for (const kk of line) { const w = hxPaint(P.id, kk); if (!w) { P.n = (P.n || 0) + 1; hxFx('pop', kk); } else why = w; }
   P.why = line.length && why && why !== 'nothing to remove' && why !== 'Already a road' ? why : '';
-  HX3.hover = k; HX3.sig = ''; mountHex3D();
+  HX3.hover = k; HX3.sig = ''; mountHex3D(IS3.house);
   const bar = document.querySelector('#isfull .hxbar'); if (bar) { const tmp = document.createElement('div'); tmp.innerHTML = hxPlaceBar(P, true); bar.replaceWith(tmp.firstElementChild); }
 }
 // little moments: a drop bounce with a dust puff and a thunk, a camera nudge
@@ -694,7 +739,7 @@ function hxLoop() {
   if (HX3.raf) return;
   const tick = now => {
     HX3.raf = 0;
-    if (IS3.house !== 'hex' || view !== 'islands' || !IS3.canvas?.isConnected) return;
+    if ((IS3.house !== 'hex' && IS3.house !== 'hexh') || view !== 'islands' || !IS3.canvas?.isConnected) return;
     const t = now / 1000, low = hxLow();
     if (!low) for (const a of HX3.anim) {
       if (a.ax) a.o.rotation[a.ax] = t * a.sp;
@@ -704,6 +749,8 @@ function hxLoop() {
       else if (a.hammer != null) a.o.rotation.z = Math.sin(t * 9 + a.hammer) * .9;
       else if (a.hop != null) a.o.position.y = Math.abs(Math.sin(t * 4 + a.hop)) * .05;
       else if (a.bob != null) a.o.position.y = a.y + Math.sin(t * .6 + a.bob) * .4;
+      else if (a.spin != null) a.o.rotation.y = t * a.spin;
+      else if (a.flick != null) a.o.scale.set(1, .8 + Math.abs(Math.sin(t * 7 + a.flick)) * .4, 1);
     }
     if (HX3.ghostModel) HX3.ghostModel.position.y = .45 + Math.sin(t * 5) * .12;
     HX3.fx = HX3.fx.filter(f => {
@@ -717,7 +764,6 @@ function hxLoop() {
   };
   HX3.raf = requestAnimationFrame(tick);
 }
-
 // ---------- the "How to build on hexes" walkthrough (whatsnew.js plays it) ----------
 // a box over a hex on screen, so a guide step can point at something in the 3D world
 function hxAnchor(k) {
