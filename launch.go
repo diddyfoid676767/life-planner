@@ -164,10 +164,11 @@ func emailSignUp(email, pw, name, inviter string) (*account, error) {
 	if inviter != "" && inviter != a.UserID {
 		f["inv"] = inviter
 	}
-	if err := createProfile(a, f, nil); err != nil {
-		return nil, fmt.Errorf("Couldn't save your profile: %v", err)
-	}
+	// send the link first: a profile hiccup shouldn't stop the email
 	fbSendVerify(a)
+	if err := createProfile(a, f, nil); err != nil {
+		return a, nil // logging in later makes the profile
+	}
 	return a, nil
 }
 
@@ -193,6 +194,8 @@ func emailLogIn(email, pw string) (*account, error) {
 			a.Verified = true
 			finishVerify(a)
 		}
+	} else {
+		fbSendVerify(a) // not opened yet: send a fresh link
 	}
 	return a, nil
 }
