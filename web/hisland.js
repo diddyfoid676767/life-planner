@@ -52,7 +52,7 @@ async function hiLoad(force) {
     Object.assign(HI, { doc: j.doc || {}, ut: j.ut || '', uid: j.uid, user: j.user, h, err: '' });
     HI.at = Date.now(); HI.busy = false;
     await hiTidy();
-  } catch (e) { HI.err = e.message; HI.at = Date.now(); }
+  } catch (e) { HI.err = e.message; HI.at = Date.now(); HI.h = h; } // 2.63: remember which house failed, or a signed-out render loops forever
   HI.busy = false;
   hiLocal().perks = hiPerks(); save();
   if (view === 'islands' && ui.isTab === 'house') render();
@@ -70,7 +70,7 @@ async function hiWrite(fn, again = true, quiet = false) {
 async function hiTidy() {
   const d = HI.doc, mine = hiMine(), c = d.c?.[HI.uid];
   const needC = !c || mine.l > (c.l || 0) || mine.e > (c.e || 0) || c.n !== HI.user;
-  const t = hiTerm(), lock = today() >= addDays(t.start, HI_VOTE_DAYS) && d.ld?.t !== t.id;
+  const t = hiTerm(), lock = today() >= t.voteEnd && d.ld?.t !== t.id;
   if (!needC && !lock) return;
   await hiWrite(doc => {
     if (needC) { const o = doc.c?.[HI.uid] || {}; doc.c = doc.c || {}; doc.c[HI.uid] = { n: HI.user, l: Math.max(mine.l, o.l || 0), e: Math.max(mine.e, o.e || 0) }; }
@@ -84,9 +84,9 @@ function hiPool(d = HI.doc || {}) {
   return { l: Math.max(0, Math.round(l - (+d.sp?.l || 0))), e: Math.max(0, Math.round(e - (+d.sp?.e || 0))), n: Object.keys(d.c || {}).length };
 }
 function hiTerm(d = today()) {
-  const id = cdTerm(d), y = +id.slice(0, 4), q = +id.slice(-1);
-  const start = `${y}-${String((q - 1) * 3 + 1).padStart(2, '0')}-01`, prev = q > 1 ? `${y}-T${q - 1}` : `${y - 1}-T4`;
-  return { id, start, prev, voteEnd: addDays(start, HI_VOTE_DAYS) };
+  // 2.63: real terms. Voting runs in Weeks 2 and 3; until it closes last term's leaders stay on
+  const T = termOf(d), id = T.key, start = T.from, prev = termOf(addDays(start, -1)).key, w1 = mondayOf(start);
+  return { id, start, prev, voteStart: addDays(w1, 7), voteEnd: addDays(w1, HI_VOTE_DAYS + 7) };
 }
 // who can be a leader: anyone who has put HI_ELIG or more into the pool
 const hiEligible = d => Object.values(d.c || {}).filter(x => (+x.l || 0) + (+x.e || 0) >= HI_ELIG).map(x => x.n);
@@ -229,11 +229,11 @@ function hiPoolHtml(pool) {
     <div class="row" style="gap:8px;flex-wrap:wrap"><input type="number" min="0" step="10" id="hiDonL" placeholder="${LUMEN} Lumen" style="width:110px"><input type="number" min="0" step="10" id="hiDonE" placeholder="${EMBER} Ember" style="width:110px"><button class="btn small primary" data-hi="donate">Donate</button><span class="muted small-text">You have ${LUMEN} ${w.lumen} · ${EMBER} ${w.ember}</span></div>`;
 }
 function hiLeadHtml(d, L) {
-  const t = hiTerm(), myVote = d.v?.[HI.uid] || {}, el = hiEligible(d).filter(n => n !== HI.user), voting = today() < t.voteEnd;
+  const t = hiTerm(), myVote = d.v?.[HI.uid] || {}, el = hiEligible(d).filter(n => n !== HI.user), voting = today() >= t.voteStart && today() < t.voteEnd;
   const tally = {}; for (const v of Object.values(d.v || {})) if (v.t === t.id && v.ld) tally[v.ld] = (tally[v.ld] || 0) + 1;
   return `<p>${L.u.length ? L.u.map(n => `<b>${esc(n)}</b>${n === HI.user ? ' (you)' : ''}`).join(', ') : '<span class="muted">Nobody yet</span>'}</p>
     <p class="muted small-text">${L.how === 'voted' ? 'Voted in for this term.' : L.how === 'last' ? `Last term's leaders stay on until voting closes ${fmtDate(t.voteEnd)}.` : `Until a vote is done, the top ${HI_LEADERS} contributors lead.`} ${HI_LEADERS} leaders a term. Anyone who has put ${HI_ELIG}+ into the pool can stand. Leaders start, upgrade, move and repair buildings.</p>
-    ${voting ? `<div class="ftlbl">Vote for this term's leaders (until ${fmtDate(t.voteEnd)})</div>${el.length ? `<ul class="cdlog">${el.map(n => `<li><b>${esc(n)}</b><span class="muted">${tally[n] || 0} vote${tally[n] === 1 ? '' : 's'}</span><button class="btn small ${myVote.t === t.id && myVote.ld === n ? 'primary' : ''}" data-hi="lvote" data-u="${esc(n)}">${myVote.t === t.id && myVote.ld === n ? 'Voted' : 'Vote'}</button></li>`).join('')}</ul>` : '<p class="muted small-text">Nobody else can stand yet.</p>'}` : `<p class="muted small-text">The next leader vote opens at the start of next term.</p>`}`;
+    ${voting ? `<div class="ftlbl">Vote for this term's leaders (until ${fmtDate(t.voteEnd)})</div>${el.length ? `<ul class="cdlog">${el.map(n => `<li><b>${esc(n)}</b><span class="muted">${tally[n] || 0} vote${tally[n] === 1 ? '' : 's'}</span><button class="btn small ${myVote.t === t.id && myVote.ld === n ? 'primary' : ''}" data-hi="lvote" data-u="${esc(n)}">${myVote.t === t.id && myVote.ld === n ? 'Voted' : 'Vote'}</button></li>`).join('')}</ul>` : '<p class="muted small-text">Nobody else can stand yet.</p>'}` : `<p class="muted small-text">${today() < t.voteStart ? `Voting for this term's leaders opens in Week 2 (${fmtDate(t.voteStart)}).` : 'The next leader vote opens in Week 2 of next term.'}</p>`}`;
 }
 function hiVoteHtml(d, pr, lead) {
   if (!pr) return `<p class="muted">No vote open. Month and term projects need one: ${lead ? 'put one to a vote from Projects.' : 'a leader puts them to a vote.'} Votes stay open ${HI_PROP_DAYS} days and pass with more yes than no.</p>`;

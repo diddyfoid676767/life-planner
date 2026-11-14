@@ -13,7 +13,7 @@ const pad = n => String(n).padStart(2, '0');
 const ymd = d => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 const parseYmd = s => { const [y, m, d] = s.split('-').map(Number); return new Date(y, m - 1, d); };
 const addDays = (s, n) => { const d = parseYmd(s); d.setDate(d.getDate() + n); return ymd(d); };
-const today = () => ymd(new Date());
+const today = () => (typeof solisFakeDate === 'function' && solisFakeDate()) || ymd(new Date()); // 2.63: test mode can pretend it's another day
 const diffDays = (a, b) => Math.round((parseYmd(b) - parseYmd(a)) / 86400000); // b - a
 const DOW = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const MON = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
@@ -692,6 +692,7 @@ function viewStudy() {
 
   return `<div class="study2">${pageHead('Study', `${fmtMins(sum(tw, twEnd)) || '0m'} studied this week · ${sessN} session${sessN === 1 ? '' : 's'} · 🔥 ${studyStreak()}-day streak`, `<button class="btn" data-s2="examStart" title="Full screen; leaving the planner ends the timer">🔒 Exam mode</button><button class="btn primary" data-act="focusNew">▶ Start studying</button>`)}
   <div class="upnext-row">${todayCard}${sacCard}</div>
+  ${typeof t2TermCard === 'function' ? t2TermCard() : ''}
   ${examHub()}
   <div class="study-grid2">
     <div class="study-side">
@@ -2020,6 +2021,7 @@ async function clearStudyBlocks() {
   safe(() => loadAccount().then(a => { if (a.signedIn) { publishMe(true); refreshFriends(true); } if (view === 'settings' && !modal.open) render(); }), 'account');
   checkUpdate();
   safe(whatsNewCheck, 'whatsnew'); // once per update
+  if (typeof t2Check === 'function') { setTimeout(() => safe(t2Check, 'term'), 2500); setInterval(() => safe(t2Check, 'term'), 10 * 60000); } // 2.63: term goals and the Chronicle
   setInterval(checkUpdate, 60000); // cheap local check, so a downloaded update installs within a minute
   checkReminders();
   setInterval(checkReminders, 30000);

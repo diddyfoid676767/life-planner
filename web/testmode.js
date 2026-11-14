@@ -7,6 +7,8 @@
 
 const TESTMODE = (() => { try { return localStorage.getItem('solisTest') === '1'; } catch { return false; } })();
 const solisBeta = () => TESTMODE || (() => { try { return localStorage.getItem('solisBeta') === '1'; } catch { return false; } })();
+// 2.63: a pretend date, only inside test mode, to see term weeks, the Term Boss, holidays and the Chronicle
+const solisFakeDate = () => { if (!TESTMODE) return ''; try { return localStorage.getItem('solisDate') || ''; } catch { return ''; } };
 const solisDevOn = () => TESTMODE || (() => { try { return localStorage.getItem('solisDev') === '1'; } catch { return false; } })();
 if (TESTMODE) {
   const realFetch = window.fetch.bind(window);
@@ -21,7 +23,7 @@ if (TESTMODE) {
   };
   addEventListener('DOMContentLoaded', () => {
     const b = document.createElement('div'); b.id = 'testBar';
-    b.innerHTML = '<span>🧪 <b>Test mode</b> · you are a brand-new player · nothing is saved or sent</span><button data-tm="again">Start over</button><button data-tm="off">Exit test mode</button>';
+    b.innerHTML = '<span>🧪 <b>Test mode</b> · you are a brand-new player · nothing is saved or sent</span><label class="tmdate">📅 Pretend date <input type="date" data-tm-date value="${solisFakeDate()}"></label><select data-tm-jump><option value="">Jump to…</option><option value="w1">Term Week 1</option><option value="w2">Week 2 (goals lock, voting)</option><option value="boss">Term Boss week</option><option value="end">Last day of term</option><option value="hol">Holidays</option><option value="real">Real date</option></select><button data-tm="again">Start over</button><button data-tm="off">Exit test mode</button>';
     document.body.appendChild(b);
   });
 }
@@ -40,6 +42,17 @@ document.addEventListener('click', e => {
     location.reload();
   })();
   else if (a === 'beta') { try { localStorage.setItem('solisBeta', solisBeta() && !TESTMODE ? '0' : '1'); } catch { } if (typeof render === 'function') render(); }
+});
+document.addEventListener('change', e => {
+  const el = e.target; if (!TESTMODE || !el.matches?.('[data-tm-date],[data-tm-jump]')) return;
+  let d = el.value;
+  if (el.matches('[data-tm-jump]')) {
+    const real = ymd(new Date()), T = termList().find(t => t.from && t.to && t.to >= real) || termOf(real);
+    d = { w1: T.from, w2: addDays(mondayOf(T.from), 7), boss: addDays(mondayOf(T.to), 1), end: T.to, hol: addDays(T.to, 4), real: '' }[d];
+    if (d === undefined) return;
+  }
+  try { if (d) localStorage.setItem('solisDate', d); else localStorage.removeItem('solisDate'); } catch { }
+  location.reload();
 });
 function testModeCard() {
   if (!solisDevOn()) return '';

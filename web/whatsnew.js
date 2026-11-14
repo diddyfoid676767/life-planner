@@ -5,6 +5,12 @@
 // version since the last one they saw (up to 3). D.settings.seenVersion remembers what was last shown.
 // A brand-new install never sees it (the setup wizard marks the current version as seen).
 const CHANGELOG = [
+  { v: '2.63.0', notes: [
+    'Term goals and weekly study targets per subject, on the Study page',
+    'The Chronicle: a recap of your term, saved, with an image to share',
+    'The house boss rests in the holidays, and the Term Boss arrives in the last week of term',
+    'Each term is a season with house rankings and prizes for the top 3 houses',
+  ] },
   { v: '2.62.0', notes: [
     'This "What\'s new" card: after each update it lists what changed',
   ] },

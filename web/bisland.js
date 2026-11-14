@@ -64,16 +64,16 @@ function viewBossIsland() {
   const raid = biDoc().r?.[wk], raided = raid && raid !== '-' && raid !== 'bastion' ? hiItem(raid) : null;
   let warn = '';
   if (raider && f && !f.dead) warn = raided ? `💥 ${esc(b.n)} raided the house island and damaged the ${raided.e} ${raided.n}.` : raid === 'bastion' ? `🏯 The Bastion held ${esc(b.n)}'s raid off.` : raid ? '' : today() < addDays(wk, BI_RAID_DAY) ? `⚠️ Raider: if it still has over half its health on Friday, it smashes a building on the house island.` : '';
-  const hud = `<div class="ishud is-tl"><div class="islvl boss ${f?.dead ? 'dead' : ''}"><b>${b.e}</b><div><span>${esc(b.n)}</span><small>${f?.dead ? `Defeated by ${esc(h.name)} 🎉` : `${daysLeft} day${daysLeft === 1 ? '' : 's'} left · ${f ? `${f.left.toLocaleString()} / ${f.hp.toLocaleString()} HP` : 'weekly boss'}`}</small>${f ? `<i class="bihp" style="width:${pct}%"></i>` : ''}</div></div>
+  const hud = `<div class="ishud is-tl"><div class="islvl boss ${f?.dead ? 'dead' : ''}"><b>${b.e}</b><div><span>${esc(b.n)}</span><small>${bossWeek(wk) === 'rest' ? `🌴 Resting for the holidays · back ${fmtDate(bossBackOn(wk))}` : f?.dead ? `Defeated by ${esc(h.name)} 🎉` : `${bossWeek(wk) === 'term' ? '👑 Term Boss · ' : ''}${daysLeft} day${daysLeft === 1 ? '' : 's'} left · ${f ? `${f.left.toLocaleString()} / ${f.hp.toLocaleString()} HP` : 'weekly boss'}`}</small>${f ? `<i class="bihp" style="width:${pct}%"></i>` : ''}</div></div>
       <div class="isbuilders">💡 Weak to ${esc(B.wn)}${f ? ` · you: ${ftWeekDmg(wk).toLocaleString()} dmg` : ''}</div></div>
     <div class="ishud is-tr">${isBar('cd-l', LUMEN, w.lumen, 'Lumen', 1, '')}${isBar('cd-e', EMBER, w.ember, 'Ember', 1, '')}</div>
     <div class="ishud is-bl"><button class="isbtn" data-is="panel" data-v="binfo">📜<span>Boss</span></button><button class="isbtn" data-is="panel" data-v="brank">🏆<span>Ranking</span></button><button class="isbtn" data-is="panel" data-v="bspar">🎯<span>Spar</span></button><button class="isbtn" data-is="panel" data-v="btro">🏅<span>Trophies</span></button></div>
-    <div class="ishud is-br"><button class="isbtn big fight" data-ft="house" ${hs.id && a.left ? '' : 'disabled'}>⚔️<span>${!hs.id ? 'Join a house' : a.left ? `Fight · ${a.left} left` : 'No fights left'}</span></button></div>
+    <div class="ishud is-br"><button class="isbtn big fight" data-ft="house" ${hs.id && a.left ? '' : 'disabled'}>⚔️<span>${!hs.id ? 'Join a house' : a.left ? `Fight · ${a.left} left` : (a.rest ? '🌴 Resting' : 'No fights left')}</span></button></div>
     ${warn && !ui.isPanel ? `<div class="ishud is-bc biwarn">${warn}</div>` : ''}`;
   const bub = f ? `<div class="isbubs"><button class="isbub ${f.dead ? 'collect' : ''}" data-b="boss" data-is="panel" data-v="binfo">${f.dead ? '☠️ Defeated' : `❤️ ${pct}%`}</button></div>` : '';
   let extra = bub; const pn = ui.isPanel;
   if (pn === 'binfo') extra += isPanel(`${b.e} ${esc(b.n)}`, biInfoHtml(b, B, a, f, raider));
-  else if (pn === 'brank') extra += isPanel('🏆 This week', biRankHtml(f, h));
+  else if (pn === 'brank') extra += isPanel('🏆 This week', biRankHtml(f, h) + (typeof t2SeasonCard === 'function' ? t2SeasonCard() : ''));
   else if (pn === 'bspar') extra += isPanel('🎯 Spar a champion', `<p class="muted small-text">Optional and risky: a champion copy of any boss, much tougher than the weekly one. Stake 25 ${LUMEN} + 25 ${EMBER}; win and you get it back plus 35 of each and a 50% gear chance. Duels against friends are on the <a href="#" data-act="goto" data-v="character">Character</a> page.</p><div class="ftbosses">${HS_BOSSES.map(x => `<button class="ftbossbtn" data-ft="spar" data-n="${esc(x.n)}" title="${esc(FT_BOSS[x.n].sp)}"><span>${x.e}</span><small>${esc(x.n)}</small></button>`).join('')}</div>`);
   else if (pn === 'btro') extra += isPanel('🏅 Trophies', biTroHtml(h));
   if (!hs.id && !pn) extra += `<div class="ispanel iscentre"><div class="ispanel-h"><h3>${b.e} ${esc(b.n)}</h3></div><div class="ispanel-b"><p class="muted">${esc(b.s)} Join your house to fight it together each week. You can still spar a champion copy.</p><div class="row" style="gap:8px"><button class="btn primary" data-act="goto" data-v="house">Pick your house</button><button class="btn" data-is="panel" data-v="bspar">🎯 Spar</button></div></div></div>`;
@@ -86,7 +86,7 @@ function biInfoHtml(b, B, a, f, raider) {
     <p class="small-text"><b>Attacks:</b> ${[...B.atk, ...(B.big ? [B.big] : [])].map(x => esc(x[0])).join(', ')}</p>
     ${raider ? `<p class="small-text"><b>⚠️ Raider:</b> if it still has more than half its health on Friday, it ${raider}: one building on the house island takes damage. A working Bastion stops it.</p>` : ''}
     <p class="muted small-text">${FT_WEEK_ATT + a.extra} fights a week${a.extra ? ' (house island perk included)' : ''}, up to ${FT_DAY_ATT} a day, ${FT_ROUNDS} rounds each, and it hits back lightly. Your study, revision, workouts and PBs also do damage. Beat it as a house and it becomes a gold trophy on your house island, and everyone who fought gets a rare or better piece of gear. Set your build on the <a href="#" data-act="goto" data-v="character">Character</a> page.</p>
-    <button class="btn primary" data-ft="house" ${hsState().id && a.left ? '' : 'disabled'}>⚔️ ${a.left ? `Fight (${a.left} left)` : 'No fights left'}</button>`;
+    <button class="btn primary" data-ft="house" ${hsState().id && a.left ? '' : 'disabled'}>⚔️ ${a.left ? `Fight (${a.left} left)` : (a.rest ? '🌴 Resting' : 'No fights left')}</button>`;
 }
 function biRankHtml(f, h) {
   if (!f) return '<p class="muted">Join your house to see the ranking.</p>';
