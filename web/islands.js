@@ -1,57 +1,21 @@
 'use strict';
-/* Islands (2.49, reworked in 2.51). Your personal island and your house island
-   float in space as base-builder style grids. The Islands page is one full
-   screen 3D view with the resource bars, switcher, shop and a tap-a-building
-   popup drawn over it only when needed.
-   Personal island: a 14x14 grid. Buildings unlock as your player level goes up,
-   cost Lumen, Ember or both, take a few days to build (2 builders, so 2 at a
-   time), are placed and moved on the grid, and upgrade to level 3 (each level
-   needs a higher player level, costs more and takes longer, and makes the perk
-   bigger). Collectors (Study Hut, Training Shed, Windmill) fill up with bonus
-   Lumen/Ember from your study and training, up to what your vaults can store;
-   tap to collect. They slowly wear (half perk) then break (no perk), are never
-   destroyed, and are repaired with currency. Wear pauses on holidays and around
-   exams. The 3D is low-poly and drawn only when something changes.
-   State lives in D.cards.isl so it resets with the cards. */
+/* Islands (2.49, reworked in 2.51; 2.65: your own island moved to hexes in hexworld.js).
+   This file keeps what the house and boss islands share: the full-screen frame,
+   HUD pieces, the three.js scene and camera, the square grid the house island
+   still uses, and the wear/upgrade rules (same numbers for every island). */
 
 const IS_WEAR = 21, IS_BREAK = 42; // active (not paused) days after building, repairing or upgrading
 const IS_REPAIR = { worn: .15, broken: .35 }; // share of the build cost
-const IS_N = 14, IS_BUILDERS = 2, IS_MAXLV = 3;
+const IS_BUILDERS = 2, IS_MAXLV = 3;
 const IS_LVM = [1, 1.5, 2], IS_UPC = [1, 1.8, 3], IS_UPD = [1, 1.5, 2]; // perk, cost and time by level
-const IS_STORE = 100; // what the collectors can hold with no vaults
-// lp/ep: collectors (share of each day's Lumen/Ember that piles up to collect); cl/ce: vault storage
+const IS_STORE = 100; // what the collectors can hold with no storehouse
+// lp/ep: collectors (share of each day's Lumen/Ember that piles up to collect); cl/ce: storage
 const IS_EARN = { lp: [.08, 'Collects Lumen', v => `+${Math.round(v * 100)}% of study`], ep: [.08, 'Collects Ember', v => `+${Math.round(v * 100)}% of training`], cl: [300, 'Lumen storage', v => `+${Math.round(v)}`], ce: [300, 'Ember storage', v => `+${Math.round(v)}`] };
-// u = player level it unlocks at, sz = footprint in tiles
-const IS_ITEMS = [
-  { id: 'hut', n: 'Study Hut', e: '📚', m: 'hut', col: '#d9a066', l: 300, x: 0, days: 2, u: 1, sz: 2, b: { lp: .08 } },
-  { id: 'shed', n: 'Training Shed', e: '🏋️', m: 'hut', col: '#c0504d', l: 0, x: 300, days: 2, u: 1, sz: 2, b: { ep: .08 } },
-  { id: 'fire', n: 'Campfire', e: '🔥', m: 'fire', col: '#ff922b', l: 120, x: 120, days: 1, u: 2, sz: 2, b: { rg: 1 } },
-  { id: 'vaultl', n: 'Lumen Vault', e: '💠', m: 'vault', col: '#ffe066', l: 0, x: 250, days: 2, u: 3, sz: 2, b: { cl: 300 } },
-  { id: 'vaulte', n: 'Ember Vault', e: '🏮', m: 'vault', col: '#ff6b3d', l: 250, x: 0, days: 2, u: 3, sz: 2, b: { ce: 300 } },
-  { id: 'shrine', n: 'Moon Shrine', e: '⛩️', m: 'shrine', col: '#e03131', l: 450, x: 0, days: 3, u: 4, sz: 2, b: { hp: 15 } },
-  { id: 'forge', n: 'Forge', e: '⚒️', m: 'forge', col: '#868e96', l: 150, x: 450, days: 3, u: 5, sz: 2, b: { mv: .04 } },
-  { id: 'light', n: 'Lighthouse', e: '🗼', m: 'light', col: '#f8f9fa', l: 450, x: 150, days: 3, u: 6, sz: 2, b: { sp: .04 } },
-  { id: 'tower', n: 'Watchtower', e: '🏯', m: 'tower', col: '#a0785a', l: 300, x: 300, days: 3, u: 7, sz: 2, b: { cr: .02 } },
-  { id: 'wall', n: 'Stone Wall', e: '🧱', m: 'wall', col: '#adb5bd', l: 0, x: 500, days: 3, u: 8, sz: 2, b: { dr: .03 } },
-  { id: 'mill', n: 'Windmill', e: '🌬️', m: 'mill', col: '#f1e3c6', l: 400, x: 400, days: 4, u: 10, sz: 2, b: { lp: .05, ep: .05 } },
-  { id: 'spring', n: 'Hot Spring', e: '♨️', m: 'spring', col: '#66d9e8', l: 600, x: 600, days: 4, u: 12, sz: 3, b: { hp: 20, rg: 1 } },
-  { id: 'obs', n: 'Observatory', e: '🔭', m: 'dome', col: '#748ffc', l: 900, x: 300, days: 5, u: 14, sz: 3, b: { wk: .05 } },
-  { id: 'totem', n: 'Spirit Totem', e: '🗿', m: 'totem', col: '#94d82d', l: 700, x: 700, days: 5, u: 16, sz: 2, b: { dg: .02 } },
-];
 // player level: the shared Solis level (level.js, lifetime Lumen + Ember)
 function isLv() { try { if (typeof solisLevel === 'function') return solisLevel().n; } catch (e) { } return 1; }
-const isState = () => { const c = cdState(); return (c.isl = Object.assign({ items: {}, mark: { l: 0, e: 0 } }, c.isl || {})); };
-const isItem = id => IS_ITEMS.find(x => x.id === id);
 const isFmt = (k, v) => { const f = IS_EARN[k] || FT_BUFF[k]; return f ? `${f[1]} ${f[2](Math.round(v * 100) / 100)}` : ''; };
 const isBuffText = (b, m = 1) => Object.entries(b).map(([k, v]) => isFmt(k, k === 'hp' || k === 'rg' || k === 'cl' || k === 'ce' ? Math.round(v * m) : v * m)).join(' · ');
-const isCost = (it, f = 1) => [it.l && `${LUMEN} ${Math.round(it.l * f)}`, it.x && `${EMBER} ${Math.round(it.x * f)}`].filter(Boolean).join(' + ');
 const isNeedLv = (it, lv) => it.u + (lv - 1) * 3; // player level needed for building level lv
-// level of a building on a day, counting a finished upgrade
-const isLvOn = (s, d = today()) => s ? (s.up && d >= s.up.r ? s.up.lv : s.lv || 1) : 0;
-const isRepsOn = (s, d = today()) => [...(s.reps || []), ...(s.up && d >= s.up.r ? [s.up.r] : [])];
-// fold a finished upgrade into the saved building
-function isFold(s) { if (s?.up && today() >= s.up.r) { s.lv = s.up.lv; s.reps = [...(s.reps || []), s.up.r]; delete s.up; } return s; }
-const isBusy = (s, d = today()) => s && (d < s.ready || (s.up && d < s.up.r));
 
 // days when wear stands still: holidays, and an exam's day plus the 3 days before it
 function isPaused() {
@@ -59,53 +23,6 @@ function isPaused() {
   for (const a of (D.assessments || [])) if (typeof isExam === 'function' && isExam(a) && a.date) for (let i = 0; i <= 3; i++) ex.add(addDays(a.date, -i));
   return d => ex.has(d) || (typeof isHoliday === 'function' && isHoliday(d));
 }
-// each building's condition on every day since it was finished (cached until something changes)
-const IS_TL = new Map();
-function isTimeline(id) {
-  const s = isState().items[id]; if (!s) return null;
-  const reps = isRepsOn(s), key = [id, s.start, s.ready, reps.join(), today(), (D.settings.holidays || []).length, (D.assessments || []).length].join('|');
-  if (IS_TL.has(key)) return IS_TL.get(key);
-  const tl = {}, rs = new Set(reps), paused = isPaused(); let act = 0;
-  for (let d = s.ready; d <= today(); d = addDays(d, 1)) {
-    if (rs.has(d)) act = 0;
-    tl[d] = act >= IS_BREAK ? 'broken' : act >= IS_WEAR ? 'worn' : 'ok';
-    if (!paused(d)) act++;
-  }
-  const out = { tl, act };
-  for (const k of IS_TL.keys()) if (k.startsWith(id + '|')) IS_TL.delete(k);
-  IS_TL.set(key, out); return out;
-}
-function isCond(id, d = today()) {
-  const s = isState().items[id]; if (!s || d < s.start) return null;
-  if (d < s.ready) return 'build';
-  return isTimeline(id).tl[d] || 'ok';
-}
-const isMult = c => c === 'ok' ? 1 : c === 'worn' ? .5 : 0;
-const isPerkM = (id, d = today()) => isMult(isCond(id, d)) * IS_LVM[Math.max(0, isLvOn(isState().items[id], d) - 1)];
-// battle buffs from the island, added to gear in fight.js
-function islBuffs(d = today()) {
-  const g = {};
-  for (const it of IS_ITEMS) { const m = isPerkM(it.id, d); if (m) for (const [k, v] of Object.entries(it.b)) if (FT_BUFF[k]) g[k] = (g[k] || 0) + (k === 'hp' || k === 'rg' ? Math.round(v * m) : v * m); }
-  return g;
-}
-// collector rate for Lumen (lp) or Ember (ep) on a day
-function islEarn(k, d) { let t = 0; for (const it of IS_ITEMS) if (it.b[k] && isState().items[it.id]) t += it.b[k] * isPerkM(it.id, d); return t; }
-// what the collectors hold right now: everything they have made since you last collected, up to the vaults' storage
-function isStore() {
-  const st = isState(), c = cdState(); let l = 0, e = 0;
-  for (let d = c.since; d && d <= today(); d = addDays(d, 1)) { const rl = islEarn('lp', d), re = islEarn('ep', d); if (!rl && !re) continue; const x = cdDay(d); l += x.lumen * rl; e += x.ember * re; }
-  let capL = IS_STORE, capE = IS_STORE;
-  for (const it of IS_ITEMS) { const m = isPerkM(it.id); if (it.b.cl) capL += it.b.cl * m; if (it.b.ce) capE += it.b.ce * m; }
-  const m = st.mark || { l: 0, e: 0 };
-  return { l: Math.floor(Math.min(capL, Math.max(0, l - (m.l || 0)))), e: Math.floor(Math.min(capE, Math.max(0, e - (m.e || 0)))), capL: Math.round(capL), capE: Math.round(capE), tl: l, te: e };
-}
-function isCollect() {
-  const s = isStore(), st = isState(), c = cdState(); if (!s.l && !s.e) return;
-  c.got = c.got || { l: 0, e: 0 }; c.got.l = (c.got.l || 0) + s.l; c.got.e = (c.got.e || 0) + s.e;
-  st.mark = { l: s.tl, e: s.te }; // anything past the storage cap is lost, like a full store
-  save(); toast('✨ Collected', [s.l && `${LUMEN} ${s.l}`, s.e && `${EMBER} ${s.e}`].filter(Boolean).join(' + ')); render();
-}
-
 // ---------- grid placement ----------
 // layout: { N, centre: [gx, gz, size], items: [{ id, sz, at }] }; at = top-left tile
 function isFits(L, id, sz, gx, gz, gap = 0) {
@@ -121,14 +38,6 @@ function isSpot(L, id, sz) {
   spots.sort((a, b) => a[2] - b[2]);
   const f = spots.find(([x, z]) => isFits(L, id, sz, x, z, 1)) || spots.find(([x, z]) => isFits(L, id, sz, x, z)); return f ? [f[0], f[1]] : null; // leave a path round each building if there's room
 }
-// personal layout, giving any building without a spot (from before 2.51) the nearest free one
-function isLayout() {
-  const st = isState(), L = { N: IS_N, centre: [6, 6, 2], items: [] };
-  for (const it of IS_ITEMS) { const s = st.items[it.id]; if (s) L.items.push({ id: it.id, sz: it.sz, at: s.at }); }
-  for (const o of L.items) if (!o.at || !isFits(L, o.id, o.sz, ...o.at)) { o.at = null; o.at = st.items[o.id].at = isSpot(L, o.id, o.sz) || [0, 0]; }
-  return L;
-}
-
 // ---------- page ----------
 const isTimeLeft = d => { const ms = new Date(d + 'T00:00').getTime() - Date.now(); if (ms <= 0) return 'soon'; const h = Math.floor(ms / 36e5), dd = Math.floor(h / 24); return dd ? `${dd}d ${h % 24}h` : `${h}h ${Math.floor(ms / 6e4) % 60}m`; };
 const IS_LABEL = { build: '🏗️ Building', ok: '✅ Working', worn: '🟠 Worn: half perk', broken: '🔴 Broken: no perk' };
@@ -151,111 +60,24 @@ function viewIslands() {
   if (tab === 'house') return viewHouseIsland();
   if (tab === 'boss') return viewBossIsland();
   if (tab === 'rank') return `<div class="rankpage"><div class="rank-sw">${isSwitch(tab).replace(/^<div class="ishud is-tc">|<\/div>$/g, '')}</div>${viewLeaderboard()}</div>`;
-  const st = isState(), w = cdWallet(), lv = isLv(), L = isLayout(), sto = isStore();
-  for (const s of Object.values(st.items)) isFold(s);
-  const busy = IS_ITEMS.filter(it => isBusy(st.items[it.id])).length;
-  const P = ui.isPlace && !ui.isPlace.h ? ui.isPlace : null;
-  // bubbles over buildings: timers, collect and repair
-  const bubs = IS_ITEMS.filter(it => st.items[it.id]).map(it => {
-    const s = st.items[it.id], c = isCond(it.id);
-    let t = '';
-    if (c === 'build') t = `⏳ ${isTimeLeft(s.ready)}`;
-    else if (s.up) t = `⬆️ ${isTimeLeft(s.up.r)}`;
-    else if (c === 'broken') t = '🔴 Repair';
-    else if (c === 'worn') t = '🟠 Worn';
-    else if ((it.b.lp && sto.l) || (it.b.ep && sto.e)) return `<button class="isbub collect" data-b="${it.id}" data-is="collect">${it.b.lp && sto.l ? `${LUMEN} ${sto.l}` : ''}${it.b.lp && it.b.ep && sto.l && sto.e ? ' · ' : ''}${it.b.ep && sto.e ? `${EMBER} ${sto.e}` : ''}</button>`;
-    return t ? `<button class="isbub" data-b="${it.id}" data-is="sel" data-id="${it.id}">${t}</button>` : '';
-  }).join('');
-  const lvI = typeof solisLevel === 'function' ? solisLevel() : null;
-  const hud = `<div class="ishud is-tl"><div class="islvl"><b>${lv}</b><div><span>Level ${lv}</span>${lvI ? `<i style="width:${Math.round(lvI.into / lvI.need * 100)}%"></i>` : ''}</div></div>
-      <div class="isbuilders" title="Builders: how many things can be built or upgraded at once">🔨 ${IS_BUILDERS - busy}/${IS_BUILDERS} builders free</div></div>
-    <div class="ishud is-tr">${isBar('cd-l', LUMEN, w.lumen, sto.l ? `+${sto.l} to collect · store ${sto.capL}` : `Store ${sto.capL}`, sto.l / sto.capL, sto.l ? 'collect' : '')}${isBar('cd-e', EMBER, w.ember, sto.e ? `+${sto.e} to collect · store ${sto.capE}` : `Store ${sto.capE}`, sto.e / sto.capE, sto.e ? 'collect' : '')}</div>
-    <div class="ishud is-bl"><button class="isbtn" data-is="panel" data-v="perks">✨<span>Perks</span></button><button class="isbtn" data-is="panel" data-v="help">❔<span>How it works</span></button></div>
-    ${P ? '' : `<div class="ishud is-br"><button class="isbtn big" data-is="panel" data-v="shop">🛒<span>Shop</span></button></div>`}`;
-  let extra = `<div class="isbubs">${bubs}</div>`;
-  if (P) extra += isPlaceBar(isItem(P.id).n, P.ok);
-  else if (ui.isPanel === 'shop') extra += isPanel('🛒 Shop · your island', isShopHtml(st, w, lv, busy));
-  else if (ui.isPanel === 'perks') { const g = islBuffs(), rl = islEarn('lp', today()), re = islEarn('ep', today());
-    extra += isPanel('✨ Your island perks', `${Object.keys(g).length || rl || re ? `<p>${isBuffText(Object.assign(g, rl ? { lp: rl } : {}, re ? { ep: re } : {}))}</p>` : '<p class="muted">Build something to get your first perk.</p>'}<p class="muted small-text">Battle perks add to your gear on the Character page. Collectors pile up extra Lumen and Ember from your study and training until you collect it, up to what your vaults can store (${LUMEN} ${sto.capL} · ${EMBER} ${sto.capE}).</p>`); }
-  else if (ui.isPanel === 'help') extra += isPanel('❔ How your island works', `<ul class="ishelp"><li>New buildings unlock as your level goes up. Every Lumen and Ember you earn from study and training levels you up.</li><li>Buy one in the Shop, tap a spot on the grid and place it. It takes a few days to build. You have ${IS_BUILDERS} builders, so ${IS_BUILDERS} things can be built or upgraded at once.</li><li>Tap a building to upgrade it (up to level ${IS_MAXLV}), move it or repair it. Each level needs a higher player level and makes its perk bigger.</li><li>Collectors fill with bonus ${LUMEN} Lumen and ${EMBER} Ember. Tap the bubble to collect. When the store is full, the extra is lost, so build vaults.</li><li>After ${IS_WEAR} active days a building wears (half perk), after ${IS_BREAK} it breaks (no perk) until you repair it. Holidays and the days around exams don't count. Upgrading also freshens it up.</li></ul>`);
-  else if (ui.isSel && st.items[ui.isSel]) extra += isPopHtml(isItem(ui.isSel), st, w, lv, busy);
-  return isFrame('personal', hud, extra);
+  return viewHexHome();
 }
-function isShopHtml(st, w, lv, busy) {
-  return `<p class="muted small-text">You're level ${lv}. ${IS_BUILDERS - busy} of ${IS_BUILDERS} builders free.</p><div class="isshop">${IS_ITEMS.map(it => {
-    const s = st.items[it.id], lock = lv < it.u, can = !s && !lock && w.lumen >= it.l && w.ember >= it.x && busy < IS_BUILDERS;
-    return `<div class="isitem ${lock ? 'locked' : ''} ${s ? 'owned' : ''}"><div class="isitem-e">${lock ? '🔒' : it.e}</div><b>${it.n}</b>
-      <div class="muted small-text">${lock ? `Unlocks at level ${it.u}` : isBuffText(it.b)}</div>
-      <div class="small-text">${lock ? '&nbsp;' : `${it.sz}×${it.sz} · ${it.days} day${it.days === 1 ? '' : 's'}`}</div>
-      ${s ? '<span class="tag">Built</span>' : lock ? `<span class="tag">Level ${it.u}</span>` : `<button class="btn small ${can ? 'primary' : ''}" data-is="buy" data-id="${it.id}" ${can ? '' : 'disabled'}>${isCost(it)}</button>`}</div>`;
-  }).join('')}</div>`;
-}
-function isPopHtml(it, st, w, lv, busy) {
-  const s = st.items[it.id], c = isCond(it.id), cur = isLvOn(s), nx = cur + 1, m = IS_LVM[cur - 1];
-  let acts = '';
-  if (c === 'build') acts = `<span class="muted small-text">Ready in ${isTimeLeft(s.ready)}</span>`;
-  else if (s.up) acts = `<span class="muted small-text">Upgrading to level ${s.up.lv}, ready in ${isTimeLeft(s.up.r)}</span>`;
-  else {
-    if (c === 'worn' || c === 'broken') { const f = IS_REPAIR[c], ok = w.lumen >= Math.round(it.l * f) && w.ember >= Math.round(it.x * f); acts += `<button class="btn small ${ok ? 'primary' : ''}" data-is="repair" data-id="${it.id}" ${ok ? '' : 'disabled'}>🔧 Repair · ${isCost(it, f)}</button>`; }
-    if (nx <= IS_MAXLV) {
-      const need = isNeedLv(it, nx), f = IS_UPC[nx - 1], ok = lv >= need && w.lumen >= Math.round(it.l * f) && w.ember >= Math.round(it.x * f) && busy < IS_BUILDERS;
-      acts += lv < need ? `<span class="tag">🔒 Level ${need} to upgrade</span>` : `<button class="btn small ${ok ? 'primary' : ''}" data-is="upgrade" data-id="${it.id}" ${ok ? '' : 'disabled'} title="${busy >= IS_BUILDERS ? 'All builders are busy' : ''}">⬆️ Level ${nx} · ${isCost(it, f)} · ${Math.ceil(it.days * IS_UPD[nx - 1])}d</button>`;
-    } else acts += '<span class="tag">⭐ Max level</span>';
-  }
-  const left = c === 'ok' && !s.up ? IS_WEAR - isTimeline(it.id).act : 0;
-  return `<div class="ishud is-bc ispop"><div class="ispop-h"><span class="ise">${it.e}</span><div><b>${it.n}</b> <span class="tag">Level ${cur}</span> <span class="tag">${IS_LABEL[c]}</span>
-      <div class="muted small-text">${isBuffText(it.b, m)}${nx <= IS_MAXLV ? ` · next level: ${isBuffText(it.b, IS_LVM[nx - 1])}` : ''}${left > 0 ? ` · wears in ${left} active day${left === 1 ? '' : 's'}` : ''}</div></div><button class="isx" data-is="close" title="Close">✕</button></div>
-    <div class="ispop-a">${acts}<button class="btn small ghost" data-is="move" data-id="${it.id}">✥ Move</button></div></div>`;
-}
-
 document.addEventListener('click', e => {
   const el = e.target.closest('[data-is]'); if (!el) return;
-  const st = isState(), it = isItem(el.dataset.id), w = cdWallet();
   switch (el.dataset.is) {
-    case 'tab': Object.assign(ui, { isTab: el.dataset.v, isSel: null, isPanel: null, isPlace: null }); if (view !== 'islands') { view = 'islands'; window.scrollTo(0, 0); } render(); break;
+    case 'tab': Object.assign(ui, { isTab: el.dataset.v, isSel: null, isPanel: null, isPlace: null, hxSel: null, hxP: null }); if (view !== 'islands') { view = 'islands'; window.scrollTo(0, 0); } render(); break;
     case 'view': is3view(el.dataset.v); break;
     case 'panel': Object.assign(ui, { isPanel: el.dataset.v, isSel: null }); render(); break;
     case 'close': Object.assign(ui, { isPanel: null, isSel: null }); render(); break;
     case 'sel': ui.isSel = el.dataset.id; ui.isPanel = null; render(); break;
     case 'collect': isCollect(); break;
-    case 'buy': {
-      const busy = IS_ITEMS.filter(x => isBusy(st.items[x.id])).length;
-      if (!it || st.items[it.id] || isLv() < it.u || w.lumen < it.l || w.ember < it.x || busy >= IS_BUILDERS) return;
-      ui.isPanel = null; isPlaceStart({ id: it.id, sz: it.sz, mode: 'new', L: isLayout() }); break;
-    }
-    case 'move': if (!it || !st.items[it.id]) return; ui.isSel = null; isPlaceStart({ id: it.id, sz: it.sz, mode: 'move', L: isLayout(), at: st.items[it.id].at }); break;
     case 'placeno': ui.isPlace = null; render(); break;
-    case 'placeok': {
-      const P = ui.isPlace; if (!P || !P.ok) return;
-      if (P.h) { hiPlaceDone(P); return; }
-      const pi = isItem(P.id);
-      if (P.mode === 'new') {
-        if (st.items[pi.id] || w.lumen < pi.l || w.ember < pi.x) { ui.isPlace = null; render(); return; }
-        ftTake(pi.l, pi.x); st.items[pi.id] = { start: today(), ready: addDays(today(), pi.days), reps: [], lv: 1, at: P.at };
-        toast(`${pi.e} Building ${pi.n}`, `Ready ${fmtDate(addDays(today(), pi.days))}.`);
-      } else st.items[pi.id].at = P.at;
-      ui.isPlace = null; ui.isSel = pi.id; save(); render(); break;
-    }
-    case 'upgrade': {
-      const s = st.items[it?.id]; if (!s || s.up || isCond(it.id) === 'build') return;
-      const nx = isLvOn(s) + 1, f = IS_UPC[nx - 1], l = Math.round(it.l * f), x = Math.round(it.x * f), days = Math.ceil(it.days * IS_UPD[nx - 1]);
-      if (nx > IS_MAXLV || isLv() < isNeedLv(it, nx) || w.lumen < l || w.ember < x || IS_ITEMS.filter(y => isBusy(st.items[y.id])).length >= IS_BUILDERS) return;
-      if (!confirm(`Upgrade ${it.n} to level ${nx} for ${isCost(it, f)}? It takes ${days} day${days === 1 ? '' : 's'} and keeps working meanwhile.`)) return;
-      ftTake(l, x); s.up = { lv: nx, s: today(), r: addDays(today(), days) };
-      save(); render(); toast(`⬆️ Upgrading ${it.n}`, `Level ${nx} ready ${fmtDate(s.up.r)}.`); break;
-    }
-    case 'repair': {
-      const c = isCond(it?.id), f = IS_REPAIR[c]; if (!f) return;
-      const l = Math.round(it.l * f), x = Math.round(it.x * f); if (w.lumen < l || w.ember < x) return;
-      ftTake(l, x); const s = st.items[it.id]; s.reps = [...(s.reps || []).filter(d => d >= addDays(today(), -400)), today()];
-      save(); render(); toast(`${it.e} ${it.n} repaired`, 'Its perk is back to full.'); break;
-    }
+    case 'placeok': { const P = ui.isPlace; if (P && P.ok && P.h) hiPlaceDone(P); break; }
   }
 });
 document.addEventListener('keydown', e => {
-  if (view !== 'islands') return;
+  if (view !== 'islands' || (ui.isTab || 'personal') === 'personal') return;
   if (e.key === 'Escape' && (ui.isPanel || ui.isSel || ui.isPlace)) { Object.assign(ui, { isPanel: null, isSel: null, isPlace: null }); render(); }
-  if (e.key === 'Enter' && e.target.closest?.('[data-is="collect"]')) isCollect();
 });
 function isPlaceStart(P) {
   P.at = P.at && isFits(P.L, P.id, P.sz, ...P.at) ? P.at : isSpot(P.L, P.id, P.sz);
@@ -265,7 +87,7 @@ function isPlaceStart(P) {
 
 // ---------- 3D (three.js, rotate and zoom only, drawn on demand) ----------
 const IS3 = { yaw: Math.PI / 4, pitch: .62, dist: 34, sig: '' };
-const is3home = house => ({ yaw: Math.PI / 4, pitch: house === 'boss' ? .42 : .62, dist: house === 'boss' ? 30 : house ? 50 : 34 });
+const is3home = house => house === 'hex' ? { yaw: Math.PI / 5, pitch: .78, dist: 40 } : ({ yaw: Math.PI / 4, pitch: house === 'boss' ? .42 : .62, dist: house === 'boss' ? 30 : house ? 50 : 34 });
 // 2.56: the Low graphics switch in Settings drops the 3D shadows (works live)
 function applyQuality() {
   if (typeof IS3 !== 'object' || !IS3.R) return;
@@ -299,13 +121,16 @@ function is3init() {
   IS3.ghost = new THREE.Mesh(new THREE.BoxGeometry(1, .5, 1), new THREE.MeshBasicMaterial({ color: '#51cf66', transparent: true, opacity: .45, depthWrite: false })); IS3.ghost.visible = false; S.add(IS3.ghost);
   IS3.ray = new THREE.Raycaster();
   const c = IS3.canvas; let drag = null, moved = 0;
-  c.addEventListener('pointerdown', e => { drag = [e.clientX, e.clientY]; moved = 0; c.setPointerCapture(e.pointerId); });
+  // 2.65: the hex island (hexworld.js) handles taps, drags and placing first; anything it leaves turns the camera
+  c.addEventListener('pointerdown', e => { c.setPointerCapture(e.pointerId); if (typeof hxPointer === 'function' && hxPointer('down', e)) { drag = null; return; } drag = [e.clientX, e.clientY]; moved = 0; });
   c.addEventListener('pointermove', e => {
+    if (typeof hxPointer === 'function' && hxPointer('move', e)) { drag = null; return; }
     if (!drag) { if (ui.isPlace) is3ghostAt(e); return; }
     moved += Math.abs(e.clientX - drag[0]) + Math.abs(e.clientY - drag[1]);
     IS3.yaw -= (e.clientX - drag[0]) * .008; IS3.pitch = Math.max(.25, Math.min(1.3, IS3.pitch + (e.clientY - drag[1]) * .006)); drag = [e.clientX, e.clientY]; is3draw();
   });
-  c.addEventListener('pointerup', e => { const was = drag; drag = null; if (was && moved < 6) is3tap(e); });
+  c.addEventListener('pointerup', e => { const was = drag; drag = null; if (typeof hxPointer === 'function' && hxPointer('up', e)) return; if (was && moved < 6) is3tap(e); });
+  c.addEventListener('contextmenu', e => { if (typeof hxPointer === 'function' && hxPointer('context', e)) e.preventDefault(); });
   c.addEventListener('wheel', e => { e.preventDefault(); IS3.dist = Math.max(12, Math.min(90, IS3.dist * (e.deltaY > 0 ? 1.1 : .9))); is3draw(); }, { passive: false });
   new ResizeObserver(() => { if (is3resize()) is3draw(); }).observe(document.body);
 }
@@ -319,7 +144,7 @@ function is3resize() {
 function is3draw() {
   if (!IS3.R || !IS3.canvas.isConnected || IS3.queued) return;
   IS3.queued = requestAnimationFrame(() => {
-    IS3.queued = 0; const { cam, yaw, pitch, dist } = IS3;
+    IS3.queued = 0; const { cam, yaw, pitch } = IS3, dist = IS3.dist * (IS3.distK || 1);
     cam.position.set(Math.sin(yaw) * Math.cos(pitch) * dist, Math.sin(pitch) * dist, Math.cos(yaw) * Math.cos(pitch) * dist); cam.lookAt(0, 0, 0);
     IS3.R.render(IS3.scene, cam);
     // keep the bubbles over their buildings
@@ -393,17 +218,22 @@ function mountIsland3D() {
   if (IS3.canvas.parentNode !== host) { host.prepend(IS3.canvas); IS3.sz = ''; }
   is3resize();
   if (ui.isTab === 'boss') {
+    if (HX3.ghost) { IS3.scene.remove(HX3.ghost); HX3.ghost = null; HX3.ghostModel = null; }
+    if (IS3.house === 'hex') { IS3.sig = ''; IS3.sun.position.set(16, 30, 10); IS3.distK = 1; }
     if (IS3.house !== 'boss') { IS3.house = 'boss'; Object.assign(IS3, is3home('boss')); }
     IS3.layout = null; IS3.grid = null; const sig = 'b' + biSig();
     if (sig !== IS3.sig) { IS3.sig = sig; is3bossBuild(); }
     is3ghost(null); is3draw(); return;
   }
-  const house = ui.isTab === 'house' && typeof hiLayout === 'function' && HI.doc, L = house ? hiLayout() : isLayout();
-  const cond = house ? hiCond : isCond, lvOf = house ? (id => hiLvOn(HI.doc.b?.[id])) : (id => isLvOn(isState().items[id]));
-  const sig = (house ? 'h' + hsState().id + hiLevel() + 't' + biTrophies().length : 'p' + isLv()) + L.items.map(o => o.id + ':' + (cond(o.id) || '') + lvOf(o.id) + (o.at || []).join('.')).join();
-  if (!!house !== IS3.house) { IS3.house = !!house; Object.assign(IS3, is3home(IS3.house)); }
+  const house = ui.isTab === 'house' && typeof hiLayout === 'function' && HI.doc;
+  if (!house) { if (IS3.house !== 'hex') HX3.sig = ''; if (!mountHex3D()) is3draw(); return; }
+  if (HX3.ghost) { IS3.scene.remove(HX3.ghost); HX3.ghost = null; HX3.ghostModel = null; }
+  if (IS3.house === 'hex') { IS3.sig = ''; IS3.sun.position.set(16, 30, 10); IS3.distK = 1; }
+  const L = hiLayout(), cond = hiCond, lvOf = id => hiLvOn(HI.doc.b?.[id]);
+  const sig = 'h' + hsState().id + hiLevel() + 't' + biTrophies().length + L.items.map(o => o.id + ':' + (cond(o.id) || '') + lvOf(o.id) + (o.at || []).join('.')).join();
+  if (IS3.house !== true) { IS3.house = true; Object.assign(IS3, is3home(true)); }
   IS3.layout = L;
-  if (sig !== IS3.sig) { IS3.sig = sig; is3build(!!house, L); }
+  if (sig !== IS3.sig) { IS3.sig = sig; is3build(true, L); }
   const P = ui.isPlace; is3ghost(P ? P.at : null, P?.sz, P ? isFits(P.L, P.id, P.sz, ...P.at) : true);
   is3draw();
 }
@@ -434,7 +264,7 @@ function is3clear() { IS3.world.traverse(o => { if (o.geometry) o.geometry.dispo
 function is3build(house, L) {
   if (house === 'boss') return is3bossBuild();
   const W = IS3.world, N = L.N, M = house ? 3 : 2, S = N + M * 2, top = IS3.top = .3;
-  const ITEMS = house ? HI_ITEMS : IS_ITEMS, cond = house ? hiCond : isCond;
+  const ITEMS = HI_ITEMS, cond = hiCond;
   is3clear(); IS3.N = N;
   const rnd = seeded(house ? 'solis-house-' + hsState().id : 'solis-island');
   Object.assign(IS3.sun.shadow.camera, { left: -S * .75, right: S * .75, top: S * .75, bottom: -S * .75 }); IS3.sun.shadow.camera.updateProjectionMatrix();
@@ -466,7 +296,7 @@ function is3build(house, L) {
     const it = ITEMS.find(x => x.id === o.id), c = cond(o.id); if (!it || !o.at || !c) continue;
     const x = o.at[0] + o.sz / 2 - N / 2, z = o.at[1] + o.sz / 2 - N / 2, g = new THREE.Group(); g.position.set(x, top, z);
     is3mesh(new THREE.BoxGeometry(o.sz - .15, .12, o.sz - .15), '#a39a8a', 0, .06, 0, g);
-    const lv = house ? hiLvOn(HI.doc.b?.[o.id]) : isLvOn(isState().items[o.id]), k = o.sz / 2 * (1 + (lv - 1) * .07);
+    const lv = hiLvOn(HI.doc.b?.[o.id]), k = o.sz / 2 * (1 + (lv - 1) * .07);
     IS3.marks[o.id] = [x, top + 2.4 * k + .4, z];
     const b = new THREE.Group(); b.position.y = .12; b.scale.setScalar(k); g.add(b);
     if (c === 'build') { const sc = new THREE.Mesh(new THREE.BoxGeometry(1.8, 2, 1.8), new THREE.MeshBasicMaterial({ color: '#c08a52', wireframe: true })); sc.position.y = 1; b.add(sc); is3mesh(new THREE.BoxGeometry(.6, .6, .6), '#b07d48', .5, .3, .5, b); is3mesh(new THREE.BoxGeometry(.4, .4, .4), '#c99a62', -.5, .2, -.4, b); W.add(g); continue; }

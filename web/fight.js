@@ -335,6 +335,7 @@ function ftEnd(F, how) {
     out.push(how === 'down' ? 'It knocked you out, but every hit you landed still counts.' : 'You lasted all the rounds.');
     if (Math.random() < Math.min(.6, .2 + add / 1200) * x) { const p = ftRollGear(x > 1 ? 1 : 0); out.push(`Gear drop: ${ftGearChip(p)}`); }
     hsLoad(true);
+    if (typeof hxEatFood === 'function') hxEatFood(); // 2.65: a harvest's extra health lasts until a boss fight
   } else {
     const won = how === 'win';
     if (won) {
