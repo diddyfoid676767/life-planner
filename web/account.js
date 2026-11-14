@@ -134,7 +134,7 @@ document.addEventListener('click', async e => {
     if (a === 'signup' && !confirm(`Create the account @${username}? Friends will be able to find you by this name.`)) return;
     acctBusy = true; el.textContent = a === 'login' ? 'Logging in…' : 'Creating…';
     try {
-      await acctPost({ action: a, username, password });
+      await acctPost({ action: a, username, password }); if (typeof emForget === 'function') emForget();
       await loadAccount(); acctBusy = false;
       await publishMe(true); await refreshFriends(true);
       toast(a === 'login' ? `👋 Welcome back, @${username}` : `🎉 You're @${username}`, 'Find friends on the Friends page.');
