@@ -854,6 +854,7 @@ function viewSettings() {
     ${typeof testModeCard === 'function' ? testModeCard() : ''}
     ${typeof termsCard === 'function' ? termsCard() : ''}
     ${accountCard().replace('class="card acctcard"', 'class="card acctcard" data-sec="account"')}
+    ${typeof whatsNewCard === 'function' && !ONLINE ? whatsNewCard() : ''}
     ${ONLINE && !CLOUD ? `<div class="card" data-sec="calendars" style="grid-column:1/-1"><div class="card-head"><h2>Calendars</h2><button class="btn small" data-act="gcalRefresh">Refresh</button><button class="btn small primary" data-act="gcalChoose">Choose calendars</button></div>
       <p class="muted small-text" style="margin-top:0">Shows your Google Calendar (${(D.settings.gcal?.ids || ['primary']).length} calendar(s) selected). The first time, claude.ai asks you to allow access to Google Calendar. To include your school Outlook or Garmin calendar, subscribe to its iCal link inside Google Calendar (Other calendars → + → From URL).</p>
       ${GCAL.map(c => `<div class="row small-text"><span class="dot" style="background:${c.color};width:10px;height:10px;border-radius:50%;display:inline-block"></span>${esc(c.name)}: ${c.items.length} events${c.smart ? ` (${c.items.filter(x => !feedKeeps(c, x)).length} hidden by school filter)` : ''}</div>`).join('')}</div>` : ''}
@@ -1777,6 +1778,8 @@ document.addEventListener('click', e => {
     case 'brainfmTest': checkBrainfm().then(() => { render(); openBrainfm(); }); break;
     case 'setupOpen': openSetup(false); break;
     case 'tourStart': startTour(); break;
+    case 'wnShow': whatsNewShow(CHANGELOG.slice(0, 3), false); break;
+    case 'guideStart': guideStart(el.dataset.v); break;
     case 'goSchool': case 'clsAll': ui.clsAll = !ui.clsAll; render(); break;
     case 'icuSync': icuSync(); break;
     case 'icuKeys': icuSaveKeys(); break;
