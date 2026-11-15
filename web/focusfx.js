@@ -61,10 +61,10 @@ function updateFocusFull() {
   const target = focusTarget(f, m), pct = Math.min(1, m / target);
   el.querySelector('.ring-fg').setAttribute('stroke-dashoffset', String(Math.round(1000 * (1 - pct))));
   el.style.setProperty('--hp', pct.toFixed(4)); el.classList.toggle('hg-paused', !!f.pausedAt);
-  el.querySelector('.ff-time').textContent = `${Math.floor(mm / 60) ? Math.floor(mm / 60) + ':' + pad(mm % 60) : mm}:${pad(ss)}`;
+  el.querySelector('.ff-time').textContent = focusClock(f, m);
   const next = FOCUS_STAGES.find(([t]) => m < t);
   el.querySelector('.ff-sub').innerHTML = f.pausedAt ? '<span class="ff-paused">Paused</span>'
-    : `${f.planned ? (m < f.planned ? `${fmtMins(Math.ceil(f.planned - m))} left of ${fmtMins(f.planned)}` : `🎉 ${fmtMins(f.planned)} done! Keep going or stop.`) : next ? `${Math.ceil(next[0] - m)} min to a ${next[1].toLowerCase()}` : 'Star reached ✦'}${D.settings.strictFocus ? ` · <span class="ff-strict ${(f.distractions || 0) >= DISTRACT_LIMIT ? 'bad' : ''}" title="Strict focus: leaving the planner for over a minute counts as a distraction">👀 ${f.distractions || 0}/${DISTRACT_LIMIT}</span>` : ''}`;
+    : `${f.down ? `Counting down from ${fmtMins(f.down)}: stops and logs at zero` : f.planned ? (m < f.planned ? `${fmtMins(Math.ceil(f.planned - m))} left of ${fmtMins(f.planned)}` : `🎉 ${fmtMins(f.planned)} done! Keep going or stop.`) : next ? `${Math.ceil(next[0] - m)} min to a ${next[1].toLowerCase()}` : 'Star reached ✦'}${D.settings.strictFocus ? ` · <span class="ff-strict ${(f.distractions || 0) >= DISTRACT_LIMIT ? 'bad' : ''}" title="Strict focus: leaving the planner for over a minute counts as a distraction">👀 ${f.distractions || 0}/${DISTRACT_LIMIT}</span>` : ''}`;
   el.querySelectorAll('.ff-stages span').forEach(sp => sp.classList.toggle('got', m >= +sp.dataset.t));
   const stageKey = (m < 10 ? 's' + Math.floor(m) : 't' + focusStage(m) + ':' + Math.floor(m / 3));
   if (stageKey !== focusFullStage) {

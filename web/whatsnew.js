@@ -10,6 +10,10 @@
 // version since the last one they saw (up to 3). D.settings.seenVersion remembers what was last shown,
 // D.settings.guidesSeen which guides have played. A brand-new install never sees either.
 const CHANGELOG = [
+  { v: '2.68.0', notes: [
+    { t: 'Countdown timer: pick 25, 45, 60 or 90 minutes (or your own) when you start studying. At zero it stops and logs by itself', k: 'new' },
+    { t: '"Are you still here?" now pops up over other windows with a loud chime when Solis is in the background', k: 'new' },
+  ] },
   { v: '2.67.5', notes: [
     { t: 'Ticking off a to-do works again (clicks were being undone straight away)', k: 'fix' },
     { t: 'Brain.fm is gone: no more auto-open button, and its link is removed from your Links', k: 'tweak' },

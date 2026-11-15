@@ -23,3 +23,7 @@ func runWindow(url string) bool { return false }
 func setTaskbarBadge(n int) {}
 
 func focusExistingWindow() bool { return false }
+
+func showStillAlert(text string) string { return "none" }
+
+func closeStillAlert() {}
