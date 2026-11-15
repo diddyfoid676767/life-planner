@@ -147,6 +147,7 @@ func main() {
 	mux.HandleFunc("/api/update/check", handleUpdateCheck)
 	mux.HandleFunc("/api/restart", handleRestart)
 	mux.HandleFunc("/api/shortcuts", handleShortcuts)
+	mux.HandleFunc("/api/stillhere", handleStillHere)
 	mux.HandleFunc("/api/strava", handleStrava)
 	mux.HandleFunc("/api/strava/activities", handleStravaActivities)
 	mux.HandleFunc("/strava/connect", handleStravaConnect)

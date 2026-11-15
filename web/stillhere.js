@@ -9,7 +9,7 @@ function stillMins() { const v = D.settings.stillMins; return v == null || v ===
 function stillTick() {
   const f = D && D.focus, el = document.getElementById('stillHere'), now = Date.now();
   const gap = stillLastTick ? now - stillLastTick : 0; stillLastTick = now;
-  if (!f || f.exam || f.pausedAt || !stillMins()) { if (f && f.askedAt) { f.askedAt = 0; f.okAt = focusElapsed(f); save(); } if (el) el.remove(); return; }
+  if (!f || f.exam || f.pausedAt || !stillMins()) { stillNativeClose(); if (f && f.askedAt) { f.askedAt = 0; f.okAt = focusElapsed(f); save(); } if (el) el.remove(); return; }
   if (f.okAt == null) f.okAt = 0;
   if (!f.askedAt) {
     if (el) el.remove();
@@ -26,8 +26,27 @@ function stillCountdown(f) {
   const left = Math.max(0, Math.ceil((f.askedAt + STILL_WAIT - Date.now()) / 1000));
   t.textContent = `${Math.floor(left / 60)}:${pad(left % 60)}`;
 }
+// 2.68: when Solis isn't the window you're in, the question also pops up over every other window
+// (a native Windows box from the app, with a loud chime). Answering either one answers both.
+let stillNative = false;
+function stillNativeAsk(f) {
+  if (ONLINE || stillNative) return;
+  stillNative = true;
+  const text = `Your ${subj(f.subjectId).name} timer is at ${fmtMins(Math.round(focusElapsed(f)))}.\n\nYes: you're still studying.\nNo: stop the timer and log the time so far.\n\nWith no answer, the timer stops by itself in 5 minutes.`;
+  fetch('/api/stillhere', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ text }) })
+    .then(r => r.json()).then(j => { stillNative = false; if (j.answer === 'yes' || j.answer === 'no') stillAnswer(j.answer === 'yes' ? 'yes' : 'stop'); })
+    .catch(() => { stillNative = false; });
+}
+function stillNativeClose() { if (stillNative && !ONLINE) fetch('/api/stillhere?close=1', { method: 'POST' }).catch(() => { }); }
+function stillAnswer(a) {
+  document.getElementById('stillHere')?.remove(); stillNativeClose();
+  const f2 = D.focus; if (!f2 || !f2.askedAt) return;
+  if (a === 'yes') { f2.okAt = focusElapsed(f2); f2.askedAt = 0; save(); }
+  else { f2.pausedAt = f2.askedAt || Date.now(); f2.askedAt = 0; stopFocus(true); }
+}
 function stillAlert(f) {
   try { sfx('notify'); } catch { }
+  if (!document.hasFocus()) stillNativeAsk(f);
   if (document.hidden && 'Notification' in window && Notification.permission === 'granted') {
     try { const n = new Notification('Still studying?', { body: 'Tap yes in Solis or the timer will stop in 5 minutes.', tag: 'stillhere', icon: 'icon.svg' }); n.onclick = () => { window.focus(); n.close(); }; } catch { }
   }
@@ -38,15 +57,12 @@ function showStill(f) {
     <div>Your ${esc(subj(f.subjectId).name)} timer is at ${fmtMins(Math.round(focusElapsed(f)))}. It stops in <b id="stillLeft"></b> unless you say you're still studying, and only the time up to now is kept.</div>
     <div class="row"><button class="btn small primary" data-st="yes">Yes, still here</button><button class="btn small" data-st="stop">Stop &amp; log</button></div></div>`;
   el.onclick = e => {
-    const a = e.target.closest('[data-st]')?.dataset.st; if (!a) return;
-    const f2 = D.focus; el.remove(); if (!f2) return;
-    if (a === 'yes') { f2.okAt = focusElapsed(f2); f2.askedAt = 0; save(); }
-    else { f2.pausedAt = f2.askedAt || Date.now(); f2.askedAt = 0; stopFocus(true); }
+    const a = e.target.closest('[data-st]')?.dataset.st; if (a) stillAnswer(a);
   };
   document.body.appendChild(el); stillCountdown(f);
 }
 function stillTimeout(f) {
-  document.getElementById('stillHere')?.remove();
+  document.getElementById('stillHere')?.remove(); stillNativeClose();
   f.pausedAt = f.askedAt; f.askedAt = 0; // freeze the clock at the moment of the question
   const mins = Math.round(focusElapsed(f)), name = subj(f.subjectId).name;
   stopFocus(true, true);

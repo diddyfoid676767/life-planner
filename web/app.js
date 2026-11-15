@@ -1191,13 +1191,18 @@ function planTraining(evId) {
 // ---------- focus timer & study log ----------
 // D.focus = running timer {subjectId, sessionId, startedAt, pausedAt, pausedMs}; saved so it syncs between devices.
 const focusElapsed = f => Math.max(0, ((f.pausedAt || Date.now()) - f.startedAt - (f.pausedMs || 0)) / 60000);
-function startFocus(subjectId, sessionId, exam) {
+// 2.68: f.down = a countdown in minutes. The clock shows what's left; at zero it stops and logs exactly that long.
+function focusClock(f, m) {
+  const v = f.down ? Math.max(0, f.down - m) : m, sec = f.down ? Math.ceil(v * 60) : Math.floor(v * 60), mm = Math.floor(sec / 60), ss = sec % 60;
+  return `${Math.floor(mm / 60) ? Math.floor(mm / 60) + ':' + pad(mm % 60) : mm}:${pad(ss)}`;
+}
+function startFocus(subjectId, sessionId, exam, down) {
   if (D.focus && !confirm('A focus timer is already running. Stop it and log that time first?')) return;
   if (D.focus) stopFocus(true, true);
   const sess = sessionId ? find('session', sessionId) : null;
   subjectId = subjectId || sess?.subjectId;
   if (!subjectId) { focusPicker(); return; }
-  D.focus = { subjectId, sessionId: sessionId || '', startedAt: Date.now(), pausedAt: 0, pausedMs: 0, planned: sess?.duration || 0, ...(exam ? { exam: true } : {}) };
+  D.focus = { subjectId, sessionId: sessionId || '', startedAt: Date.now(), pausedAt: 0, pausedMs: 0, planned: down || sess?.duration || 0, ...(exam ? { exam: true } : {}), ...(down ? { down } : {}) };
   if (exam && typeof examFull === 'function') examFull();
   save(); renderFocusBar(); openFocusFull(); if (typeof publishMe === 'function') publishMe(true);
 }
@@ -1205,8 +1210,14 @@ function focusPicker() {
   if (!D.subjects.length) { alert('Add a subject first.'); return; }
   showForm({ title: 'Start studying', saveLabel: 'Start timer', fields: [
     { key: 'subjectId', label: 'Subject', type: 'select', options: subjOpts(), value: D.subjects[0].id },
+    { key: 'len', label: 'Timer', type: 'select', options: [['', 'Count up (stop when you like)'], ['25', 'Count down from 25 min'], ['45', 'Count down from 45 min'], ['60', 'Count down from 60 min'], ['90', 'Count down from 90 min'], ['c', 'Count down from…']], value: D.settings.focusLen || '' },
+    { key: 'custom', label: 'Minutes for "Count down from…" (it stops and logs by itself at zero)', type: 'number', value: D.settings.focusCustom || 30 },
     { key: 'exam', label: '🔒 Exam mode: full screen, and leaving the planner ends the timer with no reward', type: 'bool', value: false }],
-    onSave: v => { setTimeout(() => startFocus(v.subjectId, '', v.exam), 0); } });
+    onSave: v => {
+      const down = v.len === 'c' ? Math.max(1, Math.min(600, Math.round(v.custom || 0))) : +v.len || 0;
+      D.settings.focusLen = v.len || ''; if (v.len === 'c') D.settings.focusCustom = down;
+      setTimeout(() => startFocus(v.subjectId, '', v.exam, down), 0);
+    } });
 }
 function pauseFocus() {
   const f = D.focus; if (!f) return;
@@ -1215,7 +1226,7 @@ function pauseFocus() {
 }
 function stopFocus(log, quiet) {
   const f = D.focus; if (!f) return;
-  const mins = Math.round(focusElapsed(f));
+  const mins = f.down ? Math.min(f.down, Math.round(focusElapsed(f))) : Math.round(focusElapsed(f)); // a countdown never runs over
   D.focus = null; focusAskCancel = false;
   if (f.exam && typeof examExitFull === 'function') examExitFull();
   if (typeof publishMe === 'function') setTimeout(() => publishMe(true), 0);
@@ -1233,10 +1244,16 @@ function renderFocusBar() {
   if (!f) { bar.hidden = true; clearInterval(focusTick); focusTick = null; document.title = 'Solis'; closeFocusFull(); updateMini(null); return; }
   const s = subj(f.subjectId);
   const draw = () => {
-    const m = focusElapsed(f), mm = Math.floor(m), ss = Math.floor((m - mm) * 60);
-    const time = `${Math.floor(mm / 60) ? Math.floor(mm / 60) + ':' + pad(mm % 60) : mm}:${pad(ss)}`;
+    const m = focusElapsed(f);
+    if (f.down && m >= f.down) { // countdown finished: stop and log, no overtime
+      clearInterval(focusTick); focusTick = null; const n = subj(f.subjectId).name;
+      try { sfx('notify'); } catch { }
+      notify(`${fmtMins(f.down)} of ${n} done`, 'Countdown finished. Your time is logged.', 'focus');
+      stopFocus(true); return;
+    }
+    const time = focusClock(f, m);
     const pct = Math.min(100, m / focusTarget(f, m) * 100);
-    bar.innerHTML = `<i class="fprog" style="width:${pct.toFixed(1)}%"></i><span class="ftree">${sunSvg(s.color, Math.min(1, m / Math.max(10, f.planned || 45)), 34)}</span><b>${esc(s.name)}</b> <span class="ftime">${time}</span>${f.planned ? `<span class="small-text"> / ${fmtMins(f.planned)}</span>` : ''}${f.pausedAt ? ' <span class="tag amber">Paused</span>' : ''}
+    bar.innerHTML = `<i class="fprog" style="width:${pct.toFixed(1)}%"></i><span class="ftree">${sunSvg(s.color, Math.min(1, m / Math.max(10, f.planned || 45)), 34)}</span><b>${esc(s.name)}</b> <span class="ftime">${time}</span>${f.down ? '<span class="small-text"> left</span>' : f.planned ? `<span class="small-text"> / ${fmtMins(f.planned)}</span>` : ''}${f.pausedAt ? ' <span class="tag amber">Paused</span>' : ''}
       <span class="spacer"></span>${focusAskCancel ? `<span class="small-text"><b>Cancel without logging?</b> Nothing gets logged.</span><button class="btn small danger" data-act="focusCancelYes">Yes, cancel it</button><button class="btn small" data-act="focusCancelNo">Keep going</button>`
         : f.exam ? `<span class="tag red">🔒 Exam mode</span><button class="btn small primary" data-act="focusStop">Stop &amp; log</button><button class="btn small" data-act="focusCancel" title="Stop without logging">Cancel</button><button class="btn small" data-act="focusMax" title="Big timer">⤢ Big timer</button>`
         : `<button class="btn small" data-act="focusPause">${f.pausedAt ? 'Resume' : 'Pause'}</button><button class="btn small primary" data-act="focusStop">Stop &amp; log</button><button class="btn small" data-act="focusCancel" title="Stop without logging">Cancel</button><button class="btn small" data-act="focusMax" title="Big timer">⤢ Big timer</button><button class="btn small" data-act="focusMini" title="A small player you can drag anywhere">▣ Mini player</button><button class="btn small" data-act="focusPop" title="A tiny window that stays on top of other apps">⧉ Pop out</button>`}`;
@@ -1244,7 +1261,7 @@ function renderFocusBar() {
     updateMini(f, s, m, time, pct);
     bar.style.setProperty('--c', s.color);
     document.title = `${time} · ${s.name}`;
-    if (f.planned && !f.pausedAt && !f.notified && m >= f.planned) { f.notified = true; notify(`${fmtMins(f.planned)} of ${s.name} done`, 'Take a break, or keep going and stop the timer when you finish.', 'focus'); }
+    if (f.planned && !f.down && !f.pausedAt && !f.notified && m >= f.planned) { f.notified = true; notify(`${fmtMins(f.planned)} of ${s.name} done`, 'Take a break, or keep going and stop the timer when you finish.', 'focus'); }
   };
   bar.hidden = false; draw();
   clearInterval(focusTick); focusTick = setInterval(draw, 1000);
