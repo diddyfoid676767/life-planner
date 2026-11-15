@@ -12,7 +12,8 @@
    A closed ring of wall round the hall keeps the Friday boss raid out.
    All numbers were approved by Eli on 14 Nov 2026 (hex-world/buildings-draft.md). */
 
-const HH_R = 7; // land radius in hexes (169 land hexes, 217 with the water ring)
+const HH_R = 9; // land radius in hexes (271 land hexes). 2.69: was 7; the 2.66 land is kept and two rings added round it
+const HH_R0 = 7;
 const HH_WALL = { l: 0, x: 40 }, HH_GATE = { l: 0, x: 80 }, HH_WALL_LV = 2;
 const HH_BANK = { rate: .01, cap: 500 }, HH_VAULT = 2000;
 // defence space by house level: wall hexes (gates count), towers, traps, guard posts
@@ -95,15 +96,25 @@ const hiKeys = d => Object.keys(d?.b || {}).filter(k => k[0] !== '_' && hiItem(h
 // ---------- the land: seeded per house, grass in the middle, woods and hills towards the coast ----------
 const HH_LAND = {};
 function hhLand(h = hsState().id) {
-  if (HH_LAND[h]) return HH_LAND[h];
-  const rnd = seeded('solis-hh-' + h), M = new Map(), ring = [];
-  for (let q = -HH_R - 1; q <= HH_R + 1; q++) for (let r = -HH_R - 1; r <= HH_R + 1; r++) { const d = hxDist(q, r); if (d <= HH_R + 1) M.set(hxK(q, r), { t: d === HH_R + 1 ? 'water' : 'grass', v: rnd(), d }); }
+  // piers built on the old coast keep a little inlet of water, so they still work
+  const piers = HI.doc ? hiKeys(HI.doc).filter(k => hiBase(k) === 'pier').map(k => HI.doc.b[k].at).filter(a => typeof a === 'string').sort().join(';') : '', ck = h + '|' + piers;
+  if (HH_LAND[ck]) return HH_LAND[ck];
+  const rnd = seeded('solis-hh-' + h), M = new Map(), ring = [], R0 = HH_R0;
+  for (let q = -R0 - 1; q <= R0 + 1; q++) for (let r = -R0 - 1; r <= R0 + 1; r++) { const d = hxDist(q, r); if (d <= R0 + 1) M.set(hxK(q, r), { t: d === R0 + 1 ? 'water' : 'grass', v: rnd(), d }); }
   const at = d => [...M].filter(([, x]) => x.d === d).map(([k]) => k), pick = a => a[Math.floor(rnd() * a.length)];
   for (let i = 0; i < 6; i++) { const c = pick([...at(5), ...at(6)]); for (const k of [c, ...hxNb(c)]) if (M.get(k)?.t === 'grass' && M.get(k).d >= 4 && rnd() < .7) M.get(k).t = 'forest'; }
   for (let i = 0; i < 4; i++) { const k = pick(at(6)); if (M.get(k).t === 'grass') M.get(k).t = 'hill'; }
   for (let i = 0; i < 3; i++) { const k = pick(at(7)); if (M.get(k).t === 'grass') M.get(k).t = 'mount'; }
   for (const [, x] of M) if (x.t === 'grass' && x.d >= 4 && rnd() < .04) x.t = 'rock';
-  return (HH_LAND[h] = M);
+  // 2.69: the old water ring becomes land, and two new rings go round it
+  const r2 = seeded('solis-hh-2.69-' + h), wet = new Set(piers ? piers.split(';').flatMap(p => hxNb(p)) : []);
+  for (let q = -HH_R - 1; q <= HH_R + 1; q++) for (let r = -HH_R - 1; r <= HH_R + 1; r++) {
+    const d = hxDist(q, r), k = hxK(q, r); if (d > HH_R + 1 || (M.has(k) && d <= R0)) continue;
+    const v = r2(), t = d === HH_R + 1 || (d === R0 + 1 && wet.has(k)) ? 'water' : v < .18 ? 'forest' : v < .23 ? 'rock' : v < .27 && d === HH_R ? 'hill' : 'grass';
+    M.set(k, { t, v: r2(), d });
+  }
+  for (let i = 0; i < 4; i++) { const k = pick(at(HH_R)); if (M.get(k).t === 'grass') M.get(k).t = 'mount'; }
+  return (HH_LAND[ck] = M);
 }
 
 // ---------- the hex state the engine reads, built from the house document ----------
@@ -114,7 +125,7 @@ function hhWorld() {
   if (HH_W?.key === key) return HH_W;
   const H = hsHouse(h) || { e: '🏰', name: 'House' };
   return (HH_W = {
-    key, R: HH_R, seed: h, col: hxCol(), noClear: true, house: true,
+    key, R: HH_R, seed: h, col: hxCol(), ac: H.col || '#ffd43b', noClear: true, house: true,
     land: () => hhLand(h), item: hhItem, look: hhLook, dress: hhDress, sig: hhSig,
     free: [{ id: 'ghall', n: `${H.name} great hall`, e: H.e, m: 'building_castle', at: '0,0', rot: 0, s: 1 + Math.min(11, hl - 1) * .045 }],
   });

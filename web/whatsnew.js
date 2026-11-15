@@ -10,6 +10,12 @@
 // version since the last one they saw (up to 3). D.settings.seenVersion remembers what was last shown,
 // D.settings.guidesSeen which guides have played. A brand-new install never sees either.
 const CHANGELOG = [
+  { v: '2.69.0', notes: [
+    { t: 'Islands are about 30% bigger, with a new ring of land round the edge. Everything you built stays where it is', k: 'new' },
+    { t: 'Main buildings have their own colours, and hovering shows a name tag, a glow and a little tick', k: 'new' },
+    { t: 'Move the island with right-drag, and lock the view to a tidy angle (or save your own)', k: 'new' },
+    { t: 'House island buildings wear your house colour with banners and stone, plus flowers, foam on the shore and softer clouds', k: 'tweak' },
+  ] },
   { v: '2.68.0', notes: [
     { t: 'Countdown timer: pick 25, 45, 60 or 90 minutes (or your own) when you start studying. At zero it stops and logs by itself', k: 'new' },
     { t: '"Are you still here?" now pops up over other windows with a loud chime when Solis is in the background', k: 'new' },

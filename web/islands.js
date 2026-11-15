@@ -43,7 +43,9 @@ function isSpot(L, id, sz) {
 const isTimeLeft = d => { const ms = new Date(d + 'T00:00').getTime() - Date.now(); if (ms <= 0) return 'soon'; const h = Math.floor(ms / 36e5), dd = Math.floor(h / 24); return dd ? `${dd}d ${h % 24}h` : `${h}h ${Math.floor(ms / 6e4) % 60}m`; };
 const IS_LABEL = { build: '🏗️ Building', ok: '✅ Working', worn: '🟠 Worn: half perk', broken: '🔴 Broken: no perk' };
 const isSwitch = tab => `<div class="ishud is-tc"><div class="isswitch">${[['personal', '🏝️', 'Your island'], ['house', '🏰', 'House island'], ['boss', typeof hsBoss === 'function' ? hsBoss(mondayOf(today())).e : '💀', 'Boss island'], ['rank', '🏆', 'Rankings']].filter(([id]) => id !== 'house' || !plannerOnly()).map(([id, e, n]) => `<button class="${tab === id ? 'on' : ''}" data-is="tab" data-v="${id}">${e} ${n}</button>`).join('')}</div></div>`;
-const isCtl = () => `<div class="g3ctl isctl"><button data-is="view" data-v="left" title="Turn left (or drag)">⟲</button><button data-is="view" data-v="right" title="Turn right">⟳</button><button data-is="view" data-v="in" title="Zoom in (or scroll)">＋</button><button data-is="view" data-v="out" title="Zoom out">−</button><button data-is="view" data-v="reset" title="Reset view">⌂</button></div>`;
+// 2.69: lock view (snaps to a tidy angle and holds it; dragging then moves the island) and save your own angle
+const isCtl = () => { const lk = typeof hxLocked === 'function' && hxLocked();
+  return `<div class="g3ctl isctl ${lk ? 'locked' : ''}">${lk ? '' : '<button data-is="view" data-v="left" title="Turn left (or drag)">⟲</button><button data-is="view" data-v="right" title="Turn right">⟳</button>'}<button data-is="view" data-v="in" title="Zoom in (or scroll)">＋</button><button data-is="view" data-v="out" title="Zoom out">−</button><button data-is="view" data-v="reset" title="Back to the middle">⌂</button><button data-is="view" data-v="lock" class="${lk ? 'on' : ''}" title="${lk ? 'Unlock: drag turns the island again' : 'Lock view: snap to a tidy angle and keep it (drag moves the island)'}">${lk ? '🔒' : '🔓'}</button>${lk ? '' : '<button data-is="view" data-v="saveview" title="Save this angle for Lock view">📌</button>'}</div>`; };
 // a resource bar: amount, and how full the store is
 const isBar = (cls, ico, amt, sub, fill, act) => `<div class="isres ${cls}" ${act ? `data-is="${act}" role="button" tabindex="0"` : ''}><span class="isico">${ico}</span><div><b>${amt.toLocaleString()}</b><i style="width:${Math.max(0, Math.min(100, fill * 100))}%"></i></div><small>${sub}</small></div>`;
 // full-screen frame: 3D, bubbles over buildings and whatever overlays are open
@@ -89,7 +91,7 @@ function isPlaceStart(P) {
 
 // ---------- 3D (three.js, rotate and zoom only, drawn on demand) ----------
 const IS3 = { yaw: Math.PI / 4, pitch: .62, dist: 34, sig: '' };
-const is3home = house => house === 'hexh' ? { yaw: Math.PI / 5, pitch: .8, dist: 50 } : house === 'hex' ? { yaw: Math.PI / 5, pitch: .78, dist: 40 } : ({ yaw: Math.PI / 4, pitch: house === 'boss' ? .42 : .62, dist: house === 'boss' ? 30 : house ? 50 : 34 });
+const is3home = house => house === 'hexh' ? { yaw: Math.PI / 5, pitch: .8, dist: 62 } : house === 'hex' ? { yaw: Math.PI / 5, pitch: .78, dist: 47 } : ({ yaw: Math.PI / 4, pitch: house === 'boss' ? .42 : .62, dist: house === 'boss' ? 30 : house ? 50 : 34 });
 // 2.56: the Low graphics switch in Settings drops the 3D shadows (works live)
 function applyQuality() {
   if (typeof IS3 !== 'object' || !IS3.R) return;
@@ -124,15 +126,20 @@ function is3init() {
   IS3.ray = new THREE.Raycaster();
   const c = IS3.canvas; let drag = null, moved = 0;
   // 2.65: the hex island (hexworld.js) handles taps, drags and placing first; anything it leaves turns the camera
-  c.addEventListener('pointerdown', e => { c.setPointerCapture(e.pointerId); if (typeof hxPointer === 'function' && hxPointer('down', e)) { drag = null; return; } drag = [e.clientX, e.clientY]; moved = 0; });
+  let pan = false;
+  c.addEventListener('pointerdown', e => { c.setPointerCapture(e.pointerId); if (typeof hxPointer === 'function' && hxPointer('down', e)) { drag = null; return; } drag = [e.clientX, e.clientY]; moved = 0; pan = e.button === 2 || e.button === 1 || e.shiftKey || (typeof hxLocked === 'function' && hxLocked()); });
+  c.addEventListener('pointerleave', () => { if (typeof hxPointer === 'function') hxPointer('leave'); });
   c.addEventListener('pointermove', e => {
     if (typeof hxPointer === 'function' && hxPointer('move', e)) { drag = null; return; }
     if (!drag) { if (ui.isPlace) is3ghostAt(e); return; }
     moved += Math.abs(e.clientX - drag[0]) + Math.abs(e.clientY - drag[1]);
-    IS3.yaw -= (e.clientX - drag[0]) * .008; IS3.pitch = Math.max(.25, Math.min(1.3, IS3.pitch + (e.clientY - drag[1]) * .006)); drag = [e.clientX, e.clientY]; is3draw();
+    if (pan && IS3.hexMode && typeof hxPan === 'function' && (IS3.house === 'hex' || IS3.house === 'hexh')) hxPan(e.clientX - drag[0], e.clientY - drag[1]);
+    else if (!pan) { IS3.yaw -= (e.clientX - drag[0]) * .008; IS3.pitch = Math.max(.25, Math.min(1.3, IS3.pitch + (e.clientY - drag[1]) * .006)); }
+    if (HX3.tween) HX3.tween = null;
+    drag = [e.clientX, e.clientY]; is3draw();
   });
   c.addEventListener('pointerup', e => { const was = drag; drag = null; if (typeof hxPointer === 'function' && hxPointer('up', e)) return; if (was && moved < 6) is3tap(e); });
-  c.addEventListener('contextmenu', e => { if (typeof hxPointer === 'function' && hxPointer('context', e)) e.preventDefault(); });
+  c.addEventListener('contextmenu', e => { if (typeof hxPointer === 'function' && hxPointer('context', e) || moved > 6 || IS3.house === 'hex' || IS3.house === 'hexh') e.preventDefault(); });
   c.addEventListener('wheel', e => { e.preventDefault(); IS3.dist = Math.max(12, Math.min(90, IS3.dist * (e.deltaY > 0 ? 1.1 : .9))); is3draw(); }, { passive: false });
   new ResizeObserver(() => { if (is3resize()) is3draw(); }).observe(document.body);
 }
@@ -146,8 +153,8 @@ function is3resize() {
 function is3draw() {
   if (!IS3.R || !IS3.canvas.isConnected || IS3.queued) return;
   IS3.queued = requestAnimationFrame(() => {
-    IS3.queued = 0; const { cam, yaw, pitch } = IS3, dist = IS3.dist * (IS3.distK || 1);
-    cam.position.set(Math.sin(yaw) * Math.cos(pitch) * dist, Math.sin(pitch) * dist, Math.cos(yaw) * Math.cos(pitch) * dist); cam.lookAt(0, 0, 0);
+    IS3.queued = 0; const { cam, yaw, pitch } = IS3, dist = IS3.dist * (IS3.distK || 1), [tx, tz] = IS3.hexMode && IS3.house !== 'boss' && IS3.tgt || [0, 0];
+    cam.position.set(tx + Math.sin(yaw) * Math.cos(pitch) * dist, Math.sin(pitch) * dist, tz + Math.cos(yaw) * Math.cos(pitch) * dist); cam.lookAt(tx, 0, tz);
     IS3.R.render(IS3.scene, cam);
     // keep the bubbles over their buildings
     const host = IS3.canvas.parentNode, W = host.clientWidth, H = host.clientHeight, v = new THREE.Vector3();
@@ -156,9 +163,12 @@ function is3draw() {
       v.set(p[0], p[1], p[2]).project(cam); b.style.display = '';
       b.style.transform = `translate(${(v.x + 1) / 2 * W}px, ${(1 - v.y) / 2 * H}px) translate(-50%, -100%)`;
     });
+    if (typeof hxTagPos === 'function') hxTagPos(cam, W, H);
   });
 }
 function is3view(v) {
+  if ((v === 'lock' || v === 'saveview' || v === 'reset') && (IS3.house === 'hex' || IS3.house === 'hexh') && typeof hxViewAct === 'function') { hxViewAct(v); return; }
+  if (v === 'saveview' || v === 'lock') return;
   if (v === 'left') IS3.yaw += Math.PI / 4; if (v === 'right') IS3.yaw -= Math.PI / 4;
   if (v === 'in') IS3.dist = Math.max(12, IS3.dist * .82); if (v === 'out') IS3.dist = Math.min(90, IS3.dist * 1.2);
   if (v === 'reset') Object.assign(IS3, is3home(IS3.house));
