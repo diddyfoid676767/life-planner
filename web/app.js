@@ -226,8 +226,8 @@ function migrate(d) {
   d.claude = Object.assign({ requests: [], decided: {}, seen: {}, draft: '' }, d.claude || {});
   d.game = Object.assign({ spent: 0, bonus: 0, items: {}, scene: 'meadow', claimed: {}, opened: 0, hidden: {}, ledger: {}, critters: {}, upgrades: {}, trees: {}, away: {}, restUsed: {} }, d.game || {});
   d.focus = d.focus || null;
-  if (!d.settings.brainfmLink) { if (!d.links.some(l => /brain\.fm/i.test(l.url || ''))) d.links.push({ id: uid(), title: 'Brain.fm', url: 'https://my.brain.fm/', group: 'Apps', subjectId: '', notes: '' }); d.settings.brainfmLink = true; }
-  if (d.settings.focusBrainfm == null) d.settings.focusBrainfm = true;
+  // 2.67.5: Brain.fm is gone; take out the link the app added for you
+  if (!d.settings.brainfmGone) { d.links = d.links.filter(l => !(l.title === 'Brain.fm' && /brain\.fm/i.test(l.url || ''))); delete d.settings.focusBrainfm; delete d.settings.brainfmLink; delete d.settings.brainfmPath; d.settings.brainfmGone = true; }
   if (d.settings.yearLevel == null) d.settings.yearLevel = 11;
   if (!d.settings.garminLink) {
     if (!d.links.some(l => /garmin/i.test(l.url || ''))) d.links.push({ id: uid(), title: 'Garmin Connect', url: 'https://connect.garmin.com/modern/', group: 'Apps', subjectId: '', notes: '' });
@@ -918,8 +918,6 @@ function viewSettings() {
       <p class="small-text"><b id="verText">Version ${esc(appVersion)}</b> <button class="btn small" data-act="checkUpdateNow">Check for updates</button> · New versions download by themselves from GitHub. You can also put a LifePlanner zip in your Downloads folder.</p>
       <p class="small-text">Updates install by themselves a minute after they arrive. Your work is saved first, and the planner opens again where you were.</p>
       <button class="btn small" data-act="restartApp">🔄 Save and restart</button> <button class="btn small" data-act="feedback">💬 Report a bug or suggest an idea</button>
-      <p class="small-text"><b>Brain.fm:</b> <span id="brainfmState">${brainfmApp ? 'opens the app (' + esc(brainfmApp.split(/[\\/]/).pop()) + ')' : 'app not found, so it opens the website'}</span></p>
-      <div class="row" style="margin-bottom:10px"><input type="text" placeholder="Brain.fm app path (optional, e.g. C:\\Users\\you\\AppData\\Local\\brain\\Brain.fm.exe)" data-setting="brainfmPath" value="${esc(D.settings.brainfmPath || '')}" style="flex:1;min-width:220px"><button class="btn small" data-act="brainfmTest">Test</button></div>
       <p class="muted small-text" style="margin-top:0">Closing this tab is fine: the planner shuts itself down a few minutes after the last tab is closed. To reopen it, double-click Solis.exe.</p>
       <div class="row"><button class="btn" data-act="loadStarter">Re-add starter plan</button><button class="btn danger" data-act="quit">Quit planner now</button><button class="btn danger" data-act="reset">Delete all data…</button></div></div>
   </div>`;
@@ -1202,27 +1200,13 @@ function startFocus(subjectId, sessionId, exam) {
   D.focus = { subjectId, sessionId: sessionId || '', startedAt: Date.now(), pausedAt: 0, pausedMs: 0, planned: sess?.duration || 0, ...(exam ? { exam: true } : {}) };
   if (exam && typeof examFull === 'function') examFull();
   save(); renderFocusBar(); openFocusFull(); if (typeof publishMe === 'function') publishMe(true);
-  if (D.settings.focusBrainfm) openBrainfm();
-}
-// Brain.fm: open the desktop app when it's installed, otherwise the website.
-let brainfmApp = '';
-function checkBrainfm() {
-  if (ONLINE) return Promise.resolve('');
-  return fetch('/api/brainfm?path=' + encodeURIComponent(D.settings.brainfmPath || '')).then(r => r.json()).then(j => (brainfmApp = j.found || '')).catch(() => '');
-}
-function openBrainfm() {
-  if (!brainfmApp) { window.open('https://my.brain.fm/', '_blank', 'noopener'); return; }
-  fetch('/api/brainfm?path=' + encodeURIComponent(D.settings.brainfmPath || ''), { method: 'POST' })
-    .then(r => { if (!r.ok) throw 0; toast('Opening Brain.fm…', '', { timeout: 2500 }); })
-    .catch(() => { brainfmApp = ''; toast('Could not open the Brain.fm app', 'Opening the website instead.', { actions: [['Open website', () => window.open('https://my.brain.fm/', '_blank', 'noopener')]] }); });
 }
 function focusPicker() {
   if (!D.subjects.length) { alert('Add a subject first.'); return; }
   showForm({ title: 'Start studying', saveLabel: 'Start timer', fields: [
     { key: 'subjectId', label: 'Subject', type: 'select', options: subjOpts(), value: D.subjects[0].id },
-    { key: 'brain', label: 'Open Brain.fm too', type: 'bool', value: D.settings.focusBrainfm },
     { key: 'exam', label: '🔒 Exam mode: full screen, and leaving the planner ends the timer with no reward', type: 'bool', value: false }],
-    onSave: v => { D.settings.focusBrainfm = v.brain; setTimeout(() => startFocus(v.subjectId, '', v.exam), 0); } });
+    onSave: v => { setTimeout(() => startFocus(v.subjectId, '', v.exam), 0); } });
 }
 function pauseFocus() {
   const f = D.focus; if (!f) return;
@@ -1743,8 +1727,6 @@ function exportIcs() {
 document.addEventListener('click', e => {
   const tab = e.target.closest('#tabs button');
   if (tab) { view = tab.dataset.view; window.scrollTo(0, 0); render(); return; }
-  const bf = e.target.closest('a[href*="brain.fm"]');
-  if (bf && brainfmApp) { e.preventDefault(); openBrainfm(); return; }
   const el = e.target.closest('[data-act]'); if (!el) return;
   if (el.tagName === 'A' && el.getAttribute('href') === '#') e.preventDefault();
   const { act, kind, id, date } = el.dataset;
@@ -1775,7 +1757,6 @@ document.addEventListener('click', e => {
         .catch(e => toast("Couldn't save the token", e.message, { cls: 'danger' }));
       break;
     }
-    case 'brainfmTest': checkBrainfm().then(() => { render(); openBrainfm(); }); break;
     case 'setupOpen': openSetup(false); break;
     case 'tourStart': startTour(); break;
     case 'wnShow': whatsNewShow(CHANGELOG.slice(0, 3), false); break;
@@ -1847,7 +1828,6 @@ document.addEventListener('click', e => {
     case 'focusPause': pauseFocus(); break;
     case 'focusMin': closeFocusFull(); break;
     case 'focusMax': openFocusFull(); break;
-    case 'brainfmOpen': openBrainfm(); break;
     case 'focusStop': stopFocus(true); break;
     case 'focusMini': D.settings.focusMini = true; save(); renderFocusBar(); break;
     case 'focusPop': popOutMini(); break;
@@ -1885,7 +1865,7 @@ document.addEventListener('change', e => {
     return;
   }
   if (el.dataset.toggle) { toggleDone(el.dataset.toggle, el.dataset.id, el.checked); return; }
-  if (el.dataset.setting) { D.settings[el.dataset.setting] = el.type === 'checkbox' ? el.checked : el.value.trim().replace(/^"|"$/g, ''); save(); if (el.dataset.setting === 'brainfmPath') checkBrainfm().then(render); if (el.dataset.setting === 'bootIntro') try { localStorage.setItem('lpNoIntro', el.checked ? '0' : '1'); } catch { } return; }
+  if (el.dataset.setting) { D.settings[el.dataset.setting] = el.type === 'checkbox' ? el.checked : el.value.trim().replace(/^"|"$/g, ''); save(); if (el.dataset.setting === 'bootIntro') try { localStorage.setItem('lpNoIntro', el.checked ? '0' : '1'); } catch { } return; }
   if (el.dataset.remdef) { const k = el.dataset.remdef; D.settings.remind[k] = [...document.querySelectorAll(`[data-remdef="${k}"]`)].filter(x => x.checked).map(x => Number(x.value)).sort((a, b) => b - a); save(); return; }
   if (el.dataset.change === 'lookColor') { setLook(el.dataset.k, el.value); return; }
   if (el.dataset.change === 'lbEvent') { ui.lbEvent = el.value; render(); return; }
@@ -2031,7 +2011,6 @@ async function clearStudyBlocks() {
   safe(clearStudyBlocks, 'studyBlocks');
   if (typeof menuStart === 'function') safe(menuStart, 'menu');
   safe(renderFocusBar, 'focusBar');
-  safe(() => checkBrainfm().then(() => { if (view === 'settings' && !modal.open) render(); }), 'brainfm');
   safe(checkTempFolder, 'temp');
   safe(checkClaudeLink, 'claude');
   safe(() => aiLoad().then(() => { aiFab(); if (view === 'settings') render(); }), 'ai');
