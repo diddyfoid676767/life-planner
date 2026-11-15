@@ -48,11 +48,11 @@ function hxDetail(W, L, st, rnd, low) {
       for (let i = 0; i < 2; i++) if (r2() < .5) shim.push([x + (r2() - .5) * 1.4, z + (r2() - .5) * 1.4, i]);
       continue;
     }
-    const a = hxAt(k, st); if (a.kind !== 'grass') continue;
-    const n = 3 + Math.floor(r2() * 4);
+    const a = hxAt(k, st); if (a.kind !== 'grass' || a.g) continue;
+    const n = 3 + Math.floor(r2() * 4), y0 = hxHt(k, st);
     for (let i = 0; i < n; i++) {
       const ang = r2() * 6.28, rr = .35 + r2() * .55, px = x + Math.cos(ang) * rr, pz = z + Math.sin(ang) * rr, v = r2();
-      if (v < .55) tufts.push([px, pz, r2()]); else if (v < .85) flowers.push([px, pz, r2()]); else pebbles.push([px, pz, r2()]);
+      if (v < .55) tufts.push([px, pz, r2(), y0]); else if (v < .85) flowers.push([px, pz, r2(), y0]); else pebbles.push([px, pz, r2(), y0]);
     }
   }
   const inst = (geo, mat, list, place) => {
@@ -61,11 +61,11 @@ function hxDetail(W, L, st, rnd, low) {
     list.forEach((p, i) => { place(o, p); o.updateMatrix(); m.setMatrixAt(i, o.matrix); });
     m.instanceMatrix.needsUpdate = true; W.add(m); return m;
   };
-  const tm = inst(new THREE.ConeGeometry(.07, .26, 4), new THREE.MeshStandardMaterial({ color: '#5fae43', flatShading: true, roughness: 1 }), tufts, (o, [x, z, v]) => { o.position.set(x, .1, z); o.rotation.set((v - .5) * .4, v * 6, 0); o.scale.setScalar(.7 + v * .7); });
+  const tm = inst(new THREE.ConeGeometry(.07, .26, 4), new THREE.MeshStandardMaterial({ color: '#5fae43', flatShading: true, roughness: 1 }), tufts, (o, [x, z, v, y]) => { o.position.set(x, .1 + y, z); o.rotation.set((v - .5) * .4, v * 6, 0); o.scale.setScalar(.7 + v * .7); });
   if (tm) { const c = new THREE.Color(); tufts.forEach((p, i) => tm.setColorAt(i, c.set(['#5fae43', '#74c056', '#4b9a37'][Math.floor(p[2] * 3)]))); tm.instanceColor.needsUpdate = true; }
-  const fm = inst(new THREE.IcosahedronGeometry(.055, 0), new THREE.MeshStandardMaterial({ color: '#ffffff', flatShading: true, roughness: .8 }), flowers, (o, [x, z, v]) => { o.position.set(x, .07, z); o.rotation.set(0, v * 6, 0); o.scale.setScalar(.8 + v * .6); });
+  const fm = inst(new THREE.IcosahedronGeometry(.055, 0), new THREE.MeshStandardMaterial({ color: '#ffffff', flatShading: true, roughness: .8 }), flowers, (o, [x, z, v, y]) => { o.position.set(x, .07 + y, z); o.rotation.set(0, v * 6, 0); o.scale.setScalar(.8 + v * .6); });
   if (fm) { const c = new THREE.Color(); flowers.forEach((p, i) => fm.setColorAt(i, c.set(['#ffec99', '#ffa8c5', '#ffffff', '#d0bfff', '#ffc078'][Math.floor(p[2] * 5)]))); fm.instanceColor.needsUpdate = true; }
-  inst(new THREE.DodecahedronGeometry(.07, 0), new THREE.MeshStandardMaterial({ color: '#a8a29a', flatShading: true, roughness: 1 }), pebbles, (o, [x, z, v]) => { o.position.set(x, .02, z); o.rotation.set(v * 3, v * 6, 0); o.scale.set(1 + v, .6, 1 + v * .5); });
+  inst(new THREE.DodecahedronGeometry(.07, 0), new THREE.MeshStandardMaterial({ color: '#a8a29a', flatShading: true, roughness: 1 }), pebbles, (o, [x, z, v, y]) => { o.position.set(x, .02 + y, z); o.rotation.set(v * 3, v * 6, 0); o.scale.set(1 + v, .6, 1 + v * .5); });
   // shoreline foam: a soft strip along each water edge that touches land
   const foamM = new THREE.MeshBasicMaterial({ color: '#f1f8ff', transparent: true, opacity: .55, depthWrite: false });
   inst(new THREE.PlaneGeometry(1.1, .2), foamM, foam, (o, [x, z, i]) => { const a = i * Math.PI / 3; o.position.set(x + Math.cos(a) * .86, -.18, z + Math.sin(a) * .86); o.rotation.set(-Math.PI / 2, 0, -a + Math.PI / 2); o.scale.set(1, 1, 1); });
@@ -100,6 +100,7 @@ function hxHoverWhat(k) {
   if (a.kind === 'free') return [a.it.e, a.it.n, a.it.ac || W.ac || '#ffd43b', a.it.hz || 523, a.it.at];
   if (a.kind === 'b' && !a.it?.wall) return [a.it.e, a.it.n, W.house ? W.ac || '#ffe8a3' : '#ffe8a3', HX_TICK[a.it.id] || 450 + (a.it.n.length * 37) % 400, a.main];
   if (a.kind === 'b') return [a.it.e, a.it.n, '#ced4da', 260, a.main];
+  if (a.kind === 'deco') return [a.it.e, a.it.n, '#ffd8a8', 560, k];
   if (a.kind === 'tree') return ['🌲', 'Trees', '#8ce99a', 240, k];
   if (a.kind === 'rock') return ['🪨', 'Rocks', '#ced4da', 210, k];
   return null;

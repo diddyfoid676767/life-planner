@@ -3748,3 +3748,14 @@ dialog#modal[open]::backdrop { animation: fadeIn .25s ease-out; }
 #hxtag span { width: 20px; height: 20px; border-radius: 50%; display: grid; place-items: center; font-size: .8rem; background: color-mix(in srgb, var(--ac) 35%, rgba(255, 255, 255, .1)); }
 @keyframes hxtagin { from { opacity: 0; margin-top: 4px; } }
 .isfull .isitem .btn.primary { background: linear-gradient(160deg, var(--sm-gold), var(--sm-gold2)); color: #2a1600; border-color: #ffe8a3; font-weight: 700; }
+/* 2.70 terraform brush bar (terraform.js), in the island menu style */
+.isfull .tfbar { flex-direction: column; align-items: stretch; gap: 8px; width: min(1000px, 96%); max-width: min(1000px, 96%); padding: 10px 12px; border-radius: var(--sm-r); background: var(--sm-bg); border-color: var(--sm-line); color: var(--sm-text); }
+.tfgs { display: flex; flex-wrap: wrap; gap: 10px; }
+.tfg small { display: block; font-size: .68rem; text-transform: uppercase; letter-spacing: .06em; color: var(--sm-muted); margin: 0 0 3px 2px; }
+.tfg > div { display: flex; flex-wrap: wrap; gap: 4px; }
+.tfb { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px; min-width: 52px; min-height: var(--sm-tap); padding: 4px 6px; border-radius: 12px; border: 1px solid rgba(255, 255, 255, .1); background: var(--sm-bg2); color: var(--sm-text); font-size: .68rem; cursor: pointer; transition: transform .1s, border-color .1s; }
+.tfb span { font-size: 1.15rem; line-height: 1.1; }
+.tfb:hover { transform: translateY(-1px); border-color: var(--sm-gold); }
+.tfb.on { background: linear-gradient(160deg, var(--sm-gold), var(--sm-gold2)); color: #2a1600; border-color: #ffe8a3; font-weight: 700; }
+.tfrow { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.tfrow > span { flex: 1; min-width: 220px; }

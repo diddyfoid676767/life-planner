@@ -134,6 +134,9 @@ function hxAt(k, st = hxState()) {
   const f = hxFreeAt(k, st); if (f) return { kind: 'free', it: f };
   const mk = st.__occ?.[k] || (st.b[k] && k); if (mk && st.b[mk]) return { kind: 'b', s: st.b[mk], it: W.item(st.b[mk].id), main: mk };
   if (st.road.includes(k)) return { kind: 'road', bridge: h.t === 'river' };
+  const tf = st.tf?.[k]; // 2.70: terraforming and decorations (terraform.js)
+  if (tf?.d) return { kind: 'deco', d: tf.d, it: HX_TF.deco[tf.d] };
+  if (tf?.t) return tf.t === 'forest' ? { kind: 'tree', tf: 1 } : tf.t === 'hill' ? { kind: 'hill', tf: 1 } : tf.t === 'water' ? { kind: 'pond' } : { kind: 'grass', g: tf.t };
   if ((h.t === 'forest' || h.t === 'rock') && st.clr.includes(k)) return { kind: 'grass' };
   return { kind: h.t === 'forest' ? 'tree' : h.t };
 }
@@ -256,6 +259,9 @@ function hxCheck(id, k, st = hxState(), moving) {
   if (it?.hz > 1) { for (const f of hxFoot(it, k)) { const c = hxCheck('_one', f, st, moving); if (!c.ok) return { ...out, why: it.hz + '-hex project: ' + c.why.charAt(0).toLowerCase() + c.why.slice(1) }; } return hxCheckPost(it, k, st, { ...out, ok: true }); }
   const a = hxAt(k, st);
   if (a.kind === 'off' || a.kind === 'water') return { ...out, why: 'That\'s off the island' };
+  if (a.kind === 'deco') return { ...out, why: `A ${a.it?.n.toLowerCase() || 'decoration'} is here (take it away with 🌱 Terraform)` };
+  if (a.kind === 'pond') return { ...out, why: 'There\'s a pond here' };
+  if (id === 'road' && hxHt(k, st) > 0) return { ...out, why: 'Roads stay on flat ground (lower this hex first)' };
   if (id === 'road') {
     if (a.kind === 'road' || a.kind === 'free' || a.kind === 'b') return { ...out, why: a.kind === 'road' ? 'Already a road' : 'Something\'s already here' };
     if (a.kind === 'river') return { ...out, ok: true, why: '', good: [`Bridge: ${hxCost(HX_BRIDGE.l, HX_BRIDGE.x)}`] };
@@ -305,7 +311,7 @@ function viewHexHome() {
       <div class="isbuilders" title="Builders: how many things can be built or upgraded at once">🔨 ${IS_BUILDERS - busy}/${IS_BUILDERS} builders free</div></div>
     <div class="ishud is-tr">${isBar('cd-l', LUMEN, w.lumen, sto.l ? `+${sto.l} to collect · store ${sto.capL}` : `Store ${sto.capL}`, sto.l / sto.capL, sto.l ? 'collect' : '')}${isBar('cd-e', EMBER, w.ember, sto.e ? `+${sto.e} to collect · store ${sto.capE}` : `Store ${sto.capE}`, sto.e / sto.capE, sto.e ? 'collect' : '')}</div>
     <div class="ishud is-bl"><button class="isbtn" data-hx="panel" data-v="perks">✨<span>Perks</span></button><button class="isbtn" data-hx="panel" data-v="help">❔<span>How it works</span></button>${ui.hxUndo ? '<button class="isbtn" data-hx="undo" title="Undo the last move (Ctrl+Z)">↶<span>Undo</span></button>' : ''}</div>
-    ${P ? '' : `<div class="ishud is-br hxtools"><button class="isbtn" data-hx="tool" data-v="road" title="Lay roads by dragging">🛣️<span>Roads</span></button>${lv >= hxItem('wall').u ? '<button class="isbtn" data-hx="tool" data-v="wall" title="Lay walls by dragging">🧱<span>Walls</span></button>' : ''}<button class="isbtn big" data-hx="panel" data-v="shop">🛒<span>Build</span></button></div>`}`;
+    ${P ? '' : `<div class="ishud is-br hxtools"><button class="isbtn" data-hx="tool" data-v="road" title="Lay roads by dragging">🛣️<span>Roads</span></button>${lv >= hxItem('wall').u ? '<button class="isbtn" data-hx="tool" data-v="wall" title="Lay walls by dragging">🧱<span>Walls</span></button>' : ''}<button class="isbtn" data-hx="tool" data-v="tf" title="Terraform: paint the ground, raise hills, place decorations">🌱<span>Terraform</span></button><button class="isbtn big" data-hx="panel" data-v="shop">🛒<span>Build</span></button></div>`}`;
   let extra = `<div class="isbubs">${bubs}</div>`;
   if (P) extra += hxPlaceBar(P, tool);
   else if (ui.isPanel === 'shop') extra += isPanel('🛒 Build on your island', hxShopHtml(st, w, lv, busy));
@@ -321,6 +327,7 @@ function viewHexHome() {
       <li>A building only works when a <b>road</b> joins it to your hall. Press 🛣️ <b>Roads</b> and drag across hexes to lay them (${hxCost(HX_ROAD.l, HX_ROAD.x)} a hex). Roads over the river become bridges.</li>
       <li>Some buildings like a spot: a lumber mill next to forest, a mine next to a hill, a watermill on the river, a windmill among fields.</li>
       <li>Drag any building to move it, free. <b>Ctrl+Z</b> undoes the last move. Tap trees or rocks to clear them.</li>
+      <li>🌱 <b>Terraform</b> paints the ground (grass, sand, paths, forest, hills, ponds), raises hexes and places decorations, for a little Lumen or Ember a hex. <b>Ctrl+Z</b> gives a stroke back; Reset terrain puts the ground back as it started.</li>
       <li>Drag empty ground to turn the island, right-drag (or Shift+drag) to move it, scroll to zoom. 🔓 <b>Lock view</b> snaps to a tidy angle and keeps it; 📌 saves the angle you like.</li>
       <li>You have ${IS_BUILDERS} builders. Buildings go to level ${IS_MAXLV}, wear after ${IS_WEAR} active days and break after ${IS_BREAK}; holidays and exam days don't count.</li></ul>
       ${typeof guideStart === 'function' ? '<button class="btn small" data-act="guideStart" data-v="hexmove">🧭 Show me how</button>' : ''}`);
@@ -330,6 +337,7 @@ function viewHexHome() {
 }
 function hxPlaceBar(P, tool) {
   if (hxHouseOn()) return hhPlaceBar(P, tool);
+  if (P.id === 'tf') return tfBar(P);
   if (tool) {
     const n = P.id === 'road' ? 'road' : P.id === 'wall' ? 'wall' : '';
     return `<div class="ishud is-bc isplace hxbar"><span>${P.id === 'erase' ? '🧽 Drag over roads and walls to remove them (roads give their cost back).' : `Drag across hexes to lay ${n} (${P.id === 'road' ? hxCost(HX_ROAD.l, HX_ROAD.x) : hxCost(0, hxItem('wall').x)} each).${P.n ? ` <b>${P.n} laid</b>` : ''}`} ${P.why ? `<b class="hxwhy bad">${esc(P.why)}</b>` : ''}</span>
@@ -357,8 +365,9 @@ function hxPopHtml(k, st, w, lv, busy, net, sto) {
     return pop(f.e, f.n, '<span class="tag">Always open</span>', esc(f.d) + ' · tap it again to open', `<button class="btn small primary" data-hx="open" data-v="${f.id}">Open →</button>${f.id !== 'hall' ? `<button class="btn small ghost" data-hx="move" data-k="${k}">✥ Move</button>` : ''}`);
   }
   if (a.kind === 'tree' || a.kind === 'rock') {
-    const c = HX_CLEAR[a.kind]; return pop(a.kind === 'tree' ? '🌲' : '🪨', a.kind === 'tree' ? 'Trees' : 'Rocks', '', `Blocks this hex. ${a.kind === 'tree' ? 'Forest next to a lumber mill makes it collect 50% more, so you might keep some.' : ''}`, `<button class="btn small ${hxCan(c.l, c.x) ? 'primary' : ''}" data-hx="clear" data-k="${k}" ${hxCan(c.l, c.x) ? '' : 'disabled'}>🪓 Clear · ${hxCost(c.l, c.x)}</button>`);
+    const c = a.tf ? HX_TF.brush.grass : HX_CLEAR[a.kind]; return pop(a.kind === 'tree' ? '🌲' : '🪨', a.kind === 'tree' ? 'Trees' : 'Rocks', '', `Blocks this hex. ${a.kind === 'tree' ? 'Forest next to a lumber mill makes it collect 50% more, so you might keep some.' : ''}`, `<button class="btn small ${hxCan(c.l, c.x) ? 'primary' : ''}" data-hx="clear" data-k="${k}" ${hxCan(c.l, c.x) ? '' : 'disabled'}>🪓 Clear · ${hxCost(c.l, c.x)}</button>`);
   }
+  if (a.kind === 'deco') return pop(a.it.e, a.it.n, '<span class="tag">Decoration</span>', 'Just for looks. 🌱 Terraform places more, R turns them.', `<button class="btn small ghost" data-hx="undeco" data-k="${k}">🧽 Take away</button>`);
   if (a.kind === 'road') return pop(a.bridge ? '🌉' : '🛣️', a.bridge ? 'Bridge' : 'Road', '', 'Joins buildings to your hall.', `<button class="btn small ghost" data-hx="unroad" data-k="${k}">Remove (refund)</button>`);
   if (a.kind !== 'b') return '';
   const s = a.s, it = a.it, c = hxCond(k);
@@ -410,6 +419,7 @@ function hxPlace(P, k) {
 // lay or remove a road or wall on one hex while dragging; returns why not, or ''
 function hxPaint(tool, k) {
   if (hxHouseOn()) return hhPaint(tool, k);
+  if (tool === 'tf') return tfPaint(k);
   const st = hxState(), a = hxAt(k, st);
   if (tool === 'erase') {
     if (a.kind === 'road') { st.road = st.road.filter(x => x !== k); const c = a.bridge ? HX_BRIDGE : HX_ROAD; ftAddCurrency(c.l, c.x); return ''; }
@@ -452,10 +462,12 @@ document.addEventListener('click', e => {
     case 'undo': hxUndo(); break;
     case 'cancel': hxCancel(); break;
     case 'rot': if (ui.hxP) { ui.hxP.rot = ((ui.hxP.rot || 0) + 1) % 6; hxGhostDraw(); } break;
-    case 'tool': hxStartPlace({ id: el.dataset.v, mode: 'tool', n: 0, was: ui.hxP?.id }); break;
+    case 'tool': hxStartPlace({ id: el.dataset.v, mode: 'tool', n: 0, was: ui.hxP?.id, brush: el.dataset.v === 'tf' ? ui.tfBrush || 'grass' : undefined }); break;
     case 'buy': { const it = hxItem(el.dataset.id); if (!it || hxLv() < it.u || !hxCan(it.l, it.x)) return; hxStartPlace({ id: it.id, mode: 'new', rot: 0 }); break; }
     case 'move': { const s = st.b[k], f = hxFreeAt(k); if (!s && !f) return; if (f) { toast('Page buildings stay put', 'They\'re the heart of your town for now.'); return; } hxStartPlace({ id: s.id, mode: 'move', from: k, rot: s.rot || 0, rot0: s.rot || 0 }); break; }
-    case 'clear': { const at = hxAt(k, st), c = HX_CLEAR[at.kind]; if (!c || !hxCan(c.l, c.x)) return; ftTake(c.l, c.x); st.clr.push(k); ui.hxSel = null; save(); hxFx('dust', k); if (typeof sfx === 'function') sfx('rustle'); render(); break; }
+    case 'clear': { const at = hxAt(k, st); if (at.tf) { const b = HX_TF.brush.grass; if (!hxCan(b.l, b.x)) return; ftTake(b.l, b.x); delete st.tf[k].t; if (!Object.keys(st.tf[k]).length) delete st.tf[k]; ui.hxSel = null; save(); hxFx('dust', k); render(); break; }
+      const c = HX_CLEAR[at.kind]; if (!c || !hxCan(c.l, c.x)) return; ftTake(c.l, c.x); st.clr.push(k); ui.hxSel = null; save(); hxFx('dust', k); if (typeof sfx === 'function') sfx('rustle'); render(); break; }
+    case 'undeco': { const tf = st.tf?.[k]; if (!tf?.d) return; delete tf.d; delete tf.r; if (!Object.keys(tf).length) delete st.tf[k]; ui.hxSel = null; save(); hxFx('dust', k); render(); break; }
     case 'unroad': { hxPaint('erase', k); ui.hxSel = null; save(); render(); break; }
     case 'unwall': { delete st.b[k]; ui.hxSel = null; save(); render(); break; }
     case 'harvest': { const s = st.b[k]; if (!s || hxCond(k) !== 'ripe') return; st.fed = HX_FED_HP; s.start = today(); s.ready = addDays(today(), hxItem('field').days); save(); if (typeof sfx === 'function') sfx('plant'); toast('🌾 Harvested', `+${HX_FED_HP} health until your next boss fight. The field is replanted.`); render(); break; }
@@ -483,7 +495,8 @@ document.addEventListener('keydown', e => {
   }
   if ((ui.isTab || 'personal') !== 'personal') return;
   if (e.key === 'Escape' && (ui.hxP || ui.hxSel || ui.isPanel)) { e.preventDefault(); if (ui.hxP) hxCancel(); else { Object.assign(ui, { isPanel: null, hxSel: null }); render(); } }
-  else if ((e.key === 'r' || e.key === 'R') && ui.hxP && ui.hxP.mode !== 'tool') { ui.hxP.rot = ((ui.hxP.rot || 0) + 1) % 6; hxGhostDraw(); }
+  else if ((e.key === 'r' || e.key === 'R') && ui.hxP && (ui.hxP.mode !== 'tool' || ui.hxP.id === 'tf') && !e.ctrlKey) { ui.hxP.rot = ((ui.hxP.rot || 0) + 1) % 6; hxGhostDraw(); }
+  else if ((e.ctrlKey || e.metaKey) && e.key === 'z' && ui.hxP?.id === 'tf') { e.preventDefault(); tfUndo(); }
   else if ((e.ctrlKey || e.metaKey) && e.key === 'z' && ui.hxUndo) { e.preventDefault(); hxUndo(); }
 });
 
@@ -550,7 +563,7 @@ function mountHex3D(mode = 'hex') {
   IS3.layout = null; IS3.hexMode = true;
   if (IS3.house !== mode) { IS3.house = mode; HX3.sig = ''; HX3.hk = null; Object.assign(IS3, is3home(mode), { tgt: [0, 0] }, typeof hxLocked === 'function' && hxLocked() ? hxLockAngle() : {}); if (HX3.ghost) { IS3.scene.remove(HX3.ghost); HX3.ghost = null; HX3.ghostModel = null; } }
   const st = hxCur(), W0 = hxW(st);
-  const sig = [mode, W0.col || hxCol(), hxLow(), W0.sig ? W0.sig(st) : [JSON.stringify(st.b), st.road.join(';'), st.clr.join(';'), Object.keys(st.b).map(k => hxCond(k) + hxLvOn(st.b[k])).join()].join('|'), Math.floor(Date.now() / 36e5), ui.hxP?.mode === 'move' ? ui.hxP.from : ''].join('|');
+  const sig = [mode, W0.col || hxCol(), hxLow(), W0.sig ? W0.sig(st) : [JSON.stringify(st.b), st.road.join(';'), st.clr.join(';'), JSON.stringify(st.tf || {}), Object.keys(st.b).map(k => hxCond(k) + hxLvOn(st.b[k])).join()].join('|'), Math.floor(Date.now() / 36e5), ui.hxP?.mode === 'move' ? ui.hxP.from : ''].join('|');
   if (sig !== HX3.sig) { HX3.sig = sig; hxBuild(); }
   if (HX3.glow && !IS3.scene.children.includes(HX3.glow)) IS3.scene.add(HX3.glow);
   hxGhostDraw(); hxLoop(); is3draw(); return true;
@@ -577,7 +590,7 @@ function hxBuild() {
   IS3.top = 0;
   Object.assign(IS3.sun.shadow.camera, { left: -17 * S, right: 17 * S, top: 17 * S, bottom: -17 * S, near: 1, far: 120 }); IS3.sun.shadow.camera.updateProjectionMatrix();
   IS3.sun.position.set(18, 34, 12); IS3.sun.shadow.mapSize.set(low ? 512 : 2048, low ? 512 : 2048); if (IS3.sun.shadow.map) { IS3.sun.shadow.map.dispose(); IS3.sun.shadow.map = null; }
-  const add = (name, k, rot = 0, y = 0, s = 1, c = col, mat) => { const [x, z] = hxPos(...hxQR(k)); const g = hxModel(name, c, mat); g.position.set(x, y, z); g.rotation.y = -rot * Math.PI / 3; g.scale.setScalar(s); W.add(g); return g; };
+  const add = (name, k, rot = 0, y = 0, s = 1, c = col, mat) => { const [x, z] = hxPos(...hxQR(k)); const g = hxModel(name, c, mat); g.position.set(x, y + hxHt(k, st), z); g.rotation.y = -rot * Math.PI / 3; g.scale.setScalar(s); W.add(g); return g; };
   const roads = new Set(st.road), rivers = new Set([...L].filter(([, h]) => h.t === 'river').map(([k]) => k));
   const joins = n => roads.has(n) || n === '0,0' || !!hxFreeAt(n, st);
   // the rock under the island: a craggy hexagonal point with glowing crystals, like the other islands
@@ -595,13 +608,14 @@ function hxBuild() {
       if (roads.has(k)) { const rm = hxNb(k).reduce((mm, n, i) => mm | (joins(n) ? 1 << i : 0), 0), e = [0, 1, 2, 3, 4, 5].find(i => rm & 1 << i) ?? 0; add('building_bridge_A', k, e + 1.5, 0); }
       continue;
     }
+    if (tfGround(k, st, add, W)) continue;
     if (a.kind === 'road') { const m = hxNb(k).reduce((mm, n, i) => mm | (joins(n) ? 1 << i : 0), 0), [v, t] = hxTileFor(m); add('hex_road_' + v, k, t); }
     else add('hex_grass', k, Math.floor(h.v * 6));
     if (a.kind === 'tree') { add(['trees_A_large', 'trees_B_large', 'trees_A_medium', 'trees_B_medium'][Math.floor(h.v * 4)], k, Math.floor(h.v * 60) % 6); IS3.marks[k] = null; }
     else if (a.kind === 'rock') { for (let i = 0; i < 3; i++) { const g = add(['rock_single_A', 'rock_single_B', 'rock_single_C', 'rock_single_D', 'rock_single_E'][Math.floor(rnd() * 5)], k, 0, 0, 1.6 + rnd() * .8); g.position.x += (rnd() - .5) * 1.1; g.position.z += (rnd() - .5) * 1.1; g.rotation.y = rnd() * 6.28; } }
     else if (a.kind === 'hill') add(['hills_A', 'hills_B_trees', 'hills_C', 'hill_single_A'][Math.floor(h.v * 4)], k, Math.floor(h.v * 60) % 6);
     else if (a.kind === 'mount') add(['mountain_A_grass_trees', 'mountain_B_grass', 'mountain_C_grass_trees'][Math.floor(h.v * 3)], k, Math.floor(h.v * 60) % 6);
-    else if (a.kind === 'grass' && !low && h.v > .82) { const g = add(['tree_single_A', 'rock_single_B', 'tree_single_B'][Math.floor(h.v * 30) % 3], k, 0, 0, .8); g.position.x += (rnd() - .5) * 1.2; g.position.z += (rnd() - .5) * 1.2; }
+    else if (a.kind === 'grass' && !a.g && !low && h.v > .82) { const g = add(['tree_single_A', 'rock_single_B', 'tree_single_B'][Math.floor(h.v * 30) % 3], k, 0, 0, .8); g.position.x += (rnd() - .5) * 1.2; g.position.z += (rnd() - .5) * 1.2; }
   }
   // page buildings (the house island has only its great hall)
   W0.free.forEach((f, i) => {
@@ -611,6 +625,7 @@ function hxBuild() {
     if (f.id === 'hall') { const o = is3mesh(new THREE.IcosahedronGeometry(.42, 1), '#ffb347', 0, 4.65, 0, g, true); HX3.anim.push({ o, orb: 1 }); const ring = is3mesh(new THREE.TorusGeometry(.7, .04, 4, 20), '#ffe8a3', 0, 4.65, 0, g, true); HX3.anim.push({ o: ring, ring: 1 }); }
   });
   if (W0.dress) W0.dress(W, add, rnd, col);
+  if (W0.home) tfDecos(W, st, col);
   // the buildings, by stage
   const net = hxLinks(st);
   const walls = new Set(Object.entries(st.b).filter(([, s]) => W0.item(s.id)?.wall).map(([k]) => k));
@@ -626,13 +641,13 @@ function hxBuild() {
       continue;
     }
     if (it.field) { const g = add('building_grain', k, rot); if (c === 'grow') g.scale.set(1, Math.min(1, Math.max(.15, lk.p)), 1); IS3.marks[mk] = [x, 1, z]; continue; }
-    IS3.marks[mk] = [x, it.hz === 7 ? 4.4 : 2.6, z];
+    IS3.marks[mk] = [x, (it.hz === 7 ? 4.4 : 2.6) + hxHt(k, st), z];
     if (c === 'build') {
       fp.forEach((f, i) => { add('building_dirt', f, rot); if (i) return; if (lk.p < .5) { add('building_stage_A', f, rot); add('resource_lumber', f, rot + 2, 0, 1).position.x += .5; } else add('building_scaffolding', f, rot); });
       if (!low) hxWorkers(W, x, z, rnd);
     } else if (c === 'broken') fp.forEach(f => add('building_destroyed', f, rot));
     else {
-      const g = hxMakeModel(it, col, c === 'worn' ? HX3.kit.worn : undefined); g.position.set(x, 0, z); g.rotation.y = -rot * Math.PI / 3; g.scale.setScalar(1 + (lv - 1) * .06); W.add(g);
+      const g = hxMakeModel(it, col, c === 'worn' ? HX3.kit.worn : undefined); g.position.set(x, hxHt(k, st), z); g.rotation.y = -rot * Math.PI / 3; g.scale.setScalar(1 + (lv - 1) * .06); W.add(g);
       if (lk.up) { add('ladder', k, rot + 1, 0, 1).position.x += .6; if (!low) hxWorkers(W, x, z, rnd); }
       if (!it.noRoad && !hxLinked(k, net, st)) for (const f of fp) { const [fx, fz] = hxPos(...hxQR(f)), r = is3mesh(new THREE.RingGeometry(1.55, 1.75, 6), '#ff8f5a', fx, .03, fz, W, true); r.rotation.set(-Math.PI / 2, 0, Math.PI / 6); }
     }
@@ -667,7 +682,11 @@ function hxGhostDraw() {
   const g = HX3.ghost = new THREE.Group(), [x, z] = hxPos(...hxQR(k));
   const outline = (kk, c, o = .9) => { const [xx, zz] = hxPos(...hxQR(kk)), r = new THREE.Mesh(new THREE.RingGeometry(1.5, 1.72, 6), new THREE.MeshBasicMaterial({ color: c, transparent: true, opacity: o, depthWrite: false })); r.rotation.set(-Math.PI / 2, 0, Math.PI / 6); r.position.set(xx - x, .06, zz - z); g.add(r); return r; };
   g.position.set(x, 0, z); IS3.scene.add(g);
-  if (P.mode === 'tool') { outline(k, P.why ? '#ff5252' : P.id === 'erase' ? '#ffa94d' : '#51cf66'); is3draw(); return; }
+  if (P.mode === 'tool') {
+    outline(k, P.why ? '#ff5252' : P.id === 'erase' || P.brush === 'erase' ? '#ffa94d' : '#51cf66');
+    if (P.id === 'tf' && HX_TF.deco[P.brush]) { const m = tfModel(P.brush, hxCol()); m.rotation.y = -(P.rot || 0) * Math.PI / 3; m.position.y = hxHt(k, hxState()) + .3; m.traverse(o => { if (o.isMesh) { o.castShadow = false; o.material = HX3.kit.ghostP.ok; } }); g.add(m); HX3.ghostModel = m; }
+    is3draw(); return;
+  }
   const st = hxCur(), ch = P.chk || hxCheck(P.id, k, st, P.from), it = hxW(st).item(P.id); if (!it) { is3draw(); return; }
   const fp = hxFoot(it, k), [mx, mz] = hxMid(it, k);
   for (const f of fp) {
@@ -726,7 +745,7 @@ function hxPointer(type, e) {
     if (house) { hhTap(k); return true; }
     // a tap: select what's there
     const a = k ? hxAt(k) : { kind: 'off' };
-    const sel = ['free', 'b', 'tree', 'rock', 'road'].includes(a.kind) ? k : null;
+    const sel = ['free', 'b', 'tree', 'rock', 'road', 'deco'].includes(a.kind) ? k : null;
     if (sel && sel === ui.hxSel && a.kind === 'free' && !ui.isPanel) { hxOpen(a.it.id); return true; } // 2.69: tap a page building again to open it
     if (sel !== ui.hxSel || ui.isPanel) { ui.hxSel = sel; ui.isPanel = null; if (sel && typeof sfx === 'function') sfx('select'); render(); }
     return true;
@@ -737,7 +756,7 @@ function hxPaintAt(k) {
   const P = ui.hxP, T = HX3.paint; if (!P || !T || !k) return;
   const line = T.last ? hxLine(T.last, k).slice(1) : [k]; T.last = k;
   let why = '';
-  for (const kk of line) { const w = hxPaint(P.id, kk); if (!w) { P.n = (P.n || 0) + 1; hxFx('pop', kk); } else why = w; }
+  for (const kk of line) { const w = hxPaint(P.id, kk); if (!w) { P.n = (P.n || 0) + 1; hxFx('pop', kk); } else if (w !== '-') why = w; }
   P.why = line.length && why && why !== 'nothing to remove' && why !== 'Already a road' ? why : '';
   HX3.hover = k; HX3.sig = ''; mountHex3D(IS3.house);
   const bar = document.querySelector('#isfull .hxbar'); if (bar) { const tmp = document.createElement('div'); tmp.innerHTML = hxPlaceBar(P, true); bar.replaceWith(tmp.firstElementChild); }

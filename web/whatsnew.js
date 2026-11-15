@@ -10,6 +10,12 @@
 // version since the last one they saw (up to 3). D.settings.seenVersion remembers what was last shown,
 // D.settings.guidesSeen which guides have played. A brand-new install never sees either.
 const CHANGELOG = [
+  { v: '2.70.0', notes: [
+    { t: 'Terraform your island: paint grass, sand, paths, forest, hills and ponds, and raise hexes up, for 2 Lumen or Ember a hex', k: 'new' },
+    { t: 'Decorate with flowers, trees, rocks, benches, lamp posts, flags, barrels, carts, tents, statues and fountains', k: 'new' },
+    { t: 'Ctrl+Z gives back your last stroke and its cost, and Reset terrain puts the ground back as it started', k: 'new' },
+    { t: 'Painted forest and hills count for the lumber mill and mine bonuses', k: 'tweak' },
+  ] },
   { v: '2.69.0', notes: [
     { t: 'Islands are about 30% bigger, with a new ring of land round the edge. Everything you built stays where it is', k: 'new' },
     { t: 'Main buildings have their own colours, and hovering shows a name tag, a glow and a little tick', k: 'new' },
