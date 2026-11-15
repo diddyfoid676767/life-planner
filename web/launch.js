@@ -17,7 +17,12 @@ const SCHOOL_DOMAIN = 'westbourne.vic.edu.au';
 const INVITE_REWARD = 50;
 
 const plannerOnly = () => !!(typeof D === 'object' && D && D.settings && D.settings.mode === 'planner');
-function applyMode() { document.body.classList.toggle('mode-planner', plannerOnly()); }
+// 2.67.5: up to 2.67.4 any click wrote the theme ('light'/'dark') into mode, so repair it once the account is known
+function applyMode() {
+  const m = D.settings.mode;
+  if (m && m !== 'planner' && m !== 'school' && typeof acctLoaded !== 'undefined' && acctLoaded) { D.settings.mode = acct.signedIn && acct.verified && !acct.school ? 'planner' : 'school'; save(); }
+  document.body.classList.toggle('mode-planner', plannerOnly());
+}
 function setMode(m) {
   D.settings.mode = m;
   if (m === 'planner' && typeof hsState === 'function') { const st = hsState(); st.id = ''; }
@@ -173,11 +178,11 @@ function modeCard() {
   const p = plannerOnly();
   return `<div class="card" data-sec="account"><div class="card-head"><h2>Solis mode</h2><span class="tag">${p ? '📅 Planner only' : '🏫 Westbourne'}</span></div>
     <p class="muted small-text">${p ? 'The planner side and your own island. Houses, the house island and the weekly house boss are hidden.' : 'Everything, including houses. Houses need a verified Westbourne school email.'}</p>
-    <div class="row"><button class="btn small" data-mode="${p ? 'school' : 'planner'}">${p ? "I'm at Westbourne" : 'Switch to planner only'}</button><button class="btn small ghost" data-act="howto">📖 How to start</button></div></div>`;
+    <div class="row"><button class="btn small" data-solismode="${p ? 'school' : 'planner'}">${p ? "I'm at Westbourne" : 'Switch to planner only'}</button><button class="btn small ghost" data-act="howto">📖 How to start</button></div></div>`;
 }
 document.addEventListener('click', e => {
-  const el = e.target.closest('[data-mode]'); if (!el) return;
-  const m = el.dataset.mode;
+  const el = e.target.closest('[data-solismode]'); if (!el) return;
+  const m = el.dataset.solismode;
   if (m === 'planner' && hsState().id && !confirm('Switch to planner only? You leave your house, and only a verified Westbourne email can join one again.')) return;
   if (m === 'school' && acct.signedIn && acct.verified && !acct.school) { schoolNeeded(); return; }
   setMode(m); render();
@@ -342,7 +347,7 @@ if (typeof GUIDES === 'object') GUIDES.launch = {
   name: 'School email accounts and invites',
   steps: [
     { title: 'Accounts with your school email 🏫', text: 'New Solis accounts use your <b>school email</b>. Sign up with it and you\'re a Westbourne student with your real name straight away. Usernames stop working at launch (1 Feb), so make your new account any time before then.', view: 'settings', sel: '[data-sec="account"]' },
-    { title: 'Planner only, for everyone else', text: 'Friends from other schools can use Solis too: they pick <b>Just the planner</b> and get to-dos, study, fitness and their own island. Houses stay for verified Westbourne students. Switch here any time.', view: 'settings', sel: '[data-mode]' },
+    { title: 'Planner only, for everyone else', text: 'Friends from other schools can use Solis too: they pick <b>Just the planner</b> and get to-dos, study, fitness and their own island. Houses stay for verified Westbourne students. Switch here any time.', view: 'settings', sel: '[data-solismode]' },
     { title: 'Invite friends, both get rewards 🎟️', text: 'Once you have your new account, Friends shows your invite link. When a friend finishes their first focus session you <b>both</b> get 50 Lumen and 50 Ember. Find friends by name or school email.', view: 'friends' },
     { title: 'Getting Solis is one link', text: 'Send people to <b>tinyurl.com/solis-download</b>: one button, a how-to-start guide and help with the blue Windows warning.' },
   ],

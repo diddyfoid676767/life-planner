@@ -77,7 +77,6 @@ function updateFocusFull() {
   el.querySelector('.ff-actions').innerHTML = focusAskCancel
     ? `<span><b>Cancel without logging?</b> Nothing gets logged.</span><button class="btn danger" data-act="focusCancelYes">Yes, cancel it</button><button class="btn ghostlight" data-act="focusCancelNo">Keep going</button>`
     : f.exam ? `<span class="ff-exam">🔒 Exam mode: switching windows, Esc or leaving full screen ends it with no reward</span><button class="btn primary big" data-act="focusStop">■ Stop &amp; log</button><button class="btn ghostlight" data-act="focusCancel">Cancel</button>`
-    : `<button class="btn ghostlight big" data-act="focusPause">${f.pausedAt ? '▶ Resume' : '❚❚ Pause'}</button><button class="btn primary big" data-act="focusStop">■ Stop &amp; log</button><button class="btn ghostlight" data-act="focusCancel">Cancel</button>
-       ${typeof openBrainfm === 'function' ? '<button class="btn ghostlight" data-act="brainfmOpen" title="Open Brain.fm">♫ Brain.fm</button>' : ''}`;
+    : `<button class="btn ghostlight big" data-act="focusPause">${f.pausedAt ? '▶ Resume' : '❚❚ Pause'}</button><button class="btn primary big" data-act="focusStop">■ Stop &amp; log</button><button class="btn ghostlight" data-act="focusCancel">Cancel</button>`;
 }
 document.addEventListener('keydown', e => { if (e.key === 'Escape' && focusFullOpen && !D.focus?.exam) closeFocusFull(); });
