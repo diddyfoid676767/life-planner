@@ -40,7 +40,7 @@ function hxHouseDress(W, it, fp, x, z, col, ink) {
 function hxDetail(W, L, st, rnd, low) {
   if (low) return;
   const tufts = [], flowers = [], pebbles = [], foam = [], shim = [];
-  const r2 = seeded('solis-hex-detail' + (hxW(st).seed || ''));
+  const r2 = seeded('solis-hex-detail' + (hxW(st).seed || '')), lk = typeof hxLook === 'function' ? hxLook(!!hxW(st).home) : {}, tc = .55 / (lk.flN || 1);
   for (const [k, h] of L) {
     const [x, z] = hxPos(...hxQR(k));
     if (h.t === 'water') {
@@ -52,7 +52,7 @@ function hxDetail(W, L, st, rnd, low) {
     const n = 3 + Math.floor(r2() * 4), y0 = hxHt(k, st);
     for (let i = 0; i < n; i++) {
       const ang = r2() * 6.28, rr = .35 + r2() * .55, px = x + Math.cos(ang) * rr, pz = z + Math.sin(ang) * rr, v = r2();
-      if (v < .55) tufts.push([px, pz, r2(), y0]); else if (v < .85) flowers.push([px, pz, r2(), y0]); else pebbles.push([px, pz, r2(), y0]);
+      if (v < tc) tufts.push([px, pz, r2(), y0]); else if (v < .85) flowers.push([px, pz, r2(), y0]); else pebbles.push([px, pz, r2(), y0]);
     }
   }
   const inst = (geo, mat, list, place) => {
@@ -62,9 +62,9 @@ function hxDetail(W, L, st, rnd, low) {
     m.instanceMatrix.needsUpdate = true; W.add(m); return m;
   };
   const tm = inst(new THREE.ConeGeometry(.07, .26, 4), new THREE.MeshStandardMaterial({ color: '#5fae43', flatShading: true, roughness: 1 }), tufts, (o, [x, z, v, y]) => { o.position.set(x, .1 + y, z); o.rotation.set((v - .5) * .4, v * 6, 0); o.scale.setScalar(.7 + v * .7); });
-  if (tm) { const c = new THREE.Color(); tufts.forEach((p, i) => tm.setColorAt(i, c.set(['#5fae43', '#74c056', '#4b9a37'][Math.floor(p[2] * 3)]))); tm.instanceColor.needsUpdate = true; }
+  if (tm) { const c = new THREE.Color(); tufts.forEach((p, i) => tm.setColorAt(i, c.set((lk.tuft || ['#5fae43', '#74c056', '#4b9a37'])[Math.floor(p[2] * 3)]))); tm.instanceColor.needsUpdate = true; }
   const fm = inst(new THREE.IcosahedronGeometry(.055, 0), new THREE.MeshStandardMaterial({ color: '#ffffff', flatShading: true, roughness: .8 }), flowers, (o, [x, z, v, y]) => { o.position.set(x, .07 + y, z); o.rotation.set(0, v * 6, 0); o.scale.setScalar(.8 + v * .6); });
-  if (fm) { const c = new THREE.Color(); flowers.forEach((p, i) => fm.setColorAt(i, c.set(['#ffec99', '#ffa8c5', '#ffffff', '#d0bfff', '#ffc078'][Math.floor(p[2] * 5)]))); fm.instanceColor.needsUpdate = true; }
+  if (fm) { const c = new THREE.Color(); flowers.forEach((p, i) => fm.setColorAt(i, c.set(((f => f[Math.floor(p[2] * f.length)])(lk.fl || ['#ffec99', '#ffa8c5', '#ffffff', '#d0bfff', '#ffc078']))))); fm.instanceColor.needsUpdate = true; }
   inst(new THREE.DodecahedronGeometry(.07, 0), new THREE.MeshStandardMaterial({ color: '#a8a29a', flatShading: true, roughness: 1 }), pebbles, (o, [x, z, v, y]) => { o.position.set(x, .02 + y, z); o.rotation.set(v * 3, v * 6, 0); o.scale.set(1 + v, .6, 1 + v * .5); });
   // shoreline foam: a soft strip along each water edge that touches land
   const foamM = new THREE.MeshBasicMaterial({ color: '#f1f8ff', transparent: true, opacity: .55, depthWrite: false });

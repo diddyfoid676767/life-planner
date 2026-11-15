@@ -125,7 +125,7 @@ const HX_HOME_W = { land: () => hxLand(), item: id => HX_ITEMS.find(x => x.id ==
 const hxW = st => (st && st.__w) || HX_HOME_W;
 const hxFreeAt = (k, st) => hxW(st).free.find(x => x.at === k);
 const hxHouseOn = () => IS3.house === 'hexh';
-const hxCur = () => hxHouseOn() && typeof hhSt === 'function' ? hhSt() : hxState();
+const hxCur = () => hxHouseOn() && typeof hhSt === 'function' ? hhSt() : ui.hxVisit?.st || hxState(); // 2.71: or a housemate's island you're visiting (hxlife.js)
 // the hexes a building covers: 1, or a 3-hex or 7-hex cluster for big house projects
 const hxFoot = (it, k) => { const n = hxNb(k); return it?.hz === 7 ? [k, ...n] : it?.hz === 3 ? [k, n[0], n[1]] : [k]; };
 // what's on a hex: { kind: 'free'|'b'|'road'|'tree'|'rock'|'hill'|'mount'|'river'|'water'|'grass', ... }
@@ -289,6 +289,8 @@ function hxCheckPost(it, k, st, out) {
 // ---------- page ----------
 function viewHexHome() {
   hxMigrate();
+  if (ui.hxVisit) return hxVisitView();
+  hxIslePublish();
   const st = hxState(), w = cdWallet(), lv = hxLv(), sto = isStore(), net = hxLinks(st);
   for (const s of Object.values(st.b)) hxFold(s);
   const busy = hxBusyN(st), P = ui.hxP;
@@ -308,9 +310,9 @@ function viewHexHome() {
   const lvI = typeof solisLevel === 'function' ? solisLevel() : null;
   const tool = P && (P.id === 'road' || P.id === 'wall' || P.id === 'erase');
   const hud = `<div class="ishud is-tl"><div class="islvl"><b>${lv}</b><div><span>Level ${lv}</span>${lvI ? `<i style="width:${Math.round(lvI.into / lvI.need * 100)}%"></i>` : ''}</div></div>
-      <div class="isbuilders" title="Builders: how many things can be built or upgraded at once">🔨 ${IS_BUILDERS - busy}/${IS_BUILDERS} builders free</div></div>
+      <div class="isbuilders" title="Builders: how many things can be built or upgraded at once">🔨 ${IS_BUILDERS - busy}/${IS_BUILDERS} builders free</div>${hxWxChip()}</div>
     <div class="ishud is-tr">${isBar('cd-l', LUMEN, w.lumen, sto.l ? `+${sto.l} to collect · store ${sto.capL}` : `Store ${sto.capL}`, sto.l / sto.capL, sto.l ? 'collect' : '')}${isBar('cd-e', EMBER, w.ember, sto.e ? `+${sto.e} to collect · store ${sto.capE}` : `Store ${sto.capE}`, sto.e / sto.capE, sto.e ? 'collect' : '')}</div>
-    <div class="ishud is-bl"><button class="isbtn" data-hx="panel" data-v="perks">✨<span>Perks</span></button><button class="isbtn" data-hx="panel" data-v="help">❔<span>How it works</span></button>${ui.hxUndo ? '<button class="isbtn" data-hx="undo" title="Undo the last move (Ctrl+Z)">↶<span>Undo</span></button>' : ''}</div>
+    <div class="ishud is-bl"><button class="isbtn" data-hx="panel" data-v="perks">✨<span>Perks</span></button>${hxIsleOn() ? '<button class="isbtn" data-hx="panel" data-v="visit" title="Visit a housemate\'s island">🏘️<span>Visit</span></button>' : ''}<button class="isbtn" data-hx="panel" data-v="looks" title="Island looks, day and night, weather">🎨<span>Looks</span></button><button class="isbtn" data-hx="panel" data-v="help">❔<span>How it works</span></button>${ui.hxUndo ? '<button class="isbtn" data-hx="undo" title="Undo the last move (Ctrl+Z)">↶<span>Undo</span></button>' : ''}</div>
     ${P ? '' : `<div class="ishud is-br hxtools"><button class="isbtn" data-hx="tool" data-v="road" title="Lay roads by dragging">🛣️<span>Roads</span></button>${lv >= hxItem('wall').u ? '<button class="isbtn" data-hx="tool" data-v="wall" title="Lay walls by dragging">🧱<span>Walls</span></button>' : ''}<button class="isbtn" data-hx="tool" data-v="tf" title="Terraform: paint the ground, raise hills, place decorations">🌱<span>Terraform</span></button><button class="isbtn big" data-hx="panel" data-v="shop">🛒<span>Build</span></button></div>`}`;
   let extra = `<div class="isbubs">${bubs}</div>`;
   if (P) extra += hxPlaceBar(P, tool);
@@ -321,6 +323,8 @@ function viewHexHome() {
       ${st.fed ? `<p class="small-text">🌾 Harvest eaten: +${st.fed} health until your next boss fight.</p>` : ''}${ring ? '<p class="small-text">🧱 Your walls close a ring round the hall: −3% damage taken.</p>' : ''}
       <p class="muted small-text">Battle perks add to your gear on the Character page. Collectors pile up bonus Lumen and Ember from your study and training until you collect it, up to what you can store (${LUMEN} ${sto.capL} · ${EMBER} ${sto.capE}).</p>`);
   }
+  else if (ui.isPanel === 'visit') extra += isPanel('🏘️ Visit a housemate', hxVisitHtml());
+  else if (ui.isPanel === 'looks') extra += isPanel('🎨 Your island\'s look', hxLooksHtml());
   else if (ui.isPanel === 'help') extra += isPanel('❔ How your island works', `<ul class="ishelp">
       <li>The Hall, Library, Training hall, Tavern, Market and Practice yard are free. Tap one and press <b>Open</b> to go to its page.</li>
       <li>Buy buildings in <b>Build</b>. The building follows your mouse: green means it fits, red says why not. Press <b>R</b> to turn it and click to drop it. <b>Esc</b> or right-click cancels.</li>
@@ -549,6 +553,7 @@ function hxGeo(name, pi = 0, col = 'blue') {
 // a whole model as a group (each part keeps its own pivot, so fans and wheels can spin)
 function hxModel(name, col, mat = HX3.kit.mat, shadow = true) {
   const M = HX3.kit.idx.models[name], g = new THREE.Group(); if (!M) return g;
+  if (mat === HX3.kit.mat && /^(hex_grass|hex_river|hex_road|trees?_|hills?_|mountain_)/.test(name)) mat = HX3.kit.matT || (HX3.kit.matT = HX3.kit.mat.clone()); // 2.71: island looks recolour only the land
   M.p.forEach((p, i) => {
     const m = new THREE.Mesh(hxGeo(name, i, col), mat); m.position.set(...p.t); m.castShadow = shadow; m.receiveShadow = true; m.name = p.m; g.add(m);
     if (/fan|wheel|saw/.test(p.m)) HX3.anim.push({ o: m, ax: /fan/.test(p.m) ? 'z' : 'x', sp: /saw/.test(p.m) ? 4 : /wheel/.test(p.m) ? -1.2 : 1.1 });
@@ -563,8 +568,9 @@ function mountHex3D(mode = 'hex') {
   IS3.layout = null; IS3.hexMode = true;
   if (IS3.house !== mode) { IS3.house = mode; HX3.sig = ''; HX3.hk = null; Object.assign(IS3, is3home(mode), { tgt: [0, 0] }, typeof hxLocked === 'function' && hxLocked() ? hxLockAngle() : {}); if (HX3.ghost) { IS3.scene.remove(HX3.ghost); HX3.ghost = null; HX3.ghostModel = null; } }
   const st = hxCur(), W0 = hxW(st);
-  const sig = [mode, W0.col || hxCol(), hxLow(), W0.sig ? W0.sig(st) : [JSON.stringify(st.b), st.road.join(';'), st.clr.join(';'), JSON.stringify(st.tf || {}), Object.keys(st.b).map(k => hxCond(k) + hxLvOn(st.b[k])).join()].join('|'), Math.floor(Date.now() / 36e5), ui.hxP?.mode === 'move' ? ui.hxP.from : ''].join('|');
+  const sig = [mode, W0.col || hxCol(), hxLow(), W0.sig ? W0.sig(st) : [JSON.stringify(st.b), st.road.join(';'), st.clr.join(';'), JSON.stringify(st.tf || {}), Object.keys(st.b).map(k => hxCond(k) + hxLvOn(st.b[k])).join()].join('|'), Math.floor(Date.now() / 36e5), ui.hxP?.mode === 'move' ? ui.hxP.from : '', hxSkySig()].join('|');
   if (sig !== HX3.sig) { HX3.sig = sig; hxBuild(); }
+  hxSkyApply();
   if (HX3.glow && !IS3.scene.children.includes(HX3.glow)) IS3.scene.add(HX3.glow);
   hxGhostDraw(); hxLoop(); is3draw(); return true;
 }
@@ -657,12 +663,13 @@ function hxBuild() {
   hxDetail(W, L, st, rnd, low);
   // clouds drifting past, and chimney smoke
   // 2.69: higher, out towards the edges, soft, and they fade away when they drift in front of the island
-  if (!low) for (let i = 0; i < 7; i++) {
+  if (!low) for (let i = 0, cn = hxCloudN(); i < cn; i++) {
     const m = new THREE.MeshStandardMaterial({ color: '#ffffff', emissive: '#c9d4ff', emissiveIntensity: .35, roughness: 1, transparent: true, opacity: .8, depthWrite: false });
     const g = hxModel(i % 2 ? 'cloud_small' : 'cloud_big', col, m, false), a = rnd() * 6.28, r = (19 + rnd() * 10) * S;
     g.position.set(Math.cos(a) * r, 12 + rnd() * 6, Math.sin(a) * r); g.scale.setScalar(1.4 + rnd() * 1.2); W.add(g); HX3.anim.push({ o: g, cloud: .15 + rnd() * .25, a, r, m, op: .8 });
   }
   // invisible ground the mouse lands on
+  hxSkyBuild(W, st, W0); hxVilBuild(W, st, W0);
   const pick = IS3.grid = new THREE.Mesh(new THREE.CircleGeometry(20 * S, 6), new THREE.MeshBasicMaterial({ visible: false })); pick.rotation.x = -Math.PI / 2; W.add(pick);
   IS3.ghost.visible = false;
 }
@@ -713,6 +720,7 @@ function hxPointer(type, e) {
   if (IS3.house !== 'hex' && IS3.house !== 'hexh') return false;
   if (typeof guideOn === 'function' && guideOn()) return type !== 'move'; // a guide is showing: look, don't build
   const P = ui.hxP, house = IS3.house === 'hexh';
+  if (ui.hxVisit && !house) { if (type === 'move' && !HX3.down) hxHoverInfo(hxKey(e)); if (type === 'down') HX3.down = { x: e.clientX, y: e.clientY }; if (type === 'up') HX3.down = null; if (type === 'leave') hxHoverInfo(null); return false; } // 2.71: visiting is look-only
   if (type === 'leave') { hxHoverInfo(null); return false; }
   if (type === 'context') { if (P) { hxCancel(); return true; } return false; }
   if (type === 'down') {
@@ -807,6 +815,8 @@ function hxLoop() {
     if (HX3.bounce) { const p = (now - HX3.bounce.t0) / 450, s = 1 + Math.sin(Math.min(1, p) * Math.PI * 2) * .08 * (1 - Math.min(1, p)); IS3.world.children.forEach(o => { const [x, z] = hxPos(...hxQR(HX3.bounce.k)); if (o.isGroup && Math.abs(o.position.x - x) < .01 && Math.abs(o.position.z - z) < .01 && o.position.y >= 0) o.scale.set(1 / Math.sqrt(s), s, 1 / Math.sqrt(s)); }); if (p >= 1) HX3.bounce = null; }
     is3draw();
     if (HX3.tween) hxTweenStep(now);
+    if (HX3.wx && !low) hxWxStep(now);
+    if (HX3.vil && !low) hxVilStep(now);
     if (!low || HX3.fx.length || HX3.nudge || HX3.bounce || ui.hxP || HX3.tween || HX3.glow?.visible) HX3.raf = requestAnimationFrame(tick);
   };
   HX3.raf = requestAnimationFrame(tick);

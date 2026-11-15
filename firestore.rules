@@ -266,6 +266,20 @@ service cloud.firestore {
         && inHouse(h) && houseDocOk();
     }
 
+    // ---------- 2.71 your island, for housemates to visit (read-only). Only you
+    // write it, only for the house your profile says you're in, at most once a minute.
+    match /isles/{uid} {
+      allow read: if signedIn();
+      allow create, update: if signedIn() && uid == me()
+        && inc().keys().hasOnly(['h', 'n', 'd', 'at'])
+        && inc().d is string && inc().d.size() <= 60000
+        && inc().n is string && inc().n.size() <= 30
+        && inc().h is string && inHouse(inc().h)
+        && inc().at == request.time
+        && (resource == null || request.time > cur().at + duration.value(60, 's'));
+      allow delete: if signedIn() && uid == me();
+    }
+
     // ---------- your planner, synced between your devices
     match /planner/{uid} {
       allow read, delete: if signedIn() && uid == me();

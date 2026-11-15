@@ -10,6 +10,12 @@
 // version since the last one they saw (up to 3). D.settings.seenVersion remembers what was last shown,
 // D.settings.guidesSeen which guides have played. A brand-new install never sees either.
 const CHANGELOG = [
+  { v: '2.71.0', notes: [
+    { t: 'Island looks: Spring meadow, Autumn, Snow and Desert oasis (press 🎨 Looks). With no look, your island follows the real season', k: 'new' },
+    { t: 'Day and night follow the real time, with glowing lanterns and lamp posts after dark', k: 'new' },
+    { t: 'Melbourne\'s real weather on your island: rain, clouds and falling autumn leaves (Low graphics turns it off)', k: 'new' },
+    { t: 'Villagers now walk your roads, and 🏘️ Visit lets you look round your housemates\' islands', k: 'new' },
+  ] },
   { v: '2.70.0', notes: [
     { t: 'Terraform your island: paint grass, sand, paths, forest, hills and ponds, and raise hexes up, for 2 Lumen or Ember a hex', k: 'new' },
     { t: 'Decorate with flowers, trees, rocks, benches, lamp posts, flags, barrels, carts, tents, statues and fountains', k: 'new' },

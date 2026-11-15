@@ -922,3 +922,60 @@ func handleAccountHouse(w http.ResponseWriter, r *http.Request) {
 	}
 	json.NewEncoder(w).Encode(map[string]any{"ut": ts[0]})
 }
+
+// 2.71: your island, shared with your housemates so they can visit it (read-only).
+// PUT {d} saves your snapshot (isles/<uid>, rules: only you, only your own house, at most
+// once a minute). GET ?h=<house> lists the snapshots of everyone in that house.
+func handleAccountIsle(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Cache-Control", "no-store")
+	if !fbOn() {
+		writeErr(w, http.StatusServiceUnavailable, "no friends server")
+		return
+	}
+	a, err := session()
+	if err != nil {
+		writeErr(w, http.StatusUnauthorized, err.Error())
+		return
+	}
+	if r.Method == http.MethodGet {
+		h := r.URL.Query().Get("h")
+		if !houseIDs[h] {
+			writeErr(w, http.StatusBadRequest, "unknown house")
+			return
+		}
+		docs, err := fsQuery(a.Access, "", map[string]any{"from": []map[string]string{{"collectionId": "isles"}}, "limit": 60, "where": fsWhere("h", "EQUAL", h)})
+		if err != nil {
+			writeErr(w, http.StatusBadGateway, err.Error())
+			return
+		}
+		out := []map[string]any{}
+		for _, d := range docs {
+			uid := d.ID
+			out = append(out, map[string]any{"uid": uid, "me": uid == a.UserID, "n": str(d.Fields["n"]), "d": str(d.Fields["d"]), "ut": d.Updated})
+		}
+		json.NewEncoder(w).Encode(out)
+		return
+	}
+	if r.Method != http.MethodPut {
+		writeErr(w, http.StatusMethodNotAllowed, "method")
+		return
+	}
+	var in struct {
+		H string `json:"h"`
+		N string `json:"n"`
+		D string `json:"d"`
+	}
+	if json.NewDecoder(io.LimitReader(r.Body, 80000)).Decode(&in) != nil || !houseIDs[in.H] || in.D == "" || len(in.D) > 60000 {
+		writeErr(w, http.StatusBadRequest, "bad request")
+		return
+	}
+	if len([]rune(in.N)) > 30 {
+		in.N = string([]rune(in.N)[:30])
+	}
+	if _, err := fsCommit(a.Access, fsSet("isles/"+a.UserID, map[string]any{"h": in.H, "n": in.N, "d": in.D}, false, "", "at")); err != nil {
+		writeErr(w, http.StatusBadGateway, err.Error())
+		return
+	}
+	w.Write([]byte(`{"ok":true}`))
+}

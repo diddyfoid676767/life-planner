@@ -3759,3 +3759,13 @@ dialog#modal[open]::backdrop { animation: fadeIn .25s ease-out; }
 .tfb.on { background: linear-gradient(160deg, var(--sm-gold), var(--sm-gold2)); color: #2a1600; border-color: #ffe8a3; font-weight: 700; }
 .tfrow { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
 .tfrow > span { flex: 1; min-width: 220px; }
+/* 2.71 weather chip (hxsky.js) */
+.isfull .hxwx { display: inline-flex; align-items: center; gap: 4px; margin-top: 6px; padding: 4px 10px; border-radius: 999px; font-size: .74rem; color: var(--sm-text); background: var(--sm-bg); border: 1px solid var(--sm-line); cursor: pointer; }
+.isfull .hxwx:hover { border-color: var(--sm-gold); }
+/* 2.72 visiting a housemate's island (hxlife.js) */
+.isfull .hxvisit { display: flex; flex-direction: column; gap: 2px; padding: 10px 14px; border-radius: var(--sm-r); background: var(--sm-bg); border: 1px solid var(--sm-line); color: var(--sm-text); }
+.isfull .hxvisit small { color: var(--sm-muted); }
+.hxvlist { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 8px; margin: 8px 0; }
+.hxvrow { display: flex; align-items: center; gap: 8px; min-height: var(--sm-tap); padding: 8px 12px; border-radius: 14px; border: 1px solid rgba(255, 255, 255, .1); background: var(--sm-bg2); color: var(--sm-text); cursor: pointer; text-align: left; }
+.hxvrow small { margin-left: auto; color: var(--sm-muted); font-size: .7rem; }
+.hxvrow:hover, .hxvrow.on { border-color: var(--sm-gold); }

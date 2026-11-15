@@ -69,7 +69,7 @@ function viewIslands() {
 document.addEventListener('click', e => {
   const el = e.target.closest('[data-is]'); if (!el) return;
   switch (el.dataset.is) {
-    case 'tab': Object.assign(ui, { isTab: el.dataset.v, isSel: null, isPanel: null, isPlace: null, hxSel: null, hxP: null }); if (view !== 'islands') { view = 'islands'; window.scrollTo(0, 0); } render(); break;
+    case 'tab': Object.assign(ui, { isTab: el.dataset.v, isSel: null, isPanel: null, isPlace: null, hxSel: null, hxP: null, hxVisit: null }); if (view !== 'islands') { view = 'islands'; window.scrollTo(0, 0); } render(); break;
     case 'view': is3view(el.dataset.v); break;
     case 'panel': Object.assign(ui, { isPanel: el.dataset.v, isSel: null }); render(); break;
     case 'close': Object.assign(ui, { isPanel: null, isSel: null }); render(); break;
@@ -231,7 +231,7 @@ function mountIsland3D() {
   is3resize();
   if (ui.isTab === 'boss') {
     if (HX3.ghost) { IS3.scene.remove(HX3.ghost); HX3.ghost = null; HX3.ghostModel = null; }
-    if (IS3.house === 'hex' || IS3.house === 'hexh') { IS3.sig = ''; IS3.sun.position.set(16, 30, 10); IS3.distK = 1; }
+    if (IS3.house === 'hex' || IS3.house === 'hexh') { IS3.sig = ''; IS3.sun.position.set(16, 30, 10); IS3.distK = 1; if (typeof hxSkyReset === 'function') hxSkyReset(); }
     if (IS3.house !== 'boss') { IS3.house = 'boss'; Object.assign(IS3, is3home('boss')); }
     IS3.layout = null; IS3.grid = null; const sig = 'b' + biSig();
     if (sig !== IS3.sig) { IS3.sig = sig; is3bossBuild(); }
