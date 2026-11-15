@@ -123,7 +123,7 @@ function youGearDrawer() {
       ${on ? `<span class="tag green">Wearing</span><button class="btn small" data-ft="unwear" data-k="${p.slot}">Take off</button>` : `<button class="btn small ${tr ? 'on' : ''}" data-ft="try" data-id="${p.id}">${tr ? 'Stop preview' : '👁 Preview'}</button><button class="btn small primary" data-ft="wear" data-id="${p.id}">Wear</button><button class="iconbtn" data-ft="scrap" data-id="${p.id}" title="Scrap for ${ftScrap(p)} ${LUMEN} and ${EMBER}">♻️</button>`}</div>`;
   }).join('');
   return `<div class="ypop ygdrawer"><div class="yph"><b>🛡️ ${name}</b><span style="flex:1"></span>${k !== 'all' ? '<button class="ylink" data-pf="slot" data-v="all">All gear</button>' : ''}<button class="isx" data-pf="slot" data-v="" title="Close">✕</button></div>
-    <div class="ypop-b">${rows || `<p class="ynote">No ${k === 'all' ? '' : name.toLowerCase() + ' '}gear yet. Gear drops from house boss fights, spars and duels.</p>`}
+    <div class="ypop-b">${rows || `<p class="ynote">No ${k === 'all' ? '' : name.toLowerCase() + ' '}gear yet. Gear drops from Warband fights, spars and duels.</p>`}
     <p class="ynote">Sets: ${FT_SETS.map(S => `${S.e} <b>${S.n}</b> (${S.pcs.join(', ')}): 3 pieces ${ftBuffText(S.b3)}, 5 pieces also ${ftBuffText(S.b5)}`).join(' · ')}</p></div></div>`;
 }
 function youClassCard() {
@@ -132,7 +132,7 @@ function youClassCard() {
   if (!cls) return `<div class="card yclass ready"><span class="yce">✨</span><div><b>You've reached level ${CD_CLASS_LV}: choose your class</b><div class="muted small-text">It's permanent, so take a look at all ${CD_CLASSES.length}.</div></div><button class="btn primary" data-cls="open">Choose a class</button></div>`;
   const F = FT_CLASS[cls.id];
   return `<div class="card yclass" style="--cc:${cls.col}"><span class="yce">${cls.e}</span><div><b>${cls.n}</b> <span class="muted">· ${esc(cls.title)}</span><div class="small-text">${esc(F.p)} · Skills: ${ftClassSkills(cls.id).map(s => `${s.e} ${esc(s.n)}`).join(', ')}</div></div>
-    ${st.respec > 0 ? `<button class="btn" data-cls="open" title="Use a Respec Scroll to pick a new class">📜 Respec (${st.respec})</button>` : '<span class="muted small-text" title="A very rare drop when your house kills the weekly boss">📜 No Respec Scrolls</span>'}</div>`;
+    ${st.respec > 0 ? `<button class="btn" data-cls="open" title="Use a Respec Scroll to pick a new class">📜 Respec (${st.respec})</button>` : '<span class="muted small-text" title="A very rare drop when your house kills the weekly Warband">📜 No Respec Scrolls</span>'}</div>`;
 }
 function youRecords() {
   const C = cdParts(), pbs = [...(D.arena.pbs || [])].filter(p => TESTS.some(T => T.id === p.test)).sort((a, b) => (b.date || '').localeCompare(a.date || '')).slice(0, 8);

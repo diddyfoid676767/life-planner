@@ -3877,3 +3877,28 @@ body.world-on .tpage { min-height: 0; }
 #shph { padding: 10px 14px 0 22px; }
 #shph .shp-sub #subnav { border: 0; margin: 0; padding: 0; background: none; position: static; }
 #shph .shp-sub { min-width: 0; }
+
+/* ---------- 2.73 medieval skin (medieval.js): parchment in a wooden frame, serif headings, iron and gold trim ---------- */
+body.skin-med { --med-serif: "Palatino Linotype", "Book Antiqua", Palatino, "Iowan Old Style", Georgia, serif; --med-wood: #4a2f1a; --med-wood2: #6b4527; --med-gold: #e8c07d; }
+body.skin-med .content { --bg: #f1e4c6; --panel: #fbf4e1; --panel2: #f3e7c9; --border: #d8c193; --text: #2c1f10; --muted: #7a6446; --accent: #9b3a1f; --accent2: #b8862f; --shadow: 0 1px 2px rgba(74, 47, 26, .12), 0 4px 12px rgba(74, 47, 26, .08);
+  background: radial-gradient(ellipse at 20% 0%, rgba(255, 255, 255, .45), transparent 55%), radial-gradient(ellipse at 90% 100%, rgba(150, 105, 50, .16), transparent 60%), linear-gradient(180deg, #f4e8cb, #ead9b2);
+  border: 7px solid var(--med-wood); outline: 2px solid var(--med-gold); outline-offset: -11px; box-shadow: 0 24px 70px rgba(0, 0, 0, .6), inset 0 0 40px rgba(120, 80, 30, .18); }
+body.skin-med.skin-dark .content { --bg: #2a1f14; --panel: #33271a; --panel2: #3c2e1f; --border: #5a4429; --text: #f3e6c8; --muted: #c2a97f; --accent: #e0a24a; --accent2: #c9773a;
+  background: radial-gradient(ellipse at 20% 0%, rgba(255, 200, 120, .08), transparent 55%), linear-gradient(180deg, #2e2216, #241a10); }
+body.skin-med .content h1, body.skin-med .content h2, body.skin-med .content h3, body.skin-med .shm-h h3, body.skin-med #world .ispanel-h h3, body.skin-med .tc-top h2 { font-family: var(--med-serif); letter-spacing: .01em; }
+body.skin-med .content h1 { font-weight: 700; }
+body.skin-med .content .card { background: var(--panel); border-color: var(--border); }
+body.skin-med .content .btn.primary { background: linear-gradient(180deg, color-mix(in srgb, var(--accent) 88%, #fff), var(--accent)); border-color: color-mix(in srgb, var(--accent) 70%, #000); color: #fff8ec; }
+body.skin-med .content input, body.skin-med .content select, body.skin-med .content textarea { background: #fffaf0; border-color: var(--border); color: var(--text); }
+body.skin-med.skin-dark .content input, body.skin-med.skin-dark .content select, body.skin-med.skin-dark .content textarea { background: #2a2016; }
+body.skin-med .shp-t { font-family: var(--med-serif); font-size: .95rem; text-transform: none; letter-spacing: .02em; color: var(--accent); }
+body.skin-med .shp-x { background: var(--panel); border-color: var(--border); }
+body.skin-med #hud { background: linear-gradient(180deg, #5a3a20, #3d2614); border-bottom: 3px solid #2a1a0d; box-shadow: inset 0 -1px 0 var(--med-gold), 0 6px 22px rgba(0, 0, 0, .4); }
+body.skin-med .hud-brand span { font-family: var(--med-serif); letter-spacing: .04em; }
+body.skin-med .hud-b { color: #f5e6c8; }
+body.skin-med .hud-cur { background: rgba(0, 0, 0, .22); box-shadow: inset 0 0 0 1px rgba(232, 192, 125, .25); }
+body.skin-med .isfull, body.skin-med .shm-in { --sm-bg: rgba(46, 30, 16, .93); --sm-bg2: rgba(255, 236, 200, .07); --sm-line: rgba(232, 192, 125, .4); --sm-text: #f8ecd2; --sm-muted: #d1bc96; }
+body.skin-med .shm-in { background: var(--sm-bg); border-color: var(--sm-line); }
+body.skin-med .shm-h h3 { color: var(--med-gold); }
+.crest { vertical-align: -5px; filter: drop-shadow(0 1px 1px rgba(0, 0, 0, .3)); }
+h1 .crest { vertical-align: -3px; }

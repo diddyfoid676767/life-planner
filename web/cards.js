@@ -29,7 +29,7 @@ const CD_CLASSES = [
 ];
 // subject name -> Mind weights and a scaling factor (roughly how VCE scales it)
 // 2.57: classes unlock at player level 8 (2,800 XP) and are permanent once picked.
-// A Respec Scroll (about a 3% drop when your house kills the weekly boss) lets you pick again.
+// A Respec Scroll (about a 3% drop when your house kills the weekly Warband) lets you pick again.
 const CD_CLASS_LV = 8, CD_RESPEC_DROP = .03;
 // your class, once it is locked in (an old pick from before 2.57 waits until level 8)
 function cdClass() {
@@ -50,7 +50,7 @@ function clsPickerDraw() {
   const st = cdState(), ch = cdChar(), cur = cdClass(), sel = ui.clsSel || '', best = ch.fit.slice(0, 3).map(x => x.c.id), respec = !!cur;
   const sk = s => `<div class="clsk"><span>${s.e}</span><div><b>${esc(s.n)}</b> <small class="muted">${s.k === 'spell' ? 'Spell' : 'Move'} · ${CD_STAT[s.st][1]}</small><div class="small-text">${esc(s.d)}</div></div></div>`;
   ov.innerHTML = `<div class="clsbox"><div class="row" style="justify-content:space-between"><div><div class="muted small-text">${respec ? `RESPEC SCROLL · ${st.respec || 0} LEFT` : `LEVEL ${CD_CLASS_LV} REACHED`}</div><h2 style="margin:2px 0">Choose your class</h2></div><button class="iconbtn" data-cls="close" title="Close">✕</button></div>
-    <p class="muted small-text">Your class is <b>permanent</b>. It gives you a title, an outfit colour and aura, a passive and two skills only it has (a spell and a move). ⭐ marks your best matches from your Mind and Body stats. ${respec ? 'Picking a new class uses up one Respec Scroll.' : 'To change it later you need a Respec Scroll, a very rare drop from killing the weekly boss with your house.'}</p>
+    <p class="muted small-text">Your class is <b>permanent</b>. It gives you a title, an outfit colour and aura, a passive and two skills only it has (a spell and a move). ⭐ marks your best matches from your Mind and Body stats. ${respec ? 'Picking a new class uses up one Respec Scroll.' : 'To change it later you need a Respec Scroll, a very rare drop from killing the weekly Warband with your house.'}</p>
     <div class="clsgrid">${CD_CLASSES.map(c => { const F = FT_CLASS[c.id]; return `<button type="button" class="clscard ${sel === c.id ? 'on' : ''} ${cur === c.id ? 'cur' : ''}" style="--cc:${c.col}" data-cls="sel" data-id="${c.id}">
       <div class="clstop"><span class="clse">${c.e}</span><div><b>${c.n}${best.includes(c.id) ? ' ⭐' : ''}</b><small>${esc(c.title)}</small></div>${cur === c.id ? '<span class="tag">Current</span>' : ''}</div>
       <div class="clsstats">${c.s.map(k => `<span>${CD_STAT[k][1]} <b>${ch.all[k]}</b></span>`).join('')}</div>
@@ -60,7 +60,7 @@ function clsPickerDraw() {
 document.addEventListener('click', e => {
   const el = e.target.closest('[data-cls]'); if (!el || !D) return;
   const a = el.dataset.cls;
-  if (a === 'open') { if (!solisHas(CD_CLASS_LV)) { toast('🔒 Not yet', `Classes unlock at level ${CD_CLASS_LV}.`); return; } const had = cdClass(), st = cdState(); if (had && !(st.respec > 0)) { toast('📜 You need a Respec Scroll', 'Your class is permanent. Scrolls are a rare drop from killing the weekly boss.'); return; } ui.clsPick = true; ui.clsSel = st.clsLock ? '' : st.cls || ''; }
+  if (a === 'open') { if (!solisHas(CD_CLASS_LV)) { toast('🔒 Not yet', `Classes unlock at level ${CD_CLASS_LV}.`); return; } const had = cdClass(), st = cdState(); if (had && !(st.respec > 0)) { toast('📜 You need a Respec Scroll', 'Your class is permanent. Scrolls are a rare drop from killing the weekly Warband.'); return; } ui.clsPick = true; ui.clsSel = st.clsLock ? '' : st.cls || ''; }
   else if (a === 'close') { ui.clsPick = false; ui.clsSeen = true; }
   else if (a === 'sel') ui.clsSel = el.dataset.id;
   else if (a === 'ok') {

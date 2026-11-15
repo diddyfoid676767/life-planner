@@ -7,7 +7,7 @@
    first 2 weeks) start projects and repairs. Projects take a week, a month or
    a term; month and term projects need a house-wide vote first. Chains give no
    perk until every part is built, unless a part works alone. House perks only
-   apply in weekly house boss fights. Buildings wear and break like the
+   apply in weekly Warband fights. Buildings wear and break like the
    personal island (slower), are never destroyed, and are repaired from the pool. */
 
 const HI_SHARE = .1, HI_LEADERS = 2, HI_ELIG = 200, HI_VOTE_DAYS = 14, HI_PROP_DAYS = 3, HI_MAX_BUILDING = 2;
@@ -149,7 +149,7 @@ function hiPerks() {
   for (const [cid, ch] of Object.entries(HI_CHAINS)) { const ms = HI_ITEMS.filter(x => x.ch === cid).map(x => on(x.id)); if (ms.every(m => m)) add(ch.b, Math.min(...ms)); }
   return g;
 }
-// your gear buffs plus the house island's, for house boss fights
+// your gear buffs plus the house island's, for Warband fights
 function hiFightBuffs(g) { const o = { ...g }; for (const [k, v] of Object.entries(hiPerks())) if (FT_BUFF[k]) o[k] = (o[k] || 0) + v; return o; }
 
 // ---------- levels, upgrades and the grid (2.51) ----------
@@ -185,7 +185,7 @@ function viewHouseIsland() {
     const t = c === 'build' ? `⏳ ${isTimeLeft(s.r)}` : s.up && today() < s.up.r ? `⬆️ ${isTimeLeft(s.up.r)}` : (c === 'broken' || c === 'worn') && (s.hit || []).some(x => x >= addDays(today(), -7)) ? '💥 Smashed' : c === 'broken' ? '🔴 Repair' : c === 'worn' ? '🟠 Worn' : lk && !lk.has(key) ? (hhItem(key.split('.')[0]).need ? '🌊 Needs water' : '🛣️ No road') : '';
     return t ? `<button class="isbub" data-b="${key}" data-is="sel" data-id="${key}">${t}</button>` : '';
   }).join('');
-  const hud = `<div class="ishud is-tl"><div class="islvl house" style="--hc:${h.col}"><b>${hl}</b><div><span>${h.e} ${esc(h.name)} · house level ${hl}</span>${nextT ? `<i style="width:${Math.round((tot - prevT) / (nextT - prevT) * 100)}%"></i>` : ''}</div></div>
+  const hud = `<div class="ishud is-tl"><div class="islvl house" style="--hc:${h.col}"><b>${hl}</b><div><span>${typeof hsCrest === 'function' ? hsCrest(h, 20) : h.e} ${esc(h.name)} · house level ${hl}</span>${nextT ? `<i style="width:${Math.round((tot - prevT) / (nextT - prevT) * 100)}%"></i>` : ''}</div></div>
       <div class="isbuilders">🔨 ${HI_MAX_BUILDING - busy}/${HI_MAX_BUILDING} builders free · ${lead ? '👑 You lead' : `Leaders: ${L.u.map(esc).join(', ') || 'none yet'}`}</div></div>
     <div class="ishud is-tr">${isBar('cd-l', LUMEN, pool.l, 'House Lumen', 1, '')}${isBar('cd-e', EMBER, pool.e, 'House Ember', 1, '')}</div>
     ${P ? '' : `<div class="ishud is-bl"><button class="isbtn" data-hi="panel" data-v="house">🏰<span>House</span></button><button class="isbtn" data-hi="panel" data-v="pool">🏦<span>Pool</span></button><button class="isbtn" data-hi="panel" data-v="leaders">👑<span>Leaders</span></button><button class="isbtn ${pr?.open ? 'ping' : ''}" data-hi="panel" data-v="vote">🗳️<span>Vote</span></button><button class="isbtn" data-hi="panel" data-v="perks">✨<span>Perks</span></button></div>`}
@@ -199,10 +199,10 @@ function viewHouseIsland() {
   else if (pn === 'perks' || pn === 'hall') {
     const pk = hiPerks(), sl = hhSlots(hl), ring = hhRingOf(d), off = lk ? hiKeys(d).filter(k => !lk.has(k) && hiCond(k) && hiCond(k) !== 'build').length : 0;
     const slots = `<p class="small-text">🛡️ Defence space at house level ${hl}: ${hhSlotUsed(d, 'wall')}/${sl.wall} wall hexes · ${hhSlotUsed(d, 'tower')}/${sl.tower} towers · ${hhSlotUsed(d, 'trap')}/${sl.trap} traps · ${hhSlotUsed(d, 'guard')}/${sl.guard} guard posts</p>`;
-    extra += isPanel(pn === 'hall' ? `${h.e} ${h.name} great hall` : '✨ House perks', `${pn === 'hall' ? `<p>House level <b>${hl}</b>. ${nextT ? `${(nextT - tot).toLocaleString()} more in the pool (from anyone) for level ${hl + 1}.` : 'Top level!'} New projects, upgrades and defence space unlock as the house levels up.</p>` : ''}${Object.keys(pk).length ? `<p>${hiBuffText(pk)}</p>` : '<p class="muted small-text">No house perks working yet.</p>'}
+    extra += isPanel(pn === 'hall' ? `${typeof hsCrest === 'function' ? hsCrest(h, 20) : h.e} ${h.name} great hall` : '✨ House perks', `${pn === 'hall' ? `<p>House level <b>${hl}</b>. ${nextT ? `${(nextT - tot).toLocaleString()} more in the pool (from anyone) for level ${hl + 1}.` : 'Top level!'} New projects, upgrades and defence space unlock as the house levels up.</p>` : ''}${Object.keys(pk).length ? `<p>${hiBuffText(pk)}</p>` : '<p class="muted small-text">No house perks working yet.</p>'}
       ${off ? `<p class="small-text">🛣️ ${off} building${off === 1 ? ' isn\'t' : 's aren\'t'} joined to the great hall by road, so ${off === 1 ? 'its perk is' : 'their perks are'} off.</p>` : ''}
       <p class="small-text">${ring ? '🧱 The walls close a ring round the great hall: the Friday boss raid can\'t get in.' : '🧱 Close a ring of wall round the great hall to keep the Friday boss raid out.'}</p>${pn === 'hall' ? slots : ''}
-      <p class="muted small-text">House perks only count in weekly house boss fights (on the <a href="#" data-act="goto" data-v="house">House</a> page), for everyone in ${h.name}.</p>`);
+      <p class="muted small-text">House perks only count in weekly Warband fights (on the <a href="#" data-act="goto" data-v="house">House</a> page), for everyone in ${h.name}.</p>`);
   }
   else if (ui.isSel && String(ui.isSel).startsWith('hex:')) extra += hhHexPop(ui.isSel.slice(4));
   else if (ui.isSel && d.b?.[ui.isSel]) extra += hiPopHtml(ui.isSel, d, pool, lead, hl, busy);

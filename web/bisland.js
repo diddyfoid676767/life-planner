@@ -1,5 +1,5 @@
 'use strict';
-/* Boss island (2.53, islands stage 5). The weekly house boss lives on its own
+/* Boss island (2.53, islands stage 5). The weekly Warband lives on its own
    floating island, the third island in the Islands view. It shows this week's
    boss as a low-poly 3D model in a stone arena, the shared health bar, its
    weakness, special rule and attacks, and the Fight button for your turn-based
@@ -104,7 +104,7 @@ function biTroHtml(h) {
   if (!HI.doc) return `<p class="muted">${HI.err === 'signin' ? 'Trophies are shared with your house, so sign in on the Friends page to see them.' : 'Loading…'}</p>`;
   const t = biTrophies();
   return t.length ? `<p class="muted small-text">${t.length} boss${t.length === 1 ? '' : 'es'} beaten by ${esc(h.name)}. The newest 12 stand in gold along the front of the <a href="#" data-is="tab" data-v="house">house island</a>.</p><ul class="cdlog">${t.map(x => `<li><b>${x.b.e} ${esc(x.n)}</b><span class="muted">week of ${fmtDate(x.wk)}</span></li>`).join('')}</ul>`
-    : `<p class="muted">No trophies yet. Beat a weekly boss as a house and it stands in gold on the house island.</p>`;
+    : `<p class="muted">No trophies yet. Beat a weekly Warband as a house and it stands in gold on the house island.</p>`;
 }
 
 // ---------- 3D: the arena and the bosses ----------

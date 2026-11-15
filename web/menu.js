@@ -4,7 +4,7 @@
    colour. Also the graphics quality switch (low drops the 3D shadows). It is
    one small card in Settings, Look & sound. Everything lives in
    D.settings.menu (and D.settings.lowQuality). */
-const MENU_CARDS = [['week', 'Week strip'], ['next', 'Next SAC, deadline and race'], ['rivals', 'Friends race bar'], ['house', 'House boss strip']];
+const MENU_CARDS = [['week', 'Week strip'], ['next', 'Next SAC, deadline and race'], ['rivals', 'Friends race bar'], ['house', 'Warband strip']];
 const menuCfg = () => { const m = D.settings.menu = D.settings.menu || {}; m.order = m.order || []; m.hide = m.hide || []; m.cards = m.cards || {}; return m; };
 const placeIdsInOrder = () => { const o = menuCfg().order; return PLACES.map(p => p.id).sort((a, b) => { const x = o.indexOf(a), y = o.indexOf(b); return (x < 0 ? 99 : x) - (y < 0 ? 99 : y) || PLACES.findIndex(p => p.id === a) - PLACES.findIndex(p => p.id === b); }); };
 let menuSig = '';
@@ -44,7 +44,7 @@ function menuCard() {
       <h3>Open on</h3><select data-mn="start">${[['today', 'Your island with the Today card'], ['world', 'Your island only'], ...PLACES.filter(p => p.id !== 'today').map(p => [p.id, p.label])].map(([v, l]) => `<option value="${v}" ${(m.start || 'today') === v ? 'selected' : ''}>${l}</option>`).join('')}</select></div>
     <div><h3>Look</h3><label class="row"><input type="checkbox" data-mn="dense" ${m.dense ? 'checked' : ''}> Compact spacing</label>
       <div class="row">Accent colour <input type="color" data-mn="accent" value="${m.accent || '#4f6df5'}"><button class="btn small" data-mn="accentReset" ${m.accent ? '' : 'disabled'}>Reset</button></div>
-      <h3>Graphics</h3><label class="row"><input type="checkbox" data-mn="lowq" ${D.settings.lowQuality ? 'checked' : ''}> Low graphics (no shadows)</label><label class="row"><input type="checkbox" data-mn="map2d" ${D.settings.map2d ? 'checked' : ''}> 2D map instead of 3D (slow computers)</label></div></div></div>`;
+      ${typeof medCardRow === 'function' ? medCardRow() : ''}<h3>Graphics</h3><label class="row"><input type="checkbox" data-mn="lowq" ${D.settings.lowQuality ? 'checked' : ''}> Low graphics (no shadows)</label><label class="row"><input type="checkbox" data-mn="map2d" ${D.settings.map2d ? 'checked' : ''}> 2D map instead of 3D (slow computers)</label></div></div></div>`;
 }
 document.addEventListener('click', e => {
   const b = e.target.closest('button[data-mn]'); if (!b || !D) return;

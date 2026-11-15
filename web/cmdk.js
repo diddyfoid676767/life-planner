@@ -14,11 +14,14 @@
     const out = [];
     for (const p of (typeof PLACES !== 'undefined' ? PLACES : [])) for (const v of p.views) out.push({ k: 'Page', t: label(v), sub: p.label, run: goView(v) });
     out.push({ k: 'Page', t: 'You', sub: 'character, avatar, stats', run: goView('profile') });
-    out.push({ k: 'Page', t: 'Settings', run: goView('settings') });
+    out.push({ k: 'Page', t: 'Steward (Settings)', sub: 'sign-in, account, graphics, updates', run: goView('settings') });
+    out.push({ k: 'Page', t: 'Notice Board (Today)', sub: 'today, calendar and to-dos', run: goView('today') });
+    out.push({ k: 'Page', t: 'Map', sub: 'travel between islands', run: () => typeof shellMap === 'function' && shellMap(true) });
+    out.push({ k: 'Page', t: 'Your island (world)', sub: 'close every page', run: () => { view = 'islands'; render(); } });
     out.push({ k: 'Page', t: 'Your island', sub: 'Islands', run: () => { ui.isTab = 'personal'; goView('islands')(); } });
     out.push({ k: 'Page', t: 'House island and your house', sub: 'Islands', run: () => { ui.isTab = 'house'; goView('islands')(); } });
     out.push({ k: 'Page', t: 'Rankings: leaderboards against friends', sub: 'Islands', run: () => { ui.isTab = 'rank'; goView('islands')(); } });
-    out.push({ k: 'Page', t: 'Boss island: fight the weekly boss', sub: 'Islands', run: () => { ui.isTab = 'boss'; goView('islands')(); } });
+    out.push({ k: 'Page', t: 'Boss island: fight the weekly Warband (house boss)', sub: 'Islands', run: () => { ui.isTab = 'boss'; goView('islands')(); } });
     out.push({ k: 'Action', t: 'Start studying', run: act('focusNew') });
     out.push({ k: 'Action', t: 'Add a task', run: act('new', { kind: 'todo' }) });
     out.push({ k: 'Action', t: 'Log a workout', run: act('new', { kind: 'workout' }) });

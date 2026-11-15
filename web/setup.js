@@ -96,7 +96,7 @@ function drawSetup() {
   } else if (key === 'house') {
     const ok = schoolReady() && acct.school, inv = D.settings.inviteHouse;
     body = `<div class="wizhero">🏰</div><h2>Join your house</h2>
-      ${ok ? `<p>Pick the house you're really in at school. Your study and workouts become hits on its weekly boss. You can't switch later.</p>
+      ${ok ? `<p>Pick the house you're really in at school. Your study and workouts become hits on its weekly Warband. You can't switch later.</p>
         <div class="hspick">${HS_HOUSES.map(h => `<button type="button" data-w="house" data-v="${h.id}" class="${W.house2 === h.id ? 'on' : ''}" style="--hc:${h.col};--hi:${h.ink};${W.house2 && W.house2 !== h.id ? 'opacity:.45' : ''}"><b>${h.e}</b><span>${h.name}</span><small>${h.team}${inv === h.id ? ' · your friend\'s' : ''}</small></button>`).join('')}</div>`
       : `<p class="muted">Houses open once your school email is on the Westbourne list. Pick your house later on Islands, House island. You can finish setting up now.</p>${acct.signedIn && !acct.verified ? '<div class="row"><button class="btn" data-em="check">Continue</button></div>' : ''}`}`;
   } else if (key === 'account') {
@@ -280,7 +280,7 @@ const TOUR_PAGES = {
     ['.btiles', 'This week at a glance', 'Ember earned, training time, sessions done and your day streak. Start a workout from here.'],
     ['.bodytabs', 'Train, Progress and Body', '<b>Train</b> has your plan, events and recent workouts, <b>Progress</b> tracks personal records and charts, and <b>Body</b> shows your Body card stats and heat map.']]],
   islands: ['🏝️ Islands', 'Your island, your house island and the boss island.', [
-    ['.isswitch', 'Islands and Rankings', 'Build your own island with Lumen and Ember, build the house island together (the 🏰 House button has your house, its members and rankings), fight the weekly boss, and race your friends on 🏆 Rankings.']]],
+    ['.isswitch', 'Islands and Rankings', 'Build your own island with Lumen and Ember, build the house island together (the 🏰 House button has your house, its members and rankings), fight the weekly Warband, and race your friends on 🏆 Rankings.']]],
   friends: ['👥 Friends', 'Chat with your friends and add new ones.', []],
   settings: ['⚙️ Settings', 'Make the planner yours. Open it from You, at the bottom of the sidebar.', [
     ['.settabs', 'Settings sections', 'You &amp; account, Look &amp; sound, Calendars &amp; reminders, and Backup &amp; app. You can replay this tour from here.']]],

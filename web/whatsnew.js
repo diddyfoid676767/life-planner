@@ -10,6 +10,12 @@
 // version since the last one they saw (up to 3). D.settings.seenVersion remembers what was last shown,
 // D.settings.guidesSeen which guides have played. A brand-new install never sees either.
 const CHANGELOG = [
+  { v: '2.73.0', notes: [
+    { t: 'A medieval look: pages open on parchment in a wooden frame, with serif headings and house crests', k: 'new' },
+    { t: 'A bell rings when one of your buildings is finished, and soft lute and drum music plays on your island', k: 'new' },
+    { t: 'New names: Settings is the Steward and the house boss is the Warband. The old names still work in Ctrl+K', k: 'tweak' },
+    { t: 'Prefer the plain look or no music? Both switch off in the Steward, under Look & sound', k: 'tweak' },
+  ] },
   { v: '2.72.0', guide: 'shell', notes: [
     { t: 'Solis is one world now: the sidebar is gone and every page opens over your island from its building', k: 'new' },
     { t: 'A new bar along the top: the buildings, Map, search, Lumen, Ember and streak, Add and the Steward (settings)', k: 'new' },

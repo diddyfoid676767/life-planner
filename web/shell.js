@@ -204,7 +204,7 @@ function stewardHtml() {
   let who = 'Not signed in';
   try { if (typeof acct === 'object' && acct && acct.signedIn) who = `Signed in as <b>${esc(acct.username || acct.email || '')}</b>`; } catch (e) { }
   const row = (e, n, sub, act) => `<div class="stw-row"><i>${e}</i><div><b>${n}</b><div class="muted small-text">${sub}</div></div><div class="stw-a">${act}</div></div>`;
-  return `<div class="card stw" style="grid-column:1/-1"><div class="card-head"><h2>🧾 The Steward</h2><span class="muted small-text">The things you'll want most. Everything else is below.</span></div>
+  return `<div class="card stw" style="grid-column:1/-1"><div class="card-head"><h2>The essentials</h2><span class="muted small-text">The things you'll want most. Everything else is below.</span></div>
     ${row('👤', 'Sign-in and account', who, `<button class="btn small" data-act="setTab" data-v="you">Account</button>`)}
     ${row('🔒', 'Privacy', 'Your planner stays on this computer. Only your name, avatar, house and leaderboard numbers are shared.', '<a class="btn small" href="https://diddyfoid676767.github.io/life-planner/download/privacy.html" target="_blank" rel="noopener noreferrer">Read the privacy page</a>')}
     ${row('🔔', 'Notifications', perm === 'granted' ? 'On: reminders and timers can pop up.' : perm === 'denied' ? 'Blocked in this browser.' : 'Off for now.', perm === 'granted' || perm === 'unsupported' ? '' : '<button class="btn small" data-shell="notify">Turn on</button>')}

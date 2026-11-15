@@ -1,7 +1,7 @@
 'use strict';
 /* Houses (2.44): you join your school house, and what you log in the planner
    (focus sessions, revision cards and quiz questions, workouts, PBs) becomes
-   damage against your house's weekly boss. Two cards, Mind and Body, rate you
+   damage against your house's weekly Warband. Two cards, Mind and Body, rate you
    0-99 from the last 28 days, and the ratings multiply your damage. Ticking
    to-dos gives nothing: the planner is for organising, the house is for effort.
    Your week is shared on your profile row (stats.hs) and the house page reads
@@ -119,7 +119,7 @@ function hsCardHtml(kind, r, c) {
 
 function hsPicker() {
   return `${pageHead('🏰 Houses', 'Pick your house to join this week\'s boss fight')}
-    <div class="card"><p>Everything you log here, study sessions, revision, workouts and PBs, becomes damage against your house's weekly boss. Ticking off to-dos doesn't count: the planner keeps you organised, the house is for real effort.</p>
+    <div class="card"><p>Everything you log here, study sessions, revision, workouts and PBs, becomes damage against your house's weekly Warband. Ticking off to-dos doesn't count: the planner keeps you organised, the house is for real effort.</p>
     <div class="hspick">${HS_HOUSES.map(h => `<button type="button" data-hs="pick" data-h="${h.id}" style="--hc:${h.col};--hi:${h.ink}"><b>${h.e}</b><span>${h.name}</span><small>${h.team}</small></button>`).join('')}</div>
     <p class="muted small-text">Pick the house you're really in at school. You can't switch later.</p></div>`;
 }
@@ -137,14 +137,14 @@ function viewHouse() {
   const lw = st.seen[addDays(wk, -7)], recap = lw && st.recapSeen !== wk ? `<div class="card hsrecap"><b>📅 Last week:</b> ${h.name} ${lw.won ? `beat ${esc(lw.boss)} 🎉` : `didn't take down ${esc(lw.boss)} (${Math.round(lw.dealt / lw.hp * 100)}%)`}. You did ${lw.me.toLocaleString()} damage${lw.rank ? `, #${lw.rank} in your house` : ''}${lw.hr ? `, and ${h.name} came #${lw.hr} of 6` : ''}. <button class="btn small ghost" data-hs="recap">OK</button></div>` : '';
   const signed = acct.configured && acct.signedIn;
   const medal = i => ['🥇', '🥈', '🥉'][i] || `${i + 1}.`;
-  return `${pageHead(`${h.e} ${h.name} ${h.team}`, `${f.rows.length} fighting this week · ${st.wins} boss${st.wins === 1 ? '' : 'es'} beaten${st.mvp ? ` · ${st.mvp}× MVP` : ''}`)}
+  return `${pageHead(`${typeof hsCrest === 'function' ? hsCrest(h, 20) : h.e} ${h.name} ${h.team}`, `${f.rows.length} fighting this week · ${st.wins} boss${st.wins === 1 ? '' : 'es'} beaten${st.mvp ? ` · ${st.mvp}× MVP` : ''}`)}
     <style>.hs-top{--hc:${h.col};--hi:${h.ink}}</style>
     ${recap}
     ${!ONLINE && !signed ? `<div class="card banner" style="margin-bottom:14px"><b>Sign in to fight with your house.</b> <span class="muted">Right now only your own damage counts. Sign in on the Friends page so your housemates' hits add up.</span> <button class="btn small" data-act="goto" data-v="friends">Sign in</button></div>` : ''}
     <div class="hs-top">
-      ${bw === 'rest' ? `<div class="card hsboss rest"><div class="hsb-e">🌴</div><div class="hsb-main"><div class="muted small-text">SCHOOL HOLIDAYS</div><h2>The boss is resting</h2><div class="muted">No house boss in the holidays. It's back on ${fmtDate(bossBackOn(wk))}. Your study and workouts still count for your cards, goals and island.</div></div></div>` : `<div class="card hsboss ${f.dead ? 'dead' : ''} ${bw === 'term' ? 'termboss' : ''}">
+      ${bw === 'rest' ? `<div class="card hsboss rest"><div class="hsb-e">🌴</div><div class="hsb-main"><div class="muted small-text">SCHOOL HOLIDAYS</div><h2>The boss is resting</h2><div class="muted">No Warband in the holidays. It's back on ${fmtDate(bossBackOn(wk))}. Your study and workouts still count for your cards, goals and island.</div></div></div>` : `<div class="card hsboss ${f.dead ? 'dead' : ''} ${bw === 'term' ? 'termboss' : ''}">
         <div class="hsb-e">${boss.e}</div>
-        <div class="hsb-main"><div class="muted small-text">${bw === 'term' ? '👑 TERM BOSS · double health, 3 extra fights, double rewards' : 'WEEKLY BOSS'} · ${daysLeft} day${daysLeft === 1 ? '' : 's'} left</div><h2>${esc(boss.n)}</h2><div class="muted">${esc(boss.s)}</div>${hsBar(f)}
+        <div class="hsb-main"><div class="muted small-text">${bw === 'term' ? '👑 TERM BOSS · double health, 3 extra fights, double rewards' : 'WEEKLY WARBAND'} · ${daysLeft} day${daysLeft === 1 ? '' : 's'} left</div><h2>${esc(boss.n)}</h2><div class="muted">${esc(boss.s)}</div>${hsBar(f)}
         <div class="small-text">${f.dead ? `🎉 ${h.name} took it down! Keep hitting to climb the house ranking.` : f.left < f.hp * .1 ? `🔥 Under 10%! One more session could finish it.` : `HP is set from how much ${h.name} did over the last 3 weeks, plus 10%${bw === 'term' ? ', doubled for the Term Boss. Beat it as a house for a shot at this term\'s legendary' : ''}. Lock in and it goes down.`}</div></div>
       </div>`}
       <div class="hscards">${hsCardHtml('m', c.m)}${hsCardHtml('b', c.b)}</div>
@@ -166,7 +166,7 @@ function viewHouse() {
           <p class="muted small-text">Ranked by how much of their own boss each house has taken down, so small houses can win.</p></div>
       </div>
       <div class="stack">
-        <div class="card"><div class="row" style="justify-content:space-between"><h3>${h.e} ${h.name} this week</h3>
+        <div class="card"><div class="row" style="justify-content:space-between"><h3>${typeof hsCrest === 'function' ? hsCrest(h, 20) : h.e} ${h.name} this week</h3>
           <div class="seg"><button class="${by === 'd' ? 'on' : ''}" data-hs="by" data-v="d">Damage</button><button class="${by === 'e' ? 'on' : ''}" data-hs="by" data-v="e">Effort</button></div></div>
           <ol class="hslist">${rows.map((x, i) => `<li class="${x.me ? 'me' : ''}"><span class="hsm">${medal(i)}</span><span>${x.me ? (D.settings.name ? esc(D.settings.name) + ' (you)' : 'You') : esc(x.name)}</span><span class="muted small-text">🧠${x.m} 💪${x.b}</span><b>${(x[by] || 0).toLocaleString()}</b></li>`).join('')}</ol>
           <p class="muted small-text">Damage includes your card ratings; Effort is raw points, so new players can top it too. Top 3 by damage are this week's MVPs.</p>
@@ -192,11 +192,11 @@ function hsRecord(f) {
 function hsTodayStrip() {
   const st = hsState();
   if (plannerOnly()) return ''; // 2.67
-  if (!st.id) return `<div class="card hsstrip"><b>🏰 Join your house</b><span class="muted">Your study and workouts become hits on a weekly boss.</span><button class="btn small" data-act="gotoIsland" data-v="house">Pick house</button></div>`;
-  if (bossWeek() === 'rest') return `<div class="card hsstrip"><b>🌴 The house boss is resting</b><span class="muted">School holidays. It's back on ${fmtDate(bossBackOn())}.</span><button class="btn small ghost" data-act="gotoIsland" data-v="house">Open</button></div>`;
+  if (!st.id) return `<div class="card hsstrip"><b>🏰 Join your house</b><span class="muted">Your study and workouts become hits on a weekly Warband.</span><button class="btn small" data-act="gotoIsland" data-v="house">Pick house</button></div>`;
+  if (bossWeek() === 'rest') return `<div class="card hsstrip"><b>🌴 The Warband is resting</b><span class="muted">School holidays. It's back on ${fmtDate(bossBackOn())}.</span><button class="btn small ghost" data-act="gotoIsland" data-v="house">Open</button></div>`;
   hsLoad();
   const h = hsHouse(st.id), f = hsFight(st.id), boss = hsBoss(f.wk), pct = Math.min(100, Math.round(f.dealt / f.hp * 100)), t = hsDay(today(), hsMoves(hsCards()));
-  return `<div class="card hsstrip" style="--hc:${h.col}"><b>${h.e} ${h.name} vs ${bossWeek(f.wk) === 'term' ? '👑 Term Boss ' : ''}${boss.e} ${esc(boss.n)}</b><span class="hsmini"><i style="width:${100 - pct}%"></i></span><span class="muted small-text">${f.dead ? 'Defeated 🎉' : `${pct}% down`} · today you: ${Math.round(t.s + t.b)} pts</span>${!f.dead && typeof ftAttempts === 'function' && ftAttempts().left ? `<button class="btn small primary" data-act="gotoIsland" data-v="boss" title="${ftAttempts().left} attempt${ftAttempts().left === 1 ? '' : 's'} left today">⚔️ Fight the boss</button>` : `<button class="btn small ghost" data-act="gotoIsland" data-v="house">Open</button>`}</div>`;
+  return `<div class="card hsstrip" style="--hc:${h.col}"><b>${typeof hsCrest === 'function' ? hsCrest(h, 20) : h.e} ${h.name} vs ${bossWeek(f.wk) === 'term' ? '👑 Term Boss ' : ''}${boss.e} ${esc(boss.n)}</b><span class="hsmini"><i style="width:${100 - pct}%"></i></span><span class="muted small-text">${f.dead ? 'Defeated 🎉' : `${pct}% down`} · today you: ${Math.round(t.s + t.b)} pts</span>${!f.dead && typeof ftAttempts === 'function' && ftAttempts().left ? `<button class="btn small primary" data-act="gotoIsland" data-v="boss" title="${ftAttempts().left} attempt${ftAttempts().left === 1 ? '' : 's'} left today">⚔️ Fight the boss</button>` : `<button class="btn small ghost" data-act="gotoIsland" data-v="house">Open</button>`}</div>`;
 }
 
 document.addEventListener('click', e => {

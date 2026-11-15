@@ -846,7 +846,7 @@ function viewSettings() {
   const perm = 'Notification' in window ? Notification.permission : 'unsupported';
   // 2.59: the version and the update buttons sit at the top of every Settings tab
   const upd = ONLINE ? '' : `<div class="setupd"><span class="muted small-text" id="verText2">Solis ${esc(appVersion)}</span><button class="btn small primary" data-act="checkUpdateNow">Check for updates</button><button class="btn small" data-act="restartApp" title="Saves everything and restarts Solis">🔄 Restart</button></div>`;
-  return `${pageHead('Settings', '', upd)}
+  return `${pageHead('🧾 Steward', 'Settings, sign-in and connections', upd)}
   ${typeof stewardHtml === 'function' ? `<div class="grid g2">${stewardHtml()}</div><h3 class="stw-all">All settings</h3>` : ''}
   <div class="seg settabs">${tabs.map(([k, l]) => `<button class="${grp === k ? 'on' : ''}" data-act="setTab" data-v="${k}">${l}</button>`).join('')}</div>
   <div class="grid g2 settings-grid" data-sec="${grp}">

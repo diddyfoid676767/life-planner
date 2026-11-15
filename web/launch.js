@@ -116,7 +116,7 @@ function emVerified() {
     if (plannerOnly()) setMode('school');
     else if (!D.settings.mode) { D.settings.mode = 'school'; save(); }
     if (!D.settings.name && acct.name) { D.settings.name = firstName(acct.name); save(); }
-    toast(`✅ You're verified${acct.name ? ', ' + firstName(acct.name) : ''}!`, 'Westbourne student: houses, house islands and the weekly boss are open to you.');
+    toast(`✅ You're verified${acct.name ? ', ' + firstName(acct.name) : ''}!`, 'Westbourne student: houses, house islands and the weekly Warband are open to you.');
   } else {
     if (!plannerOnly()) setMode('planner');
     toast('📅 Planner-only mode', `That email isn't on the Westbourne year list, so Solis is set up as a planner: to-dos, study, fitness, your own island and friends. Houses are only for Westbourne students.`);
@@ -177,7 +177,7 @@ function modeCard() {
   if (ONLINE) return '';
   const p = plannerOnly();
   return `<div class="card" data-sec="account"><div class="card-head"><h2>Solis mode</h2><span class="tag">${p ? '📅 Planner only' : '🏫 Westbourne'}</span></div>
-    <p class="muted small-text">${p ? 'The planner side and your own island. Houses, the house island and the weekly house boss are hidden.' : 'Everything, including houses. Houses need a verified Westbourne school email.'}</p>
+    <p class="muted small-text">${p ? 'The planner side and your own island. Houses, the house island and the weekly Warband are hidden.' : 'Everything, including houses. Houses need a verified Westbourne school email.'}</p>
     <div class="row"><button class="btn small" data-solismode="${p ? 'school' : 'planner'}">${p ? "I'm at Westbourne" : 'Switch to planner only'}</button><button class="btn small ghost" data-act="howto">📖 How to start</button></div></div>`;
 }
 document.addEventListener('click', e => {
@@ -328,7 +328,7 @@ function openHowTo() {
       <li><b>Add your subjects</b> on Study. Each gets a colour that shows up everywhere.</li>
       <li><b>Start a focus timer</b> (Study, or the ⏱ button). Every study minute earns ${LUMEN} Lumen; every workout you log earns ${EMBER} Ember.</li>
       <li><b>Build your island</b> on Islands with the Lumen and Ember you earn.</li>
-      ${school ? '<li><b>Join your house</b> (needs your verified school email). Your sessions and workouts become hits on the weekly house boss.</li>' : '<li><b>Spar a boss</b> on the Boss island when you want a challenge.</li>'}
+      ${school ? '<li><b>Join your house</b> (needs your verified school email). Your sessions and workouts become hits on the weekly Warband.</li>' : '<li><b>Spar a boss</b> on the Boss island when you want a challenge.</li>'}
       <li><b>Add friends</b> by name${school ? ' or school email' : ''} on Friends, and send your invite link: you both get Lumen and Ember when they finish their first session.</li>
       <li><b>Put things in the planner</b>: to-dos, SACs and tests, calendar links. Today shows what's next.</li>
     </ol>
