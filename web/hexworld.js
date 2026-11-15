@@ -33,7 +33,25 @@ const HX_FREE = [
   { id: 'tavern', n: 'Tavern', e: '🍺', m: 'building_tavern', at: '-2,0', open: 'friends', d: 'Friends and chats', ac: '#ff922b', hz: 587 },
   { id: 'market', n: 'Market', e: '🛒', m: 'building_market', at: '-2,2', open: 'shop', d: 'The weekly cosmetics shop', ac: '#51cf66', hz: 659 },
   { id: 'yard', n: 'Practice yard', e: '🎯', m: 'building_archeryrange', at: '2,0', open: 'spar', d: 'Spar a champion boss', ac: '#b197fc', hz: 440 },
+  // 2.72 (stage 4): every feature is a building. These two find a free hex next to the hall's roads (hxFreeSpots)
+  { id: 'notice', n: 'Notice Board', e: '📜', m: 'building_stage_C', at: null, rot: 1, open: 'today', d: 'Today, your calendar and to-dos', ac: '#e8c07d', hz: 698, spot: ['0,2', '1,1', '-1,2', '2,1', '-1,3'] },
+  { id: 'lodge', n: 'Steward\'s lodge', e: '🧾', m: 'building_home_B', at: null, rot: 2, open: 'settings', d: 'Settings, sign-in and connections', ac: '#adb5bd', hz: 494, spot: ['2,-1', '1,-2', '-1,-1', '2,1', '-3,1'] },
 ];
+// 2.72: the newer page buildings take a free hex on each island the first time it opens, and keep it
+function hxFreeSpots(st) {
+  st.fa = st.fa || {};
+  for (const f of HX_FREE) if (f.spot) f.at = st.fa[f.id] || null;
+  for (const f of HX_FREE) if (f.spot) {
+    let k = st.fa[f.id];
+    if (!k) {
+      const taken = new Set(Object.values(st.fa)), ok = kk => !taken.has(kk) && hxAt(kk, st).kind === 'grass' && !HX_FREE.some(o => !o.spot && o.at === kk);
+      k = f.spot.find(ok);
+      if (!k) for (let d = 2; d <= HX_R && !k; d++) for (const kk of hxLand().keys()) if (hxDist(...hxQR(kk)) === d && ok(kk)) { k = kk; break; }
+      st.fa[f.id] = k = k || f.spot[0];
+    }
+    f.at = k;
+  }
+}
 // perk buildings. b = perks (FT_BUFF battle buffs, lp/ep collectors, cl/ce storage), u = player level,
 // near = collector bonus when touching that terrain, need = must touch that terrain, max = how many you can own
 const HX_ITEMS = [
@@ -242,6 +260,7 @@ function isCollect() {
 function hxMigrate() {
   const st = hxState(), c = cdState(); // (cdState makes a fresh D.cards each call, so take it last)
   if (!st.from) st.from = today();
+  if (HX_FREE.some(f => f.spot && !st.fa?.[f.id])) { hxFreeSpots(st); save(); } else hxFreeSpots(st);
   if (c.isl && !c.isl.refunded) {
     let l = 0, x = 0;
     for (const [id, s] of Object.entries(c.isl.items || {})) { const p = HX_OLD[id]; if (!p) continue; const lv = Math.max(s.lv || 1, s.up?.lv || 0), f = 1 + (lv >= 2 ? 1.8 : 0) + (lv >= 3 ? 3 : 0); l += p[0] * f; x += p[1] * f; }
@@ -326,7 +345,7 @@ function viewHexHome() {
   else if (ui.isPanel === 'visit') extra += isPanel('🏘️ Visit a housemate', hxVisitHtml());
   else if (ui.isPanel === 'looks') extra += isPanel('🎨 Your island\'s look', hxLooksHtml());
   else if (ui.isPanel === 'help') extra += isPanel('❔ How your island works', `<ul class="ishelp">
-      <li>The Hall, Library, Training hall, Tavern, Market and Practice yard are free. Tap one and press <b>Open</b> to go to its page.</li>
+      <li>The Hall, Library, Training hall, Tavern, Market, Practice yard, Notice Board and Steward's lodge are free. Tap one and press <b>Open</b> to go to its page.</li>
       <li>Buy buildings in <b>Build</b>. The building follows your mouse: green means it fits, red says why not. Press <b>R</b> to turn it and click to drop it. <b>Esc</b> or right-click cancels.</li>
       <li>A building only works when a <b>road</b> joins it to your hall. Press 🛣️ <b>Roads</b> and drag across hexes to lay them (${hxCost(HX_ROAD.l, HX_ROAD.x)} a hex). Roads over the river become bridges.</li>
       <li>Some buildings like a spot: a lumber mill next to forest, a mine next to a hill, a watermill on the river, a windmill among fields.</li>
@@ -625,6 +644,7 @@ function hxBuild() {
   }
   // page buildings (the house island has only its great hall)
   W0.free.forEach((f, i) => {
+    if (!f.at) return;
     const g = add(f.m, f.at, f.rot ?? (f.id === 'hall' ? 0 : [3, 4, 2, 5, 1][i - 1] || 0), 0, f.s || 1);
     const [x, z] = hxPos(...hxQR(f.at)); IS3.marks[f.at] = [x, f.at === '0,0' ? 5.2 * (f.s || 1) : 2.4, z];
     if (f.ac) hxAccent(W, f, x, z);

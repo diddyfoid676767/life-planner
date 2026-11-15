@@ -24,10 +24,10 @@ const PLACE_ICON = {
 };
 const SUB_LABEL = { today: 'Today', friends: 'Chats' };
 // old page names still work (links, saved state, the setup tour)
-const VIEW_ALIAS = { day: 'today', plan: 'today', inbox: 'today', personal: 'today', todo: 'today', school: 'today', chats: 'friends', character: 'profile', forest: 'islands', arena: 'islands', house: 'islands', training2: 'training', board: 'islands' };
+const VIEW_ALIAS = { day: 'today', plan: 'today', inbox: 'today', personal: 'today', todo: 'today', school: 'today', chats: 'friends', character: 'profile', forest: 'islands', arena: 'islands', house: 'islands', training2: 'training', world: 'islands', map: 'islands', home: 'islands', island: 'islands', noticeboard: 'today', notice: 'today', steward: 'settings', lodge: 'settings', rankings: 'board', rank: 'board', library: 'study', tavern: 'friends', hall: 'profile', fitness: 'training', you: 'profile' };
 const placeOf = v => PLACES.find(p => p.views.includes(VIEW_ALIAS[v] || v));
 // the sidebar button for a page, for the setup tour to point at
-function placeBtn(v) { const p = placeOf(v); return p ? document.querySelector(`#places [data-place="${p.id}"]`) : document.querySelector(`#places [data-go="${VIEW_ALIAS[v] || v}"]`); }
+function placeBtn(v) { const sv = typeof shellOf === 'function' && shellOf(VIEW_ALIAS[v] || v), hb = sv ? document.querySelector(`#hud [data-shell="go"][data-v="${sv.v[0]}"]`) : (VIEW_ALIAS[v] || v) === 'settings' ? document.querySelector('#hud [data-shell="steward"]') : null; if (hb) return hb; const p = placeOf(v); return p ? document.querySelector(`#places [data-place="${p.id}"]`) : document.querySelector(`#places [data-go="${VIEW_ALIAS[v] || v}"]`); }
 
 (() => {
   const tabs = document.getElementById('tabs'), side = document.querySelector('.sidebar'), main = document.getElementById('view');

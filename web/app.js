@@ -442,19 +442,20 @@ function render() {
   if (typeof applyMenu === 'function') applyMenu();
   // 2.55: old page names go to where that page lives now
   if (view === 'house') ui.isTab = 'house';
-  if (view === 'board') ui.isTab = 'rank';
   if (view === 'todo' || view === 'personal') { ui.todoOpen = true; view = 'today'; }
   if (view === 'school') { ui.clsAll = true; view = 'today'; }
   if (view === 'arena' || view === 'forest') ui.isTab = ui.isTab || 'personal';
   if (typeof VIEW_ALIAS === 'object' && VIEW_ALIAS[view]) view = VIEW_ALIAS[view];
   document.querySelectorAll('#tabs button').forEach(b => b.classList.toggle('active', b.dataset.view === view));
+  // 2.72 world-only shell (shell.js): the island world is always behind, and every other page is a panel over it
+  if (typeof shellWorld === 'function') try { shellWorld(); } catch (e) { console.error(e); if (typeof lpReportError === 'function') lpReportError('world: ' + (e && e.message), e); }
   const v = $('#view');
   const y = window.scrollY, ks = {}; // boxes that scroll by themselves keep their place
   v.querySelectorAll('[data-ks]').forEach(el => { ks[el.dataset.ks] = el.scrollTop; });
   const fresh = v.dataset.view !== view;
   if (fresh) { v.classList.remove('enter'); void v.offsetWidth; v.classList.add('enter'); v.dataset.view = view; }
   else v.classList.remove('enter'); // staying on the same page: no entrance animation, only the parts that changed are updated
-  const page = { today: viewToday, calendar: viewCalendar, study: viewStudy, training: viewTraining, islands: viewIslands, friends: viewFriends, board: viewLeaderboard, profile: viewProfile, settings: viewSettings };
+  const page = { islands: () => '', todaycard: () => typeof viewTodayCard === 'function' ? viewTodayCard() : viewToday(), today: viewToday, calendar: viewCalendar, study: viewStudy, training: viewTraining, friends: viewFriends, board: viewLeaderboard, profile: viewProfile, settings: viewSettings };
   if (!page[view]) view = 'today';
   // 2.57.3: a page that breaks shows what went wrong, never the last page you were on
   let html;
@@ -463,6 +464,7 @@ function render() {
     console.error(e); if (typeof lpReportError === 'function') lpReportError('render ' + view + ': ' + (e && e.message), e);
     html = `<div class="card pageerr"><h2>This page hit a problem</h2><p class="muted">Solis couldn't show this page, so nothing here changed. The details are saved in planner.log for fixing. Other pages still work.</p><pre class="small-text" style="white-space:pre-wrap">${esc((e && e.message) || e)}</pre></div>`;
   }
+  if (typeof shellPanel === 'function') html = shellPanel(html);
   if (fresh || !v.firstChild) v.innerHTML = html; else morphHtml(v, html);
   if (typeof mountIsland3D === 'function') try { mountIsland3D(); } catch (e) { console.error(e); }
   if (typeof mountYou3D === 'function') try { mountYou3D(); } catch (e) { console.error(e); }
@@ -844,7 +846,8 @@ function viewSettings() {
   const perm = 'Notification' in window ? Notification.permission : 'unsupported';
   // 2.59: the version and the update buttons sit at the top of every Settings tab
   const upd = ONLINE ? '' : `<div class="setupd"><span class="muted small-text" id="verText2">Solis ${esc(appVersion)}</span><button class="btn small primary" data-act="checkUpdateNow">Check for updates</button><button class="btn small" data-act="restartApp" title="Saves everything and restarts Solis">🔄 Restart</button></div>`;
-  return `${pageHead('Settings', '', `<button class="btn small" data-act="goto" data-v="profile">← Back to You</button>${upd}`)}
+  return `${pageHead('Settings', '', upd)}
+  ${typeof stewardHtml === 'function' ? `<div class="grid g2">${stewardHtml()}</div><h3 class="stw-all">All settings</h3>` : ''}
   <div class="seg settabs">${tabs.map(([k, l]) => `<button class="${grp === k ? 'on' : ''}" data-act="setTab" data-v="${k}">${l}</button>`).join('')}</div>
   <div class="grid g2 settings-grid" data-sec="${grp}">
     ${themeCard()}

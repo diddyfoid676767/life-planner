@@ -29,7 +29,11 @@ function applyMenu() {
 let menuStarted = false;
 function menuStart() {
   if (menuStarted || typeof D !== 'object' || !D) return; menuStarted = true;
-  const s = menuCfg().start; if (s && s !== 'today') document.querySelector(`#places [data-place="${s}"]`)?.click();
+  // 2.72: Solis opens on your island with the Today card on top (or the world alone, or a page)
+  const s = menuCfg().start;
+  if (!s || s === 'today' || s === 'card') { view = 'todaycard'; render(); }
+  else if (s === 'world') { view = 'islands'; render(); }
+  else document.querySelector(`#places [data-place="${s}"]`)?.click();
 }
 function menuCard() {
   const m = menuCfg(), ids = placeIdsInOrder(), lbl = id => PLACES.find(p => p.id === id).label;
@@ -37,10 +41,10 @@ function menuCard() {
   return `<div class="card" data-sec="theme" style="grid-column:1/-1"><div class="card-head"><h2>Menu &amp; layout</h2></div>
     <div class="mngrid"><div><h3>Sidebar</h3>${rows}</div>
     <div><h3>Today cards</h3>${MENU_CARDS.map(([k, l]) => `<label class="row"><input type="checkbox" data-mn="card" data-id="${k}" ${m.cards[k] === false ? '' : 'checked'}> ${l}</label>`).join('')}
-      <h3>Open on</h3><select data-mn="start">${[['today', 'Today'], ...PLACES.filter(p => p.id !== 'today').map(p => [p.id, p.label])].map(([v, l]) => `<option value="${v}" ${(m.start || 'today') === v ? 'selected' : ''}>${l}</option>`).join('')}</select></div>
+      <h3>Open on</h3><select data-mn="start">${[['today', 'Your island with the Today card'], ['world', 'Your island only'], ...PLACES.filter(p => p.id !== 'today').map(p => [p.id, p.label])].map(([v, l]) => `<option value="${v}" ${(m.start || 'today') === v ? 'selected' : ''}>${l}</option>`).join('')}</select></div>
     <div><h3>Look</h3><label class="row"><input type="checkbox" data-mn="dense" ${m.dense ? 'checked' : ''}> Compact spacing</label>
       <div class="row">Accent colour <input type="color" data-mn="accent" value="${m.accent || '#4f6df5'}"><button class="btn small" data-mn="accentReset" ${m.accent ? '' : 'disabled'}>Reset</button></div>
-      <h3>Graphics</h3><label class="row"><input type="checkbox" data-mn="lowq" ${D.settings.lowQuality ? 'checked' : ''}> Low graphics (no shadows)</label></div></div></div>`;
+      <h3>Graphics</h3><label class="row"><input type="checkbox" data-mn="lowq" ${D.settings.lowQuality ? 'checked' : ''}> Low graphics (no shadows)</label><label class="row"><input type="checkbox" data-mn="map2d" ${D.settings.map2d ? 'checked' : ''}> 2D map instead of 3D (slow computers)</label></div></div></div>`;
 }
 document.addEventListener('click', e => {
   const b = e.target.closest('button[data-mn]'); if (!b || !D) return;
@@ -59,6 +63,7 @@ document.addEventListener('change', e => {
   else if (k === 'dense') m.dense = el.checked;
   else if (k === 'accent') m.accent = el.value;
   else if (k === 'lowq') D.settings.lowQuality = el.checked;
+  else if (k === 'map2d') D.settings.map2d = el.checked;
   else return;
   save(); applyMenu(); render();
 });

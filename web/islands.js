@@ -51,8 +51,8 @@ const isBar = (cls, ico, amt, sub, fill, act) => `<div class="isres ${cls}" ${ac
 // full-screen frame: 3D, bubbles over buildings and whatever overlays are open
 function isFrame(tab, hud, extra = '') {
   return `<div class="isfull" id="isfull">
-    <div class="is3host" id="is3host"></div>
-    ${!window.THREE && !is3dFail ? (need3D(), '<div class="isno3d">Loading your islands…</div>') : webglOK() ? '' : '<div class="isno3d">This computer can\'t show 3D, but your buildings still work.</div>'}
+    ${typeof shell2D === 'function' && shell2D() ? shell2DHtml(tab) : `<div class="is3host" id="is3host"></div>
+    ${!window.THREE && !is3dFail ? (need3D(), '<div class="isno3d">Loading your islands…</div>') : webglOK() ? '' : '<div class="isno3d">This computer can\'t show 3D, but your buildings still work.</div>'}`}
     ${isSwitch(tab)}${hud}${isCtl()}${extra}</div>`;
 }
 const isPanel = (title, body) => `<div class="ispanel-bg" data-is="close"></div><div class="ispanel"><div class="ispanel-h"><h3>${title}</h3><button class="isx" data-is="close" title="Close">✕</button></div><div class="ispanel-b">${body}</div></div>`;
@@ -145,7 +145,7 @@ function is3init() {
 }
 function is3resize() {
   const h = IS3.canvas?.parentNode; if (!h) return false;
-  const f = document.getElementById('isfull'); if (f) { const top = f.getBoundingClientRect().top + window.scrollY; f.style.height = Math.max(420, window.innerHeight - top - 12) + 'px'; }
+  const f = document.getElementById('isfull'); if (f && f.closest('#world')) f.style.height = ''; else if (f) { const top = f.getBoundingClientRect().top + window.scrollY; f.style.height = Math.max(420, window.innerHeight - top - 12) + 'px'; }
   if (!h.clientWidth) return false;
   const sz = h.clientWidth + 'x' + h.clientHeight; if (sz === IS3.sz) return false;
   IS3.sz = sz; IS3.R.setSize(h.clientWidth, h.clientHeight, false); IS3.cam.aspect = h.clientWidth / h.clientHeight; IS3.cam.updateProjectionMatrix(); return true;
@@ -153,7 +153,7 @@ function is3resize() {
 function is3draw() {
   if (!IS3.R || !IS3.canvas.isConnected || IS3.queued) return;
   IS3.queued = requestAnimationFrame(() => {
-    IS3.queued = 0; const { cam, yaw, pitch } = IS3, dist = IS3.dist * (IS3.distK || 1), [tx, tz] = IS3.hexMode && IS3.house !== 'boss' && IS3.tgt || [0, 0];
+    IS3.queued = 0; const { cam, yaw, pitch } = IS3, dist = IS3.dist * (IS3.distK || 1) * (IS3.fly || 1), [tx, tz] = IS3.hexMode && IS3.house !== 'boss' && IS3.tgt || [0, 0];
     cam.position.set(tx + Math.sin(yaw) * Math.cos(pitch) * dist, Math.sin(pitch) * dist, tz + Math.cos(yaw) * Math.cos(pitch) * dist); cam.lookAt(tx, 0, tz);
     IS3.R.render(IS3.scene, cam);
     // keep the bubbles over their buildings
@@ -224,6 +224,7 @@ function webglOK() {
   return is3ok;
 }
 function mountIsland3D() {
+  if (typeof shell2D === 'function' && shell2D()) return;
   const host = document.getElementById('is3host');
   if (!host || !need3D() || !webglOK()) return;
   is3init();

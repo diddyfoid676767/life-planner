@@ -10,6 +10,12 @@
 // version since the last one they saw (up to 3). D.settings.seenVersion remembers what was last shown,
 // D.settings.guidesSeen which guides have played. A brand-new install never sees either.
 const CHANGELOG = [
+  { v: '2.72.0', guide: 'shell', notes: [
+    { t: 'Solis is one world now: the sidebar is gone and every page opens over your island from its building', k: 'new' },
+    { t: 'A new bar along the top: the buildings, Map, search, Lumen, Ember and streak, Add and the Steward (settings)', k: 'new' },
+    { t: 'A Today card pops up when Solis opens, and two new buildings: the Notice Board and the Steward\'s lodge', k: 'new' },
+    { t: 'The Map flies you between islands. Slow computer? Turn on the 2D map in the Steward. The Library glows while you study', k: 'new' },
+  ] },
   { v: '2.71.0', notes: [
     { t: 'Island looks: Spring meadow, Autumn, Snow and Desert oasis (press 🎨 Looks). With no look, your island follows the real season', k: 'new' },
     { t: 'Day and night follow the real time, with glowing lanterns and lamp posts after dark', k: 'new' },
