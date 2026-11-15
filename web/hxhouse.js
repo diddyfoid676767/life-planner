@@ -287,7 +287,7 @@ function hhPlace(P, k) {
 // roads, walls and gates: laid on screen while dragging, saved in one go when the mouse lets go
 function hhOpCost(t, k, st) { return t === 'road' ? (st.__w.land().get(k)?.t === 'river' ? HX_BRIDGE : HX_ROAD) : t === 'gate' ? HH_GATE : t === 'wall' ? HH_WALL : { l: 0, x: 0 }; }
 function hhPaint(tool, k) {
-  const P = ui.hxP; if (!P || !hhCanEdit()) return 'Only leaders can build';
+  const P = ui.hxP; if (!P || !hhCanEdit()) return 'Only the Architect or Warlord can build';
   P.ops = P.ops || [];
   const st = hhSt(), a = hxAt(k, st);
   if (tool === 'erase') { if (a.kind === 'road' || (a.kind === 'b' && a.it?.wall)) { P.ops.push(['x', k]); return ''; } return 'nothing to remove'; }
@@ -360,8 +360,8 @@ if (typeof GUIDES === 'object') GUIDES.hexhouse = {
   end: () => { ui.hxP = null; if (view === 'islands') render(); },
   steps: [
     { title: 'Your house island is hexagons now 🏰', text: 'The shared house island moved onto hexes too, with the same medieval models as your own island. Every house building kept its level and perks and got a spot and a free road to the great hall.', go: hhGuideHome, wait: 600 },
-    { title: 'Roads make house perks work', text: 'Like your own island, a house building only gives its perk when a road joins it to the great hall. Leaders press 🛣️ <b>Roads</b> and drag to lay them, paid from the house pool.', go: hhGuideHome, sel: '#isfull [data-hi="tool"][data-v="road"], #isfull .ishud.is-br' },
-    { title: 'Leaders place and drag', text: 'Leaders start projects from <b>Projects</b>. The building follows the mouse, green when it fits and red with the reason when it doesn\'t. Press on a building and drag it to move it. Big temple parts cover 3 or 7 hexes.', go: hhGuideHome, sel: '#isfull [data-hi="panel"][data-v="shop"]' },
+    { title: 'Roads make house perks work', text: 'Like your own island, a house building only gives its perk when a road joins it to the great hall. The Architect presses 🛣️ <b>Roads</b> and drag to lay them, paid from the house pool.', go: hhGuideHome, sel: '#isfull [data-hi="tool"][data-v="road"], #isfull .ishud.is-br' },
+    { title: 'The Architect places and drags', text: 'The Architect (or Warlord) starts projects from <b>Projects</b>. The building follows the mouse, green when it fits and red with the reason when it doesn\'t. Press on a building and drag it to move it. Big temple parts cover 3 or 7 hexes.', go: hhGuideHome, sel: '#isfull [data-hi="panel"][data-v="shop"]' },
     { title: 'New: banks, a vault and a treasury', text: 'The <b>Lumen Bank</b> and <b>Ember Bank</b> earn the house 1% a day on up to 500 × their level. The <b>Vault</b> and <b>Treasury</b> keep savings safe once sieges arrive.', go: () => { hhGuideHome(); ui.isPanel = 'shop'; render(); }, sel: '#isfull .ispanel', place: 'left' },
     { title: 'Walls keep the raiders out', text: 'Close a ring of 🧱 <b>Walls</b> (gates count) all the way round the great hall and the Friday boss raid can\'t smash anything. That job used to be the Bastion\'s. Towers, traps and guard posts can be built now, ready for sieges later.', go: hhGuideHome, sel: '#isfull [data-hi="tool"][data-v="wall"], #isfull .ishud.is-bl' },
   ],

@@ -52,7 +52,7 @@ async function biTick(f) {
   } catch (e) { console.error(e); }
   biBusy = false;
   if (needT) toast('🏆 New trophy', `${b.e} ${b.n} now stands in gold on the house island.`);
-  if (hit) { const it = hiItem(hit); toast(`${b.e} ${b.n} raided the house island!`, `It ${BI_RAIDERS[b.n]}: ${it.e} ${it.n} is damaged. A leader can repair it.`); }
+  if (hit) { const it = hiItem(hit); toast(`${b.e} ${b.n} raided the house island!`, `It ${BI_RAIDERS[b.n]}: ${it.e} ${it.n} is damaged. The Architect or Treasurer can repair it.`); }
   if (view === 'islands') render();
 }
 

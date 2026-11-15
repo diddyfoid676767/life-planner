@@ -10,6 +10,12 @@
 // version since the last one they saw (up to 3). D.settings.seenVersion remembers what was last shown,
 // D.settings.guidesSeen which guides have played. A brand-new install never sees either.
 const CHANGELOG = [
+  { v: '2.74.0', notes: [
+    { t: 'Six voted house roles replace the 2 leaders: Champion, Warlord, Architect, Treasurer, Vanguard and Herald', k: 'new' },
+    { t: 'Vote for each role in Weeks 2 and 3 (👑 Roles on the house island). One role each; houses under 8 members fill Champion, Warlord and Architect', k: 'new' },
+    { t: 'The Architect and Warlord build, the Treasurer can repair, and the Champion puts big projects to a vote and covers empty roles', k: 'tweak' },
+    { t: 'This term\'s two leaders carry on as Champion and Architect until the next vote', k: 'tweak' },
+  ] },
   { v: '2.73.0', notes: [
     { t: 'A medieval look: pages open on parchment in a wooden frame, with serif headings and house crests', k: 'new' },
     { t: 'A bell rings when one of your buildings is finished, and soft lute and drum music plays on your island', k: 'new' },

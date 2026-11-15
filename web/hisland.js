@@ -88,7 +88,7 @@ async function hiTidy() {
     if (mig && !hhMigrated(doc)) hhMigrate(doc); // 2.66: the island moves onto hexes, once
     if (bank) hhBankTick(doc);
     if (needC) { const o = doc.c?.[HI.uid] || {}; doc.c = doc.c || {}; doc.c[HI.uid] = { n: HI.user, l: Math.max(mine.l, o.l || 0), e: Math.max(mine.e, o.e || 0) }; }
-    if (lock) doc.ld = { t: t.id, u: hiTally(doc, t.id) };
+    if (lock) { const r = hiTally(doc, t.id); doc.ld = { t: t.id, u: [...new Set(Object.values(r))], r }; }
   }, true, true);
 }
 
@@ -105,23 +105,51 @@ function hiTerm(d = today()) {
 }
 // who can be a leader: anyone who has put HI_ELIG or more into the pool
 const hiEligible = d => Object.values(d.c || {}).filter(x => (+x.l || 0) + (+x.e || 0) >= HI_ELIG).map(x => x.n);
-const hiTop = d => Object.values(d.c || {}).sort((a, b) => (b.l + b.e) - (a.l + a.e)).slice(0, HI_LEADERS).map(x => x.n);
+const hiTop = d => Object.values(d.c || {}).sort((a, b) => (b.l + b.e) - (a.l + a.e)).map(x => x.n);
+// 2.74 (stage 4): six voted house roles replace the 2 leaders. One role each; houses under
+// HI_ROLES_FULL members fill only Champion, Warlord and Architect, and the Champion covers the rest.
+const HI_ROLES = [
+  { id: 'champion', n: 'Champion', e: '👑', d: 'Heads the house: puts big projects to a vote and covers any empty role.' },
+  { id: 'warlord', n: 'Warlord', e: '⚔️', d: 'Defences: walls, gates, towers, traps and guard posts. Plans sieges when they arrive.' },
+  { id: 'architect', n: 'Architect', e: '🏗️', d: 'Starts, places, moves, upgrades and repairs house buildings.' },
+  { id: 'treasurer', n: 'Treasurer', e: '💰', d: 'Looks after the pool and the Lumen and Ember banks, and can pay for repairs.' },
+  { id: 'vanguard', n: 'Vanguard', e: '🛡️', d: 'Leads the weekly Warband and the Term Boss: who fights when, and the plan.' },
+  { id: 'herald', n: 'Herald', e: '📯', d: 'Recruits and welcomes new members, and shares house news and the Chronicle.' },
+];
+const HI_ROLES_FULL = 8, HI_ROLE_SMALL = ['champion', 'warlord', 'architect'];
+const hiRole = id => HI_ROLES.find(r => r.id === id);
+const hiRoleIds = (d = HI.doc || {}) => hiPool(d).n >= HI_ROLES_FULL ? HI_ROLES.map(r => r.id) : HI_ROLE_SMALL;
 function hiTally(d, term) {
-  const n = {}, el = new Set(hiEligible(d));
-  for (const v of Object.values(d.v || {})) if (v.t === term && el.has(v.ld)) n[v.ld] = (n[v.ld] || 0) + 1;
-  const won = Object.entries(n).sort((a, b) => b[1] - a[1] || (a[0] < b[0] ? -1 : 1)).slice(0, HI_LEADERS).map(x => x[0]);
-  for (const n of hiTop(d)) if (won.length < HI_LEADERS && !won.includes(n)) won.push(n); // empty seats go to the top contributors
-  return won;
+  const el = new Set(hiEligible(d)), r = {}, taken = new Set(), ids = hiRoleIds(d);
+  for (const id of ids) {
+    const n = {};
+    for (const v of Object.values(d.v || {})) { const who = v.t === term && (v.r?.[id] || (id === 'champion' && v.ld)); if (who && el.has(who)) n[who] = (n[who] || 0) + 1; }
+    const won = Object.entries(n).filter(([u]) => !taken.has(u)).sort((a, b) => b[1] - a[1] || (a[0] < b[0] ? -1 : 1))[0];
+    if (won) { r[id] = won[0]; taken.add(won[0]); }
+  }
+  // empty seats go to the top contributors, in role order
+  for (const id of ids) if (!r[id]) { const u = hiTop(d).find(x => !taken.has(x)); if (u) { r[id] = u; taken.add(u); } }
+  return r;
 }
-// this term's leaders; during voting, last term's leaders (or the top contributors) stay on
-function hiLeaders(d = HI.doc || {}) {
-  const t = hiTerm();
-  if (d.ld?.t === t.id) return { u: d.ld.u || [], how: 'voted' };
-  if (today() >= t.voteEnd) return { u: hiTally(d, t.id), how: 'voted' };
-  if (d.ld?.t === t.prev) return { u: d.ld.u || [], how: 'last' };
-  return { u: hiTop(d), how: 'top' };
+// the 2.50-2.73 leaders become this term's Champion and Architect
+const hiFromOld = u => { const r = {}; if (u?.[0]) r.champion = u[0]; if (u?.[1]) r.architect = u[1]; return r; };
+// this term's roles; during voting, last term's holders (or the top contributors) stay on
+function hiRoles(d = HI.doc || {}) {
+  const t = hiTerm(), lr = d.ld?.r || hiFromOld(d.ld?.u);
+  let r, how;
+  if (d.ld?.t === t.id) { r = lr; how = 'voted'; }
+  else if (today() >= t.voteEnd) { r = hiTally(d, t.id); how = 'voted'; }
+  else if (d.ld?.t === t.prev) { r = lr; how = 'last'; }
+  else { r = {}; const top = hiTop(d); hiRoleIds(d).forEach((id, i) => { if (top[i]) r[id] = top[i]; }); how = 'top'; }
+  return { r, how, u: [...new Set(Object.values(r))] };
 }
-const hiAmLeader = () => hiLeaders().u.includes(HI.user);
+const hiLeaders = hiRoles;
+// you hold the role, or you're the Champion and nobody else does
+function hiHas(id, R = hiRoles()) { return R.r[id] === HI.user || (!R.r[id] && R.r.champion === HI.user); }
+const hiMyRoles = (R = hiRoles()) => HI_ROLES.filter(x => R.r[x.id] === HI.user);
+// building on the house island: the Architect or the Warlord (or the Champion standing in)
+const hiAmLeader = () => { const R = hiRoles(); return hiHas('architect', R) || hiHas('warlord', R); };
+const hiCanRepair = () => { const R = hiRoles(); return hiAmLeader() || hiHas('treasurer', R); };
 // the house-wide vote on a big project: open HI_PROP_DAYS, passes with more yes than no
 function hiProp(d = HI.doc || {}) {
   const p = d.pr; if (!p || !hiItem(p.b)) return null;
@@ -177,7 +205,7 @@ function viewHouseIsland() {
   hiLoad();
   const h = hsHouse(hs.id);
   if (!HI.doc) return isFrame('house', hsBtn, `<div class="ispanel iscentre"><div class="ispanel-h"><h3>${h.e} ${h.name} island</h3></div><div class="ispanel-b">${`<p class="muted">${HI.err === 'signin' ? 'The house island is shared, so you need to be signed in. Sign in on the Friends page.' : HI.err ? 'Couldn\'t reach the house island: ' + esc(HI.err) : 'Loading the house island…'}</p>${HI.err ? `<button class="btn" data-hi="reload">Try again</button>` : ''}`}</div></div>`);
-  const d = HI.doc, pool = hiPool(), L = hiLeaders(), lead = L.u.includes(HI.user), pr = hiProp(), hl = hiLevel(), busy = hiBusy(d);
+  const d = HI.doc, pool = hiPool(), L = hiRoles(), lead = hiAmLeader(), pr = hiProp(), hl = hiLevel(), busy = hiBusy(d);
   const nextT = HI_LVT[hl], tot = hiTotal(), prevT = HI_LVT[hl - 1] || 0;
   const P = ui.hxP, lk = hhLinkedKeys(d);
   const bubs = hiKeys(d).map(key => {
@@ -186,15 +214,15 @@ function viewHouseIsland() {
     return t ? `<button class="isbub" data-b="${key}" data-is="sel" data-id="${key}">${t}</button>` : '';
   }).join('');
   const hud = `<div class="ishud is-tl"><div class="islvl house" style="--hc:${h.col}"><b>${hl}</b><div><span>${typeof hsCrest === 'function' ? hsCrest(h, 20) : h.e} ${esc(h.name)} · house level ${hl}</span>${nextT ? `<i style="width:${Math.round((tot - prevT) / (nextT - prevT) * 100)}%"></i>` : ''}</div></div>
-      <div class="isbuilders">🔨 ${HI_MAX_BUILDING - busy}/${HI_MAX_BUILDING} builders free · ${lead ? '👑 You lead' : `Leaders: ${L.u.map(esc).join(', ') || 'none yet'}`}</div></div>
+      <div class="isbuilders">🔨 ${HI_MAX_BUILDING - busy}/${HI_MAX_BUILDING} builders free · ${hiMyRoles(L).length ? hiMyRoles(L).map(x => `${x.e} You're ${x.n}`).join(' · ') : L.r.champion ? `👑 Champion: ${esc(L.r.champion)}` : 'No roles yet'}</div></div>
     <div class="ishud is-tr">${isBar('cd-l', LUMEN, pool.l, 'House Lumen', 1, '')}${isBar('cd-e', EMBER, pool.e, 'House Ember', 1, '')}</div>
-    ${P ? '' : `<div class="ishud is-bl"><button class="isbtn" data-hi="panel" data-v="house">🏰<span>House</span></button><button class="isbtn" data-hi="panel" data-v="pool">🏦<span>Pool</span></button><button class="isbtn" data-hi="panel" data-v="leaders">👑<span>Leaders</span></button><button class="isbtn ${pr?.open ? 'ping' : ''}" data-hi="panel" data-v="vote">🗳️<span>Vote</span></button><button class="isbtn" data-hi="panel" data-v="perks">✨<span>Perks</span></button></div>`}
+    ${P ? '' : `<div class="ishud is-bl"><button class="isbtn" data-hi="panel" data-v="house">🏰<span>House</span></button><button class="isbtn" data-hi="panel" data-v="pool">🏦<span>Pool</span></button><button class="isbtn" data-hi="panel" data-v="leaders">👑<span>Roles</span></button><button class="isbtn ${pr?.open ? 'ping' : ''}" data-hi="panel" data-v="vote">🗳️<span>Vote</span></button><button class="isbtn" data-hi="panel" data-v="perks">✨<span>Perks</span></button></div>`}
     ${P ? '' : `<div class="ishud is-br hxtools">${lead ? `<button class="isbtn" data-hi="tool" data-v="road" title="Lay roads by dragging">🛣️<span>Roads</span></button>${hl >= HH_WALL_LV ? '<button class="isbtn" data-hi="tool" data-v="wall" title="Lay walls by dragging">🧱<span>Walls</span></button><button class="isbtn" data-hi="tool" data-v="gate" title="Lay gates by dragging">🚪<span>Gates</span></button>' : ''}` : ''}<button class="isbtn big" data-hi="panel" data-v="shop">🛒<span>Projects</span></button></div>`}`;
   let extra = `<div class="isbubs">${bubs}</div>`, pn = ui.isPanel;
   if (P) extra += hhPlaceBar(P, P.mode === 'tool');
   else if (pn === 'shop') extra += isPanel(`🛒 House projects · level ${hl}`, hiShopHtml(d, pool, lead, pr, hl, busy));
   else if (pn === 'pool') extra += isPanel(`🏦 ${h.name} house pool`, hiPoolHtml(pool));
-  else if (pn === 'leaders') extra += isPanel(`👑 Leaders · ${cdTermName(hiTerm().id)}`, hiLeadHtml(d, L));
+  else if (pn === 'leaders') extra += isPanel(`👑 House roles · ${cdTermName(hiTerm().id)}`, hiLeadHtml(d, L));
   else if (pn === 'vote') extra += isPanel('🗳️ House vote', hiVoteHtml(d, pr, lead));
   else if (pn === 'perks' || pn === 'hall') {
     const pk = hiPerks(), sl = hhSlots(hl), ring = hhRingOf(d), off = lk ? hiKeys(d).filter(k => !lk.has(k) && hiCond(k) && hiCond(k) !== 'build').length : 0;
@@ -218,11 +246,11 @@ function hiShopHtml(d, pool, lead, pr, hl, busy) {
     else if (full && !lock) act = `<span class="muted small-text">${sl[it.slot] ? `All ${sl[it.slot]} ${HH_SLOT_N[it.slot]} spaces used` : 'No space yet'}</span>`;
     else if (lock) act = `<span class="tag">House level ${it.u}</span>`;
     else if (!reqOk) act = `<span class="muted small-text">Needs ${hiItem(it.req).n}</span>`;
-    else if (hiBig(it) && !(pr?.b === it.id && pr.passed)) act = pr?.b === it.id ? `<span class="muted small-text">${pr.open ? 'House vote open' : 'Vote failed'}</span>` : lead && !(pr?.open) ? `<button class="btn small" data-hi="propose" data-id="${it.id}">Put to a vote</button>` : `<span class="muted small-text">Needs a house vote</span>`;
+    else if (hiBig(it) && !(pr?.b === it.id && pr.passed)) act = pr?.b === it.id ? `<span class="muted small-text">${pr.open ? 'House vote open' : 'Vote failed'}</span>` : hiHas('champion') && !(pr?.open) ? `<button class="btn small" data-hi="propose" data-id="${it.id}">Put to a vote</button>` : `<span class="muted small-text">Needs a house vote</span>`;
     else act = lead ? `<button class="btn small ${can ? 'primary' : ''}" data-hi="start" data-id="${it.id}" ${can ? '' : 'disabled'}>${hiCost(it)}</button>` : `<span class="muted small-text">${hiCost(it)} · leaders start it</span>`;
     return `<div class="isitem ${lock ? 'locked' : ''} ${s ? 'owned' : ''}"><div class="isitem-e">${lock ? '🔒' : it.e}</div><b>${it.n}</b><div class="muted small-text">${lock ? `Unlocks at house level ${it.u}` : hiPerkM(it)}</div><div class="small-text">${lock ? '&nbsp;' : `${hhItem(it.id).hz > 1 ? hhItem(it.id).hz + ' hexes · ' : ''}${HI_LEN[it.t]} days${hiBig(it) ? ' · vote' : ''}${it.slot ? ` · ${used}/${sl[it.slot]} ${HH_SLOT_N[it.slot]}s` : ''}`}</div>${act}</div>`;
   };
-  return `<p class="muted small-text">Leaders start projects from the pool, ${HI_MAX_BUILDING} at a time, and drop them on a hex. Month and term projects need a house vote first. Chains give their perk once every part is built. Perks need a road to the great hall.</p>
+  return `<p class="muted small-text">The Architect and Warlord start projects from the pool, ${HI_MAX_BUILDING} at a time, and drop them on a hex. Month and term projects need a house vote first. Chains give their perk once every part is built. Perks need a road to the great hall.</p>
     <div class="isshop">${HI_ITEMS.filter(x => !x.ch && !x.d).map(card).join('')}</div>
     <div class="ftlbl">🏦 Treasury</div><div class="isshop">${HI_ITEMS.filter(x => x.d && !x.slot).map(card).join('')}</div>
     <div class="ftlbl">🛡️ Defences · ready for sieges later · space grows with house level</div><div class="isshop">${HI_ITEMS.filter(x => x.slot).map(card).join('')}</div>
@@ -234,7 +262,7 @@ function hiPopHtml(key, d, pool, lead, hl, busy) {
   if (c === 'build') acts = `<span class="muted small-text">Ready in ${isTimeLeft(s.r)}</span>`;
   else if (upping) acts = `<span class="muted small-text">Upgrading to level ${s.up.lv}, ready in ${isTimeLeft(s.up.r)}</span>`;
   else {
-    if (c === 'worn' || c === 'broken') { const f = IS_REPAIR[c], ok = pool.l >= Math.round(it.l * f) && pool.e >= Math.round(it.x * f); acts += lead ? `<button class="btn small ${ok ? 'primary' : ''}" data-hi="repair" data-id="${key}" ${ok ? '' : 'disabled'}>🔧 Repair · ${hiCost(it, f)}</button>` : `<span class="muted small-text">Leaders can repair (${hiCost(it, f)})</span>`; }
+    if (c === 'worn' || c === 'broken') { const f = IS_REPAIR[c], ok = pool.l >= Math.round(it.l * f) && pool.e >= Math.round(it.x * f); acts += hiCanRepair() ? `<button class="btn small ${ok ? 'primary' : ''}" data-hi="repair" data-id="${key}" ${ok ? '' : 'disabled'}>🔧 Repair · ${hiCost(it, f)}</button>` : `<span class="muted small-text">Leaders can repair (${hiCost(it, f)})</span>`; }
     if (nx <= HI_MAXLV) {
       const need = hiNeedLv(it, nx), f = IS_UPC[nx - 1], ok = pool.l >= Math.round(it.l * f) && pool.e >= Math.round(it.x * f) && busy < HI_MAX_BUILDING;
       acts += hl < need ? `<span class="tag">🔒 House level ${need} to upgrade</span>` : lead ? `<button class="btn small ${ok ? 'primary' : ''}" data-hi="upgrade" data-id="${key}" ${ok ? '' : 'disabled'}>⬆️ Level ${nx} · ${hiCost(it, f)} · ${hiUpDays(it, nx)}d</button>` : `<span class="muted small-text">Leaders can upgrade (${hiCost(it, f)})</span>`;
@@ -254,16 +282,20 @@ function hiPoolHtml(pool) {
     <div class="row" style="gap:8px;flex-wrap:wrap"><input type="number" min="0" step="10" id="hiDonL" placeholder="${LUMEN} Lumen" style="width:110px"><input type="number" min="0" step="10" id="hiDonE" placeholder="${EMBER} Ember" style="width:110px"><button class="btn small primary" data-hi="donate">Donate</button><span class="muted small-text">You have ${LUMEN} ${w.lumen} · ${EMBER} ${w.ember}</span></div>`;
 }
 function hiLeadHtml(d, L) {
-  const t = hiTerm(), myVote = d.v?.[HI.uid] || {}, el = hiEligible(d).filter(n => n !== HI.user), voting = today() >= t.voteStart && today() < t.voteEnd;
-  const tally = {}; for (const v of Object.values(d.v || {})) if (v.t === t.id && v.ld) tally[v.ld] = (tally[v.ld] || 0) + 1;
-  return `<p>${L.u.length ? L.u.map(n => `<b>${esc(n)}</b>${n === HI.user ? ' (you)' : ''}`).join(', ') : '<span class="muted">Nobody yet</span>'}</p>
-    <p class="muted small-text">${L.how === 'voted' ? 'Voted in for this term.' : L.how === 'last' ? `Last term's leaders stay on until voting closes ${fmtDate(t.voteEnd)}.` : `Until a vote is done, the top ${HI_LEADERS} contributors lead.`} ${HI_LEADERS} leaders a term. Anyone who has put ${HI_ELIG}+ into the pool can stand. Leaders start, upgrade, move and repair buildings.</p>
-    ${voting ? `<div class="ftlbl">Vote for this term's leaders (until ${fmtDate(t.voteEnd)})</div>${el.length ? `<ul class="cdlog">${el.map(n => `<li><b>${esc(n)}</b><span class="muted">${tally[n] || 0} vote${tally[n] === 1 ? '' : 's'}</span><button class="btn small ${myVote.t === t.id && myVote.ld === n ? 'primary' : ''}" data-hi="lvote" data-u="${esc(n)}">${myVote.t === t.id && myVote.ld === n ? 'Voted' : 'Vote'}</button></li>`).join('')}</ul>` : '<p class="muted small-text">Nobody else can stand yet.</p>'}` : `<p class="muted small-text">${today() < t.voteStart ? `Voting for this term's leaders opens in Week 2 (${fmtDate(t.voteStart)}).` : 'The next leader vote opens in Week 2 of next term.'}</p>`}`;
+  const t = hiTerm(), myVote = d.v?.[HI.uid] || {}, mine = myVote.t === t.id ? myVote.r || (myVote.ld ? { champion: myVote.ld } : {}) : {}, el = hiEligible(d).filter(n => n !== HI.user), voting = today() >= t.voteStart && today() < t.voteEnd;
+  const ids = hiRoleIds(d), small = ids.length < HI_ROLES.length, tally = {};
+  for (const v of Object.values(d.v || {})) if (v.t === t.id) for (const [id, n] of Object.entries(v.r || (v.ld ? { champion: v.ld } : {}))) (tally[id] = tally[id] || {})[n] = (tally[id][n] || 0) + 1;
+  const card = r => { const on = ids.includes(r.id), who = L.r[r.id];
+    return `<div class="hirole ${on ? '' : 'off'}"><div class="hirole-b">${r.e}</div><div class="hirole-t"><b>${r.n}</b> ${who ? `<span class="tag">${esc(who)}${who === HI.user ? ' (you)' : ''}</span>` : on ? '<span class="muted small-text">empty</span>' : '<span class="muted small-text">the Champion covers this</span>'}<div class="muted small-text">${r.d}</div>
+      ${voting && on && el.length ? `<div class="hirole-v">${el.map(n => `<button class="btn small ${mine[r.id] === n ? 'primary' : ''}" data-hi="lvote" data-r="${r.id}" data-u="${esc(n)}">${esc(n)} · ${tally[r.id]?.[n] || 0}</button>`).join('')}</div>` : ''}</div></div>`; };
+  return `<p class="muted small-text">${L.how === 'voted' ? 'Voted in for this term.' : L.how === 'last' ? `Last term's role-holders stay on until voting closes ${fmtDate(t.voteEnd)}.` : 'Until a vote is done, the top contributors hold the roles.'} One role each. Anyone who has put ${HI_ELIG}+ into the pool can stand.${small ? ` Houses under ${HI_ROLES_FULL} members fill only Champion, Warlord and Architect.` : ''} Big projects still need a house vote.</p>
+    <div class="hiroles">${HI_ROLES.map(card).join('')}</div>
+    ${voting ? `<p class="small-text"><b>Voting is open until ${fmtDate(t.voteEnd)}.</b> ${el.length ? 'Pick one person for each role; you can change your mind until it closes.' : 'Nobody else can stand yet.'}</p>` : `<p class="muted small-text">${today() < t.voteStart ? `Voting for this term's roles opens in Week 2 (${fmtDate(t.voteStart)}).` : 'The next vote opens in Week 2 of next term.'}</p>`}`;
 }
 function hiVoteHtml(d, pr, lead) {
-  if (!pr) return `<p class="muted">No vote open. Month and term projects need one: ${lead ? 'put one to a vote from Projects.' : 'a leader puts them to a vote.'} Votes stay open ${HI_PROP_DAYS} days and pass with more yes than no.</p>`;
+  if (!pr) return `<p class="muted">No vote open. Month and term projects need one: ${lead ? 'put one to a vote from Projects.' : 'the Champion puts them to a vote.'} Votes stay open ${HI_PROP_DAYS} days and pass with more yes than no.</p>`;
   const myVote = d.v?.[HI.uid] || {}, it = hiItem(pr.b);
-  return `<h4>${it.e} ${it.n}</h4><p class="small-text">${hiPerkM(it)} · ${hiCost(it)} · ${HI_LEN[it.t]} days</p><p class="small-text">Put forward by ${esc(pr.by)} on ${fmtDate(pr.at)}. ${pr.open ? `Open until ${fmtDate(addDays(pr.at, HI_PROP_DAYS))}.` : pr.passed ? 'Passed: a leader can start it.' : 'Didn\'t pass.'} 👍 ${pr.y} · 👎 ${pr.n}</p>
+  return `<h4>${it.e} ${it.n}</h4><p class="small-text">${hiPerkM(it)} · ${hiCost(it)} · ${HI_LEN[it.t]} days</p><p class="small-text">Put forward by ${esc(pr.by)} on ${fmtDate(pr.at)}. ${pr.open ? `Open until ${fmtDate(addDays(pr.at, HI_PROP_DAYS))}.` : pr.passed ? 'Passed: the Architect can start it.' : 'Didn\'t pass.'} 👍 ${pr.y} · 👎 ${pr.n}</p>
     ${pr.open ? `<div class="row" style="gap:8px"><button class="btn small ${myVote.p?.k === pr.k && myVote.p.y > 0 ? 'primary' : ''}" data-hi="pvote" data-y="1">👍 Yes</button><button class="btn small ${myVote.p?.k === pr.k && myVote.p.y < 0 ? 'primary' : ''}" data-hi="pvote" data-y="-1">👎 No</button></div>` : lead && !pr.passed ? `<button class="btn small ghost" data-hi="clearprop">Clear</button>` : ''}`;
 }
 
@@ -280,11 +312,11 @@ document.addEventListener('click', async e => {
       const got = ftTake(l, x), d = hiLocal().don; d.l = (d.l || 0) + got.l; d.e = (d.e || 0) + got.e; save();
       await hiTidy(); toast('🏰 Thanks!', 'Your donation is in the house pool.'); break;
     }
-    case 'lvote': ok = await hiWrite(d => { d.v = d.v || {}; d.v[HI.uid] = { ...(d.v[HI.uid] || {}), t: hiTerm().id, ld: el.dataset.u }; }); break;
+    case 'lvote': { const t = hiTerm().id, role = el.dataset.r || 'champion'; ok = await hiWrite(d => { d.v = d.v || {}; const o = d.v[HI.uid] || {}, r = o.t === t ? { ...(o.r || {}) } : {}; for (const k of Object.keys(r)) if (r[k] === el.dataset.u) delete r[k]; r[role] = el.dataset.u; d.v[HI.uid] = { t, r, ...(o.p ? { p: o.p } : {}) }; }); break; }
     case 'pvote': { const p = hiProp(); if (!p?.open) return; ok = await hiWrite(d => { d.v = d.v || {}; d.v[HI.uid] = { ...(d.v[HI.uid] || {}), p: { k: p.k, y: +el.dataset.y } }; }); break; }
-    case 'propose': if (!it || !hiAmLeader() || hiProp()?.open) return; if (!confirm(`Put ${it.n} (${hiCost(it)}, ${HI_LEN[it.t]} days) to a house vote?`)) return;
+    case 'propose': if (!it || !hiHas('champion') || hiProp()?.open) return; if (!confirm(`Put ${it.n} (${hiCost(it)}, ${HI_LEN[it.t]} days) to a house vote?`)) return;
       ok = await hiWrite(d => { d.pr = { b: it.id, at: now, by: HI.user }; }); ui.isPanel = 'vote'; break;
-    case 'clearprop': if (!hiAmLeader()) return; ok = await hiWrite(d => { delete d.pr; }); break;
+    case 'clearprop': if (!hiHas('champion')) return; ok = await hiWrite(d => { delete d.pr; }); break;
     case 'start': { if (!it || !hiAmLeader()) return; const why = hiCanStart(HI.doc, it, now); if (why) { toast('Can\'t start that now', why); return; } hxStartPlace({ id: it.id, mode: 'new', rot: 0 }); return; }
     case 'move': { const s = HI.doc?.b?.[key]; if (!it || !s || !hiAmLeader() || typeof s.at !== 'string') return; hxStartPlace({ id: it.id, key, mode: 'move', from: s.at, rot: s.rot || 0, rot0: s.rot || 0 }); return; }
     case 'tool': if (!hiAmLeader()) return; hxStartPlace({ id: el.dataset.v, mode: 'tool', n: 0, ops: ui.hxP?.ops || [], was: ui.hxP?.id }); return;
@@ -302,7 +334,7 @@ document.addEventListener('click', async e => {
       if (ok) toast(`⬆️ Upgrading ${it.n}`, `Level ${nx} ready ${fmtDate(addDays(now, days))}.`); break;
     }
     case 'repair': {
-      if (!it || !hiAmLeader()) return;
+      if (!it || !hiCanRepair()) return;
       ok = await hiWrite(d => {
         const f = IS_REPAIR[hiCond(key, now, d)], p = hiPool(d); if (!f) return false;
         const l = Math.round(it.l * f), x = Math.round(it.x * f); if (p.l < l || p.e < x) return false;
