@@ -3716,3 +3716,35 @@ dialog#modal[open]::backdrop { animation: fadeIn .25s ease-out; }
 .owngrid h3 { margin: 0 0 4px; }
 .howto { padding-left: 1.2em; line-height: 1.5; }
 .howto li { margin-bottom: 6px; }
+
+/* ---------- 2.69 Solis menu kit: the island switcher, perks, shop and build popup ----------
+   One set of tokens so the stage 4 world shell can reuse the same look (.sm-* variables). */
+.isfull { --sm-bg: rgba(18, 16, 40, .9); --sm-bg2: rgba(255, 255, 255, .06); --sm-line: rgba(255, 214, 140, .22); --sm-gold: #ffc94d; --sm-gold2: #ff8f3d; --sm-text: #f8f1e3; --sm-muted: #c9bfae; --sm-r: 18px; --sm-tap: 44px; }
+.isfull .isswitch { gap: 6px; padding: 5px; border-radius: 999px; background: var(--sm-bg); border-color: var(--sm-line); box-shadow: 0 8px 24px rgba(0, 0, 0, .35); }
+.isfull .isswitch button { min-height: var(--sm-tap); padding: 0 16px; border-radius: 999px; color: var(--sm-muted); font-size: .92rem; }
+.isfull .isswitch button.on { background: linear-gradient(160deg, var(--sm-gold), var(--sm-gold2)); color: #2a1600; box-shadow: inset 0 -2px 0 rgba(0, 0, 0, .15), 0 0 0 1px rgba(255, 236, 179, .6); }
+.isfull .isbtn { width: 68px; height: 64px; border-radius: var(--sm-r); background: var(--sm-bg); border-color: var(--sm-line); color: var(--sm-text); box-shadow: 0 6px 18px rgba(0, 0, 0, .3); transition: transform .12s; }
+.isfull .isbtn:hover { transform: translateY(-2px); background: rgba(40, 34, 74, .95); }
+.isfull .isbtn.big { width: 86px; height: 78px; background: linear-gradient(160deg, var(--sm-gold), var(--sm-gold2)); border-color: #ffe8a3; color: #2a1600; }
+.isfull .ispanel { border-radius: 22px; background: var(--sm-bg); border-color: var(--sm-line); color: var(--sm-text); }
+.isfull .ispanel-h { border-bottom-color: var(--sm-line); background: linear-gradient(180deg, rgba(255, 201, 77, .09), transparent); border-radius: 22px 22px 0 0; }
+.isfull .ispanel-h h3 { font-size: 1.15rem; letter-spacing: .01em; }
+.isfull .isx { width: var(--sm-tap); height: var(--sm-tap); border-radius: 12px; font-size: 1rem; }
+.isfull .isshop { grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 12px; }
+.isfull .isitem { padding: 14px; border-radius: var(--sm-r); background: var(--sm-bg2); border-color: rgba(255, 255, 255, .1); transition: transform .12s, border-color .12s, background .12s; }
+.isfull .isitem.canbuy { cursor: pointer; border-color: rgba(255, 201, 77, .35); }
+.isfull .isitem.canbuy:hover { transform: translateY(-2px); border-color: var(--sm-gold); background: rgba(255, 201, 77, .08); }
+.isfull .isitem-e { font-size: 2rem; width: 52px; height: 52px; display: grid; place-items: center; border-radius: 14px; background: rgba(255, 255, 255, .07); }
+.isfull .isitem .btn { min-height: 38px; width: 100%; justify-content: center; }
+.isfull .ispop { border-radius: 22px; background: var(--sm-bg); border-color: var(--sm-line); padding: 14px 16px; box-shadow: 0 14px 40px rgba(0, 0, 0, .45); color: var(--sm-text); }
+.isfull .ispop .ise { font-size: 1.6rem; width: 50px; height: 50px; display: grid; place-items: center; border-radius: 14px; background: rgba(255, 255, 255, .07); }
+.isfull .ispop-a .btn { min-height: 40px; padding: 0 16px; border-radius: 12px; }
+.isfull .ispop-a .btn.primary { background: linear-gradient(160deg, var(--sm-gold), var(--sm-gold2)); color: #2a1600; border-color: #ffe8a3; font-weight: 700; }
+.isfull .isctl { border-radius: 14px; background: var(--sm-bg); border-color: var(--sm-line); flex-direction: column; }
+.isfull .isctl button { width: 40px; height: 40px; border-radius: 10px; }
+.isfull .isctl button.on { background: linear-gradient(160deg, var(--sm-gold), var(--sm-gold2)); color: #2a1600; }
+/* hover name tag */
+#hxtag { position: absolute; left: 0; top: 0; z-index: 3; pointer-events: none; display: flex; align-items: center; gap: 5px; padding: 3px 9px 3px 4px; border-radius: 999px; font-size: .74rem; font-weight: 700; white-space: nowrap; color: #fff; background: rgba(14, 14, 34, .82); border: 1px solid color-mix(in srgb, var(--ac) 70%, transparent); box-shadow: 0 0 12px color-mix(in srgb, var(--ac) 45%, transparent); animation: hxtagin .14s ease-out; }
+#hxtag span { width: 20px; height: 20px; border-radius: 50%; display: grid; place-items: center; font-size: .8rem; background: color-mix(in srgb, var(--ac) 35%, rgba(255, 255, 255, .1)); }
+@keyframes hxtagin { from { opacity: 0; margin-top: 4px; } }
+.isfull .isitem .btn.primary { background: linear-gradient(160deg, var(--sm-gold), var(--sm-gold2)); color: #2a1600; border-color: #ffe8a3; font-weight: 700; }

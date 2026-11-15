@@ -35,11 +35,12 @@ function hiss(c, { dur = .15, vol = .2, at = 0, type = 'bandpass', f = 2000, f2,
   g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(vol, t + attack); g.gain.exponentialRampToValueAtTime(.0001, t + dur);
   s.connect(fl); fl.connect(g); g.connect(SND.out); s.start(t, Math.random() * .5); s.stop(t + dur + .05);
 }
-const SFX_GROUP = { hover: 'ui', click: 'ui', tab: 'ui', toggle: 'ui', untoggle: 'ui', open: 'ui', close: 'ui', notify: 'ui', coin: 'ui', buy: 'ui', deny: 'ui', levelup: 'ui', box: 'ui', success: 'ui', undo: 'ui', nav: 'ui', check: 'ui', uncheck: 'ui', add: 'ui', trash: 'ui', sheet: 'ui', sheetclose: 'ui', start: 'ui', whoosh: 'ui', select: 'ui', error: 'ui', save: 'ui',
+const SFX_GROUP = { hover: 'ui', hxtick: 'hover', click: 'ui', tab: 'ui', toggle: 'ui', untoggle: 'ui', open: 'ui', close: 'ui', notify: 'ui', coin: 'ui', buy: 'ui', deny: 'ui', levelup: 'ui', box: 'ui', success: 'ui', undo: 'ui', nav: 'ui', check: 'ui', uncheck: 'ui', add: 'ui', trash: 'ui', sheet: 'ui', sheetclose: 'ui', start: 'ui', whoosh: 'ui', select: 'ui', error: 'ui', save: 'ui',
   pop: 'garden', rustle: 'garden', water: 'garden', plant: 'garden', pickup: 'garden', chirp: 'garden', cricket: 'garden' };
 const PENT = [523, 587, 659, 784, 880, 988, 1175];
 const SFX = {
   // 2.60 softer, rounder menu sounds, each a little different so repeats don't sound identical
+  hxtick: (c, o) => tone(c, { f: o.f || 600, f2: (o.f || 600) * .94, dur: .07, vol: .035, type: 'triangle' }),
   hover: c => tone(c, { f: 1700 + Math.random() * 500, f2: 1560, dur: .045, vol: .016, type: 'sine' }),
   click: c => { const f = PENT[Math.floor(Math.random() * 4)] * .5; tone(c, { f, f2: f * .62, dur: .08, vol: .08, type: 'triangle' }); tone(c, { f: f * 2, dur: .05, vol: .025, at: .004 }); hiss(c, { f: 3200, dur: .02, vol: .018 }); },
   tab: c => { const i = Math.floor(Math.random() * 3); tone(c, { f: PENT[i], dur: .09, vol: .05, type: 'triangle' }); tone(c, { f: PENT[i + 2], dur: .12, vol: .045, type: 'sine', at: .05 }); },
@@ -141,7 +142,7 @@ function sfxReady(group) {
 function sfx(name, { gap = 0 } = {}) {
   try {
     const now = performance.now(); if (gap && now - (SND.last[name] || 0) < gap) return; SND.last[name] = now;
-    const c = sfxReady(SFX_GROUP[name]); if (c && SFX[name]) SFX[name](c);
+    const c = sfxReady(SFX_GROUP[name]); if (c && SFX[name]) SFX[name](c, arguments[1] || {});
   } catch (e) { /* sound is never worth breaking the app for */ }
 }
 
