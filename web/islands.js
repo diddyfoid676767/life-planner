@@ -154,7 +154,7 @@ function is3draw() {
   if (!IS3.R || !IS3.canvas.isConnected || IS3.queued) return;
   IS3.queued = requestAnimationFrame(() => {
     IS3.queued = 0; const { cam, yaw, pitch } = IS3, dist = IS3.dist * (IS3.distK || 1) * (IS3.fly || 1), [tx, tz] = IS3.hexMode && IS3.house !== 'boss' && IS3.tgt || [0, 0];
-    cam.position.set(tx + Math.sin(yaw) * Math.cos(pitch) * dist, Math.sin(pitch) * dist, tz + Math.cos(yaw) * Math.cos(pitch) * dist); cam.lookAt(tx, 0, tz);
+    if (!(typeof wkCam === 'function' && wkCam(cam))) { cam.position.set(tx + Math.sin(yaw) * Math.cos(pitch) * dist, Math.sin(pitch) * dist, tz + Math.cos(yaw) * Math.cos(pitch) * dist); cam.lookAt(tx, 0, tz); } // 2.75: walk mode and the Souls fights have their own camera
     IS3.R.render(IS3.scene, cam);
     // keep the bubbles over their buildings
     const host = IS3.canvas.parentNode, W = host.clientWidth, H = host.clientHeight, v = new THREE.Vector3();

@@ -3909,3 +3909,16 @@ h1 .crest { vertical-align: -3px; }
 .hirole-b { flex: none; width: 38px; height: 46px; display: grid; place-items: center; font-size: 1.2rem; background: linear-gradient(180deg, var(--hc, #9b3a1f), color-mix(in srgb, var(--hc, #9b3a1f) 60%, #000)); clip-path: polygon(0 0, 100% 0, 100% 78%, 50% 100%, 0 78%); }
 .hirole-t { min-width: 0; flex: 1; }
 .hirole-v { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; }
+/* ---------- 2.75 walk mode and interiors (walk.js) ---------- */
+body.walking #world .ishud:not(.is-tr), body.walking #world .isbubs, body.walking #hxtag { display: none !important; }
+#wkhud { position: fixed; left: 50%; bottom: 18px; transform: translateX(-50%); z-index: 20; display: flex; flex-direction: column; align-items: center; gap: 8px; pointer-events: none; color: #f8f1e3; }
+#wkhud .wk-near { display: flex; align-items: center; gap: 8px; padding: 8px 16px; border-radius: 14px; background: rgba(28, 20, 12, .82); border: 1px solid rgba(255, 214, 140, .4); font-size: .95rem; box-shadow: 0 8px 24px rgba(0, 0, 0, .4); animation: shpIn .2s ease-out; }
+#wkhud .wk-near span { color: #e8c07d; font-size: .82rem; }
+#wkhud .wk-keys { display: flex; align-items: center; gap: 14px; padding: 6px 8px 6px 14px; border-radius: 12px; background: rgba(16, 14, 34, .72); font-size: .8rem; }
+#wkhud kbd { display: inline-block; min-width: 18px; padding: 1px 5px; margin-right: 2px; border-radius: 5px; background: rgba(255, 255, 255, .14); border: 1px solid rgba(255, 255, 255, .2); font: 700 .72rem/1.3 inherit; text-align: center; }
+#wkhud .btn { pointer-events: auto; background: rgba(255, 255, 255, .12); color: #f8f1e3; border: 1px solid rgba(255, 214, 140, .35); }
+#wkfade { position: fixed; inset: 0; z-index: 90; background: #07050c; opacity: 0; pointer-events: none; transition: opacity .26s ease; }
+#wkfade.on { opacity: 1; }
+body.wk-in.world-on .content { margin-right: 22px; margin-left: auto; width: min(860px, calc(66% - 30px)); }
+body.wk-in:not(.world-only) #world::after { background: linear-gradient(90deg, rgba(6, 8, 22, 0) 0, rgba(6, 8, 22, 0) 30%, rgba(6, 8, 22, .35) 60%); }
+@media (max-width: 1000px) { body.wk-in.world-on .content { width: calc(100% - 40px); margin: calc(var(--hud-h) + 14px) auto 28px; } }

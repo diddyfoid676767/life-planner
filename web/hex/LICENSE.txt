@@ -43,3 +43,8 @@
 	Follow here for updates:
 	http://twitter.com/KayLousberg
 	https://mastodon.gamedev.place/@Kay
+	------------------------------
+
+	hex/rooms.bin (walk-mode interiors, Solis 2.75) packs models from three more
+	KayKit packs by Kay Lousberg, also Creative Commons Zero (CC0):
+	KayKit Dungeon Remastered 1.0, KayKit Furniture Bits 1.0, KayKit Restaurant Bits 1.0.

@@ -331,7 +331,7 @@ function viewHexHome() {
   const hud = `<div class="ishud is-tl"><div class="islvl"><b>${lv}</b><div><span>Level ${lv}</span>${lvI ? `<i style="width:${Math.round(lvI.into / lvI.need * 100)}%"></i>` : ''}</div></div>
       <div class="isbuilders" title="Builders: how many things can be built or upgraded at once">🔨 ${IS_BUILDERS - busy}/${IS_BUILDERS} builders free</div>${hxWxChip()}</div>
     <div class="ishud is-tr">${isBar('cd-l', LUMEN, w.lumen, sto.l ? `+${sto.l} to collect · store ${sto.capL}` : `Store ${sto.capL}`, sto.l / sto.capL, sto.l ? 'collect' : '')}${isBar('cd-e', EMBER, w.ember, sto.e ? `+${sto.e} to collect · store ${sto.capE}` : `Store ${sto.capE}`, sto.e / sto.capE, sto.e ? 'collect' : '')}</div>
-    <div class="ishud is-bl"><button class="isbtn" data-hx="panel" data-v="perks">✨<span>Perks</span></button>${hxIsleOn() ? '<button class="isbtn" data-hx="panel" data-v="visit" title="Visit a housemate\'s island">🏘️<span>Visit</span></button>' : ''}<button class="isbtn" data-hx="panel" data-v="looks" title="Island looks, day and night, weather">🎨<span>Looks</span></button><button class="isbtn" data-hx="panel" data-v="help">❔<span>How it works</span></button>${ui.hxUndo ? '<button class="isbtn" data-hx="undo" title="Undo the last move (Ctrl+Z)">↶<span>Undo</span></button>' : ''}</div>
+    <div class="ishud is-bl"><button class="isbtn" data-hx="panel" data-v="perks">✨<span>Perks</span></button>${hxIsleOn() ? '<button class="isbtn" data-hx="panel" data-v="visit" title="Visit a housemate\'s island">🏘️<span>Visit</span></button>' : ''}<button class="isbtn" data-hx="panel" data-v="looks" title="Island looks, day and night, weather">🎨<span>Looks</span></button><button class="isbtn" data-wk="on" title="Walk round your island as your character (V)">🚶<span>Walk</span></button><button class="isbtn" data-hx="panel" data-v="help">❔<span>How it works</span></button>${ui.hxUndo ? '<button class="isbtn" data-hx="undo" title="Undo the last move (Ctrl+Z)">↶<span>Undo</span></button>' : ''}</div>
     ${P ? '' : `<div class="ishud is-br hxtools"><button class="isbtn" data-hx="tool" data-v="road" title="Lay roads by dragging">🛣️<span>Roads</span></button>${lv >= hxItem('wall').u ? '<button class="isbtn" data-hx="tool" data-v="wall" title="Lay walls by dragging">🧱<span>Walls</span></button>' : ''}<button class="isbtn" data-hx="tool" data-v="tf" title="Terraform: paint the ground, raise hills, place decorations">🌱<span>Terraform</span></button><button class="isbtn big" data-hx="panel" data-v="shop">🛒<span>Build</span></button></div>`}`;
   let extra = `<div class="isbubs">${bubs}</div>`;
   if (P) extra += hxPlaceBar(P, tool);
@@ -415,10 +415,10 @@ function hxPopHtml(k, st, w, lv, busy, net, sto) {
 }
 // the page buildings open their page
 function hxOpen(id) {
-  ui.hxSel = null;
+  ui.hxSel = null; if (hxFree(id)) id = hxFree(id).open; // 2.75: a building's id or its page (the market and yard taps used to land on Today)
   if (id === 'shop') { ui.youLook = true; ui.pfCat = 'shop'; view = 'profile'; }
   else if (id === 'spar') { ui.isTab = 'boss'; ui.isPanel = 'bspar'; }
-  else view = hxFree(id)?.open || id;
+  else view = id;
   window.scrollTo(0, 0); render();
 }
 

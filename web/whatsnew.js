@@ -10,6 +10,12 @@
 // version since the last one they saw (up to 3). D.settings.seenVersion remembers what was last shown,
 // D.settings.guidesSeen which guides have played. A brand-new install never sees either.
 const CHANGELOG = [
+  { v: '2.75.0', notes: [
+    { t: 'Walk mode: press V (or 🚶 Walk) and walk round your island as your own character, with the camera over your shoulder', k: 'new' },
+    { t: 'WASD to move, Shift to run, click to steer with the mouse. Press V again for the builder view', k: 'new' },
+    { t: 'Walk into the Hall, Library, Training hall or Tavern to go inside. The Hall has the Solis hearth. Close the page to walk back out', k: 'new' },
+    { t: 'Tapping the Market or Practice yard twice now opens the right page', k: 'fix' },
+  ] },
   { v: '2.74.0', notes: [
     { t: 'Six voted house roles replace the 2 leaders: Champion, Warlord, Architect, Treasurer, Vanguard and Herald', k: 'new' },
     { t: 'Vote for each role in Weeks 2 and 3 (👑 Roles on the house island). One role each; houses under 8 members fill Champion, Warlord and Architect', k: 'new' },
