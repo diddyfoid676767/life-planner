@@ -455,7 +455,7 @@ function render() {
   const fresh = v.dataset.view !== view;
   if (fresh) { v.classList.remove('enter'); void v.offsetWidth; v.classList.add('enter'); v.dataset.view = view; }
   else v.classList.remove('enter'); // staying on the same page: no entrance animation, only the parts that changed are updated
-  const page = { islands: () => '', todaycard: () => typeof viewTodayCard === 'function' ? viewTodayCard() : viewToday(), today: viewToday, calendar: viewCalendar, study: viewStudy, training: viewTraining, friends: viewFriends, board: viewLeaderboard, profile: viewProfile, settings: viewSettings };
+  const page = { islands: () => '', bw: () => typeof viewBw === 'function' ? viewBw() : '', todaycard: () => typeof viewTodayCard === 'function' ? viewTodayCard() : viewToday(), today: viewToday, calendar: viewCalendar, study: viewStudy, training: viewTraining, friends: viewFriends, board: viewLeaderboard, profile: viewProfile, settings: viewSettings };
   if (!page[view]) view = 'today';
   // 2.57.3: a page that breaks shows what went wrong, never the last page you were on
   let html;

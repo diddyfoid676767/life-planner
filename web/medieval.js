@@ -2,17 +2,27 @@
 /* 2.73 medieval theme pass (roadmap stage 4): a skin over the world, mostly
    text, CSS and sound. Pages open on parchment in a wooden frame with serif
    headings; houses get heraldic crests; a bell rings when a building is
-   finished; a soft lute and drum plays while you look round your island.
+   finished. (The lute and drum music was removed in 2.78.)
    Logging screens keep their plain fast layout inside the frame. The skin can
    be switched off in the Steward (Look & sound). Lumen and Ember stay as they
    are; Today is the Notice Board, Settings the Steward, the house boss the
    Warband, and the term recap the Chronicle (old names still work in Ctrl+K). */
-const medOn = () => typeof D === 'object' && D && D.settings && D.settings.skin !== 'plain';
+// 2.78 (feedback rework F2): the default look is now "storybook": menu style A (bright and rounded)
+// by day and style C (lantern dark) at night or in dark mode. Parchment and wood is an optional look,
+// and there's no music any more (the generated lute and drum are gone; boss music will be real tracks).
+const medSkin = () => { const s = typeof D === 'object' && D && D.settings && D.settings.skin; return s === 'med' || s === 'plain' ? s : 'story'; };
+const medOn = () => medSkin() === 'med';
+// style C at night (real Melbourne sunset, as the island's sky) and whenever dark mode is on
+const skinNight = () => { try { return (typeof themeIsDark === 'function' && themeIsDark()) || (typeof hxDaylight === 'function' && !hxDaylight().day); } catch (e) { return false; } };
 function medApply() {
-  const on = medOn(), cl = document.body.classList;
-  cl.toggle('skin-med', on);
-  cl.toggle('skin-dark', on && typeof themeIsDark === 'function' && themeIsDark());
+  const sk = medSkin(), cl = document.body.classList, night = skinNight();
+  cl.toggle('skin-med', sk === 'med');
+  cl.toggle('skin-dark', sk === 'med' && typeof themeIsDark === 'function' && themeIsDark());
+  cl.toggle('skin-a', sk === 'story' && !night);
+  cl.toggle('skin-c', sk === 'story' && night);
+  const mt = document.querySelector('meta[name="theme-color"]'), want = sk === 'story' ? (night ? '#24213a' : '#fffdf8') : '#4f6df5'; if (mt && mt.content !== want) mt.content = want;
 }
+setInterval(() => { try { medApply(); } catch (e) { } }, 60000);
 // a heraldic shield in the house colours
 function hsCrest(h, size = 22) {
   if (!h) return '';
@@ -50,36 +60,14 @@ function medBell() {
   } catch (e) { }
 }
 
-// ---------- music: a soft lute and drum while your island is on screen ----------
-const MED_MUS = { t: 0, beat: 0, timer: 0 };
-const MED_SCALE = [146.83, 164.81, 174.61, 196, 220, 246.94, 261.63, 293.66, 329.63, 349.23, 392]; // D dorian
-const MED_TUNE = [[0, 4, 7, 4], [2, 5, 9, 5], [3, 6, 8, 6], [4, 7, 10, 9]]; // four bars of broken chords, played round and round
-function medMusicOn() {
-  if (!medOn() || document.hidden || typeof view === 'undefined' || view !== 'islands') return false;
-  const cfg = typeof sndCfg === 'function' ? sndCfg() : {}; return cfg.on && cfg.music !== false && cfg.vol > 0;
-}
-function medPluck(c, f, at, vol) {
-  // a plucked string: a bright triangle that dies fast, plus a soft octave
-  tone(c, { type: 'triangle', f, dur: .9, vol, at, attack: .003 }); tone(c, { type: 'sine', f: f * 2, dur: .5, vol: vol * .35, at, attack: .003 });
-}
-function medStep() {
-  if (!medMusicOn()) return;
-  const c = typeof sfxReady === 'function' ? sfxReady('music') : null; if (!c) return;
-  const b = MED_MUS.beat++, bar = MED_TUNE[Math.floor(b / 8) % MED_TUNE.length], v = .045;
-  const n = bar[b % 4]; if (b % 8 !== 7) medPluck(c, MED_SCALE[n], 0, b % 4 === 0 ? v * 1.3 : v);
-  if (b % 4 === 0) tone(c, { type: 'sine', f: 90, f2: 48, dur: .28, vol: .09, attack: .004 }); // drum
-  if (b % 4 === 2) hiss(c, { f: 1800, dur: .06, vol: .025, q: .8 }); // tap on the rim
-  if (b % 16 === 0) medPluck(c, MED_SCALE[bar[0]] / 2, 0, v * .9); // a low note under each phrase
-}
-setInterval(medStep, 330);
-
 // ---------- hooks ----------
 if (typeof applyTheme === 'function') { const at0 = applyTheme; applyTheme = function () { at0.apply(this, arguments); try { medApply(); } catch (e) { } }; }
 setInterval(medBells, 15000); setTimeout(medBells, 4000);
 document.addEventListener('change', e => {
   const el = e.target; if (!el || el.dataset?.med !== 'skin' || !D) return;
-  D.settings.skin = el.checked ? '' : 'plain'; save(); medApply(); render();
+  D.settings.skin = el.value === 'story' ? '' : el.value; save(); medApply(); render();
 });
 function medCardRow() {
-  return `<label class="row"><input type="checkbox" data-med="skin" ${medOn() ? 'checked' : ''}> Medieval look (parchment, wood and serif headings)</label>`;
+  const o = (v, l) => `<option value="${v}" ${medSkin() === v ? 'selected' : ''}>${l}</option>`;
+  return `<div class="row">Menu style <select data-med="skin">${o('story', 'Storybook: bright by day, lantern at night')}${o('med', 'Parchment and wood')}${o('plain', 'Plain')}</select></div>`;
 }

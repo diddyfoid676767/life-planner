@@ -30,7 +30,11 @@ function shellWorld() {
   if (typeof VIEW_ALIAS === 'object' && VIEW_ALIAS[view]) view = VIEW_ALIAS[view];
   const only = view === 'islands', cl = document.body.classList;
   cl.add('world-on'); cl.toggle('world-only', only); cl.toggle('shp-card', view === 'todaycard');
+  // 2.78: a window slides in from the right; the island moves left so it stays in view
+  const open = !only && view !== 'todaycard'; cl.toggle('win-open', open);
+  if (SHELL.view !== view) { SHELL.view = view; const c = document.querySelector('.content'); if (c) c.scrollTop = 0; }
   shellHud();
+  requestAnimationFrame(() => { const c = document.querySelector('.content'), ww = open && c ? c.getBoundingClientRect().width + 12 : 0; document.body.style.setProperty('--win-w', ww + 'px'); if (typeof IS3 === 'object') { const t = ww && ww < innerWidth - 200 ? ww / 2 : 0; if (IS3.offT !== t) { IS3.offT = t; if (typeof is3draw === 'function') is3draw(); } } });
   // while a page is open the world behind only redraws when the island changes
   const tab = (ui.isTab || 'personal') + (ui.hxVisit ? '+v' : '') + (shell2D() ? '2d' : '');
   if (!only && w.firstChild && SHELL.tab === tab) return;
@@ -41,39 +45,49 @@ function shellWorld() {
 // the header over a page: which building you're in, its tabs, and the way back out (filled in by shellHud)
 function shellPanel(html) { return view === 'islands' ? '' : html; }
 
-// ---------- HUD ----------
+// ---------- HUD (2.78: no top bar) ----------
+// top-left counters, one round Menu button bottom-right that opens a ring of the places (keys 1 to 6),
+// banners along the top, and the running timer as a small pill at the bottom
+const SHELL_RING = [['notice', '📜', 'Notice Board'], ['library', '📚', 'Library'], ['training', '💪', 'Training hall'], ['tavern', '🍺', 'Tavern'], ['hall', '🏰', 'Hall'], ['market', '🛒', 'Market']];
 function shellHud() {
-  const hud = document.getElementById('hud'); if (!hud || typeof D !== 'object' || !D) return;
-  const badge = vs => { const bs = vs.map(v => document.querySelector(`#tabs button[data-view="${v}"]`)?.dataset.badge || '').filter(Boolean), n = bs.reduce((s, x) => s + (parseInt(x) || 0), 0); return n ? (n > 99 ? '99+' : n) : bs.length ? '●' : ''; };
-  const nav = SHELL_HOME.map(b => { const bd = badge(b.v); return `<button type="button" class="hud-b ${b.v.includes(view) ? 'on' : ''}" data-shell="go" data-v="${b.v[0]}" title="${esc(b.n)}: ${esc(b.k)}"${bd ? ` data-badge="${bd}"` : ''}><i>${b.e}</i><span>${esc(b.n)}</span></button>`; }).join('');
+  const hud = document.getElementById('hudc'); if (!hud || typeof D !== 'object' || !D) return;
   let st = '';
-  try { const w = cdWallet(), s = studyStreak(); st = `<span class="hud-cur" title="Lumen from study · Ember from training · your study streak"><span class="cd-l">✦ <b>${w.lumen.toLocaleString()}</b></span><span class="cd-e">🔥 <b>${w.ember.toLocaleString()}</b></span><span class="hud-st">⚡ <b>${s}</b></span></span>`; } catch (e) { }
-  const set = (sel, html) => { const el = hud.querySelector(sel); if (el && el.innerHTML !== html) el.innerHTML = html; };
-  set('.hud-nav', nav); set('.hud-stats', st);
-  hud.querySelector('[data-shell="steward"]')?.classList.toggle('on', view === 'settings');
-  hud.querySelector('[data-shell="home"]')?.classList.toggle('on', view === 'islands');
+  try {
+    const w = cdWallet(), s = studyStreak(), lv = typeof solisLevel === 'function' ? solisLevel(w).n : 1;
+    st = `<span class="hc-l" title="Lumen, from studying">✦ <b>${w.lumen.toLocaleString()}</b></span><span class="hc-e" title="Ember, from training">🔥 <b>${w.ember.toLocaleString()}</b></span><button type="button" class="hc-lv" data-shell="bw" data-v="hall" title="Your level (opens the Hall)">Lv <b>${lv}</b></button><span class="hc-st" title="Your study streak">⚡ <b>${s}</b> day${s === 1 ? '' : 's'}</span>`;
+  } catch (e) { }
+  if (hud.innerHTML !== st) hud.innerHTML = st;
+  const badge = vs => { const bs = vs.map(v => document.querySelector(`#tabs button[data-view="${v}"]`)?.dataset.badge || '').filter(Boolean), n = bs.reduce((s, x) => s + (parseInt(x) || 0), 0); return n ? (n > 99 ? '99+' : n) : bs.length ? '●' : ''; };
+  const ring = document.getElementById('ring'), cur = view === 'bw' ? ui.bw?.id : shellOf(view)?.id;
+  if (ring) for (const b of ring.querySelectorAll('[data-shell="bw"]')) { const h = SHELL_HOME.find(x => x.id === b.dataset.v), bd = h ? badge(h.v) : ''; b.classList.toggle('on', b.dataset.v === cur && view !== 'islands'); if ((b.dataset.badge || '') !== bd) { if (bd) b.dataset.badge = bd; else delete b.dataset.badge; } }
+  const mb = document.getElementById('menuBtn'); if (mb) { const any = SHELL_HOME.some(h => badge(h.v)); mb.classList.toggle('ping', any); }
   const t = document.querySelector('#shph .shp-t'); if (t) { const b = shellOf(view), o = SHELL_OTHER[view] || [], txt = b ? `${b.e} ${b.n}` : o[0] ? `${o[0]} ${o[1]}` : ''; if (t.textContent !== txt) t.textContent = txt; }
+  const bk = document.querySelector('#shph .shp-bk'); if (bk) { const b = shellOf(view) || (view === 'settings' || view === 'board' ? SHELL_HOME.find(h => h.id === (view === 'board' ? 'tavern' : 'hall')) : null); bk.hidden = !b; if (b) bk.dataset.v = b.id; }
+  document.body.classList.toggle('win-bw', view === 'bw');
+}
+function shellRing(on) {
+  const r = document.getElementById('ring'), mb = document.getElementById('menuBtn'); if (!r) return;
+  on = on == null ? r.hidden : on; r.hidden = !on; mb?.setAttribute('aria-expanded', on ? 'true' : 'false'); mb?.classList.toggle('open', on);
+  if (on && typeof sfx === 'function') try { sfx('select'); } catch (e) { }
 }
 function shellInit() {
-  const content = document.querySelector('.content'); if (!content || document.getElementById('hud')) return;
+  const content = document.querySelector('.content'); if (!content || document.getElementById('hudc')) return;
   const world = document.createElement('div'); world.id = 'world'; document.body.prepend(world);
-  const hud = document.createElement('header'); hud.id = 'hud';
-  hud.innerHTML = `<div class="hud-l"><button type="button" class="hud-brand" data-shell="home" title="Your island (Esc)"><img src="icon.svg" alt="" width="26" height="26"><span>Solis</span></button>
-    <button type="button" class="hud-b" data-shell="map" title="Map: travel to another island (M)"><i>🧭</i><span>Map</span></button>
-    <button type="button" class="hud-b hud-q" data-shell="search" title="Search everything (Ctrl+K)"><i>🔍</i><span>Search</span><kbd>Ctrl K</kbd></button></div>
-    <nav class="hud-nav" aria-label="Buildings"></nav>
-    <div class="hud-r"><span class="hud-stats"></span><span class="hud-add"></span>
-    <button type="button" class="hud-b hud-ic" data-act="feedback" title="Send feedback or report a bug"><i>💬</i></button>
-    <button type="button" class="hud-b hud-ic" data-shell="steward" title="Steward: settings, sign-in, updates"><i>🧾</i><span>Steward</span></button></div>`;
-  document.body.prepend(hud);
-  // the timer bar, update and offline notes float under the HUD, over the world too
+  const hud = document.createElement('div'); hud.id = 'hudc'; hud.setAttribute('aria-label', 'Lumen, Ember, level and streak'); document.body.appendChild(hud);
+  const ring = document.createElement('nav'); ring.id = 'ring'; ring.hidden = true; ring.setAttribute('aria-label', 'Places');
+  ring.innerHTML = SHELL_RING.map(([id, e, n], i) => `<button type="button" data-shell="bw" data-v="${id}"><i>${e}</i><span>${n}</span><kbd>${i + 1}</kbd></button>`).join('')
+    + '<hr><button type="button" data-shell="map"><i>🧭</i><span>Map</span><kbd>M</kbd></button><button type="button" data-shell="search"><i>🔍</i><span>Search</span><kbd>Ctrl K</kbd></button><button type="button" data-shell="add"><i>＋</i><span>Add something</span><kbd>Q</kbd></button><button type="button" data-act="feedback"><i>💬</i><span>Feedback</span></button>';
+  const mb = document.createElement('button'); mb.type = 'button'; mb.id = 'menuBtn'; mb.dataset.shell = 'ring'; mb.title = 'Menu: every place, map, search and add'; mb.setAttribute('aria-expanded', 'false'); mb.innerHTML = '<span>Menu</span>';
+  document.body.append(ring, mb);
+  // the update, offline and warning notes float along the top, over the world too
   const bars = document.createElement('div'); bars.id = 'hudbars';
-  for (const id of ['updateBar', 'focusBar', 'tempWarn', 'offline']) { const el = document.getElementById(id); if (el) bars.appendChild(el); }
-  hud.after(bars);
+  for (const id of ['updateBar', 'tempWarn', 'offline']) { const el = document.getElementById(id); if (el) bars.appendChild(el); }
+  document.body.appendChild(bars);
+  const fb = document.getElementById('focusBar'); if (fb) document.body.appendChild(fb); // the running timer: a pill at the bottom
   const ph = document.createElement('div'); ph.className = 'shp-h'; ph.id = 'shph';
-  ph.innerHTML = '<span class="shp-t"></span><span class="shp-sub"></span><span class="shp-sp"></span><button type="button" class="shp-x" data-shell="home" title="Back to your island (Esc)">✕</button>';
+  ph.innerHTML = '<button type="button" class="shp-bk" data-shell="bw" hidden title="Back to the building\'s window">‹ Back</button><span class="shp-t"></span><span class="shp-sub"></span><span class="shp-sp"></span><button type="button" class="shp-x" data-shell="home" title="Back to your island (Esc)">✕</button>';
   content.prepend(ph); const sub = document.getElementById('subnav'); if (sub) ph.querySelector('.shp-sub').appendChild(sub);
-  const qa = document.getElementById('gqa'); if (qa) hud.querySelector('.hud-add').appendChild(qa);
+  const qa = document.getElementById('gqa'); if (qa) document.body.appendChild(qa);
   if (typeof D === 'object' && D) shellHud();
   setInterval(shellHud, 5000);
 }
@@ -220,9 +234,13 @@ document.addEventListener('click', e => {
   if (tb && tb.dataset.v !== 'rank' && !tb.closest('#view')) { e.stopPropagation(); e.preventDefault(); shellTravel(tb.dataset.v); return; }
   const h2 = e.target.closest('[data-hx2]'); if (h2) { shell2DTap(h2.dataset.hx2); return; }
   const el = e.target.closest('[data-shell]');
-  if (!el) { if (e.target.id === 'shmap') shellMap(false); else if (e.target.id === 'world' && view !== 'islands') { view = 'islands'; render(); } return; }
+  if (!el) { if (e.target.id === 'shmap') shellMap(false); else if (e.target.id === 'world' && view !== 'islands') { view = 'islands'; render(); } if (!e.target.closest('#ring')) shellRing(false); return; }
+  if (el.closest('#ring')) shellRing(false);
   switch (el.dataset.shell) {
-    case 'home': shellMap(false); if (view !== 'islands') { view = 'islands'; window.scrollTo(0, 0); render(); } else if ((ui.isTab || 'personal') !== 'personal' && el.classList.contains('hud-brand')) shellTravel('personal'); break;
+    case 'ring': shellRing(); break;
+    case 'bw': shellMap(false); if (typeof bwOpen === 'function') bwOpen(el.dataset.v); break;
+    case 'add': setTimeout(() => document.querySelector('#gqa .gqa-btn')?.click(), 0); break;
+    case 'home': shellMap(false); if (view !== 'islands') { view = 'islands'; window.scrollTo(0, 0); render(); } break;
     case 'go': shellMap(false); view = el.dataset.v; window.scrollTo(0, 0); render(); break;
     case 'steward': view = 'settings'; window.scrollTo(0, 0); render(); break;
     case 'search': if (typeof openCmdk === 'function') openCmdk(); break;
@@ -237,21 +255,22 @@ document.addEventListener('keydown', e => {
   const t = e.target; if (e.ctrlKey || e.metaKey || e.altKey || (t && (t.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName)))) return;
   if (document.getElementById('modal')?.open || document.querySelector('dialog[open]') || (document.getElementById('cmdk') && !document.getElementById('cmdk').hidden)) return;
   if (e.key === 'Escape') {
+    if (!document.getElementById('ring')?.hidden) { shellRing(false); e.preventDefault(); return; }
     if (document.getElementById('shmap')) { shellMap(false); e.preventDefault(); return; }
     if (view !== 'islands' && !e.defaultPrevented && !(typeof focusFullOpen !== 'undefined' && focusFullOpen)) { view = 'islands'; render(); e.preventDefault(); }
   } else if ((e.key === 'm' || e.key === 'M') && !e.repeat && !ui.hxP) { e.preventDefault(); shellMap(!document.getElementById('shmap')); }
+  else if (/^[1-6]$/.test(e.key) && !e.repeat && !ui.hxP && !(typeof WK === 'object' && WK.on)) { e.preventDefault(); shellRing(false); if (typeof bwOpen === 'function') bwOpen(SHELL_RING[+e.key - 1][0]); }
 });
 shellInit();
 
 // a short walkthrough of the new shell, after the What's new card
-if (typeof GUIDES === 'object') GUIDES.shell = {
-  name: 'Solis is one world now',
+if (typeof GUIDES === 'object') GUIDES.game = GUIDES.shell = {
+  name: 'Solis is one game now',
   end: () => { if (view !== 'islands') { view = 'islands'; render(); } },
   steps: [
-    { title: 'No more sidebar 🏝️', text: 'Solis is one world now. Your island is always there, and every page opens over it from its building.', go: () => { view = 'islands'; ui.isTab = 'personal'; render(); }, sel: '#hud' },
-    { title: 'The buildings along the top', text: 'Notice Board (today, calendar, to-dos), Library (study), Training hall, Tavern (friends and chats) and Hall (you). You can also tap a building on the island and press <b>Open</b>.', sel: '#hud .hud-nav' },
-    { title: 'Map', text: 'The 🧭 <b>Map</b> (or <b>M</b>) flies you to the house island or the boss island, and finds any building.', sel: '#hud [data-shell="map"]' },
-    { title: 'Add, search and the Steward', text: '<b>Add</b> (Q) puts in a task, workout, SAC or event from anywhere. <b>Ctrl+K</b> searches everything. The <b>Steward</b> holds your settings, sign-in and updates.', sel: '#hud .hud-r' },
-    { title: 'Back to the island', text: 'Pages slide in over the world. Press ✕, <b>Esc</b>, or click the island behind to go back. Real life shows up there too: the Library glows while you study.', go: () => { view = 'today'; render(); }, sel: '.shp-x' },
+    { title: 'Your island is home 🏝️', text: 'Solis opens on your island. Click a building to open its window: it slides in from the right and the island stays in view.', go: () => { view = 'islands'; ui.isTab = 'personal'; render(); }, sel: '#world' },
+    { title: 'Your counters', text: 'Lumen, Ember, your level and your study streak sit in the top-left corner.', sel: '#hudc' },
+    { title: 'The Menu button', text: 'Every place is in the <b>Menu</b> ring, with the Map, search and Add. Keys <b>1 to 6</b> jump straight to a place, <b>Q</b> adds something and <b>Ctrl+K</b> searches.', go: () => shellRing(true), sel: '#ring' },
+    { title: 'Simple windows', text: 'Each window has one big card, a short list and up to three tabs. Everything else is under <b>More</b>. Press ✕ or <b>Esc</b> to go back to the island.', go: () => { shellRing(false); bwOpen('notice'); }, sel: '.bw' },
   ],
 };

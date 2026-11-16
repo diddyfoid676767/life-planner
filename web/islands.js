@@ -154,6 +154,11 @@ function is3draw() {
   if (!IS3.R || !IS3.canvas.isConnected || IS3.queued) return;
   IS3.queued = requestAnimationFrame(() => {
     IS3.queued = 0; const { cam, yaw, pitch } = IS3, dist = IS3.dist * (IS3.distK || 1) * (IS3.fly || 1), [tx, tz] = IS3.hexMode && IS3.house !== 'boss' && IS3.tgt || [0, 0];
+    // 2.78: while a window is open on the right, the view shifts so the island sits in the space left of it
+    const host0 = IS3.canvas.parentNode, W0 = host0.clientWidth, H0 = host0.clientHeight, offT = IS3.offT || 0;
+    IS3.off = IS3.off == null ? offT : IS3.off + (offT - IS3.off) * .22; if (Math.abs(offT - IS3.off) < .6) IS3.off = offT; else setTimeout(is3draw, 16);
+    if (typeof WK === 'object' && WK.on && WK.fig) { if (cam.view?.enabled) cam.clearViewOffset(); }
+    else { if (IS3.off && W0) cam.setViewOffset(W0, H0, IS3.off, 0, W0, H0); else if (cam.view?.enabled) cam.clearViewOffset(); }
     if (!(typeof wkCam === 'function' && wkCam(cam))) { cam.position.set(tx + Math.sin(yaw) * Math.cos(pitch) * dist, Math.sin(pitch) * dist, tz + Math.cos(yaw) * Math.cos(pitch) * dist); cam.lookAt(tx, 0, tz); } // 2.75: walk mode and the Souls fights have their own camera
     IS3.R.render(IS3.scene, cam);
     // keep the bubbles over their buildings

@@ -31,17 +31,18 @@ function menuStart() {
   if (menuStarted || typeof D !== 'object' || !D) return; menuStarted = true;
   // 2.72: Solis opens on your island with the Today card on top (or the world alone, or a page)
   const s = menuCfg().start;
-  if (!s || s === 'today' || s === 'card') { view = 'todaycard'; render(); }
-  else if (s === 'world') { view = 'islands'; render(); }
+  // 2.78: by default it opens on the island with nothing open
+  if (s === 'today' || s === 'card') { view = 'todaycard'; render(); }
+  else if (!s || s === 'world') { view = 'islands'; render(); }
   else document.querySelector(`#places [data-place="${s}"]`)?.click();
 }
 function menuCard() {
   const m = menuCfg(), ids = placeIdsInOrder(), lbl = id => PLACES.find(p => p.id === id).label;
   const rows = ids.map((id, i) => `<div class="mnrow"><label><input type="checkbox" data-mn="show" data-id="${id}" ${m.hide.includes(id) ? '' : 'checked'}> ${esc(lbl(id))}</label><span><button class="iconbtn" data-mn="up" data-id="${id}" ${i ? '' : 'disabled'} title="Move up">▲</button><button class="iconbtn" data-mn="down" data-id="${id}" ${i < ids.length - 1 ? '' : 'disabled'} title="Move down">▼</button></span></div>`).join('');
   return `<div class="card" data-sec="theme" style="grid-column:1/-1"><div class="card-head"><h2>Menu &amp; layout</h2></div>
-    <div class="mngrid"><div><h3>Sidebar</h3>${rows}</div>
+    <div class="mngrid">
     <div><h3>Today cards</h3>${MENU_CARDS.map(([k, l]) => `<label class="row"><input type="checkbox" data-mn="card" data-id="${k}" ${m.cards[k] === false ? '' : 'checked'}> ${l}</label>`).join('')}
-      <h3>Open on</h3><select data-mn="start">${[['today', 'Your island with the Today card'], ['world', 'Your island only'], ...PLACES.filter(p => p.id !== 'today').map(p => [p.id, p.label])].map(([v, l]) => `<option value="${v}" ${(m.start || 'today') === v ? 'selected' : ''}>${l}</option>`).join('')}</select></div>
+      <h3>Open on</h3><select data-mn="start">${[['world', 'Your island, nothing open'], ['today', 'Your island with the Today card'], ...PLACES.filter(p => p.id !== 'today').map(p => [p.id, p.label])].map(([v, l]) => `<option value="${v}" ${(m.start || 'world') === v ? 'selected' : ''}>${l}</option>`).join('')}</select></div>
     <div><h3>Look</h3><label class="row"><input type="checkbox" data-mn="dense" ${m.dense ? 'checked' : ''}> Compact spacing</label>
       <div class="row">Accent colour <input type="color" data-mn="accent" value="${m.accent || '#4f6df5'}"><button class="btn small" data-mn="accentReset" ${m.accent ? '' : 'disabled'}>Reset</button></div>
       ${typeof medCardRow === 'function' ? medCardRow() : ''}<h3>Graphics</h3><label class="row"><input type="checkbox" data-mn="lowq" ${D.settings.lowQuality ? 'checked' : ''}> Low graphics (no shadows)</label><label class="row"><input type="checkbox" data-mn="map2d" ${D.settings.map2d ? 'checked' : ''}> 2D map instead of 3D (slow computers)</label></div></div></div>`;
