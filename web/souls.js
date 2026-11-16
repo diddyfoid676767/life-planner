@@ -60,13 +60,13 @@ function soPower() {
 
 // ---------- start, end ----------
 function soOpen(kind) {
-  if (SO || (typeof FT !== 'undefined' && FT)) return;
+  if (SO) return;
   if (kind === 'trial') kind = 'test';
   if (kind === 'test' && !soTestOk()) return;
   if (kind === 'house' && (!soGolemWeek() || !hsState().id || !ftAttempts().left)) { toast('No fights left', 'Your weekly fights are used up.'); return; }
   if (kind === 'bonus' && !soCanBonus()) { toast('No bonus fight', `Bonus fights are for when your weekly fights are used up: ${SO_BONUS.day} a day, ${SO_BONUS.l} Lumen and ${SO_BONUS.e} Ember each.`); return; }
   if (!need3D()) { toast('Loading 3D…', 'Try again in a moment.'); return; }
-  if (!webglOK()) { toast('No 3D here', 'This computer can\'t draw the Souls fight. The quick fight still works.'); return; }
+  if (!webglOK()) { toast('No 3D here', 'This computer can\'t draw the Souls fight.'); return; }
   heroLoad();
   SO = { kind, intro: true };
   soOverlay(); soIntroDraw();
@@ -656,7 +656,7 @@ function soOverlay() {
   ov = document.createElement('div'); ov.id = 'soov'; document.body.appendChild(ov); document.body.classList.add('souls-on');
   return ov;
 }
-const SO_KEYS = '<span><kbd>W A S D</kbd> move</span><span><kbd>Shift</kbd> sprint</span><span><kbd>Space</kbd> jump</span><span><kbd>Ctrl</kbd> / <kbd>Right click</kbd> roll</span><span><kbd>F</kbd> block</span><span><kbd>Left click</kbd> attack</span><span>hold <kbd>Left</kbd> heavy</span><span><kbd>1-9</kbd> skills</span><span><kbd>R</kbd> potion</span><span><kbd>Esc</kbd> pause</span>';
+const SO_KEYS = '<span><kbd>W A S D</kbd> move</span><span><kbd>Shift</kbd> sprint</span><span><kbd>Space</kbd> jump</span><span><kbd>Ctrl</kbd> roll</span><span><kbd>F</kbd> block</span><span><kbd>Left click</kbd> attack</span><span>hold <kbd>Left</kbd> heavy</span><span><kbd>1-9</kbd> skills</span><span><kbd>R</kbd> potion</span><span><kbd>Esc</kbd> pause</span>';
 function soIntroDraw() {
   const ov = soOverlay(), k = SO.kind, st = ftState(), pb = (st.soPb || {})[SO_BOSS] || 0;
   ov.innerHTML = `<div class="so-intro"><div class="so-card">
@@ -749,8 +749,7 @@ addEventListener('pointerdown', e => {
   if (!soLive() || SO.paused || !e.target.closest?.('#soov') || e.target.closest('.so-card, button, input, label')) return;
   e.preventDefault();
   if (document.pointerLockElement !== SO.canvas) { try { const p = SO.canvas.requestPointerLock(); if (p?.catch) p.catch(() => { }); } catch (er) { } if (!SO.clicked) { SO.clicked = 1; return; } }
-  if (e.button === 2) soAct('roll');
-  else if (e.button === 0) SO.me.hold = SO.time; // released quickly = light, held = heavy
+  if (e.button === 0) SO.me.hold = SO.time; // released quickly = light, held = heavy
 }, true);
 addEventListener('pointerup', e => {
   if (!soLive() || e.button !== 0 || SO.me.hold == null) return;

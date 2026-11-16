@@ -23,7 +23,7 @@ const S = process.argv[2]; const sleep = ms => new Promise(r => setTimeout(r, ms
       const st = document.createElement('style'); st.textContent = '.boxfx{display:none!important}'; document.head.appendChild(st); D.settings.seenVersion = '9.9.9'; D.settings.guidesSeen = ['hexmove', 'hexhouse', 'launch', 'game']; const c = cdState(); c.got = { l: 2000, e: 2000 }; save();
       soGolemWeek = () => true; ftState().att = {}; ftState().bonus = {}; ftState().dmg = {}; const s = hsState(); if (!s.id) s.id = HS_HOUSES[0].id; save(); });
     // 1. no trial for players, test fight only in owner test mode
-    await ev(() => { localStorage.setItem('solisDev', '0'); ui.isTab = 'boss'; ui.isPanel = 'bspar'; view = 'islands'; render(); }); await sleep(1200);
+    await ev(() => { localStorage.setItem('solisDev', '0'); ui.isTab = 'boss'; ui.isPanel = 'binfo'; view = 'islands'; render(); }); await sleep(1200);
     ok(await ev(() => !document.querySelector('[data-so="trial"], [data-so="test"]') && !soTestOk()), '1. no practice trial for players');
     await ev(() => { localStorage.setItem('solisDev', '1'); render(); }); await sleep(500);
     ok(await ev(() => !!document.querySelector('[data-so="test"]')), '1b. owner test mode shows a test fight');

@@ -27,7 +27,7 @@ const HX_FIELD_MAX = 6, HX_FED_HP = 10, HX_RING = { dr: .03 };
 // the page buildings: free, pre-built, never decay
 // 2.69: ac = accent colour (hex plate, pennant and name tag), hz = the pitch of its hover tick
 const HX_FREE = [
-  { id: 'hall', n: 'Hall', e: '🏰', m: 'building_castle', at: '0,0', open: 'profile', d: 'You, your character, gear and settings', s: .82, ac: '#ffd43b', hz: 523 },
+  { id: 'hall', n: 'Hall', e: '🏰', m: 'building_castle', at: '0,0', open: 'profile', d: 'You, your character and gear', s: .82, ac: '#ffd43b', hz: 523 },
   { id: 'library', n: 'Library', e: '📚', m: 'building_church', at: '0,-2', rot: 3, open: 'study', d: 'Study, SACs and exams', ac: '#4dabf7', hz: 784 },
   { id: 'training', n: 'Training hall', e: '💪', m: 'building_barracks', at: '2,-2', rot: 4, open: 'training', d: 'Workouts, events and the Practice yard', ac: '#fa5252', hz: 392 },
   { id: 'tavern', n: 'Tavern', e: '🍺', m: 'building_tavern', at: '-2,0', rot: 2, open: 'friends', d: 'Your house, friends and chats', ac: '#ff922b', hz: 587 },
@@ -435,11 +435,10 @@ function hxPopHtml(k, st, w, lv, busy, net, sto) {
 // the page buildings open their page
 function hxOpen(id) {
   ui.hxSel = null;
-  if (typeof bwOpen === 'function' && (BW_NAME[id] || BW_ALIAS[id]) && id !== 'spar' && id !== 'shop') { bwOpen(id); return; } // 2.78: page buildings open their simple window
+  if (typeof bwOpen === 'function' && (BW_NAME[id] || BW_ALIAS[id]) && id !== 'shop') { bwOpen(id); return; } // 2.78: page buildings open their simple window
   if (hxFree(id)) id = hxFree(id).open; // 2.75: a building's id or its page (the market and yard taps used to land on Today)
   if (id === 'shop') { if (view !== 'islands' || (ui.isTab || 'personal') !== 'personal') { view = 'islands'; ui.isTab = 'personal'; } Object.assign(ui, { isPanel: 'market', mkTab: 'cosm', hxP: null }); }
   else if (id === 'cosm') { ui.youLook = true; ui.pfCat = 'shop'; ui.pfTry = null; view = 'profile'; }
-  else if (id === 'spar') { ui.isTab = 'boss'; ui.isPanel = 'bspar'; }
   else view = id;
   window.scrollTo(0, 0); render();
 }

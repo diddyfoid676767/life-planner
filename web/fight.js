@@ -169,165 +169,6 @@ function ftPublish() {
   const st = ftState(), ch = cdChar(), cls = cdClass(), g = ftGearBuffs(st);
   return { c: cls || '', s: FT_STAT_ORDER.map(k => ch.all[k]), k: [...st.eq.spell, ...st.eq.move].filter(id => st.own.includes(id)).slice(0, 6), g: Object.fromEntries(Object.entries(g).map(([k, v]) => [k, Math.round(v * 100) / 100])), r: st.r };
 }
-// a friend's published character, cleaned up (it came over the network)
-function ftGhost(row) {
-  const ch = row.raw?.pvp?.ch; if (!ch || !Array.isArray(ch.s)) return null;
-  const stats = Object.fromEntries(FT_STAT_ORDER.map((k, i) => [k, Math.max(5, Math.min(99, +ch.s[i] || 5))]));
-  const g = {}; for (const k of Object.keys(FT_BUFF)) { const v = +ch.g?.[k]; if (v > 0) g[k] = Math.min(k === 'hp' ? 200 : k === 'rg' ? 25 : .6, v); }
-  const cls = FT_CLASS[ch.c] ? ch.c : '';
-  const ids = (Array.isArray(ch.k) ? ch.k : []).filter(id => FT_SKILLS.some(s => s.id === id)).slice(0, 6);
-  if (!ids.length) ids.push('spark', 'jab'); for (const s of ftClassSkills(cls)) ids.push(s.id);
-  return ftFighter({ n: row.name, e: CD_CLASSES.find(c => c.id === cls)?.e || '🙂', stats, cls, skills: ids.map(ftSkill), g });
-}
-
-// ---------- the fight ----------
-let FT = null;
-function ftLog(F, t, cls = '') { F.log.push({ t, cls }); if (F.log.length > 40) F.log.shift(); }
-function ftHitBoss(F, n, label) {
-  n = Math.max(0, Math.round(n));
-  if (F.kind === 'house') { F.dealt += n; } else { F.E.hp = Math.max(0, F.E.hp - n); F.dealt += n; }
-  if (label) ftLog(F, `${label}: ${n} damage`, 'good');
-}
-function ftStart(kind, opt = {}) {
-  if (FT) return;
-  const P = ftMe(kind === 'house'); let E, bossDef = null, name;
-  if (kind === 'duel') { E = ftGhost(opt.row); if (!E) return; }
-  else {
-    const b = opt.boss || hsBoss(mondayOf(today())); name = b.n; bossDef = FT_BOSS[b.n];
-    const hp = kind === 'spar' ? 300 + 4 * cdChar().ovr : Infinity;
-    E = { n: b.n, e: b.e, hp, max: hp, stun: 0, blind: 0, confuse: 0, dot: [], mark: 0, shield: 0, awake: 0, seen: 0, boss: 1 };
-    bossDef.init?.(E);
-  }
-  const tb = kind === 'house' && bossWeek() === 'term';
-  FT = { kind, round: 1, maxR: kind === 'house' ? FT_ROUNDS : FT_SPAR_ROUNDS, P, E, B: bossDef, bossName: name, log: [], dealt: 0, over: false, scale: kind === 'spar' ? 1.6 : tb ? 1 : kind === 'house' ? .75 : 1, opt, tb };
-  const st = ftState();
-  // the stake and attempt are taken up front, so closing the app mid-fight can't dodge a loss
-  if (kind === 'house') { st.att[today()] = (st.att[today()] || 0) + 1; ftLog(FT, tb ? `👑 Term Boss: ${name} appears, stronger than ever! ${FT_ROUNDS} rounds, and it hits harder.` : `⚔️ ${name} appears! ${FT_ROUNDS} rounds: hit as hard as you can.`); }
-  if (kind === 'spar') { FT.stake = ftTake(25, 25); ftLog(FT, `⚔️ Spar: ${name} (champion). Stake ${FT.stake.l} ${LUMEN} ${FT.stake.e} ${EMBER}.`); }
-  if (kind === 'duel') { FT.stake = ftTake(15, 15); FT.rd = 16; st.r -= FT.rd; st.l++; ftLog(FT, `⚔️ Duel vs ${E.n}. Stake ${FT.stake.l} ${LUMEN} ${FT.stake.e} ${EMBER}.`); }
-  if (bossDef) ftLog(FT, `💡 Weak to ${bossDef.wn}. ${bossDef.sp}`, 'hint');
-  save(); ftTurnStart(FT.P); ftDraw();
-}
-function ftTurnStart(A) {
-  for (const s of A.sk || []) if (s.cdl > 0) s.cdl--;
-  if (A.dot?.length) { let n = 0; A.dot = A.dot.filter(d => { n += d.n; return --d.t > 0; }); if (n) ftDamage(FT, A, n, '🔥 Burn', true); }
-  if (A.cls === 'bard' && A.hp > 0) ftHeal(FT, A, Math.round(A.max * .04), '');
-  if ((A.g?.rg) && A.hp > 0) ftHeal(FT, A, A.g.rg, '');
-}
-function ftHeal(F, A, n, label) {
-  const got = Math.min(n, A.max - A.hp); A.hp += got;
-  if (label) ftLog(F, `${label}: +${got} health`, 'good');
-  if (got > 0 && A === F.P && F.B?.onHeal) F.B.onHeal(F, got);
-}
-// damage into a fighter (player or ghost) or into a spar boss
-function ftDamage(F, T, n, label, raw) {
-  if (T.boss) { ftHitBoss(F, n, label); return n; }
-  if (!raw) {
-    const dg = Math.min(.4, (T.g?.dg || 0) + (T.cls === 'rogue' ? .2 : 0));
-    if (Math.random() < dg) { ftLog(F, `${label}: ${T === F.P ? 'you dodge' : T.n + ' dodges'}!`); return 0; }
-    n *= 1 - Math.min(.5, (T.g?.dr || 0) + (T.cls === 'guardian' ? .2 : 0));
-  }
-  n = Math.max(1, Math.round(n));
-  const sh = Math.min(T.shield, n); T.shield -= sh; const hit = n - sh; T.hp = Math.max(0, T.hp - hit);
-  ftLog(F, `${label}: ${hit}${sh ? ` (${sh} blocked)` : ''} to ${T === F.P ? 'you' : T.n}`, T === F.P ? 'bad' : 'good');
-  return hit;
-}
-const ftWeakOf = (F, s) => F.B ? F.B.weak(s) : false;
-function ftUse(F, A, T, s) {
-  const me = A === F.P;
-  if (A.confuse > 0 && A.cls !== 'monk') { A.confuse--; const ok = A.sk.filter(x => !x.cdl); s = ok[Math.floor(Math.random() * ok.length)]; ftLog(F, `😵 ${me ? 'You are' : A.n + ' is'} confused and use ${s.n}`); }
-  s.cdl = s.cd + 1; A.chain = s.k === 'move' ? A.chain + 1 : 0;
-  const stat = A.s[s.st] || 5, power = .5 + stat / 80, who = me ? 'You' : A.n;
-  if (s.fx === 'heal') { ftHeal(F, A, Math.round(A.max * s.pw / 100 * (.7 + stat / 150)), `${s.e} ${who}: ${s.n}`); if (s.cleanse) { A.dot = []; A.blind = 0; } }
-  else if (s.fx === 'shield') { const n = Math.round(A.max * s.pw / 100 * (.7 + stat / 150)); A.shield += n; ftLog(F, `${s.e} ${who}: ${s.n} (+${n} shield)`, 'good'); }
-  else if (s.fx === 'buff') { A.buff = 2; ftLog(F, `${s.e} ${who}: ${s.n}. Next hit ×2`, 'good'); }
-  else if (s.fx === 'rally') { A.rally = 3; ftLog(F, `${s.e} ${who}: ${s.n}. +30% for 3 rounds`, 'good'); }
-  if (s.pw && !['heal', 'shield'].includes(s.fx)) {
-    if (s.fx === 'reveal') A.reveal = 2;
-    for (let h = 0; h < (s.hits || 1); h++) {
-      if (T.hp <= 0 && !T.boss) break;
-      const sure = A.cls === 'ranger';
-      if (A.blind > 0 && !sure) { A.blind--; if (Math.random() < .5) { ftLog(F, `${s.e} ${s.n} misses (blinded)`); continue; } }
-      if (T.boss && F.B?.dodge && !sure && Math.random() < F.B.dodge(F)) { ftLog(F, `${s.e} ${s.n} disappears into the fog`); continue; }
-      let n = s.pw * power * (1 + (s.k === 'spell' ? A.g.sp || 0 : A.g.mv || 0));
-      if ((A.cls === 'sage' && s.k === 'spell') || (A.cls === 'striker' && s.k === 'move')) n *= 1.15;
-      if (A.rally > 0) n *= 1.3;
-      n *= A.buff; if (T.mark > 0) n *= 1.25;
-      if (A.slow > 0 && s.k === 'move') n *= .8;
-      if (s.back && (T.stun > 0 || T.blind > 0 || T.confuse > 0)) n *= 2.5 / 1.2; if (s.back) n *= 1.2;
-      let tag = '';
-      if (T.boss && (ftWeakOf(F, s) || A.reveal > 0)) { n *= 1.5 + (A.g.wk || 0); tag = ' 💥 super effective'; if (A.reveal > 0 && s.fx !== 'reveal') A.reveal--; }
-      if (T.boss && F.B?.dmgIn) n *= F.B.dmgIn(F, s);
-      const crit = (A.cls === 'tactician' && F.round % 3 === 0) || Math.random() < .05 + (A.g.cr || 0);
-      if (crit) { n *= 1.5; tag += ' ⚡ crit'; }
-      n *= .9 + Math.random() * .2;
-      if (T.boss && n <= 0) { ftLog(F, `${s.e} ${s.n} goes straight through it`); continue; }
-      ftDamage(F, T, n, `${s.e} ${who}: ${s.n}${tag}`);
-    }
-    A.buff = 1;
-    if (s.dot) T.dot.push({ n: Math.round(s.dot * power), t: 3 });
-    if (s.stun && Math.random() < s.stun && !(T.cls === 'monk')) { T.stun = Math.max(T.stun, 1); ftLog(F, `💫 ${T === F.P ? 'You are' : T.n + ' is'} stunned`); }
-    if (s.fx === 'mark') T.mark = 3;
-    if (s.heal) ftHeal(F, A, Math.round(A.max * s.heal / 100), `${s.e} ${s.n}`);
-    if (T.boss && F.B?.after) F.B.after(F, s);
-  }
-  A.lastSt = s.st;
-  if (A.rally > 0 && s.fx !== 'rally') A.rally--;
-}
-function ftBossTurn(F) {
-  const E = F.E, B = F.B, P = F.P;
-  for (const k of ['mark', 'awake', 'seen']) if (E[k] > 0) E[k]--;
-  if (E.dot.length) { let n = 0; E.dot = E.dot.filter(d => { n += d.n; return --d.t > 0; }); if (n) ftHitBoss(F, n, '🔥 Burn'); }
-  if (F.kind === 'spar' && E.hp <= 0) return;
-  if (E.stun > 0) { E.stun--; ftLog(F, `💫 ${E.n} is stunned and can't attack`); return; }
-  B.round?.(F);
-  const big = B.big && (B.bigIf ? B.bigIf(F) : F.round % 3 === 0);
-  const a = big ? B.big : B.atk[Math.floor(Math.random() * B.atk.length)];
-  const [an, base, fx, ch = 1, hits = 1] = a;
-  const dmg = (B.atkDmg ? B.atkDmg(F) : base) * F.scale;
-  for (let i = 0; i < hits; i++) { const hit = ftDamage(F, P, dmg * (.85 + Math.random() * .3), `${E.e} ${an}${big ? '!' : ''}`); if (fx === 'drain' && hit && F.kind === 'spar') E.hp = Math.min(E.max, E.hp + hit); }
-  if (fx && fx !== 'drain' && Math.random() < ch) {
-    if ((fx === 'stun' || fx === 'confuse') && P.cls === 'monk') ftLog(F, '🧘 Your calm shrugs it off');
-    else if (fx === 'stun') { P.stun = 1; ftLog(F, '💫 You lose your next turn', 'bad'); }
-    else if (fx === 'blind') { P.blind = 2; ftLog(F, '🌑 You are blinded (50% miss)', 'bad'); }
-    else if (fx === 'confuse') { P.confuse = 1; ftLog(F, '😵 You are confused', 'bad'); }
-    else if (fx === 'slow') { P.slow = 2; ftLog(F, '🐌 Your moves are slowed (−20%)', 'bad'); }
-    else if (fx === 'dot') { P.dot.push({ n: Math.round(5 * F.scale), t: 3 }); ftLog(F, '😰 Panic: you burn for 3 rounds', 'bad'); }
-  }
-  if (!big && B.big && !B.bigIf && (F.round + 1) % 3 === 0) ftLog(F, `⚠️ ${E.n} is winding up a ${B.big[0]}...`, 'hint');
-}
-function ftGhostTurn(F) {
-  const E = F.E, P = F.P;
-  ftTurnStart(E); if (E.hp <= 0) return;
-  if (E.stun > 0) { E.stun--; ftLog(F, `💫 ${E.n} is stunned`); return; }
-  const ok = E.sk.filter(s => !s.cdl), low = E.hp < E.max * .4;
-  const pick = (low && ok.find(s => s.fx === 'heal' || s.fx === 'shield')) || ok.filter(s => s.pw && !['heal', 'shield'].includes(s.fx)).sort((a, b) => b.pw * (b.hits || 1) - a.pw * (a.hits || 1))[0] || ok[0];
-  ftUse(F, E, P, pick);
-}
-// you pick a skill: your turn, then theirs, then the next round
-function ftAct(id) {
-  const F = FT; if (!F || F.over) return;
-  const s = F.P.sk.find(x => x.id === id); if (!s || s.cdl) return;
-  ftUse(F, F.P, F.E, s);
-  ftAfterPlayer(F);
-}
-function ftAfterPlayer(F) {
-  if (ftCheck(F)) return ftDraw();
-  if (F.kind === 'duel') ftGhostTurn(F); else ftBossTurn(F);
-  if (ftCheck(F)) return ftDraw();
-  F.round++;
-  if (F.round > F.maxR) { ftEnd(F, F.kind === 'house' ? 'time' : F.P.hp / F.P.max > F.E.hp / F.E.max ? 'win' : 'loss'); return ftDraw(); }
-  ftTurnStart(F.P);
-  if (ftCheck(F)) return ftDraw();
-  if (F.P.stun > 0) { F.P.stun--; ftLog(F, '💫 You are stunned and skip this turn', 'bad'); F.P.chain = 0; ftDraw(); setTimeout(() => FT === F && ftAfterPlayer(F), 700); return; }
-  ftDraw();
-}
-function ftCheck(F) {
-  if (F.over) return true;
-  if (F.P.hp <= 0) { ftEnd(F, F.kind === 'house' ? 'down' : 'loss'); return true; }
-  if (F.kind !== 'house' && F.E.hp <= 0) { ftEnd(F, 'win'); return true; }
-  return false;
-}
 function ftEnd(F, how) {
   F.over = true; const st = ftState(), out = [];
   if (F.kind === 'house') {
@@ -338,46 +179,10 @@ function ftEnd(F, how) {
     if (Math.random() < Math.min(.6, .2 + add / 1200) * x) { const p = ftRollGear(x > 1 ? 1 : 0); out.push(`Gear drop: ${ftGearChip(p)}`); }
     hsLoad(true);
     if (typeof hxEatFood === 'function') hxEatFood(); // 2.65: a harvest's extra health lasts until a boss fight
-  } else {
-    const won = how === 'win';
-    if (won) {
-      const rw = F.kind === 'spar' ? 35 : 20; ftAddCurrency(F.stake.l + rw, F.stake.e + rw);
-      out.push(`You win! +${rw} ${LUMEN} +${rw} ${EMBER} and your stake back.`);
-      if (F.kind === 'duel') { const g = Math.round(16 + Math.max(-8, Math.min(8, ((+F.opt.row.raw.pvp.ch.r || 1000) - st.r) / 25))); st.r += F.rd + g; st.l--; st.w++; out.push(`Rating +${g} (now ${st.r}).`); }
-      if (Math.random() < (F.kind === 'spar' ? .5 : .3)) { const p = ftRollGear(); out.push(`Gear drop: ${ftGearChip(p)}`); }
-    } else {
-      out.push(`You lost the stake (${F.stake.l} ${LUMEN} ${F.stake.e} ${EMBER})${F.kind === 'duel' ? ` and ${F.rd} rating (now ${st.r})` : ''}.`);
-    }
   }
   F.res = { how, out }; save();
 }
 function ftGearChip(p) { const R = ftRar(p.r); return `<span class="ftgear" style="--rc:${R[3]}">${p.e} ${esc(p.n)}</span> <span class="muted small-text">${ftBuffText(p.b)}</span>`; }
-
-// ---------- drawing the fight ----------
-function ftBar(hp, max, cls) { return `<div class="ftbar ${cls}"><i style="width:${Math.max(0, hp / max * 100)}%"></i><span>${Math.round(hp)} / ${max}</span></div>`; }
-function ftChips(A, F) {
-  const c = [];
-  if (A.shield) c.push(`🔰 ${A.shield}`); if (A.stun) c.push('💫 Stunned'); if (A.blind) c.push('🌑 Blind'); if (A.confuse) c.push('😵 Confused'); if (A.slow) c.push('🐌 Slowed');
-  if (A.dot?.length) c.push('🔥 Burning'); if (A.mark) c.push('🏹 Marked'); if (A.rally) c.push('🎻 Rally'); if (A.buff > 1) c.push('♟️ ×2 ready'); if (A.reveal) c.push(`📖 Weak spot ×${A.reveal}`);
-  if (A.boss && F.B?.chips) { const x = F.B.chips(A, F); if (x) c.push(x); }
-  return c.map(x => `<span class="ftchip">${x}</span>`).join('');
-}
-function ftDraw() {
-  const F = FT; let ov = $('#ftov');
-  if (!F) { ov?.remove(); return; }
-  if (!ov) { ov = document.createElement('div'); ov.id = 'ftov'; document.body.appendChild(ov); }
-  const P = F.P, E = F.E;
-  const foe = F.kind === 'house' ? `<div class="ftdealt">Damage this fight: <b>${Math.round(F.dealt).toLocaleString()}</b></div>` : ftBar(E.hp, E.max, 'foe');
-  const btn = s => { const sp = s.k === 'spell', weak = F.B && ftWeakOf(F, s); return `<button class="ftsk ${sp ? 'ftsp' : 'ftmv'} ${s.id.startsWith('c_') ? 'ftcl' : ''}" data-ft="act" data-id="${s.id}" ${s.cdl || F.over ? 'disabled' : ''} title="${esc(s.d)}"><span>${s.e}</span><b>${esc(s.n)}</b><small>${s.cdl ? `ready in ${s.cdl}` : `${CD_STAT[s.st][1]}${s.pw && !['heal', 'shield'].includes(s.fx) ? ` · ${s.pw}${s.hits ? '×' + s.hits : ''}` : ''}${weak ? ' · 💥' : ''}`}</small></button>`; };
-  ov.innerHTML = `<div class="ftbox ${F.over ? 'over' : ''}">
-    <div class="ftfoe"><div class="fte">${E.e}</div><div class="ftmain"><div class="muted small-text">${F.kind === 'house' ? 'WEEKLY WARBAND' : F.kind === 'spar' ? 'SPAR · CHAMPION' : 'DUEL'} · Round ${Math.min(F.round, F.maxR)} of ${F.maxR}</div><h2>${esc(E.n)}</h2>${foe}<div class="ftchips">${ftChips(E, F)}</div></div></div>
-    <div class="ftlog">${F.log.slice(-7).map(l => `<div class="${l.cls}">${l.t}</div>`).join('')}</div>
-    <div class="ftme"><div class="row" style="justify-content:space-between"><b>${P.e} ${esc(P.n)}${P.cls ? ` · ${CD_CLASSES.find(c => c.id === P.cls).n}` : ''}</b><div class="ftchips">${ftChips(P, F)}</div></div>${ftBar(P.hp, P.max, 'me')}</div>
-    ${F.over ? `<div class="ftres"><h3>${{ win: '🏆 Victory', loss: '💀 Defeat', down: '💥 Knocked out', time: '⏱️ Time' }[F.res.how]}</h3>${F.res.out.map(x => `<p>${x}</p>`).join('')}<button class="btn primary" data-ft="close">Done</button></div>`
-      : `<div class="ftsks">${P.sk.map(btn).join('')}</div><div class="row" style="justify-content:space-between"><span class="muted small-text">Hover a skill to see what it does. 💥 = super effective here.</span><button class="btn small ghost" data-ft="flee">${F.kind === 'house' ? 'End fight' : 'Give up'}</button></div>`}
-  </div>`;
-  const lg = ov.querySelector('.ftlog'); if (lg) lg.scrollTop = lg.scrollHeight;
-}
 
 // ---------- the Build card on the Character page ----------
 function ftBuildHtml(noGear) {
@@ -407,20 +212,10 @@ function ftBuildHtml(noGear) {
     <div class="ftshop">${shop}</div></div>`;
 }
 const ftScrap = p => [10, 25, 60, 150][FT_RAR.findIndex(x => x[0] === p.r)] || 10;
-// the Battles card: spar any boss, duel friends
-function ftBattlesHtml() {
-  const st = ftState();
-  if (acct.signedIn && typeof refreshFriends === 'function') refreshFriends();
-  const duels = friendRows.filter(f => f.raw?.pvp?.ch?.s);
-  return `<div class="card"><h3>🥊 Battles</h3><p class="muted small-text">Optional and risky. A spar or duel takes a stake when it starts (25 ${LUMEN} + 25 ${EMBER} to spar, 15 each to duel). Win and you get it back plus a reward and a chance at gear. Lose and it's gone.</p>
-    <div class="ftlbl">Spar a champion boss</div><div class="ftbosses">${HS_BOSSES.map(b => `<button class="ftbossbtn" data-ft="spar" data-n="${esc(b.n)}" title="${esc(FT_BOSS[b.n].sp)}"><span>${b.e}</span><small>${esc(b.n)}</small></button>`).join('')}</div>
-    <div class="ftlbl" style="margin-top:10px">Duel a friend's character · your rating ${st.r} (${st.w}W ${st.l}L)</div>
-    ${duels.length ? `<ul class="cdlog">${duels.map(f => { const c = f.raw.pvp.ch, cl = CD_CLASSES.find(x => x.id === c.c); return `<li><b>${esc(f.name)}</b><span class="muted">${cl ? cl.e + ' ' + cl.n : 'No class'} · rating ${+c.r || 1000}</span><button class="btn small" data-ft="duel" data-u="${esc(f.user)}">Duel</button></li>`; }).join('')}</ul>` : `<p class="muted small-text">${acct.signedIn ? 'None of your friends have a character on Solis 2.48 yet.' : 'Sign in on the Friends page to duel your friends.'} The computer plays their build, so they don't need to be online.</p>`}</div>`;
-}
 // the boss panel on the House page
 function ftHouseHtml() {
   const b = hsBoss(mondayOf(today())), B = FT_BOSS[b.n], a = ftAttempts(), wk = mondayOf(today()), tb = bossWeek(wk) === 'term';
-  return `<div class="card ftbossinfo"><div class="row" style="justify-content:space-between"><h3>${tb ? '👑 Fight the Term Boss,' : '⚔️ Fight'} ${esc(b.n)}</h3><div class="row" style="gap:8px"><button class="btn" data-is="tab" data-v="boss">🏝️ Boss island</button><button class="btn primary" data-ft="house" ${a.left ? '' : 'disabled'}>${a.left ? `Fight (${a.left} left)` : (a.rest ? '🌴 Resting' : 'No fights left')}</button></div></div>
+  return `<div class="card ftbossinfo"><div class="row" style="justify-content:space-between"><h3>${tb ? '👑 Fight the Term Boss,' : '⚔️ Fight'} ${esc(b.n)}</h3><div class="row" style="gap:8px"><button class="btn" data-is="tab" data-v="boss">🏝️ Boss island</button><span class="muted small-text">${a.left ? `${a.left} fight${a.left === 1 ? '' : 's'} left` : (a.rest ? '🌴 Resting' : 'No fights left')}</span></div></div>
     <p class="small-text"><b>Weak to:</b> ${B.wn} · <b>Special:</b> ${esc(B.sp)}</p>
     <p class="small-text"><b>Attacks:</b> ${[...B.atk, ...(B.big ? [B.big] : [])].map(x => esc(x[0])).join(', ')}</p>
     <p class="muted small-text">${FT_WEEK_ATT + a.extra} fights a week${a.extra ? (tb ? ' (3 extra for the Term Boss)' : ' (house island perk included)') : ''}, up to ${FT_DAY_ATT} a day, ${FT_ROUNDS} rounds each. It hits back lightly. Your fights this week: ${a.week}, ${ftWeekDmg(wk).toLocaleString()} damage on the shared bar. Set your build on the <a href="#" data-act="goto" data-v="character">Character</a> page.</p></div>`;
@@ -439,12 +234,6 @@ document.addEventListener('click', e => {
   const el = e.target.closest('[data-ft]'); if (!el) return;
   const st = ftState(), v = el.dataset;
   switch (v.ft) {
-    case 'act': ftAct(v.id); return;
-    case 'flee': if (!FT || FT.over) return; if (FT.kind !== 'house' && !confirm('Give up? You lose the stake.')) return; ftEnd(FT, FT.kind === 'house' ? 'time' : 'loss'); ftDraw(); return;
-    case 'close': FT = null; ftDraw(); render(); return;
-    case 'house': if (ftAttempts().left) ftStart('house'); return;
-    case 'spar': { const b = HS_BOSSES.find(x => x.n === v.n); if (b && confirm(`Spar the champion ${b.n}? Stake: 25 ${LUMEN} and 25 ${EMBER}.`)) ftStart('spar', { boss: b }); return; }
-    case 'duel': { const row = friendRows.find(f => f.user === v.u); if (row && confirm(`Duel ${row.name}? Stake: 15 ${LUMEN} and 15 ${EMBER}, plus rating.`)) ftStart('duel', { row }); return; }
     case 'tab': ui.ftTab = v.v; render(); return;
     case 'buy': {
       const s = ftSkill(v.id), w = cdWallet(); if (!s || st.own.includes(s.id)) return;

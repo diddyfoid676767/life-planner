@@ -59,8 +59,9 @@ const S = process.argv[2]; const sleep = ms => new Promise(r => setTimeout(r, ms
   else ok(true, '10. (no river on this island)');
   // sounds
   await p.evaluate(() => { sndCtx(); sfx('click'); });
-  ok(await until(() => Object.keys(SND_BUF).length > 40, null, 40), '11. recorded sounds load');
-  ok(await p.evaluate(() => { const c = sfxReady('walk'); return !!c && sndPlay(c, SFX_SURF.stone, .5) && sndPlay(c, SFX_REC.swing[0], .5); }), '11b. footsteps and sword swings play from recordings');
+  await p.evaluate(() => document.body.classList.add('souls-on')); await p.evaluate(() => sfx('click'));
+  ok(await until(() => Object.keys(SND_BUF).length > 40, null, 40), '11. recorded sounds load inside the Souls fight');
+  await p.evaluate(() => document.body.classList.remove('souls-on'));
   // off again
   await p.keyboard.press('v');
   ok(await until(() => !WK.on, null, 10), '12. V goes back to the builder view');

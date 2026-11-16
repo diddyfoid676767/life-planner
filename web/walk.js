@@ -17,6 +17,7 @@ const WK_C = {
   acc: 12, dec: 16, air: 2.5,              // how fast you reach your speed, stop, and steer in the air
   grav: 18, jump: 4.1, coyote: .13, buffer: .14, step: .22,
   roll: { speed: 5, time: .55, cost: 22 },
+  sprintJump: 1.1,      // a sprint jump goes a little higher, and flies over a river hex (a standing or jogging jump falls in)
   stam: { max: 100, sprint: 20, regen: 26, wait: .8, back: 30 },
   r: .18,               // your width, for bumping into things
   water: -.2,           // the water's surface; you swim with your shoulders just under it
@@ -185,18 +186,20 @@ function wkStep(now, dt) {
   // up and down: jumping, falling, landing, swimming
   const g = wkGround(WK.x, WK.z);
   WK.jumpBuf = Math.max(0, WK.jumpBuf - dt);
-  const wet = wkWet(WK.x, WK.z);
+  let wet = wkWet(WK.x, WK.z);
+  if (wet != null && WK.fly && !WK.ground && !WK.swim && WK.y > C.water - .05) wet = null; // a sprint jump clears the river hex
   if (wet != null) {
     const surf = wet - .3 * C.scale / .3; WK.surf = wet;
     if (!WK.swim) { WK.swim = true; if (WK.vy < -1 && typeof sfx === 'function') sfx('splash'); else if (typeof sfx === 'function') sfx('splash', { gap: 400 }); }
     WK.vy = 0; WK.y += (surf - WK.y) * Math.min(1, dt * 6); WK.ground = false; WK.air = 0;
   } else {
     if (WK.swim) { WK.swim = false; WK.y = Math.max(WK.y, g); WK.ground = true; }
+    if (WK.ground) WK.fly = false;
     if (WK.ground) {
       if (g < WK.y - C.step) { WK.ground = false; WK.air = 0; WK.vy = 0; } // walked off a ledge
       else WK.y += (g - WK.y) * Math.min(1, dt * 18);
     }
-    if (WK.ground || WK.air < C.coyote) { if (WK.jumpBuf > 0 && WK.roll <= 0) { WK.vy = C.jump; WK.ground = false; WK.air = C.coyote; WK.jumpBuf = 0; WK.jumped = now; if (typeof sfx === 'function') sfx('jump', { gap: 150 }); } }
+    if (WK.ground || WK.air < C.coyote) { if (WK.jumpBuf > 0 && WK.roll <= 0) { WK.fly = !!(wantSprint && WK.sp > C.jog + .4); WK.vy = C.jump * (WK.fly ? C.sprintJump : 1); WK.ground = false; WK.air = C.coyote; WK.jumpBuf = 0; WK.jumped = now; if (typeof sfx === 'function') sfx('jump', { gap: 150 }); } }
     if (!WK.ground) {
       WK.air += dt; WK.vy -= C.grav * dt; WK.y += WK.vy * dt;
       if (WK.y <= g && WK.vy <= 0) { WK.y = g; const hard = WK.vy < -4.5; WK.vy = 0; WK.ground = true; WK.land = hard ? .28 : .12; if (typeof sfx === 'function') sfx('land', { gap: 150 }); }
@@ -313,11 +316,11 @@ addEventListener('keydown', e => {
 }, true);
 addEventListener('keyup', e => { WK.keys[e.key.toLowerCase()] = false; if (e.key === 'Shift') WK.keys.shift = false; }, true);
 addEventListener('blur', () => { WK.keys = {}; });
-// the mouse turns the camera: locked after a click, or by dragging; the right button rolls
+// the mouse turns the camera: locked after a click, or by dragging; Ctrl rolls
 addEventListener('pointerdown', e => {
   if (!WK.on || view !== 'islands' || !e.target.classList?.contains('g3canvas')) return;
   e.stopImmediatePropagation(); e.preventDefault();
-  if (e.button === 2) { wkRoll(); return; }
+  if (e.button === 2) return; // 2.83: right click is free (Ctrl rolls)
   if (!document.pointerLockElement && IS3.canvas.requestPointerLock) { try { const p = IS3.canvas.requestPointerLock(); if (p?.catch) p.catch(() => { }); } catch (er) { } }
   WK.drag = [e.clientX, e.clientY];
 }, true);
