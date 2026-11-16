@@ -280,7 +280,7 @@ const TOUR_PAGES = {
     ['.btiles', 'This week at a glance', 'Ember earned, training time, sessions done and your day streak. Start a workout from here.'],
     ['.bodytabs', 'Train, Progress and Body', '<b>Train</b> has your plan, events and recent workouts, <b>Progress</b> tracks personal records and charts, and <b>Body</b> shows your Body card stats and heat map.']]],
   islands: ['🏝️ Islands', 'Your island, your house island and the boss island.', [
-    ['.isswitch', 'Islands and Rankings', 'Build your own island with Lumen and Ember, build the house island together (the 🏰 House button has your house, its members and rankings), fight the weekly Warband, and race your friends on 🏆 Rankings.']]],
+    ['#world', 'Islands', 'Build your own island with Lumen and Ember in the 🔨 Workshop (B). Your house fortress and this week\'s boss island float in the distance: click one to fly there. Rankings are in the 🍺 Tavern.']]],
   friends: ['👥 Friends', 'Chat with your friends and add new ones.', []],
   settings: ['⚙️ Settings', 'Make the planner yours. Open it from You, at the bottom of the sidebar.', [
     ['.settabs', 'Settings sections', 'You &amp; account, Look &amp; sound, Calendars &amp; reminders, and Backup &amp; app. You can replay this tour from here.']]],

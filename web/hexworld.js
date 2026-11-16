@@ -36,7 +36,11 @@ const HX_FREE = [
   { id: 'market', n: 'Market', e: '🛒', m: 'building_market', at: '2,0', rot: 1, s: .72, open: 'shop', d: 'The one shop: cosmetics, decorations and island looks', ac: '#51cf66', hz: 659 },
   // 2.72 (stage 4): every feature is a building. This one finds a free hex next to the hall's roads (hxFreeSpots)
   { id: 'notice', n: 'Notice Board', e: '📜', m: 'building_stage_C', at: null, rot: 1, open: 'today', d: 'Today, your calendar and to-dos', ac: '#e8c07d', hz: 698, spot: ['0,2', '1,1', '-1,2', '2,1', '-1,3'] },
+  // 2.84 (feedback round 2, R4): the Workshop holds Build, Roads, Walls, Terraform, Looks, Perks and How it works (B opens it)
+  { id: 'workshop', n: 'Workshop', e: '🔨', m: 'building_lumbermill', at: null, rot: 2, s: .8, open: 'workshop', d: 'Build, roads, walls, terraform and looks', ac: '#c08552', hz: 466, spot: ['-2,2', '-1,2', '1,1', '-2,1', '-3,2', '2,1'] },
 ];
+// 2.84: the medieval names stay, each with a small plain label (Eli, 16 Nov)
+const HX_PLAIN = { notice: 'Today', library: 'Study', training: 'Gym', tavern: 'Friends', hall: 'You', market: 'Shop', workshop: 'Build', lumen: 'coins', ember: 'gems', perks: 'Bonuses', steward: 'Settings', warband: 'House boss' };
 // 2.72: the newer page buildings take a free hex on each island the first time it opens, and keep it
 function hxFreeSpots(st) {
   st.fa = st.fa || {};
@@ -336,13 +340,10 @@ function viewHexHome() {
     else if ((it.b.lp && sto.l) || (it.b.ep && sto.e)) return `<button class="isbub collect" data-b="${k}" data-hx="collect">${it.b.lp && sto.l ? `${LUMEN} ${sto.l}` : ''}${it.b.lp && it.b.ep && sto.l && sto.e ? ' · ' : ''}${it.b.ep && sto.e ? `${EMBER} ${sto.e}` : ''}</button>`;
     return t ? `<button class="isbub" data-b="${k}" data-hx="sel" data-k="${k}">${t}</button>` : '';
   }).join('');
-  const lvI = typeof solisLevel === 'function' ? solisLevel() : null;
   const tool = P && (P.id === 'road' || P.id === 'wall' || P.id === 'erase');
-  const hud = `<div class="ishud is-tl"><div class="islvl"><b>${lv}</b><div><span>Level ${lv}</span>${lvI ? `<i style="width:${Math.round(lvI.into / lvI.need * 100)}%"></i>` : ''}</div></div>
-      <div class="isbuilders" title="Builders: how many things can be built or upgraded at once">🔨 ${IS_BUILDERS - busy}/${IS_BUILDERS} builders free</div>${hxWxChip()}</div>
-    <div class="ishud is-tr">${isBar('cd-l', LUMEN, w.lumen, sto.l ? `+${sto.l} to collect · store ${sto.capL}` : `Store ${sto.capL}`, sto.l / sto.capL, sto.l ? 'collect' : '')}${isBar('cd-e', EMBER, w.ember, sto.e ? `+${sto.e} to collect · store ${sto.capE}` : `Store ${sto.capE}`, sto.e / sto.capE, sto.e ? 'collect' : '')}</div>
-    <div class="ishud is-bl"><button class="isbtn" data-wk="on" title="Walk around your island (V)">🚶<span>Walk</span></button><button class="isbtn" data-hx="panel" data-v="perks">✨<span>Perks</span></button>${hxIsleOn() ? '<button class="isbtn" data-hx="panel" data-v="visit" title="Visit a housemate\'s island">🏘️<span>Visit</span></button>' : ''}<button class="isbtn" data-hx="market" data-v="looks" title="Island looks, day and night, weather (in the Market)">🎨<span>Looks</span></button><button class="isbtn" data-hx="panel" data-v="help">❔<span>How it works</span></button>${ui.hxUndo ? '<button class="isbtn" data-hx="undo" title="Undo the last move (Ctrl+Z)">↶<span>Undo</span></button>' : ''}</div>
-    ${P ? '' : `<div class="ishud is-br hxtools"><button class="isbtn" data-hx="tool" data-v="road" title="Lay roads by dragging">🛣️<span>Roads</span></button>${lv >= hxItem('wall').u ? '<button class="isbtn" data-hx="tool" data-v="wall" title="Lay walls by dragging">🧱<span>Walls</span></button>' : ''}<button class="isbtn" data-hx="tool" data-v="tf" title="Terraform: paint the ground, raise hills, place decorations">🌱<span>Terraform</span></button><button class="isbtn big" data-hx="panel" data-v="shop">🛒<span>Build</span></button></div>`}`;
+  // 2.84 (R4): the corners stay clear. Counters (top-left), Menu and the gear are the shell's; the island adds only
+  // Walk, and Undo while you're editing. Build, Roads, Walls, Terraform, Looks, Perks and How it works are in the Workshop (B).
+  const hud = `<div class="ishud is-bl"><button class="isbtn" data-wk="on" title="Walk around your island (V)">🚶<span>Walk</span></button>${ui.hxUndo ? '<button class="isbtn" data-hx="undo" title="Undo the last move (Ctrl+Z)">↶<span>Undo</span></button>' : ''}</div>`;
   let extra = `<div class="isbubs">${bubs}</div>`;
   if (P) extra += hxPlaceBar(P, tool);
   else if (ui.isPanel === 'shop') extra += isPanel('🛒 Build on your island', hxShopHtml(st, w, lv, busy));
@@ -356,12 +357,14 @@ function viewHexHome() {
   else if (ui.isPanel === 'market' || ui.isPanel === 'looks') extra += isPanel('🛒 Market', hxMarketHtml());
   else if (ui.isPanel === 'help') extra += isPanel('❔ How your island works', `<ul class="ishelp">
       <li>The Hall, Notice Board, Library, Training hall and Tavern are free, with the Market stall on the town square. Tap one to open its window. The Market is the shop for cosmetics, island looks and decorations, and you can preview those for free.</li>
+      <li>🔨 The <b>Workshop</b> (or <b>B</b>) holds Build, Roads, Walls, Terraform, Looks, Perks and this help, so the screen stays clear.</li>
       <li>Buy buildings in <b>Build</b>. The building follows your mouse: green means it fits, red says why not. Press <b>R</b> to turn it and click to drop it. <b>Esc</b> or right-click cancels.</li>
       <li>A building only works when a <b>road</b> joins it to your hall. Press 🛣️ <b>Roads</b> and drag across hexes to lay them (${hxCost(HX_ROAD.l, HX_ROAD.x)} a hex). Roads over the river become bridges.</li>
       <li>Some buildings like a spot: a lumber mill next to forest, a mine next to a hill, a watermill on the river, a windmill among fields.</li>
       <li>Drag any building to move it, free. <b>Ctrl+Z</b> undoes the last move. Tap trees or rocks to clear them.</li>
       <li>🌱 <b>Terraform</b>: grass, sand, forest, paths (dirt, stone or boardwalk) and raising or lowering are free. Ponds, hills, cliffs, decorations and fences cost a little. Everything snaps to hexes (fences to hex edges), <b>R</b> or scroll turns it, and a see-through ghost shows it first. Drag to paint lots at once. <b>Ctrl+Z</b> gives a stroke back; Reset terrain puts the ground back as it started.</li>
-      <li>Drag empty ground to turn the island, right-drag (or Shift+drag) to move it, scroll to zoom. 🔓 <b>Lock view</b> snaps to a tidy angle and keeps it; 📌 saves the angle you like.</li>
+      <li>Drag empty ground to turn the island, right-drag (or Shift+drag) to move it, scroll to zoom. 🔓 <b>Lock view</b> (in the Workshop) snaps to a tidy angle and keeps it; 📌 saves the angle you like.</li>
+      <li>The other islands float in the distance: your house's fortress, this week's boss island and your housemates' islands further out. Hover one to see what's there and click it to fly over. In walk mode, walk to the end of a dock on the shore to travel to the island it faces.</li>
       <li>You have ${IS_BUILDERS} builders. Buildings go to level ${IS_MAXLV}, wear after ${IS_WEAR} active days and break after ${IS_BREAK}; holidays and exam days don't count.</li></ul>
       ${typeof guideStart === 'function' ? '<button class="btn small" data-act="guideStart" data-v="hexmove">🧭 Show me how</button>' : ''}`);
   else if (ui.hxSel) extra += hxPopHtml(ui.hxSel, st, w, lv, busy, net, sto);
@@ -599,6 +602,7 @@ function hxGeo(name, pi = 0, col = 'blue') {
 function hxModel(name, col, mat = HX3.kit.mat, shadow = true) {
   const M = HX3.kit.idx.models[name], g = new THREE.Group(); if (!M) return g;
   if (mat === HX3.kit.mat && /^(hex_grass|hex_river|hex_road|trees?_|hills?_|mountain_)/.test(name)) mat = HX3.kit.matT || (HX3.kit.matT = HX3.kit.mat.clone()); // 2.71: island looks recolour only the land
+  if ((mat === HX3.kit.mat || mat === HX3.kit.matT) && /^hex_(water|river|coast)/.test(name) && typeof hxWaterMat === 'function') mat = hxWaterMat() || mat; // 2.85: water that reflects the sky (hxsky.js)
   M.p.forEach((p, i) => {
     const m = new THREE.Mesh(hxGeo(name, i, col), mat); m.position.set(...p.t); m.castShadow = shadow; m.receiveShadow = true; m.name = p.m; g.add(m);
     if (/fan|wheel|saw/.test(p.m)) HX3.anim.push({ o: m, ax: /fan/.test(p.m) ? 'z' : 'x', sp: /saw/.test(p.m) ? 4 : /wheel/.test(p.m) ? -1.2 : 1.1 });
@@ -607,13 +611,15 @@ function hxModel(name, col, mat = HX3.kit.mat, shadow = true) {
 }
 const HX_KCOL = ['blue', 'red', 'green', 'yellow'];
 const hxLow = () => !!(D.settings && D.settings.lowQuality);
+// 2.85: three graphics levels. Low is the old Low switch; Medium keeps the real sun but simpler
+const hxGfx = () => !D.settings ? 'high' : D.settings.lowQuality ? 'low' : D.settings.gfxMed ? 'medium' : 'high';
 // mode 'hex' is your island, 'hexh' the shared house island (hxhouse.js); both are drawn by the same code
 function mountHex3D(mode = 'hex') {
   if (!hxKit()) return false;
   IS3.layout = null; IS3.hexMode = true;
   if (IS3.house !== mode) { IS3.house = mode; HX3.sig = ''; HX3.hk = null; Object.assign(IS3, is3home(mode), { tgt: [0, 0] }, typeof hxLocked === 'function' && hxLocked() ? hxLockAngle() : {}); if (HX3.ghost) { IS3.scene.remove(HX3.ghost); HX3.ghost = null; HX3.ghostModel = null; } }
   const st = hxCur(), W0 = hxW(st);
-  const sig = [mode, W0.col || hxCol(), hxLow(), W0.sig ? W0.sig(st) : [JSON.stringify(st.b), st.road.join(';'), st.clr.join(';'), JSON.stringify(st.tf || {}), Object.keys(st.b).map(k => hxCond(k) + hxLvOn(st.b[k])).join()].join('|'), Math.floor(Date.now() / 36e5), ui.hxP?.mode === 'move' || ui.hxP?.mode === 'deco' ? ui.hxP.mode + ui.hxP.from : '', hxSkySig()].join('|');
+  const sig = [mode, W0.col || hxCol(), hxGfx(), W0.sig ? W0.sig(st) : [JSON.stringify(st.b), st.road.join(';'), st.clr.join(';'), JSON.stringify(st.tf || {}), Object.keys(st.b).map(k => hxCond(k) + hxLvOn(st.b[k])).join()].join('|'), Math.floor(Date.now() / 36e5), ui.hxP?.mode === 'move' || ui.hxP?.mode === 'deco' ? ui.hxP.mode + ui.hxP.from : '', hxSkySig()].join('|');
   if (sig !== HX3.sig) { HX3.sig = sig; hxBuild(); }
   hxSkyApply();
   if (HX3.glow && !IS3.scene.children.includes(HX3.glow)) IS3.scene.add(HX3.glow);
@@ -640,7 +646,7 @@ function hxBuild() {
   is3clear(); HX3.anim = []; IS3.marks = {};
   IS3.top = 0;
   Object.assign(IS3.sun.shadow.camera, { left: -17 * S, right: 17 * S, top: 17 * S, bottom: -17 * S, near: 1, far: 120 }); IS3.sun.shadow.camera.updateProjectionMatrix();
-  IS3.sun.position.set(18, 34, 12); IS3.sun.shadow.mapSize.set(low ? 512 : 2048, low ? 512 : 2048); if (IS3.sun.shadow.map) { IS3.sun.shadow.map.dispose(); IS3.sun.shadow.map = null; }
+  IS3.sun.position.set(18, 34, 12); { const n = low ? 512 : hxGfx() === 'medium' ? 1024 : 2048; IS3.sun.shadow.mapSize.set(n, n); IS3.sun.shadow.normalBias = .03; IS3.sun.shadow.bias = -.0004; } if (IS3.sun.shadow.map) { IS3.sun.shadow.map.dispose(); IS3.sun.shadow.map = null; }
   const add = (name, k, rot = 0, y = 0, s = 1, c = col, mat) => { const [x, z] = hxPos(...hxQR(k)); const g = hxModel(name, c, mat); g.position.set(x, y + hxHt(k, st), z); g.rotation.y = -rot * Math.PI / 3; g.scale.setScalar(s); W.add(g); return g; };
   const roads = new Set(st.road), rivers = new Set([...L].filter(([, h]) => h.t === 'river').map(([k]) => k));
   const joins = n => roads.has(n) || n === '0,0' || !!hxFreeAt(n, st) || st.tf?.[n]?.t === 'path'; // 2.82: roads branch into thin paths
@@ -915,12 +921,12 @@ if (typeof GUIDES === 'object') GUIDES.hexmove = {
   steps: [
     { title: 'Your island is now hexagons 🏝️', text: 'Everything sits on a hex grid now, built from proper medieval models. Your Hall is in the middle, with the Notice Board, Library, Training hall, Tavern and the Market stall around it. Tap any of them to open its window.', go: hxGuideHome, wait: 500 },
     { title: 'Tap a building', text: 'Tapping the Hall (or any building) shows what it does. Page buildings have an <b>Open</b> button; your own buildings show their level, perk, Collect, Upgrade and Repair.', go: () => { hxGuideHome(); setTimeout(() => hxAnchor('0,0'), 80); }, sel: '#hxanchor', wait: 300 },
-    { title: 'Buy something new', text: 'Press <b>Build</b> to see every building you can buy with Lumen and Ember. New ones unlock as your level goes up.', go: hxGuideHome, sel: '.hxtools [data-v="shop"]' },
+    { title: 'Buy something new', text: 'The 🔨 <b>Workshop</b> (or <b>B</b>) has <b>Build</b>, with every building you can buy with Lumen and Ember. New ones unlock as your level goes up.', go: () => { hxGuideHome(); const f = hxFree('workshop'); if (f?.at) setTimeout(() => hxAnchor(f.at), 80); }, sel: '#hxanchor', wait: 300 },
     { title: 'Pick a building', text: 'Each card shows its perk, its price and how long it takes. Buildings with a linking bonus say so, like a lumber mill next to forest.', go: () => { hxGuideHome(); ui.isPanel = 'shop'; render(); }, sel: '#isfull .ispanel', place: 'left' },
     { title: 'It follows your mouse', text: 'After you buy, the building floats over the island and snaps to the hex under your mouse. <b>Green</b> means it fits, <b>red</b> tells you why not (blocked, no room, wrong terrain). Yellow outlines show the hexes that give it a bonus.', go: hxGuideGhost, sel: '#isfull .hxbar', wait: 400 },
     { title: 'Turn it, then drop it', text: 'Press <b>R</b> (or ⟳ Turn) to turn it, and click to drop it. There\'s no extra confirm. <b>Esc</b> or right-click cancels and nothing is spent.', go: () => { if (!ui.hxP) hxGuideGhost(); }, sel: '#isfull .hxbar [data-hx="rot"]' },
     { title: 'Move anything by dragging', text: 'Press on one of your buildings and drag it to a new hex. It lifts up, shows the same green/red check, and lands with a thunk. Moving is free, and <b>Ctrl+Z</b> (or ↶ Undo) puts it back.', go: () => { hxGuideHome(); setTimeout(() => hxAnchor('1,1'), 80); }, sel: '#hxanchor', wait: 300 },
-    { title: 'Roads make buildings work', text: 'A building only gives its perk when a road joins it to your Hall. Press 🛣️ <b>Roads</b> and drag across the hexes to lay a line in one go. Roads over the river turn into bridges. Buildings without a road show an orange ring and a 🛣️ bubble.', go: hxGuideHome, sel: '.hxtools [data-v="road"]' },
+    { title: 'Roads make buildings work', text: 'A building only gives its perk when a road joins it to your Hall. Pick 🛣️ <b>Roads</b> in the Workshop and drag across the hexes to lay a line in one go. Roads over the river turn into bridges. Buildings without a road show an orange ring and a 🛣️ bubble.', go: () => { hxGuideHome(); setTimeout(() => hxAnchor('0,0'), 80); }, sel: '#hxanchor', wait: 300 },
     { title: 'Clear trees and rocks', text: 'Trees and rocks block a hex. Tap them to clear them for a little Lumen or Ember. Keep some forest by your lumber mill and a hill by your mine for +50%. That\'s it, have fun building!', go: () => { hxGuideHome(); setTimeout(() => hxAnchor('-4,-1'), 80); }, sel: '#hxanchor', wait: 300 },
   ],
 };

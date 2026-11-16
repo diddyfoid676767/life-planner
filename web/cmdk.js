@@ -20,7 +20,8 @@
     out.push({ k: 'Page', t: 'Your island (world)', sub: 'close every page', run: () => { view = 'islands'; render(); } });
     out.push({ k: 'Page', t: 'Your island', sub: 'Islands', run: () => { ui.isTab = 'personal'; goView('islands')(); } });
     out.push({ k: 'Page', t: 'House island and your house', sub: 'Islands', run: () => { ui.isTab = 'house'; goView('islands')(); } });
-    out.push({ k: 'Page', t: 'Rankings: leaderboards against friends', sub: 'Islands', run: () => { ui.isTab = 'rank'; goView('islands')(); } });
+    out.push({ k: 'Page', t: 'Rankings: leaderboards against friends', sub: 'Tavern (Friends)', run: () => bwOpen('tavern', 'rank') });
+    out.push({ k: 'Page', t: 'Workshop (Build)', sub: 'build, roads, walls, terraform, looks, perks · B', run: () => bwOpen('workshop') });
     out.push({ k: 'Page', t: 'Boss island: fight the weekly Warband (house boss)', sub: 'Islands', run: () => { ui.isTab = 'boss'; goView('islands')(); } });
     out.push({ k: 'Action', t: 'Start studying', run: act('focusNew') });
     out.push({ k: 'Action', t: 'Add a task', run: act('new', { kind: 'todo' }) });

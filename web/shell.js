@@ -26,7 +26,7 @@ const SHELL = { tab: null };
 // ---------- the world behind and the panel over it (called from render) ----------
 function shellWorld() {
   const w = document.getElementById('world'); if (!w) return;
-  if (ui.isTab === 'rank') { ui.isTab = SHELL.tab && SHELL.tab !== 'rank' ? SHELL.tab : 'personal'; view = 'board'; } // Rankings is a page now
+  if (ui.isTab === 'rank') { ui.isTab = SHELL.tab && SHELL.tab !== 'rank' ? SHELL.tab.replace(/\+v|2d/g, '') : 'personal'; view = 'bw'; ui.bw = { id: 'tavern', tab: 'rank' }; } // 2.84: Rankings is a Tavern tab
   if (typeof VIEW_ALIAS === 'object' && VIEW_ALIAS[view]) view = VIEW_ALIAS[view];
   const only = view === 'islands', cl = document.body.classList;
   cl.add('world-on'); cl.toggle('world-only', only); cl.toggle('shp-card', view === 'todaycard');
@@ -48,13 +48,14 @@ function shellPanel(html) { return view === 'islands' ? '' : html; }
 // ---------- HUD (2.78: no top bar) ----------
 // top-left counters, one round Menu button bottom-right that opens a ring of the places (keys 1 to 6),
 // banners along the top, and the running timer as a small pill at the bottom
-const SHELL_RING = [['notice', '📜', 'Notice Board'], ['library', '📚', 'Library'], ['training', '💪', 'Training hall'], ['tavern', '🍺', 'Tavern'], ['hall', '🏰', 'Hall'], ['market', '🛒', 'Market']];
+const SHELL_RING = [['notice', '📜', 'Notice Board'], ['library', '📚', 'Library'], ['training', '💪', 'Training hall'], ['tavern', '🍺', 'Tavern'], ['hall', '🏰', 'Hall'], ['market', '🛒', 'Market'], ['workshop', '🔨', 'Workshop', 'B']];
 function shellHud() {
   const hud = document.getElementById('hudc'); if (!hud || typeof D !== 'object' || !D) return;
   let st = '';
   try {
     const w = cdWallet(), s = studyStreak(), lv = typeof solisLevel === 'function' ? solisLevel(w).n : 1;
-    st = `<span class="hc-l" title="Lumen, from studying">✦ <b>${w.lumen.toLocaleString()}</b></span><span class="hc-e" title="Ember, from training">🔥 <b>${w.ember.toLocaleString()}</b></span><button type="button" class="hc-lv" data-shell="bw" data-v="hall" title="Your level (opens the Hall)">Lv <b>${lv}</b></button><span class="hc-st" title="Your study streak">⚡ <b>${s}</b> day${s === 1 ? '' : 's'}</span>`;
+    // 2.84: each counter keeps its name with a small plain label under it
+    st = `<span class="hc-l" title="Lumen (coins), from studying">✦ <span class="hc-n"><b>${w.lumen.toLocaleString()}</b><small>Lumen · coins</small></span></span><span class="hc-e" title="Ember (gems), from training">🔥 <span class="hc-n"><b>${w.ember.toLocaleString()}</b><small>Ember · gems</small></span></span><button type="button" class="hc-lv" data-shell="bw" data-v="hall" title="Your level (opens the Hall)"><span class="hc-n"><b>Lv ${lv}</b><small>level</small></span></button><span class="hc-st" title="Your study streak">⚡ <span class="hc-n"><b>${s}</b><small>day streak</small></span></span>`;
   } catch (e) { }
   if (hud.innerHTML !== st) hud.innerHTML = st;
   const badge = vs => { const bs = vs.map(v => document.querySelector(`#tabs button[data-view="${v}"]`)?.dataset.badge || '').filter(Boolean), n = bs.reduce((s, x) => s + (parseInt(x) || 0), 0); return n ? (n > 99 ? '99+' : n) : bs.length ? '●' : ''; };
@@ -81,7 +82,7 @@ function shellInit() {
   const world = document.createElement('div'); world.id = 'world'; document.body.prepend(world);
   const hud = document.createElement('div'); hud.id = 'hudc'; hud.setAttribute('aria-label', 'Lumen, Ember, level and streak'); document.body.appendChild(hud);
   const ring = document.createElement('nav'); ring.id = 'ring'; ring.hidden = true; ring.setAttribute('aria-label', 'Places');
-  ring.innerHTML = SHELL_RING.map(([id, e, n], i) => `<button type="button" data-shell="bw" data-v="${id}"><i>${e}</i><span>${n}</span><kbd>${i + 1}</kbd></button>`).join('')
+  ring.innerHTML = SHELL_RING.map(([id, e, n, key], i) => `<button type="button" data-shell="bw" data-v="${id}"><i>${e}</i><span>${n}${typeof HX_PLAIN === 'object' && HX_PLAIN[id] ? `<small>${HX_PLAIN[id]}</small>` : ''}</span><kbd>${key || i + 1}</kbd></button>`).join('')
     + '<hr><button type="button" data-shell="map"><i>🧭</i><span>Map</span><kbd>M</kbd></button><button type="button" data-shell="search"><i>🔍</i><span>Search</span><kbd>Ctrl K</kbd></button><button type="button" data-shell="add"><i>＋</i><span>Add something</span><kbd>Q</kbd></button><button type="button" data-act="feedback"><i>💬</i><span>Feedback</span></button>';
   const mb = document.createElement('button'); mb.type = 'button'; mb.id = 'menuBtn'; mb.dataset.shell = 'ring'; mb.title = 'Menu: every place, map, search and add'; mb.setAttribute('aria-expanded', 'false'); mb.innerHTML = '<span>Menu</span>';
   const gear = document.createElement('button'); gear.type = 'button'; gear.id = 'gearBtn'; gear.dataset.shell = 'settings'; gear.title = 'Settings (Esc)'; gear.setAttribute('aria-label', 'Settings'); gear.textContent = '⚙️';
@@ -229,7 +230,7 @@ function stewardHtml() {
     ${row('👤', 'Sign-in and account', who, `<button class="btn small" data-act="setTab" data-v="you">Account</button>`)}
     ${row('🔒', 'Privacy', 'Your planner stays on this computer. Only your name, avatar, house and leaderboard numbers are shared.', '<a class="btn small" href="https://diddyfoid676767.github.io/life-planner/download/privacy.html" target="_blank" rel="noopener noreferrer">Read the privacy page</a>')}
     ${row('🔔', 'Notifications', perm === 'granted' ? 'On: reminders and timers can pop up.' : perm === 'denied' ? 'Blocked in this browser.' : 'Off for now.', perm === 'granted' || perm === 'unsupported' ? '' : '<button class="btn small" data-shell="notify">Turn on</button>')}
-    ${row('🎨', 'Graphics', 'Low graphics drops shadows and weather. The 2D map is for computers that struggle with 3D.', `<label class="row"><input type="checkbox" data-mn="lowq" ${D.settings.lowQuality ? 'checked' : ''}> Low</label><label class="row"><input type="checkbox" data-mn="map2d" ${D.settings.map2d ? 'checked' : ''}> 2D map</label>`)}
+    ${row('🎨', 'Graphics', 'High shows the real sun with moving shadows and water reflections. Medium is simpler and faster; Low drops shadows, the sun and weather. The 2D map is for computers that struggle with 3D.', `${gfxPick()}<label class="row"><input type="checkbox" data-mn="map2d" ${D.settings.map2d ? 'checked' : ''}> 2D map</label>`)}
     ${typeof ONLINE !== 'undefined' && ONLINE ? '' : row('⬆️', 'Updates', `Solis ${esc(typeof appVersion === 'string' ? appVersion : '')}. Updates install by themselves.`, '<button class="btn small primary" data-act="checkUpdateNow">Check for updates</button>')}
   </div>`;
 }
