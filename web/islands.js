@@ -140,7 +140,7 @@ function is3init() {
   });
   c.addEventListener('pointerup', e => { const was = drag; drag = null; if (typeof hxPointer === 'function' && hxPointer('up', e)) return; if (was && moved < 6) is3tap(e); });
   c.addEventListener('contextmenu', e => { if (typeof hxPointer === 'function' && hxPointer('context', e) || moved > 6 || IS3.house === 'hex' || IS3.house === 'hexh') e.preventDefault(); });
-  c.addEventListener('wheel', e => { e.preventDefault(); IS3.dist = Math.max(12, Math.min(90, IS3.dist * (e.deltaY > 0 ? 1.1 : .9))); is3draw(); }, { passive: false });
+  c.addEventListener('wheel', e => { e.preventDefault(); if (typeof hxWheel === 'function' && hxWheel(e)) return; IS3.dist = Math.max(12, Math.min(90, IS3.dist * (e.deltaY > 0 ? 1.1 : .9))); is3draw(); }, { passive: false });
   new ResizeObserver(() => { if (is3resize()) is3draw(); }).observe(document.body);
 }
 function is3resize() {

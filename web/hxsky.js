@@ -168,7 +168,7 @@ function hxSkyBuild(W, st, W0) {
   };
   W0.free.forEach(f => { if (f.id === 'hall' && !W0.home || !f.at) return; const [x, z] = hxPos(...hxQR(f.at)); lantern(x - .75, z + .85); });
   for (const [k, s] of Object.entries(st.b)) { const it = W0.item(s.id); if (!it || it.wall || it.field || it.hz > 1) continue; const [x, z] = hxPos(...hxQR(k)); lantern(x - .8, z + .75, hxHt(k, st)); }
-  for (const [k, v] of Object.entries(st.tf || {})) if (v.d === 'lamp') { const [x, z] = hxPos(...hxQR(k)); glow(x, hxHt(k, st) + 1.42, z, 1.6); }
+  if (typeof tfGlows === 'function') for (const [x, y, z, s] of tfGlows(st)) glow(x, y, z, s); // 2.82: lamps, lamp lines and campfires
   ng.visible = false; W.add(ng);
   // weather and leaves
   if (low || !hxWxOn() && !(W0.home && HX_THEMES[st.theme]?.snow)) return;

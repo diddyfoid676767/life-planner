@@ -10,6 +10,12 @@
 // version since the last one they saw (up to 3). D.settings.seenVersion remembers what was last shown,
 // D.settings.guidesSeen which guides have played. A brand-new install never sees either.
 const CHANGELOG = [
+  { v: '2.82.0', notes: [
+    { t: 'Terraform 2.0: paths are thin roads now, in dirt, stone or boardwalk, and they join up with your roads and buildings by themselves', k: 'new' },
+    { t: 'Over 25 things to place: fences, hedges and low walls on hex edges, lamp lines, banners, campfires, a gazebo, wishing well, windmill, rock arch, lily pond, footbridge, rowing boat and more', k: 'new' },
+    { t: 'A see-through ghost shows each piece before you place it, with its cost or why it won\'t fit. R or the mouse wheel turns it, and you can drag to paint a whole row', k: 'new' },
+    { t: 'Grass, sand, forest, paths and raising or lowering are free. Turning and moving anything you placed is free too: click it, or drag it', k: 'tweak' },
+  ] },
   { v: '2.81.1', notes: [{ t: 'Owner test fight button right on the boss island', k: 'tweak' }] },
   { v: '2.81.0', notes: [
     { t: 'The Snooze Golem Souls fight is now a damage race: 3 minutes, one life, deal as much damage as you can on your house bar', k: 'new' },

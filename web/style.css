@@ -3762,6 +3762,20 @@ dialog#modal[open]::backdrop { animation: fadeIn .25s ease-out; }
 .tfb.on { background: linear-gradient(160deg, var(--sm-gold), var(--sm-gold2)); color: #2a1600; border-color: #ffe8a3; font-weight: 700; }
 .tfrow { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
 .tfrow > span { flex: 1; min-width: 220px; }
+/* 2.82 Terraform 2.0: category tabs, items with prices, a chip by the mouse */
+.tfcats { display: flex; flex-wrap: wrap; gap: 4px; }
+.tfcats button { min-height: 34px; padding: 0 11px; border-radius: 999px; border: 1px solid rgba(255, 255, 255, .1); background: var(--sm-bg2); color: var(--sm-muted); font-size: .78rem; font-weight: 600; cursor: pointer; }
+.tfcats button:hover { color: var(--sm-text); border-color: var(--sm-gold); }
+.tfcats button.on { background: linear-gradient(160deg, var(--sm-gold), var(--sm-gold2)); color: #2a1600; border-color: #ffe8a3; }
+.tfcats .tfer { margin-left: auto; }
+.tfitems { display: flex; flex-wrap: wrap; gap: 5px; min-height: 62px; }
+.tfitems .tfb { min-width: 70px; }
+.tfb i { font-style: normal; font-size: .62rem; opacity: .75; }
+.tfb.on i { opacity: 1; }
+.tfstroke { white-space: nowrap; margin-left: 4px; padding: 1px 8px; border-radius: 999px; background: color-mix(in srgb, var(--sm-gold) 25%, transparent); }
+#tfchip { position: absolute; left: 0; top: 0; z-index: 4; pointer-events: none; padding: 3px 9px; border-radius: 999px; font-size: .74rem; font-weight: 700; white-space: nowrap; color: #fff; background: rgba(14, 14, 34, .85); border: 1px solid rgba(81, 207, 102, .7); }
+#tfchip.bad { border-color: rgba(255, 82, 82, .8); color: #ffd6d6; }
+body.walking #tfchip { display: none !important; }
 /* 2.71 weather chip (hxsky.js) */
 .isfull .hxwx { display: inline-flex; align-items: center; gap: 4px; margin-top: 6px; padding: 4px 10px; border-radius: 999px; font-size: .74rem; color: var(--sm-text); background: var(--sm-bg); border: 1px solid var(--sm-line); cursor: pointer; }
 .isfull .hxwx:hover { border-color: var(--sm-gold); }
