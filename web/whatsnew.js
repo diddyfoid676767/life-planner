@@ -10,6 +10,12 @@
 // version since the last one they saw (up to 3). D.settings.seenVersion remembers what was last shown,
 // D.settings.guidesSeen which guides have played. A brand-new install never sees either.
 const CHANGELOG = [
+  { v: '2.77.0', notes: [
+    { t: 'The Market is now the one shop: this week\'s cosmetics, island looks and decorations. Page buildings open their window with one click', k: 'new' },
+    { t: 'Hover any hex, even grass, water, rocks and trees, to see what it is and what you can do there', k: 'new' },
+    { t: 'Preview island looks and decorations for free, and pay only when you press Keep', k: 'new' },
+    { t: 'Walk mode and building interiors are tucked away for now. They come back with better movement', k: 'tweak' },
+  ] },
   { v: '2.76.0', notes: [
     { t: 'The first Souls fight: the Snooze Golem in its own arena, in real time. Move, roll through its attacks, block, and strike', k: 'new' },
     { t: 'Every spell, move and class skill you have equipped is on a hotbar (keys 1 to 9). Stamina pays for attacks, rolls and blocks', k: 'new' },

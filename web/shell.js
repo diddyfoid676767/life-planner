@@ -193,7 +193,7 @@ function shell2DTap(k) {
   if (house) { if (typeof hhTap === 'function') hhTap(k); return; }
   if (ui.hxVisit) return;
   const a = hxAt(k), sel = ['free', 'b', 'tree', 'rock', 'road', 'deco'].includes(a.kind) ? k : null;
-  if (sel && sel === ui.hxSel && a.kind === 'free' && !ui.isPanel) { hxOpen(a.it.id); return; }
+  if (a.kind === 'free') { hxOpen(a.it.id); return; }
   ui.hxSel = sel; ui.isPanel = null; if (sel && typeof sfx === 'function') try { sfx('select'); } catch (e) { }
   render();
 }

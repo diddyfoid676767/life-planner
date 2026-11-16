@@ -3745,6 +3745,9 @@ dialog#modal[open]::backdrop { animation: fadeIn .25s ease-out; }
 .isfull .isctl button.on { background: linear-gradient(160deg, var(--sm-gold), var(--sm-gold2)); color: #2a1600; }
 /* hover name tag */
 #hxtag { position: absolute; left: 0; top: 0; z-index: 3; pointer-events: none; display: flex; align-items: center; gap: 5px; padding: 3px 9px 3px 4px; border-radius: 999px; font-size: .74rem; font-weight: 700; white-space: nowrap; color: #fff; background: rgba(14, 14, 34, .82); border: 1px solid color-mix(in srgb, var(--ac) 70%, transparent); box-shadow: 0 0 12px color-mix(in srgb, var(--ac) 45%, transparent); animation: hxtagin .14s ease-out; }
+#hxtag small { font-weight: 500; font-size: .68rem; opacity: .8; margin-left: 2px; padding-left: 7px; border-left: 1px solid rgba(255,255,255,.25); }
+.hxpv { padding: 8px 10px; margin-bottom: 8px; border-radius: 10px; background: rgba(255, 212, 59, .14); border: 1px solid rgba(255, 212, 59, .5); font-size: .85rem; }
+.mktabs { margin-bottom: 8px; }
 #hxtag span { width: 20px; height: 20px; border-radius: 50%; display: grid; place-items: center; font-size: .8rem; background: color-mix(in srgb, var(--ac) 35%, rgba(255, 255, 255, .1)); }
 @keyframes hxtagin { from { opacity: 0; margin-top: 4px; } }
 .isfull .isitem .btn.primary { background: linear-gradient(160deg, var(--sm-gold), var(--sm-gold2)); color: #2a1600; border-color: #ffe8a3; font-weight: 700; }

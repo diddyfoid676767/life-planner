@@ -134,7 +134,16 @@ function hxLand() {
 }
 
 // ---------- your island ----------
-const hxState = () => { const c = cdState(); return (c.hx = Object.assign({ v: 1, b: {}, road: ['1,0', '1,-1', '0,-1', '-1,0', '-1,1', '0,1'], clr: [], mark: { l: 0, e: 0 } }, c.hx || {})); };
+let HX_PV_CHECKED = false;
+const hxState = () => {
+  const c = cdState(); const s = (c.hx = Object.assign({ v: 1, b: {}, road: ['1,0', '1,-1', '0,-1', '-1,0', '-1,1', '0,1'], clr: [], mark: { l: 0, e: 0 } }, c.hx || {}));
+  if (!HX_PV_CHECKED) { // 2.77: a free preview never survives a restart
+    HX_PV_CHECKED = true;
+    if (s.pvTheme) { if (s.pvTheme.was) s.theme = s.pvTheme.was; else delete s.theme; delete s.pvTheme; }
+    if (s.tfPv) { for (const e of s.tfPv) { s.tf = s.tf || {}; if (e.prev) s.tf[e.k] = e.prev; else delete s.tf[e.k]; } delete s.tfPv; }
+  }
+  return s;
+};
 const hxItem = id => HX_ITEMS.find(x => x.id === id);
 const hxFree = id => HX_FREE.find(x => x.id === id);
 // 2.66: the same hex code drives the shared house island (hxhouse.js). A state can carry its own
@@ -308,6 +317,7 @@ function hxCheckPost(it, k, st, out) {
 // ---------- page ----------
 function viewHexHome() {
   hxMigrate();
+  if (ui.isPanel !== 'market' && ui.isPanel !== 'looks' && hxState().pvTheme && typeof hxPvStop === 'function') hxPvStop(true); // 2.77: a look preview ends when you leave the Market
   if (ui.hxVisit) return hxVisitView();
   hxIslePublish();
   const st = hxState(), w = cdWallet(), lv = hxLv(), sto = isStore(), net = hxLinks(st);
@@ -331,7 +341,7 @@ function viewHexHome() {
   const hud = `<div class="ishud is-tl"><div class="islvl"><b>${lv}</b><div><span>Level ${lv}</span>${lvI ? `<i style="width:${Math.round(lvI.into / lvI.need * 100)}%"></i>` : ''}</div></div>
       <div class="isbuilders" title="Builders: how many things can be built or upgraded at once">🔨 ${IS_BUILDERS - busy}/${IS_BUILDERS} builders free</div>${hxWxChip()}</div>
     <div class="ishud is-tr">${isBar('cd-l', LUMEN, w.lumen, sto.l ? `+${sto.l} to collect · store ${sto.capL}` : `Store ${sto.capL}`, sto.l / sto.capL, sto.l ? 'collect' : '')}${isBar('cd-e', EMBER, w.ember, sto.e ? `+${sto.e} to collect · store ${sto.capE}` : `Store ${sto.capE}`, sto.e / sto.capE, sto.e ? 'collect' : '')}</div>
-    <div class="ishud is-bl"><button class="isbtn" data-hx="panel" data-v="perks">✨<span>Perks</span></button>${hxIsleOn() ? '<button class="isbtn" data-hx="panel" data-v="visit" title="Visit a housemate\'s island">🏘️<span>Visit</span></button>' : ''}<button class="isbtn" data-hx="panel" data-v="looks" title="Island looks, day and night, weather">🎨<span>Looks</span></button><button class="isbtn" data-wk="on" title="Walk round your island as your character (V)">🚶<span>Walk</span></button><button class="isbtn" data-hx="panel" data-v="help">❔<span>How it works</span></button>${ui.hxUndo ? '<button class="isbtn" data-hx="undo" title="Undo the last move (Ctrl+Z)">↶<span>Undo</span></button>' : ''}</div>
+    <div class="ishud is-bl"><button class="isbtn" data-hx="panel" data-v="perks">✨<span>Perks</span></button>${hxIsleOn() ? '<button class="isbtn" data-hx="panel" data-v="visit" title="Visit a housemate\'s island">🏘️<span>Visit</span></button>' : ''}<button class="isbtn" data-hx="market" data-v="looks" title="Island looks, day and night, weather (in the Market)">🎨<span>Looks</span></button><button class="isbtn" data-hx="panel" data-v="help">❔<span>How it works</span></button>${ui.hxUndo ? '<button class="isbtn" data-hx="undo" title="Undo the last move (Ctrl+Z)">↶<span>Undo</span></button>' : ''}</div>
     ${P ? '' : `<div class="ishud is-br hxtools"><button class="isbtn" data-hx="tool" data-v="road" title="Lay roads by dragging">🛣️<span>Roads</span></button>${lv >= hxItem('wall').u ? '<button class="isbtn" data-hx="tool" data-v="wall" title="Lay walls by dragging">🧱<span>Walls</span></button>' : ''}<button class="isbtn" data-hx="tool" data-v="tf" title="Terraform: paint the ground, raise hills, place decorations">🌱<span>Terraform</span></button><button class="isbtn big" data-hx="panel" data-v="shop">🛒<span>Build</span></button></div>`}`;
   let extra = `<div class="isbubs">${bubs}</div>`;
   if (P) extra += hxPlaceBar(P, tool);
@@ -343,9 +353,9 @@ function viewHexHome() {
       <p class="muted small-text">Battle perks add to your gear on the Character page. Collectors pile up bonus Lumen and Ember from your study and training until you collect it, up to what you can store (${LUMEN} ${sto.capL} · ${EMBER} ${sto.capE}).</p>`);
   }
   else if (ui.isPanel === 'visit') extra += isPanel('🏘️ Visit a housemate', hxVisitHtml());
-  else if (ui.isPanel === 'looks') extra += isPanel('🎨 Your island\'s look', hxLooksHtml());
+  else if (ui.isPanel === 'market' || ui.isPanel === 'looks') extra += isPanel('🛒 Market', hxMarketHtml());
   else if (ui.isPanel === 'help') extra += isPanel('❔ How your island works', `<ul class="ishelp">
-      <li>The Hall, Library, Training hall, Tavern, Market, Practice yard, Notice Board and Steward's lodge are free. Tap one and press <b>Open</b> to go to its page.</li>
+      <li>The Hall, Library, Training hall, Tavern, Market, Practice yard, Notice Board and Steward's lodge are free. Tap one to open its window. The Market is the shop for cosmetics, island looks and decorations, and you can preview those for free.</li>
       <li>Buy buildings in <b>Build</b>. The building follows your mouse: green means it fits, red says why not. Press <b>R</b> to turn it and click to drop it. <b>Esc</b> or right-click cancels.</li>
       <li>A building only works when a <b>road</b> joins it to your hall. Press 🛣️ <b>Roads</b> and drag across hexes to lay them (${hxCost(HX_ROAD.l, HX_ROAD.x)} a hex). Roads over the river become bridges.</li>
       <li>Some buildings like a spot: a lumber mill next to forest, a mine next to a hill, a watermill on the river, a windmill among fields.</li>
@@ -369,6 +379,14 @@ function hxPlaceBar(P, tool) {
   const it = hxItem(P.id), ch = P.chk;
   return `<div class="ishud is-bc isplace hxbar"><span>${P.mode === 'move' ? 'Moving' : 'Placing'} <b>${esc(it.n)}</b>: ${ch ? ch.ok ? `<b class="hxwhy ok">✓ Fits</b>${ch.good.map(g => ` <span class="hxchip ok">${esc(g)}</span>`).join('')}${ch.warn.map(g => ` <span class="hxchip warn">${esc(g)}</span>`).join('')}` : `<b class="hxwhy bad">✗ ${esc(ch.why)}</b>` : 'move the mouse over the island'}</span>
     <button class="btn small" data-hx="rot" title="Turn (R)">⟳ Turn</button><button class="btn small ghost" data-hx="cancel" title="Esc or right-click">✖ Cancel</button></div>`;
+}
+// 2.77: the Market is the one shop: this week's cosmetics, island Looks and decorations (both free to preview)
+function hxMarketHtml() {
+  const tab = ui.mkTab || 'cosm', T = [['cosm', '🧥 Cosmetics'], ['looks', '🎨 Island looks'], ['deco', '🌱 Decorations']];
+  const body = tab === 'looks' ? hxLooksHtml()
+    : tab === 'deco' ? `<p>Plants and decorations go down with 🌱 Terraform. <b>Preview</b> puts them on your island for free, as long as you like, and you only pay when you press <b>Keep</b>.</p><button class="btn primary" data-hx="decopv">👁 Preview decorations</button>`
+    : `<p>This week's cosmetics for your character: 3D previews, new picks every Monday. Try anything on before you buy.</p><button class="btn primary" data-hx="shopyou">🧥 Open the cosmetics shop</button>`;
+  return `<div class="seg mktabs">${T.map(([k, n]) => `<button class="${k === tab ? 'on' : ''}" data-hx="mktab" data-v="${k}">${n}</button>`).join('')}</div>${body}`;
 }
 function hxShopHtml(st, w, lv, busy) {
   return `<p class="muted small-text">You're level ${lv}. ${IS_BUILDERS - busy} of ${IS_BUILDERS} builders free. Buildings need a road to your hall to work.</p><div class="isshop">${HX_ITEMS.filter(it => !it.wall).map(it => {
@@ -416,7 +434,8 @@ function hxPopHtml(k, st, w, lv, busy, net, sto) {
 // the page buildings open their page
 function hxOpen(id) {
   ui.hxSel = null; if (hxFree(id)) id = hxFree(id).open; // 2.75: a building's id or its page (the market and yard taps used to land on Today)
-  if (id === 'shop') { ui.youLook = true; ui.pfCat = 'shop'; view = 'profile'; }
+  if (id === 'shop') { if (view !== 'islands' || (ui.isTab || 'personal') !== 'personal') { view = 'islands'; ui.isTab = 'personal'; } Object.assign(ui, { isPanel: 'market', mkTab: 'cosm', hxP: null }); }
+  else if (id === 'cosm') { ui.youLook = true; ui.pfCat = 'shop'; ui.pfTry = null; view = 'profile'; }
   else if (id === 'spar') { ui.isTab = 'boss'; ui.isPanel = 'bspar'; }
   else view = id;
   window.scrollTo(0, 0); render();
@@ -466,7 +485,7 @@ function hxStartPlace(P) {
   if (typeof sfx === 'function') sfx('pickup');
   render(); if (HX3.hover) hxHover(HX3.hover, true);
 }
-function hxCancel() { if (!ui.hxP) return; const P = ui.hxP; ui.hxP = null; if (P.n) save(); render(); }
+function hxCancel() { if (!ui.hxP) return; const P = ui.hxP; ui.hxP = null; if (P.id === 'tf') { if (hxState().tfPv?.length) tfPvDiscard(); ui.tfPv = false; } if (P.n) save(); render(); }
 function hxUndo() {
   const u = ui.hxUndo, st = hxState(); if (!u || !st.b[u.to] || st.b[u.from]) { ui.hxUndo = null; render(); return; }
   st.b[u.from] = st.b[u.to]; st.b[u.from].rot = u.rot; delete st.b[u.to]; ui.hxUndo = null; save(); hxFx('drop', u.from); render(); toast('↶ Undone', 'Moved back.');
@@ -482,6 +501,9 @@ document.addEventListener('click', e => {
     case 'collect': isCollect(); break;
     case 'refundok': ui.hxRefund = null; render(); break;
     case 'open': hxOpen(el.dataset.v); break;
+    case 'market': Object.assign(ui, { isPanel: 'market', mkTab: el.dataset.v || 'cosm', hxSel: null }); render(); break;
+    case 'mktab': ui.mkTab = el.dataset.v; render(); break;
+    case 'shopyou': ui.isPanel = null; hxOpen('cosm'); break;
     case 'undo': hxUndo(); break;
     case 'cancel': hxCancel(); break;
     case 'rot': if (ui.hxP) { ui.hxP.rot = ((ui.hxP.rot || 0) + 1) % 6; hxGhostDraw(); } break;
@@ -774,7 +796,7 @@ function hxPointer(type, e) {
     // a tap: select what's there
     const a = k ? hxAt(k) : { kind: 'off' };
     const sel = ['free', 'b', 'tree', 'rock', 'road', 'deco'].includes(a.kind) ? k : null;
-    if (sel && sel === ui.hxSel && a.kind === 'free' && !ui.isPanel) { hxOpen(a.it.id); return true; } // 2.69: tap a page building again to open it
+    if (a.kind === 'free') { if (typeof sfx === 'function') sfx('select'); hxOpen(a.it.id); return true; } // 2.77: one tap opens a page building's window
     if (sel !== ui.hxSel || ui.isPanel) { ui.hxSel = sel; ui.isPanel = null; if (sel && typeof sfx === 'function') sfx('select'); render(); }
     return true;
   }
@@ -855,7 +877,7 @@ if (typeof GUIDES === 'object') GUIDES.hexmove = {
   name: 'Building on your hex island',
   end: () => { ui.hxP = null; document.getElementById('hxanchor')?.remove(); if (view === 'islands') render(); },
   steps: [
-    { title: 'Your island is now hexagons 🏝️', text: 'Everything sits on a hex grid now, built from proper medieval models. Your Hall is in the middle, with the Library, Training hall, Tavern, Market and Practice yard around it. Tap any of them and press <b>Open</b> to go to its page.', go: hxGuideHome, wait: 500 },
+    { title: 'Your island is now hexagons 🏝️', text: 'Everything sits on a hex grid now, built from proper medieval models. Your Hall is in the middle, with the Library, Training hall, Tavern, Market and Practice yard around it. Tap any of them to open its window.', go: hxGuideHome, wait: 500 },
     { title: 'Tap a building', text: 'Tapping the Hall (or any building) shows what it does. Page buildings have an <b>Open</b> button; your own buildings show their level, perk, Collect, Upgrade and Repair.', go: () => { hxGuideHome(); setTimeout(() => hxAnchor('0,0'), 80); }, sel: '#hxanchor', wait: 300 },
     { title: 'Buy something new', text: 'Press <b>Build</b> to see every building you can buy with Lumen and Ember. New ones unlock as your level goes up.', go: hxGuideHome, sel: '.hxtools [data-v="shop"]' },
     { title: 'Pick a building', text: 'Each card shows its perk, its price and how long it takes. Buildings with a linking bonus say so, like a lumber mill next to forest.', go: () => { hxGuideHome(); ui.isPanel = 'shop'; render(); }, sel: '#isfull .ispanel', place: 'left' },
