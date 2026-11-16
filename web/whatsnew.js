@@ -10,6 +10,12 @@
 // version since the last one they saw (up to 3). D.settings.seenVersion remembers what was last shown,
 // D.settings.guidesSeen which guides have played. A brand-new install never sees either.
 const CHANGELOG = [
+  { v: '2.84.0', notes: [
+    { t: 'A new Workshop on your island holds Build, Roads, Walls, Terraform, Looks, Perks and How it works. Press B to open it from anywhere, so the screen stays clear', k: 'new' },
+    { t: 'The other islands float in the distance instead of a bar along the top: hover one to see what\'s there and click to fly over. In walk mode, walk to the end of a dock on the shore to cross', k: 'new' },
+    { t: 'Building windows are the real page now, no More: tick and add to-dos, start the timer, see every friend, chat and session right there. Rankings moved into the Tavern', k: 'tweak' },
+    { t: 'Buildings and counters keep their names with a small plain label, like Notice Board (Today) and Lumen (coins)', k: 'tweak' },
+  ] },
   { v: '2.83.0', notes: [
     { t: 'The turn-based quick boss fights are gone. The Souls Golem fight is the only boss fight now', k: 'tweak' },
     { t: 'Settings are a small gear in the top-right corner, and Esc opens them when nothing else is open', k: 'new' },

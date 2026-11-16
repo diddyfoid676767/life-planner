@@ -74,7 +74,7 @@ function wkCell0(k) {
   switch (a.kind) {
     case 'off': return { k, a, solid: true, h: 0 };
     case 'mount': return { k, a, solid: true, h: h + 1.5 };
-    case 'water': case 'pond': return { k, a, water: true, h: -.6 };
+    case 'water': case 'pond': return typeof faDockAt === 'function' && faDockAt(k) ? { k, a, h: .02, road: true, bridge: true } : { k, a, water: true, h: -.6 }; // 2.84: docks to the other islands (workshop.js)
     case 'river': return { k, a, h: 0, river: true }; // banks you can walk on, a channel you swim in
     case 'b': return a.it?.field ? { k, a, h } : { k, a, h, r: a.it?.wall ? .78 : .86, tall: 1.6 };
     case 'free': return { k, a, h, r: .88, tall: 1.8, door: a.it };
