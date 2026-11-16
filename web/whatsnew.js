@@ -10,6 +10,12 @@
 // version since the last one they saw (up to 3). D.settings.seenVersion remembers what was last shown,
 // D.settings.guidesSeen which guides have played. A brand-new install never sees either.
 const CHANGELOG = [
+  { v: '2.87.0', notes: [
+    { t: 'The Golem is now Somnus, the Sleeping Colossus: a fully animated stone giant that is much faster and hits much harder. Two or three mistakes and you\'re down, and you get 2 potions', k: 'new' },
+    { t: 'Rolls are short, cost more stamina and keep you safe for only a moment, so time them. Phases change as its health drops, each with a roar', k: 'new' },
+    { t: 'Aim with the crosshair: hold right click to aim over the shoulder. Spells fly exactly where you point (no auto-aim) and the crystal on its back is a weak point', k: 'new' },
+    { t: 'A boss intro, the clock above your head, and real fight sounds: roars, stone impacts, heavy footsteps', k: 'new' },
+  ] },
   { v: '2.86.0', notes: [
     { t: 'A new, more detailed 3D character everywhere: on your island, in fights, on the You page and as villagers. Pick Body A or B under Look like me', k: 'new' },
     { t: 'Ctrl now does a real somersault roll: short, with a quick get-up you can attack out of', k: 'new' },

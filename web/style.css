@@ -4225,3 +4225,34 @@ body.world-on.win-bw .content { width: clamp(400px, 40vw, 640px); max-width: cal
 #fatag div { display: grid; line-height: 1.2; }
 #fatag b { font-size: 13.5px; } #fatag small { font-size: 12px; opacity: .75; font-weight: 600; }
 body.walking #fatag, body.souls-on #fatag { display: none; }
+/* 2.87 Golem 2.0 (R3): Souls-style boss bar at the bottom, the intro, the crosshair, the clock over your head */
+#soov .so-boss { top: auto; bottom: 100px; width: min(820px, 76%); text-align: left; opacity: 0; transform: translate(-50%, 30px); transition: opacity .6s, transform .6s cubic-bezier(.2, .8, .2, 1); }
+#soov.bar-in .so-boss { opacity: 1; transform: translate(-50%, 0); }
+#soov .so-bn { font: 400 1.05rem/1.2 'Cinzel', Georgia, 'Palatino Linotype', serif; letter-spacing: .05em; margin-bottom: 4px; }
+#soov .so-bar { height: 9px; border-radius: 1px; border-color: rgba(255, 214, 140, .25); background: rgba(10, 6, 10, .75); }
+#soov .so-bar .so-bhp { background: linear-gradient(180deg, #b02a2a, #6e1414); transition: width .35s; }
+#soov .so-bsub { text-align: right; }
+#soov .so-help { bottom: auto; top: 64px; }
+#soov.cine .so-hud { opacity: 0; }
+#soov .so-hud { transition: opacity .5s; }
+.so-cine { position: absolute; inset: 0; z-index: 6; pointer-events: none; }
+.so-cine::before, .so-cine::after { content: ''; position: absolute; left: 0; right: 0; height: 11vh; background: #000; }
+.so-cine::before { top: 0; } .so-cine::after { bottom: 0; }
+.so-fade { position: absolute; inset: 0; background: #000; }
+.so-title { position: absolute; left: 0; right: 0; bottom: 22vh; text-align: center; opacity: 0; transition: opacity 1.2s; }
+.so-title.on { opacity: 1; }
+.so-title b { display: block; font: 400 clamp(1.8rem, 4.4vw, 3.4rem)/1.1 'Cinzel', Georgia, 'Palatino Linotype', serif; letter-spacing: .08em; color: #f1e3c2; text-shadow: 0 0 24px rgba(0, 0, 0, .9), 0 2px 4px #000; text-transform: uppercase; }
+.so-title i { display: block; width: min(640px, 70%); height: 1px; margin: 14px auto 0; background: linear-gradient(90deg, transparent, rgba(241, 227, 194, .85), transparent); }
+.so-skip { position: absolute; right: 24px; bottom: calc(11vh + 12px); font-size: .78rem; color: rgba(241, 227, 194, .6); }
+.so-cross { position: absolute; left: 50%; top: 50%; width: 22px; height: 22px; transform: translate(-50%, -50%); opacity: .75; transition: width .15s, height .15s, opacity .15s; }
+.so-cross i { position: absolute; background: #fff; box-shadow: 0 0 2px #000; }
+.so-cross i:nth-child(1), .so-cross i:nth-child(2) { left: 50%; width: 2px; height: 7px; margin-left: -1px; }
+.so-cross i:nth-child(1) { top: 0; } .so-cross i:nth-child(2) { bottom: 0; }
+.so-cross i:nth-child(3), .so-cross i:nth-child(4) { top: 50%; height: 2px; width: 7px; margin-top: -1px; }
+.so-cross i:nth-child(3) { left: 0; } .so-cross i:nth-child(4) { right: 0; }
+.so-cross.aim { width: 14px; height: 14px; opacity: 1; }
+.so-cross.aim i { background: #ffe8b3; }
+.so-ptime { position: absolute; left: 0; top: 0; padding: 2px 9px; border-radius: 8px; background: rgba(10, 8, 20, .6); font: 800 1.05rem/1.2 Georgia, serif; color: #f1ead8; text-shadow: 0 1px 3px #000; transition: color .3s; white-space: nowrap; }
+.so-ptime.warn { color: #ffa94d; }
+.so-ptime.crit { color: #ff6b6b; animation: soTick 1s steps(2) infinite; }
+@keyframes soTick { 50% { transform-origin: center; filter: brightness(1.5); } }

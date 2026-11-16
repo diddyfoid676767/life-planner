@@ -140,7 +140,7 @@ const BW_DEF = {
           hxIsleList(); const L = (HX_ISLE.list || []).filter(r => !r.me);
           list.push(bwHd('Visit a housemate\'s island'), ...(L.length ? L.map(r => bwRow(`🏝️ ${esc(r.n || 'Housemate')}`, r.ut ? 'updated ' + fmtDate(r.ut.slice(0, 10)) : '', '', `data-hx="visit" data-v="${esc(r.uid)}"`)) : [bwRow(HX_ISLE.list ? '<span class="muted">No housemates have shared an island yet</span>' : '<span class="muted">Finding your housemates\' islands…</span>')]));
         }
-        return { k: rest ? 'Rest week' : 'This week\'s boss', v: rest ? 'No boss this week' : b ? `${b.e} ${b.n}` : 'The Warband', go: rest ? bwGo('🏰 House fortress', 'data-shell="travel" data-v="house"') : bwGo('⚔ Fight it', 'data-shell="travel" data-v="boss"'), hint: 'Every hit goes on the house\'s weekly bar', list, empty: '' };
+        return { k: rest ? 'Rest week' : 'This week\'s boss', v: rest ? 'No boss this week' : b ? `${b.e} ${hsBossName(b)}` : 'The Warband', go: rest ? bwGo('🏰 House fortress', 'data-shell="travel" data-v="house"') : bwGo('⚔ Fight it', 'data-shell="travel" data-v="boss"'), hint: 'Every hit goes on the house\'s weekly bar', list, empty: '' };
       }],
       ['rank', 'Rankings', () => {
         if (typeof acctLoaded !== 'undefined' && !acctLoaded && typeof loadAccount === 'function') loadAccount().then(() => { if (view === 'bw' && ui.bw?.tab === 'rank') render(); });

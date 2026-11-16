@@ -48,6 +48,12 @@ const SFX_REC = {
   step: [['grass0', 'grass1', 'grass2', 'grass3', 'grass4'], .55], jump: [['jump'], .5], land: [['land'], .55], roll: [['roll'], .6],
   swing: [['swing1', 'swing2', 'swing3'], .55], hit: [['hit0', 'hit1', 'hit2'], .7], hithard: [['heavy0', 'heavy1', 'heavy2'], .8], clank: [['clank0', 'clank1', 'clank2'], .6],
   slam: [['slam'], .9], hurt: [['hurt'], .8], cast: [['cast'], .5],
+  // 2.87: the boss-fight set (Golem 2.0): only ever played inside a boss fight
+  g_roar: [['g_roar'], 1], g_roar2: [['g_roar2'], .95], g_growl: [['g_growl0', 'g_growl1', 'g_growl2'], .8], g_snore: [['g_snore'], .55],
+  g_step: [['g_step0', 'g_step1', 'g_step2'], .75], g_boom: [['g_boom0', 'g_boom1', 'g_boom2'], 1], g_grind: [['g_grind0', 'g_grind1'], .55],
+  g_whoosh: [['g_whoosh'], .7], g_crumble: [['g_crumble0', 'g_crumble1', 'g_crumble2'], .7], g_rocks: [['g_rocks0', 'g_rocks1'], .7],
+  g_clang: [['g_clang0', 'g_clang1', 'g_clang2'], .6], g_swish: [['g_swish0', 'g_swish1', 'g_swish2'], .5], g_grunt: [['g_grunt0', 'g_grunt1', 'g_grunt2'], .45],
+  g_pain: [['g_pain0', 'g_pain1'], .6], g_armour: [['g_armour0', 'g_armour1', 'g_armour2'], .4], g_crack: [['g_crack0', 'g_crack1'], .8],
 };
 const SFX_SURF = { grass: ['grass0', 'grass1', 'grass2', 'grass3', 'grass4'], stone: ['stone0', 'stone1', 'stone2', 'stone3', 'stone4'], wood: ['wood0', 'wood1', 'wood2', 'wood3', 'wood4'] };
 const SND_BUF = {}; let sndBufLoad = null;
@@ -58,10 +64,13 @@ function sndLoad(c) {
   sndBufLoad = Promise.all([...names].map(n => fetch('sfx/' + n + '.ogg').then(r => r.ok ? r.arrayBuffer() : Promise.reject()).then(b => new Promise((ok, no) => c.decodeAudioData(b, ok, no))).then(b => { SND_BUF[n] = b; }).catch(() => { })));
 }
 // plays one recording; false if it isn't loaded yet (the caller falls back to the made-up sound)
-function sndPlay(c, files, vol, rate = 1) {
+function sndPlay(c, files, vol, rate = 1, pan = 0) {
   const n = files[Math.floor(Math.random() * files.length)], b = SND_BUF[n]; if (!b) return false;
   const s = c.createBufferSource(), g = c.createGain(); s.buffer = b; s.playbackRate.value = rate * (.94 + Math.random() * .12);
-  g.gain.value = vol * (SND.k || 1); s.connect(g); g.connect(SND.dry || SND.out); s.start(); return true;
+  g.gain.value = vol * (SND.k || 1); s.connect(g);
+  // 2.87: boss-fight sounds come from where they happen (left or right of you)
+  if (pan && c.createStereoPanner) { const p = c.createStereoPanner(); p.pan.value = Math.max(-1, Math.min(1, pan)); g.connect(p); p.connect(SND.dry || SND.out); } else g.connect(SND.dry || SND.out);
+  s.start(); return true;
 }
 const PENT = [523, 587, 659, 784, 880, 988, 1175];
 const SFX = {
@@ -186,7 +195,8 @@ function sfx(name, { gap = 0 } = {}) {
     try {
       // 2.83: recordings play only inside the Souls fight; everywhere else the old made-up sounds are back
       const R = document.body.classList.contains('souls-on') ? SFX_REC[name] : null, files = name === 'step' && SFX_SURF[o.surf] || R?.[0];
-      if (R && sndPlay(c, files, R[1] * (o.vol || 1), name === 'hxtick' ? (o.f || 600) / 600 : 1)) return;
+      if (R && sndPlay(c, files, R[1] * (o.vol ?? 1), name === 'hxtick' ? (o.f || 600) / 600 : o.rate || 1, o.pan || 0)) return;
+      if (name.startsWith('g_')) return; // fight-only recordings have no made-up stand-in
       if (SFX[name]) SFX[name](c, o);
     } finally { SND.k = 1; }
   } catch (e) { /* sound is never worth breaking the app for */ }

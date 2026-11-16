@@ -1,3 +1,10 @@
 Sound effects: RPG Audio, Impact Sounds and Interface Sounds by Kenney (www.kenney.nl),
 CC0 1.0 Universal (public domain). Packed by tools/sfx-pack.sh.
 https://creativecommons.org/publicdomain/zero/1.0/
+
+Boss-fight set (2.87, web/sfx/g_*.ogg), all CC0 1.0 (public domain), from opengameart.org via the
+mirror github.com/novincode/atomcut-library (licence recorded in each pack's pack.json):
+80 CC0 creature SFX (rubberduck), Monster sound effects 2 (ogrebane), 75 CC0 breaking/falling/hit SFX
+(rubberduck), 20 sword sound effects (starninjas), Male grunt/yelling sounds and Footsteps
+leather/cloth/armor (haeldb), 37 hits/punches (qubodup), and AtomCut's CC0 impacts-risers pack.
+Pitched, layered and mixed by tools/fight-sfx-pack.sh.
