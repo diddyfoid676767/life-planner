@@ -36,7 +36,7 @@ function hiss(c, { dur = .15, vol = .2, at = 0, type = 'bandpass', f = 2000, f2,
   s.connect(fl); fl.connect(g); g.connect(SND.out); s.start(t, Math.random() * .5); s.stop(t + dur + .05);
 }
 const SFX_GROUP = { hover: 'ui', hxtick: 'hover', click: 'ui', tab: 'ui', toggle: 'ui', untoggle: 'ui', open: 'ui', close: 'ui', notify: 'ui', coin: 'ui', buy: 'ui', deny: 'ui', levelup: 'ui', box: 'ui', success: 'ui', undo: 'ui', nav: 'ui', check: 'ui', uncheck: 'ui', add: 'ui', trash: 'ui', sheet: 'ui', sheetclose: 'ui', start: 'ui', whoosh: 'ui', select: 'ui', error: 'ui', save: 'ui',
-  pop: 'garden', rustle: 'garden', water: 'garden', plant: 'garden', pickup: 'garden', chirp: 'garden', cricket: 'garden' };
+  boss: 'ui', pop: 'garden', rustle: 'garden', water: 'garden', plant: 'garden', pickup: 'garden', chirp: 'garden', cricket: 'garden' };
 const PENT = [523, 587, 659, 784, 880, 988, 1175];
 const SFX = {
   // 2.60 softer, rounder menu sounds, each a little different so repeats don't sound identical
@@ -75,6 +75,13 @@ const SFX = {
   plant: c => { tone(c, { f: 180, f2: 70, dur: .18, vol: .12 }); hiss(c, { f: 800, dur: .15, vol: .05, type: 'lowpass' }); tone(c, { f: 1175, dur: .12, vol: .025, type: 'triangle', at: .08 }); },
   pickup: c => { tone(c, { f: 300, f2: 600, dur: .09, vol: .06 }); hiss(c, { f: 2000, dur: .08, vol: .02 }); },
   chirp: c => { const b = 2600 + Math.random() * 1600, n = 2 + Math.floor(Math.random() * 3); for (let i = 0; i < n; i++) tone(c, { f: b, f2: b * (1.25 + Math.random() * .3), dur: .07, vol: .018, at: i * .11 }); },
+  // 2.77 Souls bosses: each boss has a voice (o.v: base pitch, wave, a noise colour) for its idle growl, attack cry, hurt and defeat
+  boss: (c, o) => { const v = o.v || {}, f = v.f || 90, ty = v.type || 'sawtooth', fl = { filter: 'lowpass', q: v.q || 900 };
+    if (o.k === 'atk') { tone(c, { f: f * 1.6, f2: f * .9, dur: .35, vol: .07, type: ty, ...fl }); if (v.n) hiss(c, { f: v.n, dur: .3, vol: .04, attack: .05 }); }
+    else if (o.k === 'hurt') tone(c, { f: f * 2.2, f2: f * 1.3, dur: .16, vol: .05, type: ty, ...fl });
+    else if (o.k === 'idle') { tone(c, { f: f * .8, f2: f * .7, dur: .9, vol: .035, type: ty, attack: .3, ...fl }); if (v.n) hiss(c, { f: v.n * .6, dur: .8, vol: .015, attack: .3 }); }
+    else if (o.k === 'roar') { tone(c, { f: f * 1.2, f2: f * .5, dur: 1.1, vol: .09, type: ty, attack: .08, ...fl }); tone(c, { f: f * 1.8, f2: f * .75, dur: .9, vol: .04, type: 'square', attack: .1, ...fl }); hiss(c, { f: v.n || 700, f2: 300, dur: 1, vol: .04, attack: .1 }); }
+    else if (o.k === 'die') { tone(c, { f: f * 1.5, f2: f * .3, dur: 1.8, vol: .09, type: ty, attack: .05, ...fl }); hiss(c, { f: 1200, f2: 200, dur: 1.6, vol: .05, type: 'lowpass' }); } },
   cricket: c => { for (let i = 0; i < 4; i++) tone(c, { f: 4400, dur: .025, vol: .012, type: 'square', filter: 'bandpass', q: 4400, at: i * .045 }); },
 };
 // battle sounds: each kind of move has its own flavour on top of a hit

@@ -103,9 +103,38 @@ const FT_SETS = [
   { id: 'iron', n: 'Ironclad', e: '🛡️', pcs: ['Helm', 'Chestplate', 'Greaves', 'Boots', 'Tape', 'Medal'], b3: { dr: .05 }, b5: { hp: 40, dr: .03 } },
   { id: 'athlete', n: 'Athlete', e: '🏃', pcs: ['Headband', 'Hoodie', 'Track Pants', 'Training Shorts', 'Spikes', 'Gloves', 'Lucky Clover'], b3: { mv: .08 }, b5: { dg: .05, cr: .03 } },
 ];
+// 2.77 boss gear sets: every Warband boss has its own 5-piece set that only its Souls fight drops.
+// A piece is named "<prefix> <template>" (so it draws as that template on your hero) and carries p.set.
+const FT_BOSS_SETS = [
+  ['The Procrastinator', 'sloth', "Sloth's", '🦥', ['Headband', 'Hoodie', 'Track Pants', 'Slippers', 'Lucky Clover'], { dg: .05 }, { dg: .04, cr: .04 }],
+  ['Doomscroll Kraken', 'deepfeed', 'Deepfeed', '🦑', ['Study Cap', 'Robe', 'Training Shorts', 'Pen of Power', 'Seer Orb'], { sp: .08 }, { wk: .12, sp: .04 }],
+  ['Snooze Golem', 'snoozestone', 'Snoozestone', '🗿', ['Helm', 'Chestplate', 'Greaves', 'Boots', 'Medal'], { dr: .05 }, { hp: 50, dr: .03 }],
+  ['Couch Troll', 'couchguard', 'Couchguard', '🛋️', ['Headband', 'Hoodie', 'Greaves', 'Spikes', 'Gloves'], { mv: .08 }, { mv: .05, hp: 30 }],
+  ['Cram Wraith', 'midnight', 'Midnight', '👻', ['Study Cap', 'Robe', 'Track Pants', 'Slippers', 'Seer Orb'], { sp: .06, rg: 2 }, { wk: .1, sp: .05 }],
+  ['Excuse Hydra', 'hydrascale', 'Hydrascale', '🐲', ['Helm', 'Chestplate', 'Training Shorts', 'Tape', 'Lucky Clover'], { cr: .05 }, { cr: .04, mv: .06 }],
+  ['Fog of Distraction', 'mistwalker', 'Mistwalker', '🌫️', ['Headband', 'Robe', 'Track Pants', 'Spikes', 'Lucky Clover'], { dg: .05 }, { dg: .04, wk: .1 }],
+  ['The Energy Drain', 'livewire', 'Livewire', '🔋', ['Helm', 'Hoodie', 'Greaves', 'Boots', 'Medal'], { rg: 3 }, { hp: 40, rg: 2 }],
+];
+for (const [boss, id, pre, e, tpl, b3, b5] of FT_BOSS_SETS) FT_SETS.push({ id, n: pre.replace(/'s$/, '') + (pre.endsWith("'s") ? "'s Ease" : ''), e, boss, pre, tpl, pcs: tpl.map(t => `${pre} ${t}`), b3, b5 });
 // which template a piece was made from (its name without the rarity)
 const ftGearBase = p => (FT_GEAR[p.slot] || []).find(t => p.n === t[0] || p.n.endsWith(' ' + t[0]))?.[0] || '';
-const ftSetOf = p => FT_SETS.find(S => S.pcs.includes(ftGearBase(p)));
+const ftSetOf = p => p.set ? FT_SETS.find(S => S.id === p.set) : FT_SETS.find(S => !S.boss && S.pcs.includes(ftGearBase(p)));
+// a piece of a boss's own set
+function ftRollBossGear(boss, minR = 0) {
+  const S = FT_SETS.find(x => x.boss === boss); if (!S) return ftRollGear(minR);
+  const st = ftState(), base = S.tpl[Math.floor(Math.random() * S.tpl.length)], slot = Object.keys(FT_GEAR).find(k => FT_GEAR[k].some(t => t[0] === base)), tpl = FT_GEAR[slot].find(t => t[0] === base);
+  const x = Math.random(); let ri = x < .02 ? 3 : x < .14 ? 2 : x < .5 ? 1 : 0; ri = Math.max(ri, minR);
+  if (ri === 3 && st.leg[cdTerm()]) ri = 2;
+  const R = FT_RAR[ri], b = {};
+  tpl[2].forEach((k, i) => { const [bv] = FT_BUFF[k], v = bv * R[2] * (i ? .5 : 1) * (.9 + Math.random() * .3); b[k] = k === 'hp' || k === 'rg' ? Math.max(1, Math.round(v)) : Math.round(v * 100) / 100; });
+  const p = { id: uid(), slot, n: `${R[1] === 'Common' ? '' : R[1] + ' '}${S.pre} ${base}`, e: tpl[1], r: R[0], b, set: S.id, at: today() };
+  if (ri === 3) st.leg[cdTerm()] = p.n;
+  st.gear.push(p);
+  if (st.gear.length > 40) { const worn = Object.values(st.wear), old = st.gear.find(g => !worn.includes(g.id)); st.gear = st.gear.filter(g => g !== old); }
+  return p;
+}
+// 2.77: weaknesses are found, not told: they show once your house has beaten that boss (the codex)
+const ftWeakTxt = n => typeof soKnowsWeak === 'function' && !soKnowsWeak(n) ? '❓ (beat it as a house to find out)' : FT_BOSS[n].wn;
 // sets you have on: [{ S, n, b }] where b is the bonus that is switched on
 function ftSets(st = ftState(), wear = st.wear) {
   const cnt = {};
@@ -203,7 +232,7 @@ function ftStart(kind, opt = {}) {
   if (kind === 'house') { st.att[today()] = (st.att[today()] || 0) + 1; ftLog(FT, tb ? `👑 Term Boss: ${name} appears, stronger than ever! ${FT_ROUNDS} rounds, and it hits harder.` : `⚔️ ${name} appears! ${FT_ROUNDS} rounds: hit as hard as you can.`); }
   if (kind === 'spar') { FT.stake = ftTake(25, 25); ftLog(FT, `⚔️ Spar: ${name} (champion). Stake ${FT.stake.l} ${LUMEN} ${FT.stake.e} ${EMBER}.`); }
   if (kind === 'duel') { FT.stake = ftTake(15, 15); FT.rd = 16; st.r -= FT.rd; st.l++; ftLog(FT, `⚔️ Duel vs ${E.n}. Stake ${FT.stake.l} ${LUMEN} ${FT.stake.e} ${EMBER}.`); }
-  if (bossDef) ftLog(FT, `💡 Weak to ${bossDef.wn}. ${bossDef.sp}`, 'hint');
+  if (bossDef) ftLog(FT, `💡 Weak to ${ftWeakTxt(name)}. ${bossDef.sp}`, 'hint');
   save(); ftTurnStart(FT.P); ftDraw();
 }
 function ftTurnStart(A) {
@@ -333,6 +362,7 @@ function ftEnd(F, how) {
     st.dmg[wk] = before + add; for (const k in st.dmg) if (k < addDays(wk, -35)) delete st.dmg[k];
     out.push(`<b>${add.toLocaleString()}</b> damage added to ${esc(F.bossName)}'s shared health bar${add < F.dealt ? ` (capped at ${FT_ATT_CAP * x} a fight, ${(FT_WEEK_CAP * x).toLocaleString()} a week)` : ''}.`);
     out.push(how === 'down' ? 'It knocked you out, but every hit you landed still counts.' : 'You lasted all the rounds.');
+    if (!F.souls && F.bossName) { st.codex = st.codex || {}; const c = st.codex[F.bossName] = st.codex[F.bossName] || {}; c.f = (c.f || 0) + 1; c.best = Math.max(c.best || 0, add); }
     if (Math.random() < Math.min(.6, .2 + add / 1200) * x) { const p = ftRollGear(x > 1 ? 1 : 0); out.push(`Gear drop: ${ftGearChip(p)}`); }
     hsLoad(true);
     if (typeof hxEatFood === 'function') hxEatFood(); // 2.65: a harvest's extra health lasts until a boss fight
@@ -419,7 +449,7 @@ function ftBattlesHtml() {
 function ftHouseHtml() {
   const b = hsBoss(mondayOf(today())), B = FT_BOSS[b.n], a = ftAttempts(), wk = mondayOf(today()), tb = bossWeek(wk) === 'term';
   return `<div class="card ftbossinfo"><div class="row" style="justify-content:space-between"><h3>${tb ? '👑 Fight the Term Boss,' : '⚔️ Fight'} ${esc(b.n)}</h3><div class="row" style="gap:8px"><button class="btn" data-is="tab" data-v="boss">🏝️ Boss island</button><button class="btn primary" data-ft="house" ${a.left ? '' : 'disabled'}>${a.left ? `Fight (${a.left} left)` : (a.rest ? '🌴 Resting' : 'No fights left')}</button></div></div>
-    <p class="small-text"><b>Weak to:</b> ${B.wn} · <b>Special:</b> ${esc(B.sp)}</p>
+    <p class="small-text"><b>Weak to:</b> ${ftWeakTxt(b.n)} · <b>Special:</b> ${esc(B.sp)}</p>
     <p class="small-text"><b>Attacks:</b> ${[...B.atk, ...(B.big ? [B.big] : [])].map(x => esc(x[0])).join(', ')}</p>
     <p class="muted small-text">${FT_WEEK_ATT + a.extra} fights a week${a.extra ? (tb ? ' (3 extra for the Term Boss)' : ' (house island perk included)') : ''}, up to ${FT_DAY_ATT} a day, ${FT_ROUNDS} rounds each. It hits back lightly. Your fights this week: ${a.week}, ${ftWeekDmg(wk).toLocaleString()} damage on the shared bar. Set your build on the <a href="#" data-act="goto" data-v="character">Character</a> page.</p></div>`;
 }
@@ -427,6 +457,7 @@ function ftHouseHtml() {
 function ftHouseKill(wk) {
   const st = ftState(); if (st.kill[wk] || !(st.dmg[wk] > 0)) return;
   st.kill[wk] = 1; for (const k in st.kill) if (k < addDays(wk, -70)) delete st.kill[k];
+  st.codex = st.codex || {}; const cx = st.codex[hsBoss(wk).n] = st.codex[hsBoss(wk).n] || {}; cx.k = (cx.k || 0) + 1; // 2.77: the codex learns its weakness
   if (bossWeek(wk) === 'term') { // 2.63: a Term Boss kill is the main way to get the term's legendary
     const p = ftRollGear(3); ftAddCurrency(100, 100); toast('👑 Term Boss reward', `You fought, so you get ${p.e} ${p.n}, plus 100 Lumen and 100 Ember.`);
   } else { const p = ftRollGear(1); toast('🎁 Boss reward', `You fought, so you get ${p.e} ${p.n}.`); }

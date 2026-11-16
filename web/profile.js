@@ -124,7 +124,7 @@ function youGearDrawer() {
   }).join('');
   return `<div class="ypop ygdrawer"><div class="yph"><b>🛡️ ${name}</b><span style="flex:1"></span>${k !== 'all' ? '<button class="ylink" data-pf="slot" data-v="all">All gear</button>' : ''}<button class="isx" data-pf="slot" data-v="" title="Close">✕</button></div>
     <div class="ypop-b">${rows || `<p class="ynote">No ${k === 'all' ? '' : name.toLowerCase() + ' '}gear yet. Gear drops from Warband fights, spars and duels.</p>`}
-    <p class="ynote">Sets: ${FT_SETS.map(S => `${S.e} <b>${S.n}</b> (${S.pcs.join(', ')}): 3 pieces ${ftBuffText(S.b3)}, 5 pieces also ${ftBuffText(S.b5)}`).join(' · ')}</p></div></div>`;
+    <p class="ynote">Sets: ${FT_SETS.filter(S => !S.boss).map(S => `${S.e} <b>${S.n}</b> (${S.pcs.join(', ')}): 3 pieces ${ftBuffText(S.b3)}, 5 pieces also ${ftBuffText(S.b5)}`).join(' · ')} · Boss sets: each Warband boss drops its own 5-piece set from its Souls fight (${FT_SETS.filter(S => S.boss).map(S => `${S.e} ${esc(S.n)}: 3 pieces ${ftBuffText(S.b3)}, 5 also ${ftBuffText(S.b5)}`).join(' · ')}).</p></div></div>`;
 }
 function youClassCard() {
   const st = cdState(), cls = cdClassInfo(), SL = solisLevel(), need = solisLvXp(CD_CLASS_LV);
