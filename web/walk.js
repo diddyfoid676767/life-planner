@@ -80,7 +80,7 @@ function wkCell0(k) {
     case 'tree': return { k, a, h, r: .5, tall: 1.4 };
     case 'rock': return { k, a, h, r: .45, tall: .5 };
     case 'hill': return { k, a, h: h + .25 };
-    case 'deco': return { k, a, h, r: WK_DECO_R[a.d] || 0, tall: .8 };
+    case 'deco': return st.tf?.[k]?.t === 'water' || hxW(st).land().get(k)?.t === 'water' ? { k, a, water: true, h: -.6 } : { k, a, h, r: WK_DECO_R[a.d] ?? HX_TF.deco[a.d]?.wr ?? 0, tall: .8 }; // 2.82: boats and bridges float on water
     case 'road': return { k, a, h, road: true, bridge: a.bridge, river: a.bridge };
     default: return { k, a, h };
   }
@@ -275,7 +275,8 @@ function wkAnim(t, dt) {
 function wkStepSound(sp) {
   if (typeof sfx !== 'function') return;
   const c = wkCell(hxFromXZ(WK.x, WK.z));
-  sfx('step', { surf: c.bridge ? 'wood' : c.road ? 'stone' : c.a.kind === 'deco' && c.a.d === 'flowers' ? 'grass' : 'grass', vol: sp > 3.5 ? 1 : .7 });
+  const tf = hxState().tf?.[c.k]; // 2.82: boardwalks and footbridges sound like wood, stone paths like stone
+  sfx('step', { surf: c.bridge || tf?.ps === 'board' || tf?.d === 'bridge' ? 'wood' : c.road || tf?.ps === 'stone' ? 'stone' : 'grass', vol: sp > 3.5 ? 1 : .7 });
 }
 
 // ---------- the walk HUD ----------

@@ -79,10 +79,12 @@ function hxDetail(W, L, st, rnd, low) {
       for (let i = 0; i < 2; i++) if (r2() < .5) shim.push([x + (r2() - .5) * 1.4, z + (r2() - .5) * 1.4, i]);
       continue;
     }
-    const a = hxAt(k, st); if (a.kind !== 'grass' || a.g) continue;
+    const a = hxAt(k, st), pth = a.g === 'path'; if (a.kind !== 'grass' || (a.g && !pth)) continue;
+    const pm = pth ? tfJoins(k, st) : 0, phw = pth ? (TF_PS[st.tf[k].ps] || TF_PS.dirt).w / 2 + .14 : 0; // 2.82: grass beside thin paths, not on them
     const n = 6 + Math.floor(r2() * 5), y0 = hxHt(k, st); // 2.78: lush
     for (let i = 0; i < n; i++) {
       const ang = r2() * 6.28, rr = .35 + r2() * .55, px = x + Math.cos(ang) * rr, pz = z + Math.sin(ang) * rr, v = r2();
+      if (pth && tfPathHit(pm, px - x, pz - z, phw)) continue;
       if (v < tc + .15) tufts.push([px, pz, r2(), y0]); else if (v < .9) flowers.push([px, pz, r2(), y0]); else pebbles.push([px, pz, r2(), y0]);
     }
   }
@@ -141,7 +143,7 @@ function hxHoverWhat(k) {
   if (a.kind === 'free') return [a.it.e, a.it.n, a.it.ac || W.ac || '#ffd43b', a.it.hz || 523, a.it.at, own ? 'Click to open' : ''];
   if (a.kind === 'b' && !a.it?.wall) return [a.it.e, a.it.n, W.house ? W.ac || '#ffe8a3' : '#ffe8a3', HX_TICK[a.it.id] || 450 + (a.it.n.length * 37) % 400, a.main, W.house ? 'Click for details' : own ? 'Click for details, drag to move' : ''];
   if (a.kind === 'b') return [a.it.e, a.it.n, '#ced4da', 260, a.main, ''];
-  if (a.kind === 'deco') return [a.it.e, a.it.n, '#ffd8a8', 560, k, own ? 'Decoration · click to take away' : ''];
+  if (a.kind === 'deco') return [a.it.e, a.it.n, '#ffd8a8', 560, k, own ? 'Click to turn, move or take away · R turns it' : ''];
   const c = HX_CLEAR || {}, cost = x => x ? hxCost(x.l, x.x) : '';
   if (a.kind === 'tree') return ['🌲', a.tf ? 'Painted forest' : 'Trees', '#8ce99a', 240, k, own ? (a.tf ? 'Counts as forest for a lumber mill · click to clear' : `Blocks building · click to clear (${cost(c.tree)}) · lumber mills like it`) : 'Blocks building'];
   if (a.kind === 'rock') return ['🪨', 'Rocks', '#ced4da', 210, k, own ? `Blocks building · click to clear (${cost(c.rock)})` : 'Blocks building'];
@@ -150,7 +152,7 @@ function hxHoverWhat(k) {
   if (a.kind === 'water') return ['🌊', 'Water', '#74c0fc', 420, k, 'Too deep to build on'];
   if (a.kind === 'pond') return ['💧', 'Pond', '#74c0fc', 430, k, 'Painted with Terraform'];
   if (a.kind === 'hill') return ['⛰️', 'Hill', '#b8a98a', 280, k, 'Mines like to sit next to it'];
-  if (a.kind === 'grass') { const n = { sand: 'Sand', path: 'Path' }[a.g] || 'Grass'; return [a.g === 'sand' ? '🏖️' : a.g === 'path' ? '🟫' : '🌱', n, '#b2f2bb', 360, k, own ? 'Open ground · Build or Terraform here' : 'Open ground']; }
+  if (a.kind === 'grass') { const n = a.g === 'path' ? (TF_PS[st.tf?.[k]?.ps] || TF_PS.dirt).n : { sand: 'Sand' }[a.g] || 'Grass'; return [a.g === 'sand' ? '🏖️' : a.g === 'path' ? '🟫' : '🌱', n, '#b2f2bb', 360, k, own ? 'Open ground · Build or Terraform here' : 'Open ground']; }
   return null;
 }
 function hxHoverInfo(k) {
