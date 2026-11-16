@@ -90,7 +90,7 @@ const BW_DEF = {
         return { k: n ? 'Next event' : 'Events', v: n ? `${n.name} ${relDays(diffDays(t, n.date)).toLowerCase()}` : 'Nothing booked', go: bwGo('＋ Add event', 'data-act="new" data-kind="tevent"'), hint: 'Races, games and comps',
           list: up.slice(0, 5).map(e => bwRow(esc(e.name), bwWhen(e.date))), empty: '' };
       }],
-      ['spar', 'Practice yard', () => ({ k: 'Practice yard', v: 'Spar a champion', go: bwGo('⚔ Go to the boss island', 'data-shell="travel" data-v="boss"'), hint: 'Spars are on the boss island, next to this week\'s boss', list: [], empty: '' })],
+      ['spar', 'Practice yard', () => ({ k: 'Practice yard', v: 'Spar a champion', go: bwGo('⚔ Spar now', 'data-bw="spar"'), hint: 'Practise against a champion boss. Spars happen on the boss island', list: [], empty: '' })],
     ],
     more: [['The full fitness page', bwPage('training', { bodyPage: 'train' })], ['Records and progress', bwPage('training', { bodyPage: 'progress' })], ['Body card', bwPage('training', { bodyPage: 'body' })]],
   }),
@@ -160,6 +160,7 @@ document.addEventListener('click', e => {
   const el = e.target.closest('[data-bw]'); if (!el) return;
   const k = el.dataset.bw;
   if (k === 'tab') { ui.bw.tab = el.dataset.v; ui.bw.more = false; render(); }
+  else if (k === 'spar') { view = 'islands'; if (typeof shellTravel === 'function') shellTravel('boss', () => { ui.isPanel = 'bspar'; render(); }); }
   else if (k === 'more') { ui.bw.more = !ui.bw.more; render(); }
   else if (k === 'page') { let set = {}; try { set = JSON.parse(el.dataset.set || '{}'); } catch (x) { } Object.assign(ui, set); view = el.dataset.v; window.scrollTo(0, 0); render(); }
 });

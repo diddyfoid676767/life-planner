@@ -4111,3 +4111,11 @@ body.world-on:not(.win-bw) .content { padding-bottom: 84px; }
 body.skin-a .isfull .isres { background: rgba(255, 253, 248, .95); border-color: rgba(42, 49, 64, .1); box-shadow: 0 2px 8px rgba(0, 0, 0, .15); }
 body.skin-a .isfull .isres b { color: #2a3140; } body.skin-a .isfull .isres small { color: #6b7280; }
 body.skin-a .isfull .isbtn { color: #2a3140; }
+body.skin-a .isfull .isplace { background: rgba(255, 253, 248, .96); border-color: rgba(42, 49, 64, .12); color: #2a3140; box-shadow: 0 6px 18px rgba(0, 0, 0, .18); }
+body.skin-a .isx, body.skin-a .shm-in .isx { background: #f3ecdc; color: #6b7280; border-color: transparent; }
+body.skin-a .shm-in { --sm-bg: rgba(255, 253, 248, .97); --sm-line: rgba(42, 49, 64, .12); --sm-text: #2a3140; --sm-muted: #6b7280; background: var(--sm-bg); color: #2a3140; }
+body.skin-a .shm-in, body.skin-a .shm-in :is(.shm-i, .shm-bl, h3, b) { color: #2a3140; }
+body.skin-a .shm-in :is(.muted, small, .shm-lbl) { color: #6b7280; }
+body.skin-a .shm-i { background: #f4efe3; border-color: rgba(42, 49, 64, .08); }
+body.skin-a .shm-mini { background: #dceefa; }
+body.skin-a .isfull .ispanel { background: #fffdf8; }

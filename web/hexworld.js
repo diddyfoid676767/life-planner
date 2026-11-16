@@ -27,15 +27,15 @@ const HX_FIELD_MAX = 6, HX_FED_HP = 10, HX_RING = { dr: .03 };
 // the page buildings: free, pre-built, never decay
 // 2.69: ac = accent colour (hex plate, pennant and name tag), hz = the pitch of its hover tick
 const HX_FREE = [
-  { id: 'hall', n: 'Hall', e: '🏰', m: 'building_castle', at: '0,0', open: 'profile', d: 'Your profile, character and gear', s: .82, ac: '#ffd43b', hz: 523 },
-  { id: 'library', n: 'Library', e: '📚', m: 'building_church', at: '0,-2', open: 'study', d: 'Study tracker, SAC scores and exams', ac: '#4dabf7', hz: 784 },
-  { id: 'training', n: 'Training hall', e: '💪', m: 'building_barracks', at: '2,-2', open: 'training', d: 'Fitness, workouts and PRs', ac: '#fa5252', hz: 392 },
-  { id: 'tavern', n: 'Tavern', e: '🍺', m: 'building_tavern', at: '-2,0', open: 'friends', d: 'Friends and chats', ac: '#ff922b', hz: 587 },
-  { id: 'market', n: 'Market', e: '🛒', m: 'building_market', at: '-2,2', open: 'shop', d: 'The weekly cosmetics shop', ac: '#51cf66', hz: 659 },
-  { id: 'yard', n: 'Practice yard', e: '🎯', m: 'building_archeryrange', at: '2,0', open: 'spar', d: 'Spar a champion boss', ac: '#b197fc', hz: 440 },
-  // 2.72 (stage 4): every feature is a building. These two find a free hex next to the hall's roads (hxFreeSpots)
+  { id: 'hall', n: 'Hall', e: '🏰', m: 'building_castle', at: '0,0', open: 'profile', d: 'You, your character, gear and settings', s: .82, ac: '#ffd43b', hz: 523 },
+  { id: 'library', n: 'Library', e: '📚', m: 'building_church', at: '0,-2', rot: 3, open: 'study', d: 'Study, SACs and exams', ac: '#4dabf7', hz: 784 },
+  { id: 'training', n: 'Training hall', e: '💪', m: 'building_barracks', at: '2,-2', rot: 4, open: 'training', d: 'Workouts, events and the Practice yard', ac: '#fa5252', hz: 392 },
+  { id: 'tavern', n: 'Tavern', e: '🍺', m: 'building_tavern', at: '-2,0', rot: 2, open: 'friends', d: 'Your house, friends and chats', ac: '#ff922b', hz: 587 },
+  // 2.78 (feedback F2): the Market is a small stall on the town square (where the Practice yard stood, so the hex is always free).
+  // The Practice yard folded into the Training hall and the Steward's lodge into the Hall.
+  { id: 'market', n: 'Market', e: '🛒', m: 'building_market', at: '2,0', rot: 1, s: .72, open: 'shop', d: 'The one shop: cosmetics, decorations and island looks', ac: '#51cf66', hz: 659 },
+  // 2.72 (stage 4): every feature is a building. This one finds a free hex next to the hall's roads (hxFreeSpots)
   { id: 'notice', n: 'Notice Board', e: '📜', m: 'building_stage_C', at: null, rot: 1, open: 'today', d: 'Today, your calendar and to-dos', ac: '#e8c07d', hz: 698, spot: ['0,2', '1,1', '-1,2', '2,1', '-1,3'] },
-  { id: 'lodge', n: 'Steward\'s lodge', e: '🧾', m: 'building_home_B', at: null, rot: 2, open: 'settings', d: 'Settings, sign-in and connections', ac: '#adb5bd', hz: 494, spot: ['2,-1', '1,-2', '-1,-1', '2,1', '-3,1'] },
 ];
 // 2.72: the newer page buildings take a free hex on each island the first time it opens, and keep it
 function hxFreeSpots(st) {
@@ -355,7 +355,7 @@ function viewHexHome() {
   else if (ui.isPanel === 'visit') extra += isPanel('🏘️ Visit a housemate', hxVisitHtml());
   else if (ui.isPanel === 'market' || ui.isPanel === 'looks') extra += isPanel('🛒 Market', hxMarketHtml());
   else if (ui.isPanel === 'help') extra += isPanel('❔ How your island works', `<ul class="ishelp">
-      <li>The Hall, Library, Training hall, Tavern, Market, Practice yard, Notice Board and Steward's lodge are free. Tap one to open its window. The Market is the shop for cosmetics, island looks and decorations, and you can preview those for free.</li>
+      <li>The Hall, Notice Board, Library, Training hall and Tavern are free, with the Market stall on the town square. Tap one to open its window. The Market is the shop for cosmetics, island looks and decorations, and you can preview those for free.</li>
       <li>Buy buildings in <b>Build</b>. The building follows your mouse: green means it fits, red says why not. Press <b>R</b> to turn it and click to drop it. <b>Esc</b> or right-click cancels.</li>
       <li>A building only works when a <b>road</b> joins it to your hall. Press 🛣️ <b>Roads</b> and drag across hexes to lay them (${hxCost(HX_ROAD.l, HX_ROAD.x)} a hex). Roads over the river become bridges.</li>
       <li>Some buildings like a spot: a lumber mill next to forest, a mine next to a hill, a watermill on the river, a windmill among fields.</li>
@@ -643,7 +643,7 @@ function hxBuild() {
   const roads = new Set(st.road), rivers = new Set([...L].filter(([, h]) => h.t === 'river').map(([k]) => k));
   const joins = n => roads.has(n) || n === '0,0' || !!hxFreeAt(n, st);
   // the rock under the island: a craggy hexagonal point with glowing crystals, like the other islands
-  const base = is3mesh(is3rock(new THREE.CylinderGeometry(15.4 * S, 15.6 * S, 1.2, 6, 1), seeded('hxb'), .02), '#7a5a3e', 0, -1.6, 0, W); base.rotation.y = Math.PI / 6;
+  const base = is3mesh(is3rock(new THREE.CylinderGeometry(15.4 * S, 15.6 * S, 1.2, 6, 1), seeded('hxb'), .02), '#c9b48a', 0, -1.6, 0, W); base.rotation.y = Math.PI / 6;
   const und = is3mesh(is3rock(new THREE.ConeGeometry(15 * S, 13 * S, 6, 6), seeded('hxu'), .22, .1), '#6d5f73', 0, -2.2 - 6.5 * S, 0, W); und.rotation.set(Math.PI, Math.PI / 6, 0);
   for (let i = 0; i < 7; i++) { const a = rnd() * 6.28, r = (4 + rnd() * 6) * S, h = 1 + rnd() * 2; const cr = is3mesh(new THREE.ConeGeometry(.35 + rnd() * .3, h, 5), ['#4ee6ff', '#ffb347'][i % 2], Math.cos(a) * r, -3 - rnd() * 5 * S - h / 2, Math.sin(a) * r, W, true); cr.rotation.set(Math.PI + (rnd() - .5) * .5, 0, (rnd() - .5) * .5); }
   for (let i = 0; i < 6; i++) { const a = i / 6 * 6.28 + rnd(), r = (22 + rnd() * 6) * S, s = .7 + rnd() * .8, g = new THREE.Group(); g.position.set(Math.cos(a) * r, -3 + rnd() * 6, Math.sin(a) * r); g.add(hxModel(rnd() < .5 ? 'hex_grass' : 'hex_grass_bottom', col)); if (rnd() < .6) { const t = hxModel(rnd() < .5 ? 'trees_A_small' : 'tree_single_B', col); g.add(t); } g.scale.setScalar(s); W.add(g); HX3.anim.push({ o: g, bob: rnd() * 6, y: g.position.y }); }
@@ -669,7 +669,7 @@ function hxBuild() {
   // page buildings (the house island has only its great hall)
   W0.free.forEach((f, i) => {
     if (!f.at) return;
-    const g = add(f.m, f.at, f.rot ?? (f.id === 'hall' ? 0 : [3, 4, 2, 5, 1][i - 1] || 0), 0, f.s || 1);
+    const g = add(f.m, f.at, f.rot ?? 0, 0, f.s || 1);
     const [x, z] = hxPos(...hxQR(f.at)); IS3.marks[f.at] = [x, f.at === '0,0' ? 5.2 * (f.s || 1) : 2.4, z];
     if (f.ac) hxAccent(W, f, x, z);
     if (f.id === 'hall') { const o = is3mesh(new THREE.IcosahedronGeometry(.42, 1), '#ffb347', 0, 4.65, 0, g, true); HX3.anim.push({ o, orb: 1 }); const ring = is3mesh(new THREE.TorusGeometry(.7, .04, 4, 20), '#ffe8a3', 0, 4.65, 0, g, true); HX3.anim.push({ o: ring, ring: 1 }); }
@@ -726,9 +726,40 @@ function hxWorkers(W, x, z, rnd) {
   }
 }
 // the building following the mouse while placing, with a coloured hex outline and its bonus hexes lit up
+// 2.78 (feedback F2): suggested spots for your own buildings, in tidy districts round the edges:
+// farms towards the river in the south, workshops by the forest and hills in the north, towers and
+// magic to the east. Each spot it lights also has to fit, and a bonus (forest, hill, fields) counts extra.
+const HX_DISTRICT = { field: 1.57, windmill: 1.57, well: 1.9, watermill: 1.57, lumber: -2.2, mine: -1.1, forge: -1.6, store: -1.9, cottage: 2.6, mage: .3, watch: .6, catapult: 0 };
+function hxSuggest(P, st) {
+  if (P.sugg && P.sugg.id === P.id) return P.sugg.ks;
+  const it = hxItem(P.id), out = [];
+  if (it && !it.wall && P.mode !== 'tool' && !hxHouseOn() && !ui.hxVisit) {
+    const ang = HX_DISTRICT[it.id];
+    for (const k of hxLand().keys()) {
+      const [q, r] = hxQR(k), d = hxDist(q, r); if (d < 3) continue;
+      const ch = hxCheck(P.id, k, st, P.from); if (!ch.ok) continue;
+      const [x, z] = hxPos(q, r);
+      let sc = ch.good.filter(g => !/hall/.test(g)).length * 2.5 - Math.abs(d - 4.5) * .7;
+      if (ang != null) sc += Math.cos(Math.atan2(z, x) - ang) * 2.2;
+      sc += hxNb(k).filter(n => st.b[n] && HX_DISTRICT[st.b[n].id] === ang).length * 1.2; // next to its own kind
+      out.push([sc, k]);
+    }
+  }
+  const ks = out.sort((a, b) => b[0] - a[0]).slice(0, 5).map(x => x[1]);
+  P.sugg = { id: P.id, ks }; return ks;
+}
+function hxSuggestDraw() {
+  if (HX3.sugg) { IS3.scene.remove(HX3.sugg); HX3.sugg = null; }
+  const P = ui.hxP; if (!P || P.mode === 'tool' || view !== 'islands') return;
+  const ks = hxSuggest(P, hxCur()); if (!ks.length) return;
+  const g = HX3.sugg = new THREE.Group(), mat = HX3.suggMat || (HX3.suggMat = new THREE.MeshBasicMaterial({ color: '#ffffff', transparent: true, opacity: .5, depthWrite: false }));
+  for (const k of ks) { const [x, z] = hxPos(...hxQR(k)), m = new THREE.Mesh(HX3.suggGeo || (HX3.suggGeo = new THREE.RingGeometry(.9, 1.55, 6)), mat); m.rotation.set(-Math.PI / 2, 0, Math.PI / 6); m.position.set(x, .12 + (typeof hxHt === 'function' ? hxHt(k, hxState()) : 0), z); g.add(m); }
+  IS3.scene.add(g);
+}
 function hxGhostDraw() {
   if (!HX3.kit || !IS3.world) return;
   if (HX3.ghost) { IS3.scene.remove(HX3.ghost); HX3.ghost = null; HX3.ghostModel = null; }
+  try { hxSuggestDraw(); } catch (e) { console.error(e); }
   const P = ui.hxP, k = HX3.hover; if (!P || !k || view !== 'islands') { is3draw(); return; }
   const g = HX3.ghost = new THREE.Group(), [x, z] = hxPos(...hxQR(k));
   const outline = (kk, c, o = .9) => { const [xx, zz] = hxPos(...hxQR(kk)), r = new THREE.Mesh(new THREE.RingGeometry(1.5, 1.72, 6), new THREE.MeshBasicMaterial({ color: c, transparent: true, opacity: o, depthWrite: false })); r.rotation.set(-Math.PI / 2, 0, Math.PI / 6); r.position.set(xx - x, .06, zz - z); g.add(r); return r; };
@@ -849,6 +880,7 @@ function hxLoop() {
       else if (a.spin != null) a.o.rotation.y = t * a.spin;
       else if (a.flick != null) a.o.scale.set(1, .8 + Math.abs(Math.sin(t * 7 + a.flick)) * .4, 1);
     }
+    if (HX3.uT) HX3.uT.value = t; // 2.78: grass and flowers sway
     if (HX3.ghostModel) HX3.ghostModel.position.y = .45 + Math.sin(t * 5) * .12;
     if (HX3.glow?.visible) HX3.glow.material.opacity = low ? .45 : .35 + Math.sin(t * 4) * .15;
     HX3.fx = HX3.fx.filter(f => {
@@ -879,7 +911,7 @@ if (typeof GUIDES === 'object') GUIDES.hexmove = {
   name: 'Building on your hex island',
   end: () => { ui.hxP = null; document.getElementById('hxanchor')?.remove(); if (view === 'islands') render(); },
   steps: [
-    { title: 'Your island is now hexagons 🏝️', text: 'Everything sits on a hex grid now, built from proper medieval models. Your Hall is in the middle, with the Library, Training hall, Tavern, Market and Practice yard around it. Tap any of them to open its window.', go: hxGuideHome, wait: 500 },
+    { title: 'Your island is now hexagons 🏝️', text: 'Everything sits on a hex grid now, built from proper medieval models. Your Hall is in the middle, with the Notice Board, Library, Training hall, Tavern and the Market stall around it. Tap any of them to open its window.', go: hxGuideHome, wait: 500 },
     { title: 'Tap a building', text: 'Tapping the Hall (or any building) shows what it does. Page buildings have an <b>Open</b> button; your own buildings show their level, perk, Collect, Upgrade and Repair.', go: () => { hxGuideHome(); setTimeout(() => hxAnchor('0,0'), 80); }, sel: '#hxanchor', wait: 300 },
     { title: 'Buy something new', text: 'Press <b>Build</b> to see every building you can buy with Lumen and Ember. New ones unlock as your level goes up.', go: hxGuideHome, sel: '.hxtools [data-v="shop"]' },
     { title: 'Pick a building', text: 'Each card shows its perk, its price and how long it takes. Buildings with a linking bonus say so, like a lumber mill next to forest.', go: () => { hxGuideHome(); ui.isPanel = 'shop'; render(); }, sel: '#isfull .ispanel', place: 'left' },
