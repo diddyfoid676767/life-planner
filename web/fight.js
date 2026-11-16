@@ -15,7 +15,7 @@
      start and comes back with a reward only if you win. Duels move a rating. */
 
 const FT_SPELLS = 3, FT_MOVES = 3, FT_ROUNDS = 8, FT_SPAR_ROUNDS = 12, FT_WEEK_ATT = 5, FT_DAY_ATT = 2;
-const FT_ATT_CAP = 700, FT_WEEK_CAP = 3500;
+const FT_ATT_CAP = 700, FT_WEEK_CAP = 12000; // 2.81: the week cap rose for the Souls damage race (quick fights still cap at 700 each)
 // skills: k spell|move, st = the stat it scales with, pw power, cd rounds between uses, t tag, c cost
 const FT_SKILLS = [
   { id: 'spark', k: 'spell', n: 'Spark', e: '✨', st: 'foc', pw: 14, cd: 0, t: 'light', c: 0, d: 'A quick flash of light.' },
@@ -93,7 +93,9 @@ const FT_BUFF = { hp: [15, 'Health', v => `+${v}`], sp: [.05, 'Spell damage', v 
 const FT_RAR = [['common', 'Common', 1, '#868e96'], ['rare', 'Rare', 1.6, '#1c7ed6'], ['epic', 'Epic', 2.4, '#ae3ec9'], ['legendary', 'Legendary', 3.5, '#f59f00']];
 const FT_STAT_ORDER = ['log', 'kno', 'exp', 'foc', 'spd', 'end', 'str', 'agi'];
 
-const ftState = () => { const c = cdState(); return (c.ft = Object.assign({ own: ['spark', 'jab'], eq: { spell: ['spark'], move: ['jab'] }, gear: [], wear: {}, att: {}, dmg: {}, leg: {}, kill: {}, r: 1000, w: 0, l: 0 }, c.ft || {})); };
+// 2.81: fills missing keys in place, so an object held across another ftState() call keeps its writes
+// (it used to swap in a new object each call, which lost the bonus fight count)
+const ftState = () => { const c = cdState(), d = { own: ['spark', 'jab'], eq: { spell: ['spark'], move: ['jab'] }, gear: [], wear: {}, att: {}, dmg: {}, leg: {}, kill: {}, r: 1000, w: 0, l: 0 }; c.ft = c.ft || {}; for (const k in d) if (!(k in c.ft)) c.ft[k] = d[k]; return c.ft; };
 const ftSkill = id => FT_SKILLS.find(s => s.id === id) || Object.values(FT_CLASS).flatMap(c => [c.sk, c.sk2]).find(s => s.id === id);
 // 2.57: each class has two exclusive skills, a spell and a move, always in your build
 const ftClassSkills = cls => FT_CLASS[cls] ? [FT_CLASS[cls].sk, FT_CLASS[cls].sk2].filter(Boolean) : [];
@@ -329,10 +331,10 @@ function ftCheck(F) {
 function ftEnd(F, how) {
   F.over = true; const st = ftState(), out = [];
   if (F.kind === 'house') {
-    const wk = mondayOf(today()), x = ftTermX(wk), before = st.dmg[wk] || 0, n = Math.min(FT_ATT_CAP * x, Math.round(F.dealt)), add = Math.max(0, Math.min(n, FT_WEEK_CAP * x - before));
+    const wk = mondayOf(today()), x = ftTermX(wk), before = st.dmg[wk] || 0, n = Math.min((F.cap || FT_ATT_CAP) * x, Math.round(F.dealt)), add = Math.max(0, Math.min(n, FT_WEEK_CAP * x - before));
     st.dmg[wk] = before + add; for (const k in st.dmg) if (k < addDays(wk, -35)) delete st.dmg[k];
-    out.push(`<b>${add.toLocaleString()}</b> damage added to ${esc(F.bossName)}'s shared health bar${add < F.dealt ? ` (capped at ${FT_ATT_CAP * x} a fight, ${(FT_WEEK_CAP * x).toLocaleString()} a week)` : ''}.`);
-    out.push(how === 'down' ? 'It knocked you out, but every hit you landed still counts.' : 'You lasted all the rounds.');
+    out.push(`<b>${add.toLocaleString()}</b> damage added to ${esc(F.bossName)}'s shared health bar${add < F.dealt ? ` (capped at ${((F.cap || FT_ATT_CAP) * x).toLocaleString()} a fight, ${(FT_WEEK_CAP * x).toLocaleString()} a week)` : ''}.`);
+    out.push(how === 'down' ? 'It knocked you out, but every hit you landed still counts.' : F.souls ? 'You lasted the full 3 minutes.' : 'You lasted all the rounds.');
     if (Math.random() < Math.min(.6, .2 + add / 1200) * x) { const p = ftRollGear(x > 1 ? 1 : 0); out.push(`Gear drop: ${ftGearChip(p)}`); }
     hsLoad(true);
     if (typeof hxEatFood === 'function') hxEatFood(); // 2.65: a harvest's extra health lasts until a boss fight
