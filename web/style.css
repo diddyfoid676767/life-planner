@@ -3976,6 +3976,24 @@ body.souls-on #hud { z-index: 1; }
 .isbtn.fight.souls { background: linear-gradient(180deg, #5f3dc4, #3b1f8f); }
 .sotrial { margin-top: 14px; padding: 12px; border-radius: 12px; border: 1px solid rgba(151, 117, 250, .45); background: rgba(151, 117, 250, .08); }
 .sotrial p { margin: 4px 0 8px; }
+/* 2.81 Souls damage race (F4) */
+.so-dmg { position: absolute; top: 18px; left: 24px; text-align: left; text-shadow: 0 2px 6px #000; }
+.so-dmg small { display: block; font-size: .7rem; font-weight: 800; letter-spacing: .12em; color: #e8c07d; text-transform: uppercase; }
+.so-dmg b { display: block; font: 800 2.1rem/1.05 Georgia, serif; color: #ffe8b3; }
+.so-combo { display: block; min-height: 1em; font-size: .85rem; font-weight: 800; color: #ffd43b; }
+.so-time.low { color: #ff8787; }
+.so-tips { font-size: .86rem; color: #cfc6e0; }
+.so-sk.so-pot { border-color: rgba(140, 233, 154, .6); } .so-sk.so-pot.cd span { opacity: .35; }
+.so-res { max-height: calc(100vh - 40px); overflow-y: auto; }
+.so-big b { display: block; font: 800 3.4rem/1 Georgia, serif; color: #ffe8b3; margin-top: 6px; }
+.so-big small { color: #a99fc0; }
+.so-pb { font-weight: 800; color: #ffd43b; margin: 8px 0; }
+.so-stats { display: flex; flex-wrap: wrap; justify-content: center; gap: 4px 14px; font-size: .8rem; color: #cfc6e0; margin: 8px 0; }
+.so-stats b { color: #fff; }
+.so-top { margin-top: 10px; text-align: left; }
+.so-top ol { list-style: none; margin: 4px 0 0; padding: 0; }
+.so-top li { display: grid; grid-template-columns: 30px 1fr auto; gap: 6px; padding: 4px 8px; border-radius: 8px; font-size: .88rem; }
+.so-top li.me { background: rgba(255, 212, 59, .14); color: #ffe8b3; }
 
 /* ===================== 2.78 feedback rework F2: one game, no top bar, simple windows, menu styles A and C ===================== */
 @font-face { font-family: 'Fredoka'; src: url(fonts/fredoka.woff2) format('woff2'); font-weight: 300 700; font-display: swap; }

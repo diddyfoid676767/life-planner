@@ -10,6 +10,12 @@
 // version since the last one they saw (up to 3). D.settings.seenVersion remembers what was last shown,
 // D.settings.guidesSeen which guides have played. A brand-new install never sees either.
 const CHANGELOG = [
+  { v: '2.81.0', notes: [
+    { t: 'The Snooze Golem Souls fight is now a damage race: 3 minutes, one life, deal as much damage as you can on your house bar', k: 'new' },
+    { t: 'A much harder Golem: faster, varied timing, combos, fake-outs, delayed hits and new moves each phase. Hit its glowing back and stuck fists for big damage', k: 'new' },
+    { t: 'You fight as your animated hero: Shift sprint, Space jump, Ctrl or right-click roll, F block, hold click for a heavy, R for one of 3 potions', k: 'new' },
+    { t: 'After each fight: your damage, personal best and your house\'s top hitters. Bonus fights (60 Lumen + 60 Ember, 2 a day) once your weekly fights are used. Practice trials and Easy timing are gone', k: 'tweak' },
+  ] },
   { v: '2.80.0', notes: [
     { t: 'Walk mode is back: press Walk or V to explore your whole island as a real animated hero in your class outfit, with your own face, hair and cosmetics', k: 'new' },
     { t: 'Smooth running, Shift to sprint, Space to jump, Ctrl to roll, and you can swim in rivers and the sea. A smooth camera follows you, scroll to zoom', k: 'new' },
