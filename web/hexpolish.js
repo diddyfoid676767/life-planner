@@ -97,12 +97,20 @@ function hxCloudFade(a) {
 const HX_TICK = { cottage: 700, lumber: 330, field: 880, well: 620, store: 360, watermill: 520, mine: 300, mage: 990, forge: 280, windmill: 600, watch: 740, catapult: 340 };
 function hxHoverWhat(k) {
   const st = hxCur(), a = hxAt(k, st), W = hxW(st);
-  if (a.kind === 'free') return [a.it.e, a.it.n, a.it.ac || W.ac || '#ffd43b', a.it.hz || 523, a.it.at];
-  if (a.kind === 'b' && !a.it?.wall) return [a.it.e, a.it.n, W.house ? W.ac || '#ffe8a3' : '#ffe8a3', HX_TICK[a.it.id] || 450 + (a.it.n.length * 37) % 400, a.main];
-  if (a.kind === 'b') return [a.it.e, a.it.n, '#ced4da', 260, a.main];
-  if (a.kind === 'deco') return [a.it.e, a.it.n, '#ffd8a8', 560, k];
-  if (a.kind === 'tree') return ['🌲', 'Trees', '#8ce99a', 240, k];
-  if (a.kind === 'rock') return ['🪨', 'Rocks', '#ced4da', 210, k];
+  const own = !W.house && !ui.hxVisit; // 2.77: a hint on what you can do here (not when you're only visiting)
+  if (a.kind === 'free') return [a.it.e, a.it.n, a.it.ac || W.ac || '#ffd43b', a.it.hz || 523, a.it.at, own ? 'Click to open' : ''];
+  if (a.kind === 'b' && !a.it?.wall) return [a.it.e, a.it.n, W.house ? W.ac || '#ffe8a3' : '#ffe8a3', HX_TICK[a.it.id] || 450 + (a.it.n.length * 37) % 400, a.main, W.house ? 'Click for details' : own ? 'Click for details, drag to move' : ''];
+  if (a.kind === 'b') return [a.it.e, a.it.n, '#ced4da', 260, a.main, ''];
+  if (a.kind === 'deco') return [a.it.e, a.it.n, '#ffd8a8', 560, k, own ? 'Decoration · click to take away' : ''];
+  const c = HX_CLEAR || {}, cost = x => x ? hxCost(x.l, x.x) : '';
+  if (a.kind === 'tree') return ['🌲', a.tf ? 'Painted forest' : 'Trees', '#8ce99a', 240, k, own ? (a.tf ? 'Counts as forest for a lumber mill · click to clear' : `Blocks building · click to clear (${cost(c.tree)}) · lumber mills like it`) : 'Blocks building'];
+  if (a.kind === 'rock') return ['🪨', 'Rocks', '#ced4da', 210, k, own ? `Blocks building · click to clear (${cost(c.rock)})` : 'Blocks building'];
+  if (a.kind === 'road') return [a.bridge ? '🌉' : '🛣️', a.bridge ? 'Bridge' : 'Road', '#e9d8a6', 330, k, 'Joins buildings to your hall'];
+  if (a.kind === 'river') return ['🌊', 'River', '#74c0fc', 480, k, 'Roads over it become bridges · watermills sit here'];
+  if (a.kind === 'water') return ['🌊', 'Water', '#74c0fc', 420, k, 'Too deep to build on'];
+  if (a.kind === 'pond') return ['💧', 'Pond', '#74c0fc', 430, k, 'Painted with Terraform'];
+  if (a.kind === 'hill') return ['⛰️', 'Hill', '#b8a98a', 280, k, 'Mines like to sit next to it'];
+  if (a.kind === 'grass') { const n = { sand: 'Sand', path: 'Path' }[a.g] || 'Grass'; return [a.g === 'sand' ? '🏖️' : a.g === 'path' ? '🟫' : '🌱', n, '#b2f2bb', 360, k, own ? 'Open ground · Build or Terraform here' : 'Open ground']; }
   return null;
 }
 function hxHoverInfo(k) {
@@ -112,7 +120,7 @@ function hxHoverInfo(k) {
   const f = document.getElementById('isfull'); let tag = document.getElementById('hxtag');
   if (!what) { if (tag) tag.remove(); if (HX3.glow) HX3.glow.visible = false; if (IS3.canvas) IS3.canvas.style.cursor = ''; is3draw(); return; }
   if (!tag && f) { tag = document.createElement('div'); tag.id = 'hxtag'; f.appendChild(tag); }
-  if (tag) { tag.dataset.k = key; tag.style.setProperty('--ac', what[2]); tag.innerHTML = `<span>${what[0]}</span>${esc(what[1])}`; }
+  if (tag) { tag.dataset.k = key; tag.style.setProperty('--ac', what[2]); tag.innerHTML = `<span>${what[0]}</span>${esc(what[1])}${what[5] ? `<small>${esc(what[5])}</small>` : ''}`; }
   if (IS3.canvas) IS3.canvas.style.cursor = 'pointer';
   // the glow: a soft hex of light on the hovered hex (or every hex a big project covers)
   if (!HX3.glow) {

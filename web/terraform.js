@@ -66,18 +66,36 @@ function tfPaint(k) {
     if (cur.t === 'forest' || cur.t === 'hill' || cur.t === 'water') return 'Decorations go on grass, sand or paths';
     nx.d = id; nx.r = P.rot || 0;
   }
-  if (!hxCan(b.l, b.x)) return `Not enough ${b.l ? 'Lumen' : 'Ember'}`;
+  if (!ui.tfPv && !hxCan(b.l, b.x)) return `Not enough ${b.l ? 'Lumen' : 'Ember'}`;
   return tfApply(st, k, nx, b.l, b.x);
 }
 function tfApply(st, k, nx, l, x) {
   const T = HX3.paint, tf = tfAll(st), prev = tf[k] ? { ...tf[k] } : null;
   for (const kk of Object.keys(nx)) if (nx[kk] === undefined || (kk === 'h' && !nx.h)) delete nx[kk];
   if (Object.keys(nx).length) tf[k] = nx; else delete tf[k];
+  if (ui.tfPv) { // 2.77: a free preview: nothing is charged until Keep
+    const pv = st.tfPv = st.tfPv || []; let e = pv.find(q => q.k === k);
+    if (!e) pv.push(e = { k, prev, l: 0, x: 0 }); e.l = l; e.x = x;
+    (T.done = T.done || new Set()).add(k); return '';
+  }
   if (l || x) ftTake(l, x);
   (T.done = T.done || new Set()).add(k);
   if (!T.rec) { T.rec = []; (ui.tfHist = ui.tfHist || []).push(T.rec); if (ui.tfHist.length > 40) ui.tfHist.shift(); }
   T.rec.push({ k, prev, l, x });
   return '';
+}
+// 2.77 free preview: strokes are free and stay in st.tfPv until you Keep (pay) or Discard
+const tfPvCost = st => (st.tfPv || []).reduce((a, e) => [a[0] + e.l, a[1] + e.x], [0, 0]);
+function tfPvDiscard(st = hxState(), quiet) {
+  const pv = st.tfPv; if (!pv?.length) { delete st.tfPv; return; }
+  for (const e of pv) { if (e.prev) tfAll(st)[e.k] = e.prev; else delete tfAll(st)[e.k]; }
+  delete st.tfPv; HX3.sig = ''; if (!quiet) { save(); toast('👁 Preview discarded', 'Your island is back as it was. Nothing was charged.'); }
+}
+function tfPvKeep() {
+  const st = hxState(), [l, x] = tfPvCost(st); if (!st.tfPv?.length) return;
+  if (!hxCan(l, x)) { toast('Not enough yet', `Keeping these costs ${hxCost(l, x)}.`); return; }
+  if (l || x) ftTake(l, x);
+  const n = st.tfPv.length; delete st.tfPv; save(); if (typeof sfx === 'function') sfx('coin'); render(); toast('🌱 Kept', `${n} hex${n === 1 ? '' : 'es'} for ${hxCost(l, x)}.`);
 }
 function tfUndo() {
   const rec = ui.tfHist?.pop(), st = hxState(); if (!rec) return;
@@ -101,14 +119,23 @@ function tfBar(P) {
   return `<div class="ishud is-bc isplace hxbar tfbar">
     <div class="tfgs">${grp('Ground', B.filter(([k]) => k !== 'up' && k !== 'down'))}${grp('Height', B.filter(([k]) => k === 'up' || k === 'down'))}${grp('Plants', Dc.filter(([, v]) => v.plant))}${grp('Decorations', Dc.filter(([, v]) => !v.plant))}${grp('&nbsp;', [['erase', { n: 'Remove', e: '🧽', l: 0, x: 0, d: 'Take a decoration or plant away' }]])}</div>
     <div class="tfrow"><span>${id === 'erase' ? '🧽 Drag over decorations and plants to take them away.' : `<b>${b.e} ${esc(b.n)}</b> · ${hxCost(b.l, b.x)} a hex. Click or drag over the island${HX_TF.deco[id] ? ', <b>R</b> turns it' : ''}.`}${P.n ? ` <b>${P.n} done</b>` : ''} ${P.why ? `<b class="hxwhy bad">${esc(P.why)}</b>` : ''}</span>
-    <button class="btn small" data-hx="tfundo" ${ui.tfHist?.length ? '' : 'disabled'} title="Undo the last stroke and get its cost back (Ctrl+Z)">↶ Undo</button><button class="btn small ghost" data-hx="tfreset" title="Put the ground and heights back as they started">⟲ Reset terrain</button><button class="btn small primary" data-hx="cancel">✔ Done</button></div></div>`;
+    ${tfPvBar()}<button class="btn small" data-hx="tfundo" ${ui.tfHist?.length ? '' : 'disabled'} title="Undo the last stroke and get its cost back (Ctrl+Z)">↶ Undo</button><button class="btn small ghost" data-hx="tfreset" title="Put the ground and heights back as they started">⟲ Reset terrain</button><button class="btn small primary" data-hx="cancel">✔ Done</button></div></div>`;
+}
+function tfPvBar() {
+  const st = hxState(), n = st.tfPv?.length || 0, [l, x] = tfPvCost(st);
+  if (!ui.tfPv) return '<button class="btn small" data-hx="tfpv" title="Try things on your island for free and only pay when you keep them">👁 Preview (free)</button>';
+  return `<span class="tag">👁 Preview: free to try${n ? ` · ${n} hex${n === 1 ? '' : 'es'} · ${hxCost(l, x)}` : ''}</span><button class="btn small primary" data-hx="tfkeep" ${n ? '' : 'disabled'}>✔ Keep${n ? ' · ' + hxCost(l, x) : ''}</button><button class="btn small ghost" data-hx="tfdiscard">✖ ${n ? 'Discard' : 'Stop preview'}</button>`;
 }
 document.addEventListener('click', e => {
-  const el = e.target.closest('[data-hx="tfb"],[data-hx="tfundo"],[data-hx="tfreset"]'); if (!el) return;
+  const el = e.target.closest('[data-hx="tfb"],[data-hx="tfundo"],[data-hx="tfreset"],[data-hx="tfpv"],[data-hx="tfkeep"],[data-hx="tfdiscard"],[data-hx="decopv"]'); if (!el) return;
   const a = el.dataset.hx;
   if (a === 'tfb' && ui.hxP?.id === 'tf') { ui.hxP.brush = ui.tfBrush = el.dataset.v; ui.hxP.why = ''; if (typeof sfx === 'function') sfx('select'); render(); }
   else if (a === 'tfundo') tfUndo();
   else if (a === 'tfreset') tfReset();
+  else if (a === 'tfpv') { ui.tfPv = true; render(); }
+  else if (a === 'tfkeep') tfPvKeep();
+  else if (a === 'tfdiscard') { tfPvDiscard(); ui.tfPv = false; render(); }
+  else if (a === 'decopv') { ui.tfPv = true; Object.assign(ui, { isPanel: null }); hxStartPlace({ id: 'tf', mode: 'tool', n: 0, brush: ui.tfBrush || 'grass' }); }
 });
 
 // ---------- 3D ----------

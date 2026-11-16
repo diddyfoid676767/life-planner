@@ -202,17 +202,31 @@ function hxWxStep(now) {
 function hxLooksHtml() {
   const st = hxState(), own = st.themes || [], cur = HX_THEMES[st.theme] ? st.theme : 'natural', s = HX_SEASONS[hxSeason()], w = HX_WX.cur, dl = hxDaylight();
   const T = hxSunTimes(), hm = h => { const H = Math.floor(h), M = Math.round((h - H) * 60); return `${(H + 11) % 12 + 1}:${String(M).padStart(2, '0')}${H < 12 ? 'am' : 'pm'}`; };
-  return `<p class="muted small-text">Your island's light follows the real time of day (sunrise about ${hm(T.rise)}, sunset about ${hm(T.set)}), and lamps and lanterns glow at night. ${dl.day ? '' : '🌙 It\'s night now.'}</p>
+  const pv = st.pvTheme && HX_THEMES[st.theme] ? HX_THEMES[st.theme] : null;
+  return `${pv ? `<div class="hxpv"><b>👁 Previewing ${pv.e} ${pv.n}</b> · free until you keep it<div class="row" style="gap:8px;margin-top:6px"><button class="btn small primary" data-sky="theme" data-v="${st.theme}" ${hxCan(pv.l, pv.x) ? '' : 'disabled'}>✔ Keep · ${hxCost(pv.l, pv.x)}</button><button class="btn small ghost" data-sky="stoppv">✖ Stop preview</button></div></div>` : ''}<p class="muted small-text">Your island's light follows the real time of day (sunrise about ${hm(T.rise)}, sunset about ${hm(T.set)}), and lamps and lanterns glow at night. ${dl.day ? '' : '🌙 It\'s night now.'}</p>
     <div class="isshop">${Object.entries(HX_THEMES).map(([id, t]) => {
       const has = id === 'natural' || own.includes(id), on = id === cur, can = has || hxCan(t.l, t.x);
       return `<div class="isitem ${on ? 'owned' : ''} ${!on && can ? 'canbuy' : ''}" ${!on && can ? `data-sky="theme" data-v="${id}" role="button" tabindex="0"` : ''}><div class="isitem-e">${t.e}</div><b>${t.n}</b>
         <div class="muted small-text">${id === 'natural' ? `Follows the real season: ${s.e} ${s.n} now` : t.d}</div>
-        ${on ? '<span class="tag">In use</span>' : `<button class="btn small ${can ? 'primary' : ''}" data-sky="theme" data-v="${id}" ${can ? '' : 'disabled'}>${has ? 'Use' : hxCost(t.l, t.x)}</button>`}</div>`;
+        ${on ? '<span class="tag">In use</span>' : `<button class="btn small ${can ? 'primary' : ''}" data-sky="theme" data-v="${id}" ${can ? '' : 'disabled'}>${has ? 'Use' : hxCost(t.l, t.x)}</button>${has ? '' : `<button class="btn small ghost" data-sky="preview" data-v="${id}" title="See it on your island for free">👁 Preview</button>`}`}</div>`;
     }).join('')}</div>
     <p class="muted small-text">A look recolours the grass and trees. Your terraforming and decorations stay as they are, and switching back to a look you own is free.</p>
     <label class="row small-text"><input type="checkbox" data-sky="wx" ${D.settings.isWx !== false ? 'checked' : ''} ${hxLow() ? 'disabled' : ''}> Weather on the island (Melbourne${w ? `, now ${hxWxText(w).toLowerCase()} and ${w.t}°` : ''})${hxLow() ? ' · off with Low graphics' : ''}</label>`;
 }
+// 2.77: look a look over on your island for free; it never survives leaving the panel or a restart
+function hxPvStop(quiet) {
+  const st = hxState(); if (!st.pvTheme) return;
+  if (st.pvTheme.was) st.theme = st.pvTheme.was; else delete st.theme;
+  delete st.pvTheme; HX3.sig = ''; if (!quiet) { save(); render(); }
+}
 document.addEventListener('click', e => {
+  const pe = e.target.closest('[data-sky="preview"],[data-sky="stoppv"]');
+  if (pe) {
+    const st = hxState();
+    if (pe.dataset.sky === 'stoppv') hxPvStop();
+    else if (HX_THEMES[pe.dataset.v]) { if (!st.pvTheme) st.pvTheme = { was: st.theme || '' }; st.theme = pe.dataset.v; HX3.sig = ''; if (typeof sfx === 'function') sfx('select'); render(); }
+    return;
+  }
   const el = e.target.closest('[data-sky]'); if (!el || el.dataset.sky !== 'theme') return;
   const st = hxState(), id = el.dataset.v, t = HX_THEMES[id]; if (!t) return;
   st.themes = st.themes || [];
@@ -221,6 +235,7 @@ document.addEventListener('click', e => {
     if (!confirm(`Buy the ${t.n} look for ${hxCost(t.l, t.x)}? You keep it and can switch back any time for free.`)) return;
     ftTake(t.l, t.x); st.themes.push(id);
   }
+  delete st.pvTheme; // keeping or picking a look ends any preview
   if (id === 'natural') delete st.theme; else st.theme = id;
   save(); HX3.sig = ''; if (typeof sfx === 'function') sfx('coin'); render(); toast(`${t.e} ${t.n}`, id === 'natural' ? 'Your island follows the real season again.' : 'Your island has its new look.');
 });
