@@ -16,6 +16,7 @@ const CHANGELOG = [
     { t: 'A see-through ghost shows each piece before you place it, with its cost or why it won\'t fit. R or the mouse wheel turns it, and you can drag to paint a whole row', k: 'new' },
     { t: 'Grass, sand, forest, paths and raising or lowering are free. Turning and moving anything you placed is free too: click it, or drag it', k: 'tweak' },
   ] },
+  { v: '2.81.1', notes: [{ t: 'Owner test fight button right on the boss island', k: 'tweak' }] },
   { v: '2.81.0', notes: [
     { t: 'The Snooze Golem Souls fight is now a damage race: 3 minutes, one life, deal as much damage as you can on your house bar', k: 'new' },
     { t: 'A much harder Golem: faster, varied timing, combos, fake-outs, delayed hits and new moves each phase. Hit its glowing back and stuck fists for big damage', k: 'new' },
