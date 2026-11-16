@@ -396,12 +396,14 @@ function av3figure(spec, gear, clsCol) {
   P.base = []; fig.traverse(o => { if (o.isMesh) P.base.push(o); });
   // head
   const head = P.head = new THREE.Group(); head.position.y = T.headY; fig.add(head);
-  const skull = av3mesh(head, av3sph(T.headR, 36, 26), mSkin); skull.scale.set(...K.head);
-  if (spec.look?.face === 'heart' || K.L.face === 'heart') { const ch = av3mesh(head, av3sph(T.headR * .55, 20, 14), mSkin, 0, -T.headR * .55, T.headR * .25, { ol: false }); ch.scale.set(.9, .7, .8); }
+  // 2.84: bare = only the cosmetics (the island hero brings its own head, face and hair)
+  if (spec.bare) K.head = [1, 1, 1];
+  if (!spec.bare) { const skull = av3mesh(head, av3sph(T.headR, 36, 26), mSkin); skull.scale.set(...K.head); }
+  if (!spec.bare && (spec.look?.face === 'heart' || K.L.face === 'heart')) { const ch = av3mesh(head, av3sph(T.headR * .55, 20, 14), mSkin, 0, -T.headR * .55, T.headR * .25, { ol: false }); ch.scale.set(.9, .7, .8); }
   const R = T.headR, [sx, sy, sz] = K.head;
   const h = { g: head, R, K, eyY: -.02, m: av3mat(K.hair), hat: false,
     fz: (x, y) => sz * R * Math.sqrt(Math.max(.05, 1 - (x / (sx * R)) ** 2 - (y / (sy * R)) ** 2)) };
-  av3face(h, spec, K); P.eyes = h.eyes;
+  if (!spec.bare) av3face(h, spec, K); P.eyes = h.eyes || [];
   // 2.59: cosmetics win where you've picked one (a hat over head gear, a kit
   // colour over chest gear, shoes over feet gear, an extra in your hand over
   // the Pen of Power), so the look you choose always shows; gear fills the
@@ -417,7 +419,8 @@ function av3figure(spec, gear, clsCol) {
   const hatId = as3('hat', spec.hat), hatF = !headGear && AV3_HAT[hatId];
   h.hat = !!hatF || gear['Study Cap'] || gear.Helm;
   h.band = gear.Headband || ['hat_band', 'hat_ninja'].includes(hatId) && !!hatF; // the hair sits tight so a band can go round it
-  if (!K.bald && !gear.Helm) { const f = AV3_HAIR[AV3_HAIR_OF[spec.hair] || 'short']; try { f(h); } catch (e) { console.error(e); } }
+  if (spec.bare) { if (spec.hairPiece && !gear.Helm) h.capR = R * 1.08; }
+  else if (!K.bald && !gear.Helm) { const f = AV3_HAIR[AV3_HAIR_OF[spec.hair] || 'short']; try { f(h); } catch (e) { console.error(e); } }
   if (hatF) try { hatF(h); } catch (e) { console.error(e); }
   const eyF = AV3_EYE[as3('eyes', spec.eyes)]; if (eyF) try { eyF(h); } catch (e) { console.error(e); }
   P.glow = h.glow;
@@ -484,10 +487,13 @@ function av3loop(t) {
   AV3.root.rotation.y = AV3.yaw;
   if (F) {
     const P = F.userData.P, b = Math.sin(s * 2);
-    P.chest.scale.y = 1 + b * .012; P.head.position.y = AV3_STYLE.headY + b * .012; P.head.rotation.z = Math.sin(s * .7) * .03;
-    P.arms[0].rotation.x = Math.sin(s * 1.3) * .06; P.arms[1].rotation.x = -Math.sin(s * 1.3) * .06;
-    const bl = (s % 4.2) < .12 ? .12 : 1; for (const e of P.eyes || []) e.scale.y = bl; // blink
-    P.charm.position.y = 1.45 + Math.sin(s * 1.6) * .06; P.charm.rotation.y = s;
+    if (AV3.hero) { const dt = Math.min(.1, s - (AV3.lastS || s)); AV3.lastS = s; AV3.hero.update(dt, s); } // 2.84: the island hero breathes with its own idle animation
+    else {
+      P.chest.scale.y = 1 + b * .012; P.head.position.y = AV3_STYLE.headY + b * .012; P.head.rotation.z = Math.sin(s * .7) * .03;
+      P.arms[0].rotation.x = Math.sin(s * 1.3) * .06; P.arms[1].rotation.x = -Math.sin(s * 1.3) * .06;
+      const bl = (s % 4.2) < .12 ? .12 : 1; for (const e of P.eyes || []) e.scale.y = bl; // blink
+      P.charm.position.y = 1.45 + Math.sin(s * 1.6) * .06; P.charm.rotation.y = s;
+    }
     if (P.cape) P.cape.rotation.x = .12 + Math.sin(s * 1.4) * .05;
     if (P.wings) P.wings.forEach((w, i) => { w.rotation.y = (i ? 1 : -1) * (.95 + Math.sin(s * 1.8) * .15); });
     if (P.scarf) P.scarf.rotation.z = -.3 + Math.sin(s * 2.2) * .12;
@@ -513,12 +519,21 @@ function mountYou3D() {
   if (!AV3.R) av3init();
   const cv = AV3.R.domElement;
   if (cv.parentNode !== host) host.prepend(cv);
-  const d = JSON.parse(host.dataset.av || '{}'), sig = host.dataset.av + (D.settings.lowQuality ? 'L' : '');
+  // 2.84: you're the same character as on the island and in fights (hero.js); the toon figure only shows while it loads or if it can't
+  const hr = typeof heroReady === 'function' && heroReady();
+  if (!hr && typeof HERO === 'object' && !HERO.fail && !AV3.heroWait) { AV3.heroWait = true; heroLoad().then(() => { AV3.heroWait = false; AV3.sig = ''; if (document.getElementById('av3host')) mountYou3D(); }); }
+  const d = JSON.parse(host.dataset.av || '{}'), sig = host.dataset.av + (D.settings.lowQuality ? 'L' : '') + (hr ? 'H' : '');
   if (sig !== AV3.sig) {
     AV3.sig = sig;
+    if (AV3.hero) { AV3.hero.dispose(); AV3.hero = null; }
     if (AV3.root.children.length) av3dispose(AV3.root);
     AV3.root.clear();
-    try { AV3.fig = av3figure({ ...(d.spec || avatarSpec()), force: d.force || '' }, d.gear || {}, d.cls || ''); AV3.root.add(AV3.fig); } catch (e) { console.error(e); AV3.fig = null; }
+    try {
+      const spec = { ...(d.spec || avatarSpec()), force: d.force || '' };
+      if (hr) { const ci = typeof cdClassInfo === 'function' ? cdClassInfo() : null; AV3.hero = heroMake({ spec, gear: d.gear || {}, cls: d.cls || '', outfit: heroOutfitOf(ci?.id), props: true, scale: .88 }); }
+      if (AV3.hero) { AV3.fig = AV3.hero.fig; AV3.root.add(AV3.hero.root); AV3.hero.play('Idle_Loop'); }
+      else { AV3.fig = av3figure(spec, d.gear || {}, d.cls || ''); AV3.root.add(AV3.fig); }
+    } catch (e) { console.error(e); AV3.fig = null; AV3.hero = null; }
     AV3.root.add(av3plinth(d.cls || ''));
     AV3.aura = d.cls ? av3aura(d.cls) : null; if (AV3.aura) AV3.root.add(AV3.aura);
     av3sky(d.cls || '');
