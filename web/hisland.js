@@ -217,13 +217,16 @@ function viewHouseIsland() {
       <div class="isbuilders">🔨 ${HI_MAX_BUILDING - busy}/${HI_MAX_BUILDING} builders free · ${hiMyRoles(L).length ? hiMyRoles(L).map(x => `${x.e} You're ${x.n}`).join(' · ') : L.r.champion ? `👑 Champion: ${esc(L.r.champion)}` : 'No roles yet'}</div></div>
     <div class="ishud is-tr">${isBar('cd-l', LUMEN, pool.l, 'House Lumen', 1, '')}${isBar('cd-e', EMBER, pool.e, 'House Ember', 1, '')}</div>
     ${P ? '' : `<div class="ishud is-bl"><button class="isbtn" data-hi="panel" data-v="house">🏰<span>House</span></button><button class="isbtn" data-hi="panel" data-v="pool">🏦<span>Pool</span></button><button class="isbtn" data-hi="panel" data-v="leaders">👑<span>Roles</span></button><button class="isbtn ${pr?.open ? 'ping' : ''}" data-hi="panel" data-v="vote">🗳️<span>Vote</span></button><button class="isbtn" data-hi="panel" data-v="perks">✨<span>Perks</span></button></div>`}
-    ${P ? '' : `<div class="ishud is-br hxtools">${lead ? `<button class="isbtn" data-hi="tool" data-v="road" title="Lay roads by dragging">🛣️<span>Roads</span></button>${hl >= HH_WALL_LV ? '<button class="isbtn" data-hi="tool" data-v="wall" title="Lay walls by dragging">🧱<span>Walls</span></button><button class="isbtn" data-hi="tool" data-v="gate" title="Lay gates by dragging">🚪<span>Gates</span></button>' : ''}` : ''}<button class="isbtn big" data-hi="panel" data-v="shop">🛒<span>Projects</span></button></div>`}`;
+    ${P ? '' : `<div class="ishud is-br hxtools">${typeof sgHudBtns === 'function' ? sgHudBtns(lead) : ''}${lead ? `<button class="isbtn" data-hi="tool" data-v="road" title="Lay roads by dragging">🛣️<span>Roads</span></button>${hl >= HH_WALL_LV ? '<button class="isbtn" data-hi="tool" data-v="wall" title="Lay walls by dragging">🧱<span>Walls</span></button><button class="isbtn" data-hi="tool" data-v="gate" title="Lay gates by dragging">🚪<span>Gates</span></button>' : ''}` : ''}<button class="isbtn big" data-hi="panel" data-v="shop">🛒<span>Projects</span></button></div>`}`;
+  // 2.88: watching a Test your defences replay (siege.js): just the replay's own HUD
+  if (ui.sgRun && typeof sgRunHtml === 'function') return isFrame('house', `<div class="ishud is-tl"><div class="islvl house" style="--hc:${h.col}"><b>${hl}</b><div><span>${typeof hsCrest === 'function' ? hsCrest(h, 20) : h.e} ${esc(h.name)} · test siege</span></div></div></div>`, sgRunHtml());
   let extra = `<div class="isbubs">${bubs}</div>`, pn = ui.isPanel;
   if (P) extra += hhPlaceBar(P, P.mode === 'tool');
   else if (pn === 'shop') extra += isPanel(`🛒 House projects · level ${hl}`, hiShopHtml(d, pool, lead, pr, hl, busy));
   else if (pn === 'pool') extra += isPanel(`🏦 ${h.name} house pool`, hiPoolHtml(pool));
   else if (pn === 'leaders') extra += isPanel(`👑 House roles · ${cdTermName(hiTerm().id)}`, hiLeadHtml(d, L));
   else if (pn === 'vote') extra += isPanel('🗳️ House vote', hiVoteHtml(d, pr, lead));
+  else if (pn && pn.startsWith('sg') && typeof sgPanel === 'function') extra += sgPanel(pn, d);
   else if (pn === 'perks' || pn === 'hall') {
     const pk = hiPerks(), sl = hhSlots(hl), ring = hhRingOf(d), off = lk ? hiKeys(d).filter(k => !lk.has(k) && hiCond(k) && hiCond(k) !== 'build').length : 0;
     const slots = `<p class="small-text">🛡️ Defence space at house level ${hl}: ${hhSlotUsed(d, 'wall')}/${sl.wall} wall hexes · ${hhSlotUsed(d, 'tower')}/${sl.tower} towers · ${hhSlotUsed(d, 'trap')}/${sl.trap} traps · ${hhSlotUsed(d, 'guard')}/${sl.guard} guard posts</p>`;

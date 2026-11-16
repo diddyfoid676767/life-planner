@@ -26,7 +26,7 @@ const HX_MELB = { lat: -37.81, lon: 144.96 };
 const hxSeason = (d = new Date()) => ['summer', 'summer', 'autumn', 'autumn', 'autumn', 'winter', 'winter', 'winter', 'spring', 'spring', 'spring', 'summer'][d.getMonth()];
 const hxWxOn = () => !hxLow() && D.settings.isWx !== false;
 // the look for the island being drawn: a theme on your island, the season otherwise (the house island just follows the season)
-function hxLook(home = IS3.house === 'hex') { const t = home && HX_THEMES[hxCur().theme]; return t && t.gr ? t : HX_SEASONS[hxSeason()]; }
+function hxLook(home = IS3.house === 'hex') { if (!home && IS3.house === 'hexh' && typeof sgFortOn === 'function' && sgFortOn()) return SG_FORT_LOOK; const t = home && HX_THEMES[hxCur().theme]; return t && t.gr ? t : HX_SEASONS[hxSeason()]; } // 2.88: or the house's Stone fortress look
 
 // ---------- recoloured textures ----------
 // the pack's greens move towards the look's colours, keeping their light and shade: the yellow-greens

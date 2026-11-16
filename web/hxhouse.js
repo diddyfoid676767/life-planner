@@ -126,7 +126,7 @@ function hhWorld() {
   const H = hsHouse(h) || { e: '🏰', name: 'House' };
   return (HH_W = {
     key, R: HH_R, seed: h, col: hxCol(), ac: H.col || '#ffd43b', noClear: true, house: true,
-    land: () => hhLand(h), item: hhItem, look: hhLook, dress: hhDress, sig: hhSig,
+    land: () => hhLand(h), item: hhItem, look: hhLook, dress: hhDress, sig: hhSig, base: () => typeof sgFortBase === 'function' ? sgFortBase() : null,
     free: [{ id: 'ghall', n: `${H.name} great hall`, e: H.e, m: 'building_castle', at: '0,0', rot: 0, s: 1 + Math.min(11, hl - 1) * .045 }],
   });
 }
@@ -139,11 +139,15 @@ function hhStOf(d, ops = []) {
     b[s.at] = { id: it.id, key, rot: s.rot || 0 }; for (const f of hxFoot(it, s.at)) if (f !== s.at) occ[f] = s.at;
   }
   for (const [t, k] of ops) {
+    if (t === 'tf') continue;
     if (t === 'x') { const i = road.indexOf(k); if (i >= 0) road.splice(i, 1); const j = wl.findIndex(w => w === k || w === 'g' + k); if (j >= 0) wl.splice(j, 1); }
     else if (t === 'road') road.push(k); else wl.push(t === 'gate' ? 'g' + k : k);
   }
   for (const w of wl) { const g = w[0] === 'g', k = g ? w.slice(1) : w; if (!b[k] && !occ[k]) b[k] = { id: g ? 'gate' : 'wall' }; }
-  return { b, road, clr: [], __occ: occ, __w: hhWorld(), __d: d };
+  // 2.88: the shape of the land (siege.js), and strokes being painted right now
+  const st = { b, road, clr: [], tf: JSON.parse(JSON.stringify(d.b?._sg?.tf || {})), __occ: occ, __w: hhWorld(), __d: d };
+  for (const [t, k, id] of ops) if (t === 'tf' && typeof sgTfPlan === 'function') { const pl = sgTfPlan(k, id, st); if (pl.nx) { if (Object.keys(pl.nx).length) st.tf[k] = pl.nx; else delete st.tf[k]; } }
+  return st;
 }
 let HH_C = {};
 function hhSt() {
@@ -173,10 +177,11 @@ function hhLook(k, s, st) {
 }
 function hhSig(st) {
   const d = st.__d || {};
-  return [HI.ut, hiLevel(), typeof biTrophies === 'function' ? biTrophies().length : 0, JSON.stringify(st.b), st.road.join(';'), hiKeys(d).map(k => hiCond(k, today(), d) + hiLvOn(d.b[k])).join()].join('|');
+  return [HI.ut, hiLevel(), typeof biTrophies === 'function' ? biTrophies().length : 0, JSON.stringify(st.b), st.road.join(';'), JSON.stringify(st.tf || {}), typeof sgFortOn === 'function' && sgFortOn() ? 'fort' : '', hiKeys(d).map(k => hiCond(k, today(), d) + hiLvOn(d.b[k])).join()].join('|');
 }
 // flags round the great hall and the boss trophies floating by the coast
 function hhDress(W, add, rnd, col) {
+  if (typeof sgFortDress === 'function') sgFortDress(W, add, rnd, col); // 2.88: the Stone fortress look
   for (let i = 0; i < 6; i++) { const a = i / 6 * Math.PI * 2 + Math.PI / 6, g = hxModel('flag_' + col, col); g.position.set(Math.cos(a) * 1.25, 0, Math.sin(a) * 1.25); g.rotation.y = -a; g.scale.setScalar(2.2); W.add(g); }
   const tro = typeof biTrophies === 'function' ? biTrophies().slice(0, 12) : [], R = (HH_R + 1) * 2 + 3.4;
   tro.forEach((t, i) => {
@@ -289,6 +294,7 @@ function hhOpCost(t, k, st) { return t === 'road' ? (st.__w.land().get(k)?.t ===
 function hhPaint(tool, k) {
   const P = ui.hxP; if (!P || !hhCanEdit()) return 'Only the Architect or Warlord can build';
   P.ops = P.ops || [];
+  if (tool === 'htf') return sgTfPaint(P, k); // 2.88: shaping the land (siege.js)
   const st = hhSt(), a = hxAt(k, st);
   if (tool === 'erase') { if (a.kind === 'road' || (a.kind === 'b' && a.it?.wall)) { P.ops.push(['x', k]); return ''; } return 'nothing to remove'; }
   const ch = hxCheck(tool === 'road' ? 'road' : 'wall', k, st); if (!ch.ok) return ch.why;
@@ -297,7 +303,7 @@ function hhPaint(tool, k) {
     if (hl < HH_WALL_LV) return `Walls unlock at house level ${HH_WALL_LV}`;
     if (used >= max) return `All ${max} wall spaces used (more at a higher house level)`;
   }
-  const c = hhOpCost(tool, k, st), p = hiPool(), sp = P.ops.reduce((t, [o, kk]) => { const x = hhOpCost(o, kk, st); return { l: t.l + x.l, e: t.e + x.x }; }, { l: 0, e: 0 });
+  const c = hhOpCost(tool, k, st), p = hiPool(), sp = P.ops.reduce((t, [o, kk, , l2, x2]) => { const x = o === 'tf' ? { l: l2, x: x2 } : hhOpCost(o, kk, st); return { l: t.l + x.l, e: t.e + x.x }; }, { l: 0, e: 0 });
   if (p.l - sp.l < c.l || p.e - sp.e < c.x) return 'Not enough in the house pool';
   P.ops.push([tool, k]); return '';
 }
@@ -306,8 +312,15 @@ async function hhPaintDone() {
   const ok = await hiWrite(d => {
     if (!hhMigrated(d)) hhMigrate(d);
     let l = 0, x = 0, n = 0;
-    for (const [t, k] of ops) {
+    for (const [t, k, id] of ops) {
       const st = hhStOf(d), a = hxAt(k, st);
+      if (t === 'tf') { // 2.88: the shape of the land, checked again against what's saved
+        const pl = sgTfPlan(k, id, st); if (!pl.nx || sgWarLock(d)) continue;
+        const tf = { ...st.tf, [k]: pl.nx }; if (!Object.keys(pl.nx).length) delete tf[k];
+        if (sgStrongN(tf) > sgStrongN(st.tf) && sgStrongN(tf) > sgStrongMax(hiLevel(d))) continue;
+        if (!sgRouteOk({ ...st, tf })) continue;
+        const g = d.b._sg = d.b._sg || {}; g.tf = tf; l += pl.l; x += pl.x; n++; continue;
+      }
       if (t === 'x') { if (a.kind === 'road') d.b._rd = d.b._rd.filter(r => r !== k); else if (a.kind === 'b' && a.it?.wall) d.b._wl = d.b._wl.filter(w => w !== k && w !== 'g' + k); else continue; n++; continue; }
       if (!hxCheck(t === 'road' ? 'road' : 'wall', k, st).ok) continue;
       if (t !== 'road' && d.b._wl.length >= hhSlots(hiLevel(d)).wall) continue;
@@ -342,6 +355,7 @@ function hhHexPop(k) {
   return `<div class="ishud is-bc ispop"><div class="ispop-h"><div><b>${n}</b><div class="muted small-text">${sub}</div></div><button class="isx" data-is="close" title="Close">✕</button></div><div class="ispop-a">${lead ? `<button class="btn small ghost" data-hi="unhex" data-k="${k}">Remove (no refund)</button>` : '<span class="muted small-text">Leaders lay and remove roads and walls.</span>'}</div></div>`;
 }
 function hhPlaceBar(P, tool) {
+  if (P.id === 'htf' && typeof sgTfBar === 'function') return sgTfBar(P);
   if (tool) {
     const c = P.id === 'road' ? hxCost(HX_ROAD.l, HX_ROAD.x) : P.id === 'gate' ? hxCost(0, HH_GATE.x) : hxCost(0, HH_WALL.x), d = HI.doc || {};
     const sl = P.id === 'wall' || P.id === 'gate' ? ` · wall space ${(d.b?._wl || []).length + (P.ops || []).filter(o => o[0] === 'wall' || o[0] === 'gate').length}/${hhSlots().wall}` : '';
