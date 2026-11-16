@@ -140,7 +140,8 @@ const HX_TICK = { cottage: 700, lumber: 330, field: 880, well: 620, store: 360, 
 function hxHoverWhat(k) {
   const st = hxCur(), a = hxAt(k, st), W = hxW(st);
   const own = !W.house && !ui.hxVisit; // 2.77: a hint on what you can do here (not when you're only visiting)
-  if (a.kind === 'free') return [a.it.e, a.it.n, a.it.ac || W.ac || '#ffd43b', a.it.hz || 523, a.it.at, own ? 'Click to open' : ''];
+  if (a.kind === 'free') return [a.it.e, a.it.n + (typeof HX_PLAIN === 'object' && HX_PLAIN[a.it.id] && !W.house ? ` (${HX_PLAIN[a.it.id]})` : ''), a.it.ac || W.ac || '#ffd43b', a.it.hz || 523, a.it.at, own ? 'Click to open' : ''];
+  if (a.kind === 'water' && typeof faDockAt === 'function' && faDockAt(k)) { const d = faDockAt(k); return ['⚓', d.n, d.ac, 500, k, 'In walk mode, walk to the end to travel there']; } // 2.84: docks to the other islands
   if (a.kind === 'b' && !a.it?.wall) return [a.it.e, a.it.n, W.house ? W.ac || '#ffe8a3' : '#ffe8a3', HX_TICK[a.it.id] || 450 + (a.it.n.length * 37) % 400, a.main, W.house ? 'Click for details' : own ? 'Click for details, drag to move' : ''];
   if (a.kind === 'b') return [a.it.e, a.it.n, '#ced4da', 260, a.main, ''];
   if (a.kind === 'deco') return [a.it.e, a.it.n, '#ffd8a8', 560, k, own ? 'Click to turn, move or take away · R turns it' : ''];
@@ -209,6 +210,7 @@ function hxViewAct(v) {
     toast('📌 Angle saved', 'Lock view now snaps to this angle.', { timeout: 2500 });
   } else if (v === 'reset') hxTweenTo({ ...(hxLocked() ? hxLockAngle() : is3home(IS3.house)), dist: is3home(IS3.house).dist, tx: 0, tz: 0 });
   const c = document.querySelector('#isfull .isctl'); if (c) { const t = document.createElement('div'); t.innerHTML = isCtl(); c.replaceWith(t.firstElementChild); }
+  if (view === 'bw' && ui.bw?.id === 'workshop') render(); // 2.84: the view buttons live in the Workshop
   is3draw();
 }
 // moving the island by dragging: pixels to ground units

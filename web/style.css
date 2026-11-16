@@ -4170,3 +4170,58 @@ dialog#whatsNew { overflow: auto; }
 #gearBtn:hover { box-shadow: 0 0 0 2px var(--k-acc, #e8604c); }
 body:not(.world-on) #gearBtn, body.souls-on #gearBtn, body.walking #gearBtn, body.win-open #gearBtn, body:has(.ispanel) #gearBtn { display: none; }
 body.world-on #world .ishud.is-tr { right: 58px; }
+
+/* 2.84 (R4 tidy island): the window is the real page, wider, with plain labels; the Workshop; far islands */
+body.world-on.win-bw .content { width: clamp(400px, 40vw, 640px); max-width: calc(100% - 24px); }
+.bw-h { position: relative; }
+.bw-tt { display: grid; line-height: 1.1; min-width: 0; }
+.bw-tt small, .bw-pl { font-size: 12px; font-weight: 700; color: var(--k-soft, var(--muted)); letter-spacing: .02em; }
+.bw-pl { margin-left: 4px; }
+.bw-sp { flex: 1; }
+.bw-h .bw-x { margin-left: 0; }
+.bw-dots { width: 36px; height: 36px; border-radius: 50%; border: 0; background: var(--k-chip, var(--panel2)); color: var(--k-soft, var(--muted)); font-weight: 800; font-size: 18px; line-height: 1; cursor: pointer; }
+.bw-dots:hover, .bw-dots[aria-expanded="true"] { background: var(--k-acc, var(--accent)); color: var(--k-on, #fff); }
+.bw-dl { position: absolute; top: 58px; right: 16px; z-index: 5; display: grid; min-width: 230px; padding: 6px; border-radius: 14px; background: var(--k-w, var(--panel)); box-shadow: 0 10px 30px rgba(0, 0, 0, .3); animation: ringIn .14s ease-out; }
+.bw-dl button { display: grid; text-align: left; border: 0; background: none; color: var(--k-ink, var(--text)); font-weight: 700; font-size: 14px; padding: 9px 10px; border-radius: 9px; cursor: pointer; }
+.bw-dl button small { color: var(--k-soft, var(--muted)); font-weight: 600; font-size: 12px; }
+.bw-dl button:hover { background: var(--k-chip, var(--panel2)); }
+.bw-acts { display: flex; flex-wrap: wrap; gap: 6px; margin-top: -4px; }
+.bw-acts button { border: 0; padding: 7px 13px; border-radius: 999px; background: var(--k-chip, var(--panel2)); color: var(--k-ink, var(--text)); font-weight: 800; font-size: 13px; cursor: pointer; }
+.bw-acts button:hover { background: var(--k-acc, var(--accent)); color: var(--k-on, #fff); }
+.bw-add { display: flex; gap: 6px; }
+.bw-add input { flex: 1; min-width: 0; border: 2px solid var(--k-bd, var(--border)); background: var(--k-w, var(--panel)); color: var(--k-ink, var(--text)); border-radius: 12px; padding: 9px 12px; font: inherit; font-weight: 600; }
+.bw-add input:focus { outline: none; border-color: var(--k-acc, var(--accent)); }
+.bw-add button { border: 0; border-radius: 12px; padding: 0 16px; background: var(--k-acc, var(--accent)); color: var(--k-on, #fff); font-weight: 800; cursor: pointer; }
+.bw-list .bw-lt { margin: 8px 0 2px; }
+.bw-list .bw-lt:first-child { margin-top: 0; }
+.bw-it[data-act], .bw-it[data-hx] { cursor: pointer; } .bw-it[data-act]:hover, .bw-it[data-hx]:hover { box-shadow: inset 0 0 0 2px var(--k-acc, var(--accent)); }
+.bw-it.done .bw-l { text-decoration: line-through; }
+.bw-l small { font-weight: 700; }
+.bw-html { display: grid; gap: 12px; min-width: 0; }
+.bw-html .card { margin: 0; overflow-x: auto; }
+.bw-html :is(.page-head, .card-head h2) { font-size: 1.05rem; }
+/* the Workshop */
+.ws-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; }
+.ws-t { display: grid; justify-items: start; gap: 2px; text-align: left; border: 0; padding: 14px; border-radius: 16px; background: var(--k-w2, var(--panel2)); color: var(--k-ink, var(--text)); cursor: pointer; transition: transform .15s, box-shadow .15s; }
+.ws-t i { font-style: normal; font-size: 26px; line-height: 1.1; }
+.ws-t b { font-size: 15px; }
+.ws-t small { color: var(--k-soft, var(--muted)); font-weight: 600; font-size: 12px; }
+.ws-t:hover:not(:disabled) { transform: translateY(-2px); box-shadow: inset 0 0 0 2px var(--k-acc, var(--accent)), 0 6px 14px rgba(0, 0, 0, .12); }
+.ws-t:disabled { opacity: .5; cursor: default; }
+.ws-view { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.ws-view span { font-size: 11px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; color: var(--k-soft, var(--muted)); margin-right: 4px; }
+.ws-view button { border: 0; padding: 7px 12px; border-radius: 999px; background: var(--k-chip, var(--panel2)); color: var(--k-ink, var(--text)); font-weight: 800; font-size: 13px; cursor: pointer; }
+.ws-view button:hover, .ws-view button.on { background: var(--k-acc, var(--accent)); color: var(--k-on, #fff); }
+.bw-big .hxwx { justify-self: start; margin-top: 4px; border: 0; border-radius: 999px; padding: 4px 11px; background: rgba(255, 255, 255, .22); color: inherit; font-weight: 700; font-size: 12.5px; cursor: pointer; }
+/* counters with a plain label under each */
+#hudc .hc-n { display: inline-grid; line-height: 1.05; }
+#hudc .hc-n small { font-size: 9.5px; font-weight: 700; opacity: .65; letter-spacing: .02em; }
+#hudc > * { padding-top: 3px; padding-bottom: 3px; }
+#ring button span { display: grid; text-align: left; line-height: 1.1; }
+#ring button span small { font-size: 11px; font-weight: 700; opacity: .7; }
+/* the far islands' hover tag */
+#fatag { position: fixed; left: 0; top: 0; z-index: 60; pointer-events: none; display: flex; align-items: center; gap: 8px; max-width: 300px; padding: 7px 12px 7px 7px; border-radius: 14px; background: var(--k-w, #fffdf8); color: var(--k-ink, #2a3140); box-shadow: 0 6px 18px rgba(0, 0, 0, .3), inset 0 0 0 2px color-mix(in srgb, var(--ac, #ffd43b) 70%, transparent); animation: hxtagin .14s ease-out; }
+#fatag > span { width: 30px; height: 30px; flex: none; border-radius: 50%; display: grid; place-items: center; font-size: 17px; background: color-mix(in srgb, var(--ac, #ffd43b) 30%, transparent); }
+#fatag div { display: grid; line-height: 1.2; }
+#fatag b { font-size: 13.5px; } #fatag small { font-size: 12px; opacity: .75; font-weight: 600; }
+body.walking #fatag, body.souls-on #fatag { display: none; }

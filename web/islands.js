@@ -53,7 +53,9 @@ function isFrame(tab, hud, extra = '') {
   return `<div class="isfull" id="isfull">
     ${typeof shell2D === 'function' && shell2D() ? shell2DHtml(tab) : `<div class="is3host" id="is3host"></div>
     ${!window.THREE && !is3dFail ? (need3D(), '<div class="isno3d">Loading your islands…</div>') : webglOK() ? '' : '<div class="isno3d">This computer can\'t show 3D, but your buildings still work.</div>'}`}
-    ${isSwitch(tab)}${hud}${isCtl()}${extra}</div>`;
+    ${typeof shell2D === 'function' && shell2D() ? isSwitch(tab) : ''}${hud}${extra}</div>`;
+  // 2.84 (R4): no island switcher bar in 3D: the other islands float in the distance (workshop.js), and the
+  // view controls (lock, save angle, back to the middle) moved into the Workshop
 }
 const isPanel = (title, body) => `<div class="ispanel-bg" data-is="close"></div><div class="ispanel"><div class="ispanel-h"><h3>${title}</h3><button class="isx" data-is="close" title="Close">✕</button></div><div class="ispanel-b">${body}</div></div>`;
 const isPlaceBar = (n, ok) => `<div class="ishud is-bc isplace"><span>Tap a spot for <b>${esc(n)}</b>. Drag to turn the island.</span><button class="btn small primary" data-is="placeok" id="isPlaceOk" ${ok ? '' : 'disabled'}>✔ Place here</button><button class="btn small ghost" data-is="placeno">✖ Cancel</button></div>`;
@@ -127,9 +129,10 @@ function is3init() {
   const c = IS3.canvas; let drag = null, moved = 0;
   // 2.65: the hex island (hexworld.js) handles taps, drags and placing first; anything it leaves turns the camera
   let pan = false;
-  c.addEventListener('pointerdown', e => { c.setPointerCapture(e.pointerId); if (typeof hxPointer === 'function' && hxPointer('down', e)) { drag = null; return; } drag = [e.clientX, e.clientY]; moved = 0; pan = e.button === 2 || e.button === 1 || e.shiftKey || (typeof hxLocked === 'function' && hxLocked()); });
-  c.addEventListener('pointerleave', () => { if (typeof hxPointer === 'function') hxPointer('leave'); });
+  c.addEventListener('pointerdown', e => { c.setPointerCapture(e.pointerId); if (typeof faPointer === 'function' && faPointer('down', e)) { drag = null; return; } if (typeof hxPointer === 'function' && hxPointer('down', e)) { drag = null; return; } drag = [e.clientX, e.clientY]; moved = 0; pan = e.button === 2 || e.button === 1 || e.shiftKey || (typeof hxLocked === 'function' && hxLocked()); });
+  c.addEventListener('pointerleave', () => { if (typeof hxPointer === 'function') hxPointer('leave'); if (typeof faPointer === 'function') faPointer('leave'); });
   c.addEventListener('pointermove', e => {
+    if (typeof faPointer === 'function' && faPointer('move', e)) return; // 2.84: hovering a far island
     if (typeof hxPointer === 'function' && hxPointer('move', e)) { drag = null; return; }
     if (!drag) { if (ui.isPlace) is3ghostAt(e); return; }
     moved += Math.abs(e.clientX - drag[0]) + Math.abs(e.clientY - drag[1]);
@@ -138,7 +141,7 @@ function is3init() {
     if (HX3.tween) HX3.tween = null;
     drag = [e.clientX, e.clientY]; is3draw();
   });
-  c.addEventListener('pointerup', e => { const was = drag; drag = null; if (typeof hxPointer === 'function' && hxPointer('up', e)) return; if (was && moved < 6) is3tap(e); });
+  c.addEventListener('pointerup', e => { const was = drag; drag = null; if (typeof faPointer === 'function' && faPointer('up', e)) return; if (typeof hxPointer === 'function' && hxPointer('up', e)) return; if (was && moved < 6) is3tap(e); });
   c.addEventListener('contextmenu', e => { if (typeof hxPointer === 'function' && hxPointer('context', e) || moved > 6 || IS3.house === 'hex' || IS3.house === 'hexh') e.preventDefault(); });
   c.addEventListener('wheel', e => { e.preventDefault(); if (typeof hxWheel === 'function' && hxWheel(e)) return; IS3.dist = Math.max(12, Math.min(90, IS3.dist * (e.deltaY > 0 ? 1.1 : .9))); is3draw(); }, { passive: false });
   new ResizeObserver(() => { if (is3resize()) is3draw(); }).observe(document.body);
@@ -241,11 +244,13 @@ function mountIsland3D() {
     if (IS3.house !== 'boss') { IS3.house = 'boss'; Object.assign(IS3, is3home('boss')); }
     IS3.layout = null; IS3.grid = null; const sig = 'b' + biSig();
     if (sig !== IS3.sig) { IS3.sig = sig; is3bossBuild(); }
-    is3ghost(null); is3draw(); return;
+    is3ghost(null); if (typeof faMount === 'function') faMount(); is3draw(); return;
   }
   // 2.66: the house island is on hexes too (hxhouse.js), drawn by the same code as your own island
   const house = ui.isTab === 'house' && typeof hhSt === 'function' && HI.doc;
-  if (!mountHex3D(house ? 'hexh' : 'hex')) is3draw();
+  const ok = mountHex3D(house ? 'hexh' : 'hex');
+  if (typeof faMount === 'function') faMount(); // 2.84: the other islands float in the distance (workshop.js)
+  if (!ok) is3draw();
 }
 // shared low-poly materials, made once
 const is3mat = (col, glow) => { const k = col + (glow ? '*' : ''); return (IS3.mats = IS3.mats || {})[k] || (IS3.mats[k] = new THREE.MeshStandardMaterial({ color: col, flatShading: true, roughness: .9, ...(glow ? { emissive: col, emissiveIntensity: .8 } : {}) })); };
