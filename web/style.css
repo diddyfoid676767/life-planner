@@ -4256,3 +4256,19 @@ body.walking #fatag, body.souls-on #fatag { display: none; }
 .so-ptime.warn { color: #ffa94d; }
 .so-ptime.crit { color: #ff6b6b; animation: soTick 1s steps(2) infinite; }
 @keyframes soTick { 50% { transform-origin: center; filter: brightness(1.5); } }
+
+/* 2.88: Test your defences replay (siege.js) */
+.sghud { top: 14px; display: grid; gap: 6px; justify-items: center; min-width: 260px; padding: 10px 16px; border-radius: 18px; background: var(--sm-bg, rgba(18, 16, 40, .9)); border: 1px solid var(--sm-line, rgba(255, 214, 140, .22)); color: var(--sm-text, #f8f1e3); box-shadow: 0 8px 24px rgba(0, 0, 0, .35); pointer-events: none; }
+.sghud .sg-top { display: flex; gap: 14px; align-items: center; font-size: 1.1rem; }
+.sghud .sg-t { font-variant-numeric: tabular-nums; min-width: 3.2em; text-align: center; }
+.sghud .sg-st i { font-style: normal; font-size: 1.4rem; color: rgba(140, 140, 160, .45); margin: 0 1px; transition: color .3s, transform .3s; display: inline-block; }
+.sghud .sg-st i.on { color: #ffd43b; transform: scale(1.15); text-shadow: 0 0 10px rgba(255, 212, 59, .7); }
+.sghud .sg-pc { font-weight: 800; color: #ffa94d; min-width: 3em; }
+.sghud .sg-who { display: flex; gap: 8px; align-items: center; font-size: .82rem; }
+.sghud .sg-hp { display: inline-block; width: 120px; height: 8px; border-radius: 4px; background: rgba(255, 255, 255, .15); overflow: hidden; }
+.sghud .sg-hp i { display: block; height: 100%; background: linear-gradient(90deg, #ff6b6b, #ffa94d); transition: width .2s; }
+.sghud .sg-log { font-size: .78rem; color: var(--sm-muted, #c9bfae); text-align: center; min-height: 1.2em; }
+.sghud .sg-log div:first-child { color: var(--sm-text, #fff); font-weight: 700; }
+.sgctl { display: flex; gap: 8px; padding: 8px; border-radius: 16px; background: var(--sm-bg, rgba(18, 16, 40, .9)); }
+.sgctl .btn.on { outline: 2px solid var(--sm-gold, #ffc94d); }
+.sgbar .tfitems { flex-wrap: wrap; }

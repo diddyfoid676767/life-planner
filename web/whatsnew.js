@@ -10,6 +10,12 @@
 // version since the last one they saw (up to 3). D.settings.seenVersion remembers what was last shown,
 // D.settings.guidesSeen which guides have played. A brand-new install never sees either.
 const CHANGELOG = [
+  { v: '2.88.0', guide: 'fortify', notes: [
+    { t: 'Get the house island ready for sieges: the Architect and Warlord can shape the land with ⛰️ Shape. Forest slows attackers, cliffs and moats stop them, and towers on raised ground shoot further', k: 'new' },
+    { t: 'Moats and cliffs cost more and are limited by house level, and there must always be one way in to the great hall', k: 'new' },
+    { t: '⚔️ Test your defences: pick a side and a plan, then watch your own character try to take the house island. Nothing is damaged', k: 'new' },
+    { t: 'A new 🎨 Stone fortress look for the house island: stone ground, rocky crags and a keep. Just a look, defences work the same', k: 'new' },
+  ] },
   { v: '2.87.0', notes: [
     { t: 'The Golem is now Somnus, the Sleeping Colossus: a fully animated stone giant that is much faster and hits much harder. Two or three mistakes and you\'re down, and you get 2 potions', k: 'new' },
     { t: 'Rolls are short, cost more stamina and keep you safe for only a moment, so time them. Phases change as its health drops, each with a roar', k: 'new' },

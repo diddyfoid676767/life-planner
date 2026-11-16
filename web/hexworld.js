@@ -623,7 +623,7 @@ function mountHex3D(mode = 'hex') {
   if (sig !== HX3.sig) { HX3.sig = sig; hxBuild(); }
   hxSkyApply();
   if (HX3.glow && !IS3.scene.children.includes(HX3.glow)) IS3.scene.add(HX3.glow);
-  hxGhostDraw(); hxLoop(); is3draw(); return true;
+  hxGhostDraw(); if (typeof sgSideMark === 'function') sgSideMark(); hxLoop(); is3draw(); return true; // 2.88: where a test siege lands
 }
 // how a building on your own island looks right now: condition, level, upgrading, build progress
 function hxLookHome(k, s, st) {
@@ -651,8 +651,9 @@ function hxBuild() {
   const roads = new Set(st.road), rivers = new Set([...L].filter(([, h]) => h.t === 'river').map(([k]) => k));
   const joins = n => roads.has(n) || n === '0,0' || !!hxFreeAt(n, st) || st.tf?.[n]?.t === 'path'; // 2.82: roads branch into thin paths
   // the rock under the island: a craggy hexagonal point with glowing crystals, like the other islands
-  const base = is3mesh(is3rock(new THREE.CylinderGeometry(15.4 * S, 15.6 * S, 1.2, 6, 1), seeded('hxb'), .02), '#c9b48a', 0, -1.6, 0, W); base.rotation.y = Math.PI / 6;
-  const und = is3mesh(is3rock(new THREE.ConeGeometry(15 * S, 13 * S, 6, 6), seeded('hxu'), .22, .1), '#6d5f73', 0, -2.2 - 6.5 * S, 0, W); und.rotation.set(Math.PI, Math.PI / 6, 0);
+  const bc = W0.base && W0.base(); // 2.88: the Stone fortress look has grey rock under the house island
+  const base = is3mesh(is3rock(new THREE.CylinderGeometry(15.4 * S, 15.6 * S, 1.2, 6, 1), seeded('hxb'), .02), bc ? bc[0] : '#c9b48a', 0, -1.6, 0, W); base.rotation.y = Math.PI / 6;
+  const und = is3mesh(is3rock(new THREE.ConeGeometry(15 * S, 13 * S, 6, 6), seeded('hxu'), .22, .1), bc ? bc[1] : '#6d5f73', 0, -2.2 - 6.5 * S, 0, W); und.rotation.set(Math.PI, Math.PI / 6, 0);
   for (let i = 0; i < 7; i++) { const a = rnd() * 6.28, r = (4 + rnd() * 6) * S, h = 1 + rnd() * 2; const cr = is3mesh(new THREE.ConeGeometry(.35 + rnd() * .3, h, 5), ['#4ee6ff', '#ffb347'][i % 2], Math.cos(a) * r, -3 - rnd() * 5 * S - h / 2, Math.sin(a) * r, W, true); cr.rotation.set(Math.PI + (rnd() - .5) * .5, 0, (rnd() - .5) * .5); }
   for (let i = 0; i < 6; i++) { const a = i / 6 * 6.28 + rnd(), r = (22 + rnd() * 6) * S, s = .7 + rnd() * .8, g = new THREE.Group(); g.position.set(Math.cos(a) * r, -3 + rnd() * 6, Math.sin(a) * r); g.add(hxModel(rnd() < .5 ? 'hex_grass' : 'hex_grass_bottom', col)); if (rnd() < .6) { const t = hxModel(rnd() < .5 ? 'trees_A_small' : 'tree_single_B', col); g.add(t); } g.scale.setScalar(s); W.add(g); HX3.anim.push({ o: g, bob: rnd() * 6, y: g.position.y }); }
   // ground tiles
@@ -677,13 +678,13 @@ function hxBuild() {
   // page buildings (the house island has only its great hall)
   W0.free.forEach((f, i) => {
     if (!f.at) return;
-    const g = add(f.m, f.at, f.rot ?? 0, 0, f.s || 1);
+    const g = add(f.m, f.at, f.rot ?? 0, 0, f.s || 1); g.userData.hk = f.at;
     const [x, z] = hxPos(...hxQR(f.at)); IS3.marks[f.at] = [x, f.at === '0,0' ? 5.2 * (f.s || 1) : 2.4, z];
     if (f.ac) hxAccent(W, f, x, z);
     if (f.id === 'hall') { const o = is3mesh(new THREE.IcosahedronGeometry(.42, 1), '#ffb347', 0, 4.65, 0, g, true); HX3.anim.push({ o, orb: 1 }); const ring = is3mesh(new THREE.TorusGeometry(.7, .04, 4, 20), '#ffe8a3', 0, 4.65, 0, g, true); HX3.anim.push({ o: ring, ring: 1 }); }
   });
   if (W0.dress) W0.dress(W, add, rnd, col);
-  if (W0.home) tfDecos(W, st, col);
+  if (W0.home) tfDecos(W, st, col); else if (st.tf) tfPaths(W, st); // 2.88: paths on the house island
   // the buildings, by stage
   const net = hxLinks(st);
   const walls = new Set(Object.entries(st.b).filter(([, s]) => W0.item(s.id)?.wall).map(([k]) => k));
@@ -693,9 +694,9 @@ function hxBuild() {
     const fp = hxFoot(it, k), [x, z] = hxMid(it, k), lk = W0.look ? W0.look(k, s, st) : hxLookHome(k, s, st), c = lk.c, lv = lk.lv, rot = s.rot || 0, mk = s.key || k;
     if (it.wall) {
       const ns = hxNb(k); let any = false;
-      if (it.gate) { const i = Math.max(0, ns.findIndex(n => walls.has(n))); const g = add('wall_straight_gate', k, i); g.position.x += Math.cos(i * Math.PI / 3) * .5; g.position.z += Math.sin(i * Math.PI / 3) * .5; continue; }
-      ns.forEach((n, i) => { if (walls.has(n) && i < 3) { any = true; const g = add('wall_straight', k, i); g.position.x += Math.cos(i * Math.PI / 3); g.position.z += Math.sin(i * Math.PI / 3); } });
-      if (!any || ns.some((n, i) => walls.has(n) && i >= 3)) add('wall_corner_A_outside', k, 0, 0, .55);
+      if (it.gate) { const i = Math.max(0, ns.findIndex(n => walls.has(n))); const g = add('wall_straight_gate', k, i); g.position.x += Math.cos(i * Math.PI / 3) * .5; g.position.z += Math.sin(i * Math.PI / 3) * .5; g.userData.hk = k; continue; }
+      ns.forEach((n, i) => { if (walls.has(n) && i < 3) { any = true; const g = add('wall_straight', k, i); g.position.x += Math.cos(i * Math.PI / 3); g.position.z += Math.sin(i * Math.PI / 3); g.userData.hk = k; } });
+      if (!any || ns.some((n, i) => walls.has(n) && i >= 3)) add('wall_corner_A_outside', k, 0, 0, .55).userData.hk = k;
       continue;
     }
     if (it.field) { const g = add('building_grain', k, rot); if (c === 'grow') g.scale.set(1, Math.min(1, Math.max(.15, lk.p)), 1); IS3.marks[mk] = [x, 1, z]; continue; }
@@ -705,7 +706,7 @@ function hxBuild() {
       if (!low) hxWorkers(W, x, z, rnd);
     } else if (c === 'broken') fp.forEach(f => add('building_destroyed', f, rot));
     else {
-      const g = hxMakeModel(it, col, c === 'worn' ? HX3.kit.worn : undefined); g.position.set(x, hxHt(k, st), z); g.rotation.y = -rot * Math.PI / 3; g.scale.setScalar(1 + (lv - 1) * .06); W.add(g);
+      const g = hxMakeModel(it, col, c === 'worn' ? HX3.kit.worn : undefined); g.position.set(x, hxHt(k, st), z); g.rotation.y = -rot * Math.PI / 3; g.scale.setScalar(1 + (lv - 1) * .06); W.add(g); g.userData.hk = k; // (siege replays hide broken buildings by hex)
       if (lk.up) { add('ladder', k, rot + 1, 0, 1).position.x += .6; if (!low) hxWorkers(W, x, z, rnd); }
       if (!it.noRoad && !hxLinked(k, net, st)) for (const f of fp) { const [fx, fz] = hxPos(...hxQR(f)), r = is3mesh(new THREE.RingGeometry(1.55, 1.75, 6), '#ff8f5a', fx, .03, fz, W, true); r.rotation.set(-Math.PI / 2, 0, Math.PI / 6); }
     }
