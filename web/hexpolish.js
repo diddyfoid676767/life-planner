@@ -37,6 +37,37 @@ function hxHouseDress(W, it, fp, x, z, col, ink) {
 }
 
 // ---------- detail on the land ----------
+// glues simple geometries into one (positions and normals), so a clump or a flower is one instance
+function hxMerge(geos) {
+  const ps = [], ns = [];
+  for (const g0 of geos) { const g = g0.index ? g0.toNonIndexed() : g0; ps.push(...g.attributes.position.array); ns.push(...g.attributes.normal.array); }
+  const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(ps, 3)); g.setAttribute('normal', new THREE.Float32BufferAttribute(ns, 3)); return g;
+}
+// a soft clump of grass: a few rounded blades (stretched half-spheres) leaning out
+function hxClumpGeo() {
+  const parts = [];
+  for (let i = 0; i < 5; i++) { const a = i / 5 * Math.PI * 2, g = new THREE.SphereGeometry(.05, 6, 4, 0, Math.PI * 2, 0, Math.PI / 2); g.scale(1, 3.2 + (i % 2) * 1.2, 1); g.rotateZ(Math.cos(a) * .35); g.rotateX(Math.sin(a) * .35); g.translate(Math.cos(a) * .035, 0, Math.sin(a) * .035); parts.push(g); }
+  return hxMerge(parts);
+}
+const hxBushGeo = () => { const p = []; for (const [x, z, r] of [[0, 0, .16], [.11, .05, .11], [-.09, .06, .12], [.02, -.1, .1]]) { const g = new THREE.SphereGeometry(r, 10, 7); g.scale(1, .82, 1); g.translate(x, r * .7, z); p.push(g); } return hxMerge(p); };
+const hxPetalGeo = () => { const p = []; for (let i = 0; i < 5; i++) { const a = i / 5 * Math.PI * 2, g = new THREE.SphereGeometry(.045, 6, 4); g.scale(1.25, .35, .8); g.translate(Math.cos(a) * .045, .17, Math.sin(a) * .045); p.push(g); } return hxMerge(p); };
+// a material that sways in the wind: the higher a vertex, the further it moves (one shared clock)
+function hxSwayMat(col, amp) {
+  HX3.uT = HX3.uT || { value: 0 };
+  const m = new THREE.MeshStandardMaterial({ color: col, roughness: .9 });
+  m.onBeforeCompile = sh => {
+    sh.uniforms.uT = HX3.uT;
+    sh.vertexShader = 'uniform float uT;\n' + sh.vertexShader.replace('#include <begin_vertex>', `#include <begin_vertex>
+      #ifdef USE_INSTANCING
+      vec2 wp = instanceMatrix[3].xz;
+      #else
+      vec2 wp = vec2(0.0);
+      #endif
+      float sw = sin(uT * 1.7 + wp.x * .9 + wp.y * .6) + .4 * sin(uT * 2.9 + wp.y * 1.3);
+      transformed.x += sw * ${amp.toFixed(3)} * position.y * 6.0; transformed.z += sw * ${(amp * .5).toFixed(3)} * position.y * 6.0;`);
+  };
+  return m;
+}
 function hxDetail(W, L, st, rnd, low) {
   if (low) return;
   const tufts = [], flowers = [], pebbles = [], foam = [], shim = [];
@@ -49,10 +80,10 @@ function hxDetail(W, L, st, rnd, low) {
       continue;
     }
     const a = hxAt(k, st); if (a.kind !== 'grass' || a.g) continue;
-    const n = 3 + Math.floor(r2() * 4), y0 = hxHt(k, st);
+    const n = 6 + Math.floor(r2() * 5), y0 = hxHt(k, st); // 2.78: lush
     for (let i = 0; i < n; i++) {
       const ang = r2() * 6.28, rr = .35 + r2() * .55, px = x + Math.cos(ang) * rr, pz = z + Math.sin(ang) * rr, v = r2();
-      if (v < tc) tufts.push([px, pz, r2(), y0]); else if (v < .85) flowers.push([px, pz, r2(), y0]); else pebbles.push([px, pz, r2(), y0]);
+      if (v < tc + .15) tufts.push([px, pz, r2(), y0]); else if (v < .9) flowers.push([px, pz, r2(), y0]); else pebbles.push([px, pz, r2(), y0]);
     }
   }
   const inst = (geo, mat, list, place) => {
@@ -61,11 +92,20 @@ function hxDetail(W, L, st, rnd, low) {
     list.forEach((p, i) => { place(o, p); o.updateMatrix(); m.setMatrixAt(i, o.matrix); });
     m.instanceMatrix.needsUpdate = true; W.add(m); return m;
   };
-  const tm = inst(new THREE.ConeGeometry(.07, .26, 4), new THREE.MeshStandardMaterial({ color: '#5fae43', flatShading: true, roughness: 1 }), tufts, (o, [x, z, v, y]) => { o.position.set(x, .1 + y, z); o.rotation.set((v - .5) * .4, v * 6, 0); o.scale.setScalar(.7 + v * .7); });
-  if (tm) { const c = new THREE.Color(); tufts.forEach((p, i) => tm.setColorAt(i, c.set((lk.tuft || ['#5fae43', '#74c056', '#4b9a37'])[Math.floor(p[2] * 3)]))); tm.instanceColor.needsUpdate = true; }
-  const fm = inst(new THREE.IcosahedronGeometry(.055, 0), new THREE.MeshStandardMaterial({ color: '#ffffff', flatShading: true, roughness: .8 }), flowers, (o, [x, z, v, y]) => { o.position.set(x, .07 + y, z); o.rotation.set(0, v * 6, 0); o.scale.setScalar(.8 + v * .6); });
-  if (fm) { const c = new THREE.Color(); flowers.forEach((p, i) => fm.setColorAt(i, c.set(((f => f[Math.floor(p[2] * f.length)])(lk.fl || ['#ffec99', '#ffa8c5', '#ffffff', '#d0bfff', '#ffc078']))))); fm.instanceColor.needsUpdate = true; }
-  inst(new THREE.DodecahedronGeometry(.07, 0), new THREE.MeshStandardMaterial({ color: '#a8a29a', flatShading: true, roughness: 1 }), pebbles, (o, [x, z, v, y]) => { o.position.set(x, .02 + y, z); o.rotation.set(v * 3, v * 6, 0); o.scale.set(1 + v, .6, 1 + v * .5); });
+  const tint = (m, list, cols) => { if (!m) return; const c = new THREE.Color(); list.forEach((p, i) => m.setColorAt(i, c.set(cols[Math.floor(p[2] * cols.length) % cols.length]))); m.instanceColor.needsUpdate = true; };
+  // 2.78 (feedback F2): soft rounded grass clumps that sway, round bushes, proper flowers and smooth pebbles
+  const sway = hxSwayMat;
+  const gm = inst(HX3.geoClump || (HX3.geoClump = hxClumpGeo()), sway('#7cc95a', .06), tufts, (o, [x, z, v, y]) => { o.position.set(x, .06 + y, z); o.rotation.set(0, v * 6, 0); o.scale.setScalar(.75 + v * .6); });
+  tint(gm, tufts, lk.tuft || ['#7cc95a', '#8fd468', '#68b84b', '#9ad870']);
+  const bushes = tufts.filter((p, i) => i % 7 === 3);
+  const bm = inst(HX3.geoBush || (HX3.geoBush = hxBushGeo()), sway('#4f9e3c', .025), bushes, (o, [x, z, v, y]) => { o.position.set(x + .12, .05 + y, z - .1); o.rotation.set(0, v * 9, 0); o.scale.setScalar(.8 + v * .5); });
+  tint(bm, bushes, (lk.tuft || ['#4f9e3c', '#5cae46', '#468f35']).map(c => '#' + new THREE.Color(c).multiplyScalar(.78).getHexString()));
+  const stems = inst(HX3.geoStem || (HX3.geoStem = new THREE.CylinderGeometry(.008, .01, .17, 4).translate(0, .085, 0)), sway('#5c9e3c', .05), flowers, (o, [x, z, v, y]) => { o.position.set(x, .04 + y, z); o.rotation.set(0, v * 6, 0); o.scale.setScalar(.8 + v * .5); });
+  const pm = inst(HX3.geoPetal || (HX3.geoPetal = hxPetalGeo()), sway('#ffffff', .05), flowers, (o, [x, z, v, y]) => { o.position.set(x, .04 + y, z); o.rotation.set(0, v * 6, 0); o.scale.setScalar(.8 + v * .5); });
+  tint(pm, flowers, lk.fl || ['#ffec99', '#ffa8c5', '#ffffff', '#d0bfff', '#ffc078', '#ff8fab']);
+  inst(HX3.geoMid || (HX3.geoMid = new THREE.SphereGeometry(.026, 6, 4).translate(0, .175, 0)), sway('#ffd43b', .05), flowers, (o, [x, z, v, y]) => { o.position.set(x, .04 + y, z); o.rotation.set(0, v * 6, 0); o.scale.setScalar(.8 + v * .5); });
+  const peb = inst(HX3.geoPeb || (HX3.geoPeb = new THREE.SphereGeometry(.07, 9, 6)), new THREE.MeshStandardMaterial({ color: '#ffffff', roughness: .85 }), pebbles, (o, [x, z, v, y]) => { o.position.set(x, .015 + y, z); o.rotation.set(0, v * 6, 0); o.scale.set(.7 + v * .6, .38, .55 + v * .4); });
+  tint(peb, pebbles, ['#c9c4bb', '#b5b0a8', '#d8d3ca', '#a9a49c']);
   // shoreline foam: a soft strip along each water edge that touches land
   const foamM = new THREE.MeshBasicMaterial({ color: '#f1f8ff', transparent: true, opacity: .55, depthWrite: false });
   inst(new THREE.PlaneGeometry(1.1, .2), foamM, foam, (o, [x, z, i]) => { const a = i * Math.PI / 3; o.position.set(x + Math.cos(a) * .86, -.18, z + Math.sin(a) * .86); o.rotation.set(-Math.PI / 2, 0, -a + Math.PI / 2); o.scale.set(1, 1, 1); });

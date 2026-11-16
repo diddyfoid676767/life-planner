@@ -10,6 +10,12 @@
 // version since the last one they saw (up to 3). D.settings.seenVersion remembers what was last shown,
 // D.settings.guidesSeen which guides have played. A brand-new install never sees either.
 const CHANGELOG = [
+  { v: '2.79.0', notes: [
+    { t: 'Five main buildings: Hall, Notice Board, Library, Training hall and Tavern. The Market is now a small stall on the town square', k: 'new' },
+    { t: 'The Practice yard lives in the Training hall and your settings in the Hall. Your own buildings stay exactly where you put them', k: 'tweak' },
+    { t: 'New soft grass that sways, round bushes, real flowers and smooth pebbles, and no more brown dirt', k: 'new' },
+    { t: 'A bright blue sky by day and a lantern dusk with stars at night. Placing a building lights up good spots for it', k: 'new' },
+  ] },
   { v: '2.78.0', guide: 'game', notes: [
     { t: 'A new look: bright, rounded menus by day and a cosy lantern style at night or in dark mode', k: 'new' },
     { t: 'No top bar. Your counters sit in the top-left corner and one Menu button opens every place (keys 1 to 6, Q adds, Ctrl+K searches)', k: 'new' },

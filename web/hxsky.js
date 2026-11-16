@@ -32,7 +32,7 @@ function hxLook(home = IS3.house === 'hex') { const t = home && HX_THEMES[hxCur(
 // the pack's greens move towards the look's colours, keeping their light and shade: the yellow-greens
 // of the grass towards gr, the blue-greens of the leaves towards lf (only the land's material uses this)
 function hxThemeTex(look) {
-  const K = HX3.kit, key = [look.gr, look.gs, look.lf, look.ls].join(); K.texs = K.texs || {};
+  const K = HX3.kit, key = [look.gr, look.gs, look.lf, look.ls, 'br2'].join(); K.texs = K.texs || {};
   if (!K.base0) K.base0 = K.tex;
   if (K.texs[key]) return K.texs[key];
   const src = K.base0.image, cv = document.createElement('canvas'); cv.width = src.width; cv.height = src.height;
@@ -41,6 +41,8 @@ function hxThemeTex(look) {
   const G = look.gr && (c.set(look.gr), [c.r * 255, c.g * 255, c.b * 255]), F = look.lf && (c.set(look.lf), [c.r * 255, c.g * 255, c.b * 255]);
   for (let i = 0; i < a.length; i += 4) {
     const r = a[i], g = a[i + 1], b = a[i + 2], mx = Math.max(r, g, b), mn = Math.min(r, g, b);
+    // 2.78 (feedback F2): no more brown: the dirt and the island's sides move towards a warm, light sand
+    if (mx === r && r > b + 28 && g > b && r < 215) { const L = (r * .3 + g * .59 + b * .11) / 120, k = .62; a[i] = r + (Math.min(255, 236 * L) - r) * k; a[i + 1] = g + (Math.min(255, 214 * L) - g) * k; a[i + 2] = b + (Math.min(255, 168 * L) - b) * k; continue; }
     if (mx !== g || mx - mn < 30) continue; // only clear greens
     const leaf = b > r, T = leaf ? F : G, s = leaf ? look.ls : look.gs; if (!T || !s) continue;
     const L = (r * .3 + g * .59 + b * .11) / (leaf ? 90 : 140);
@@ -51,7 +53,7 @@ function hxThemeTex(look) {
   return (K.texs[key] = tex);
 }
 function hxApplyLook(look) {
-  const K = HX3.kit, tex = look ? hxThemeTex(look) : K.base0 || K.tex, m = K.matT || (K.matT = K.mat.clone());
+  const K = HX3.kit, tex = hxThemeTex(look || {}), m = K.matT || (K.matT = K.mat.clone());
   if (m.map !== tex) { m.map = tex; m.needsUpdate = true; }
 }
 
@@ -91,12 +93,25 @@ function hxSkyApply() {
     sun.position.set(-16 * S, 30, -12); sun.color.set('#a9bcff'); sun.intensity = .45 * (1 - over * .5);
     if (L.hemi) { L.hemi.intensity = .55; L.hemi.color.set('#97a5e0'); }
   }
+  hxBackdrop(dl.day ? Math.min(1, dl.e * 3) : 0, over);
   if (HX3.lampMat) HX3.lampMat.emissiveIntensity = .25 + night * 1.6;
   if (HX3.nightG) { HX3.nightG.visible = night > .05; HX3.nightG.children.forEach(o => { if (o.material) o.material.opacity = (o.userData.op || 1) * Math.min(1, night * 1.3); }); }
   HX3.night = night;
 }
+// 2.78 (feedback F2): the sky follows the menu style: a bright storybook sky by day (style A),
+// a lantern dusk with stars at night (style C). day = 0 (night) to 1 (full day)
+const HX_BG = {};
+function hxBgTex(stops) { const cv = document.createElement('canvas'); cv.width = 16; cv.height = 256; const x = cv.getContext('2d'), g = x.createLinearGradient(0, 0, 0, 256); stops.forEach(([o, c]) => g.addColorStop(o, c)); x.fillStyle = g; x.fillRect(0, 0, 16, 256); const t = new THREE.CanvasTexture(cv); t.encoding = THREE.sRGBEncoding; return t; }
+function hxBackdrop(day, over = 0) {
+  const S = IS3.scene; if (!S) return;
+  if (!HX_BG.night) { HX_BG.night = S.background; HX_BG.day = hxBgTex([[0, '#8fd0ff'], [.55, '#c6e8ff'], [1, '#eef8ff']]); HX_BG.dusk = hxBgTex([[0, '#2a2754'], [.55, '#4a3f72'], [1, '#8a5f7e']]); HX_BG.grey = hxBgTex([[0, '#9fb3c4'], [.6, '#c9d5df'], [1, '#e4eaf0']]); }
+  const want = day > .25 ? (over > .2 ? HX_BG.grey : HX_BG.day) : day > 0 ? HX_BG.dusk : HX_BG.dusk;
+  if (S.background !== want) S.background = want;
+  for (const o of S.children) if (o.isPoints || (o.isMesh && o.material?.opacity === .07)) o.visible = day <= .25;
+}
 // puts the boss island's lighting back
 function hxSkyReset() {
+  if (HX_BG.night && IS3.scene) { IS3.scene.background = HX_BG.night; for (const o of IS3.scene.children) if (o.isPoints || (o.isMesh && o.material?.opacity === .07)) o.visible = true; }
   if (!HX_SKY0.sunC) return;
   IS3.sun.color.copy(HX_SKY0.sunC); IS3.sun.intensity = 1; if (HX_SKY0.hemi) { HX_SKY0.hemi.intensity = .75; HX_SKY0.hemi.color.copy(HX_SKY0.hemiC); }
 }
