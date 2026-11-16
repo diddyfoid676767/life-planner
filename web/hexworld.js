@@ -602,6 +602,7 @@ function hxGeo(name, pi = 0, col = 'blue') {
 function hxModel(name, col, mat = HX3.kit.mat, shadow = true) {
   const M = HX3.kit.idx.models[name], g = new THREE.Group(); if (!M) return g;
   if (mat === HX3.kit.mat && /^(hex_grass|hex_river|hex_road|trees?_|hills?_|mountain_)/.test(name)) mat = HX3.kit.matT || (HX3.kit.matT = HX3.kit.mat.clone()); // 2.71: island looks recolour only the land
+  if ((mat === HX3.kit.mat || mat === HX3.kit.matT) && /^hex_(water|river|coast)/.test(name) && typeof hxWaterMat === 'function') mat = hxWaterMat() || mat; // 2.85: water that reflects the sky (hxsky.js)
   M.p.forEach((p, i) => {
     const m = new THREE.Mesh(hxGeo(name, i, col), mat); m.position.set(...p.t); m.castShadow = shadow; m.receiveShadow = true; m.name = p.m; g.add(m);
     if (/fan|wheel|saw/.test(p.m)) HX3.anim.push({ o: m, ax: /fan/.test(p.m) ? 'z' : 'x', sp: /saw/.test(p.m) ? 4 : /wheel/.test(p.m) ? -1.2 : 1.1 });
@@ -610,13 +611,15 @@ function hxModel(name, col, mat = HX3.kit.mat, shadow = true) {
 }
 const HX_KCOL = ['blue', 'red', 'green', 'yellow'];
 const hxLow = () => !!(D.settings && D.settings.lowQuality);
+// 2.85: three graphics levels. Low is the old Low switch; Medium keeps the real sun but simpler
+const hxGfx = () => !D.settings ? 'high' : D.settings.lowQuality ? 'low' : D.settings.gfxMed ? 'medium' : 'high';
 // mode 'hex' is your island, 'hexh' the shared house island (hxhouse.js); both are drawn by the same code
 function mountHex3D(mode = 'hex') {
   if (!hxKit()) return false;
   IS3.layout = null; IS3.hexMode = true;
   if (IS3.house !== mode) { IS3.house = mode; HX3.sig = ''; HX3.hk = null; Object.assign(IS3, is3home(mode), { tgt: [0, 0] }, typeof hxLocked === 'function' && hxLocked() ? hxLockAngle() : {}); if (HX3.ghost) { IS3.scene.remove(HX3.ghost); HX3.ghost = null; HX3.ghostModel = null; } }
   const st = hxCur(), W0 = hxW(st);
-  const sig = [mode, W0.col || hxCol(), hxLow(), W0.sig ? W0.sig(st) : [JSON.stringify(st.b), st.road.join(';'), st.clr.join(';'), JSON.stringify(st.tf || {}), Object.keys(st.b).map(k => hxCond(k) + hxLvOn(st.b[k])).join()].join('|'), Math.floor(Date.now() / 36e5), ui.hxP?.mode === 'move' || ui.hxP?.mode === 'deco' ? ui.hxP.mode + ui.hxP.from : '', hxSkySig()].join('|');
+  const sig = [mode, W0.col || hxCol(), hxGfx(), W0.sig ? W0.sig(st) : [JSON.stringify(st.b), st.road.join(';'), st.clr.join(';'), JSON.stringify(st.tf || {}), Object.keys(st.b).map(k => hxCond(k) + hxLvOn(st.b[k])).join()].join('|'), Math.floor(Date.now() / 36e5), ui.hxP?.mode === 'move' || ui.hxP?.mode === 'deco' ? ui.hxP.mode + ui.hxP.from : '', hxSkySig()].join('|');
   if (sig !== HX3.sig) { HX3.sig = sig; hxBuild(); }
   hxSkyApply();
   if (HX3.glow && !IS3.scene.children.includes(HX3.glow)) IS3.scene.add(HX3.glow);
@@ -643,7 +646,7 @@ function hxBuild() {
   is3clear(); HX3.anim = []; IS3.marks = {};
   IS3.top = 0;
   Object.assign(IS3.sun.shadow.camera, { left: -17 * S, right: 17 * S, top: 17 * S, bottom: -17 * S, near: 1, far: 120 }); IS3.sun.shadow.camera.updateProjectionMatrix();
-  IS3.sun.position.set(18, 34, 12); IS3.sun.shadow.mapSize.set(low ? 512 : 2048, low ? 512 : 2048); if (IS3.sun.shadow.map) { IS3.sun.shadow.map.dispose(); IS3.sun.shadow.map = null; }
+  IS3.sun.position.set(18, 34, 12); { const n = low ? 512 : hxGfx() === 'medium' ? 1024 : 2048; IS3.sun.shadow.mapSize.set(n, n); IS3.sun.shadow.normalBias = .03; IS3.sun.shadow.bias = -.0004; } if (IS3.sun.shadow.map) { IS3.sun.shadow.map.dispose(); IS3.sun.shadow.map = null; }
   const add = (name, k, rot = 0, y = 0, s = 1, c = col, mat) => { const [x, z] = hxPos(...hxQR(k)); const g = hxModel(name, c, mat); g.position.set(x, y + hxHt(k, st), z); g.rotation.y = -rot * Math.PI / 3; g.scale.setScalar(s); W.add(g); return g; };
   const roads = new Set(st.road), rivers = new Set([...L].filter(([, h]) => h.t === 'river').map(([k]) => k));
   const joins = n => roads.has(n) || n === '0,0' || !!hxFreeAt(n, st) || st.tf?.[n]?.t === 'path'; // 2.82: roads branch into thin paths

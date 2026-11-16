@@ -163,6 +163,7 @@ function is3draw() {
     if (typeof WK === 'object' && WK.on && WK.fig) { if (cam.view?.enabled) cam.clearViewOffset(); }
     else { if (IS3.off && W0) cam.setViewOffset(W0, H0, IS3.off, 0, W0, H0); else if (cam.view?.enabled) cam.clearViewOffset(); }
     if (!(typeof wkCam === 'function' && wkCam(cam))) { cam.position.set(tx + Math.sin(yaw) * Math.cos(pitch) * dist, Math.sin(pitch) * dist, tz + Math.cos(yaw) * Math.cos(pitch) * dist); cam.lookAt(tx, 0, tz); } // 2.75: walk mode and the Souls fights have their own camera
+    if (typeof hxSkyCam === 'function') hxSkyCam(cam); // 2.85: the sun and moon you can see (hxsky.js)
     IS3.R.render(IS3.scene, cam);
     // keep the bubbles over their buildings
     const host = IS3.canvas.parentNode, W = host.clientWidth, H = host.clientHeight, v = new THREE.Vector3();

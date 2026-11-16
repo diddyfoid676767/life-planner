@@ -10,7 +10,7 @@ const placeIdsInOrder = () => { const o = menuCfg().order; return PLACES.map(p =
 let menuSig = '';
 function applyMenu() {
   if (typeof D !== 'object' || !D || !D.settings) return;
-  const m = menuCfg(), ids = placeIdsInOrder(), sig = JSON.stringify([ids, m.hide, m.cards, m.dense, m.accent, D.settings.lowQuality]);
+  const m = menuCfg(), ids = placeIdsInOrder(), sig = JSON.stringify([ids, m.hide, m.cards, m.dense, m.accent, D.settings.lowQuality, D.settings.gfxMed]);
   if (sig === menuSig) return; menuSig = sig;
   const nav = document.getElementById('places'), spacer = nav?.querySelector('.navspacer');
   if (nav && spacer) ids.forEach((id, i) => {
@@ -45,7 +45,7 @@ function menuCard() {
       <h3>Open on</h3><select data-mn="start">${[['world', 'Your island, nothing open'], ['today', 'Your island with the Today card'], ...PLACES.filter(p => p.id !== 'today').map(p => [p.id, p.label])].map(([v, l]) => `<option value="${v}" ${(m.start || 'world') === v ? 'selected' : ''}>${l}</option>`).join('')}</select></div>
     <div><h3>Look</h3><label class="row"><input type="checkbox" data-mn="dense" ${m.dense ? 'checked' : ''}> Compact spacing</label>
       <div class="row">Accent colour <input type="color" data-mn="accent" value="${m.accent || '#4f6df5'}"><button class="btn small" data-mn="accentReset" ${m.accent ? '' : 'disabled'}>Reset</button></div>
-      ${typeof medCardRow === 'function' ? medCardRow() : ''}<h3>Graphics</h3><label class="row"><input type="checkbox" data-mn="lowq" ${D.settings.lowQuality ? 'checked' : ''}> Low graphics (no shadows)</label><label class="row"><input type="checkbox" data-mn="map2d" ${D.settings.map2d ? 'checked' : ''}> 2D map instead of 3D (slow computers)</label></div></div></div>`;
+      ${typeof medCardRow === 'function' ? medCardRow() : ''}<h3>Graphics</h3>${gfxPick()}<label class="row"><input type="checkbox" data-mn="map2d" ${D.settings.map2d ? 'checked' : ''}> 2D map instead of 3D (slow computers)</label></div></div></div>`;
 }
 document.addEventListener('click', e => {
   const b = e.target.closest('button[data-mn]'); if (!b || !D) return;
@@ -55,6 +55,11 @@ document.addEventListener('click', e => {
   else return;
   save(); applyMenu(); render();
 });
+// 2.85: three graphics levels (High: the real sun with shadows and reflections; Medium: simpler; Low: none)
+function gfxPick() {
+  const v = D.settings.lowQuality ? 'low' : D.settings.gfxMed ? 'medium' : 'high';
+  return `<label class="row">Graphics <select data-mn="gfx">${[['high', 'High: real sun, shadows and reflections'], ['medium', 'Medium: simpler sun and water'], ['low', 'Low: no shadows, sun or weather']].map(([k, t]) => `<option value="${k}" ${v === k ? 'selected' : ''}>${t}</option>`).join('')}</select></label>`;
+}
 document.addEventListener('change', e => {
   const el = e.target; if (!el.dataset?.mn || !D) return;
   const m = menuCfg(), k = el.dataset.mn, id = el.dataset.id;
@@ -64,6 +69,7 @@ document.addEventListener('change', e => {
   else if (k === 'dense') m.dense = el.checked;
   else if (k === 'accent') m.accent = el.value;
   else if (k === 'lowq') D.settings.lowQuality = el.checked;
+  else if (k === 'gfx') { D.settings.lowQuality = el.value === 'low'; D.settings.gfxMed = el.value === 'medium'; if (typeof applyQuality === 'function') applyQuality(); }
   else if (k === 'map2d') D.settings.map2d = el.checked;
   else return;
   save(); applyMenu(); render();
