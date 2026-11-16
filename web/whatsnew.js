@@ -10,6 +10,7 @@
 // version since the last one they saw (up to 3). D.settings.seenVersion remembers what was last shown,
 // D.settings.guidesSeen which guides have played. A brand-new install never sees either.
 const CHANGELOG = [
+  { v: '2.81.1', notes: [{ t: 'Owner test fight button right on the boss island', k: 'tweak' }] },
   { v: '2.81.0', notes: [
     { t: 'The Snooze Golem Souls fight is now a damage race: 3 minutes, one life, deal as much damage as you can on your house bar', k: 'new' },
     { t: 'A much harder Golem: faster, varied timing, combos, fake-outs, delayed hits and new moves each phase. Hit its glowing back and stuck fists for big damage', k: 'new' },
