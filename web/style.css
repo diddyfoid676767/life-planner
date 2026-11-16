@@ -3922,3 +3922,50 @@ body.walking #world .ishud:not(.is-tr), body.walking #world .isbubs, body.walkin
 body.wk-in.world-on .content { margin-right: 22px; margin-left: auto; width: min(860px, calc(66% - 30px)); }
 body.wk-in:not(.world-only) #world::after { background: linear-gradient(90deg, rgba(6, 8, 22, 0) 0, rgba(6, 8, 22, 0) 30%, rgba(6, 8, 22, .35) 60%); }
 @media (max-width: 1000px) { body.wk-in.world-on .content { width: calc(100% - 40px); margin: calc(var(--hud-h) + 14px) auto 28px; } }
+/* ---------- 2.76 Souls fights (souls.js) ---------- */
+#soov { position: fixed; inset: 0; z-index: 120; background: #0b0a1a; color: #f1ead8; font-family: inherit; overflow: hidden; user-select: none; }
+#soov .socanvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+#soov.hurt::after { content: ''; position: absolute; inset: 0; pointer-events: none; box-shadow: inset 0 0 140px rgba(220, 30, 30, .55); }
+body.souls-on #hud { z-index: 1; }
+.so-intro, .so-end { position: absolute; inset: 0; display: grid; place-items: center; background: radial-gradient(ellipse at center, rgba(10, 8, 24, .55), rgba(5, 4, 12, .9)); z-index: 5; }
+.so-card { width: min(620px, calc(100% - 32px)); padding: 26px 28px; border-radius: 18px; background: linear-gradient(180deg, #2a2236, #17121f); border: 1px solid rgba(255, 214, 140, .35); box-shadow: 0 30px 80px rgba(0, 0, 0, .6); text-align: center; }
+.so-card h2 { margin: 4px 0; font-family: Georgia, 'Palatino Linotype', serif; font-size: 2rem; letter-spacing: .04em; color: #ffe8b3; }
+.so-end .so-card h2 { font-size: 2.4rem; }
+.so-kicker { font-size: .72rem; font-weight: 800; letter-spacing: .14em; color: #e8c07d; }
+.so-sub { margin: 0 0 12px; color: #a99fc0; font-style: italic; }
+.so-keys { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px 14px; margin: 14px 0; font-size: .82rem; color: #d6cde6; }
+.so-keys kbd, .so-sk kbd { padding: 1px 6px; border-radius: 5px; background: rgba(255, 255, 255, .12); border: 1px solid rgba(255, 255, 255, .22); font: 700 .74rem/1.4 inherit; }
+.so-opt { display: flex; align-items: center; justify-content: center; gap: 8px; font-size: .85rem; color: #cfc6e0; margin: 4px 0; }
+.so-btns { display: flex; justify-content: center; gap: 10px; margin-top: 16px; }
+.so-hud { position: absolute; inset: 0; pointer-events: none; z-index: 3; }
+.so-boss { position: absolute; top: 18px; left: 50%; transform: translateX(-50%); width: min(720px, 80%); text-align: center; }
+.so-bn { font-family: Georgia, serif; font-size: 1.15rem; color: #ffe8b3; text-shadow: 0 2px 6px #000; margin-bottom: 6px; }
+.so-ph { font-size: .85rem; color: #ffa94d; }
+.so-bar { position: relative; height: 12px; border-radius: 3px; background: rgba(0, 0, 0, .6); border: 1px solid rgba(255, 214, 140, .4); overflow: hidden; }
+.so-bar .so-bhp { position: absolute; inset: 0 auto 0 0; background: linear-gradient(180deg, #e8590c, #a61e1e); transition: width .2s; }
+.so-bar .so-brun { position: absolute; top: 0; bottom: 0; background: #ffd8a8; opacity: .8; }
+.so-bsub { margin-top: 4px; font-size: .78rem; color: #cfc6e0; text-shadow: 0 1px 3px #000; }
+.so-time { position: absolute; top: 18px; right: 22px; font: 800 1.4rem/1 Georgia, serif; color: #ffe8b3; text-shadow: 0 2px 6px #000; }
+.so-pops { position: absolute; top: 96px; left: 50%; transform: translateX(-50%); display: flex; flex-direction: column; align-items: center; gap: 6px; }
+.sopop { padding: 6px 14px; border-radius: 10px; background: rgba(16, 12, 26, .8); font-weight: 700; font-size: .9rem; animation: shpIn .2s ease-out; }
+.sopop.good { color: #8ce99a; } .sopop.bad { color: #ff8787; } .sopop.phase { color: #ffd43b; font-size: 1.1rem; border: 1px solid rgba(255, 212, 59, .5); }
+.so-me { position: absolute; left: 24px; bottom: 24px; width: min(360px, 40%); }
+.so-hp, .so-st { position: relative; height: 14px; border-radius: 3px; background: rgba(0, 0, 0, .6); border: 1px solid rgba(255, 255, 255, .25); overflow: hidden; margin-top: 6px; }
+.so-hp i { position: absolute; inset: 0 auto 0 0; background: linear-gradient(180deg, #ff6b6b, #c92a2a); transition: width .15s; }
+.so-hp span { position: absolute; inset: 0; display: grid; place-items: center; font-size: .7rem; font-weight: 800; text-shadow: 0 1px 2px #000; }
+.so-st { height: 9px; } .so-st i { position: absolute; inset: 0 auto 0 0; background: linear-gradient(180deg, #8ce99a, #2f9e44); }
+.so-st.low i { background: #868e96; }
+.so-chips { margin-top: 6px; font-size: .78rem; color: #e8c07d; text-shadow: 0 1px 3px #000; min-height: 1em; }
+.so-bar2 { position: absolute; bottom: 22px; left: 50%; transform: translateX(-50%); display: flex; gap: 6px; }
+.so-sk { position: relative; width: 62px; height: 62px; border-radius: 10px; background: rgba(20, 16, 32, .85); border: 1px solid rgba(255, 214, 140, .35); display: flex; flex-direction: column; align-items: center; justify-content: center; overflow: hidden; }
+.so-sk.so-spl { border-color: rgba(116, 192, 252, .6); } .so-sk.so-mvl { border-color: rgba(255, 146, 43, .6); }
+.so-sk kbd { position: absolute; top: 3px; left: 3px; font-size: .6rem; padding: 0 4px; }
+.so-sk span { font-size: 1.4rem; } .so-sk small { font-size: .55rem; max-width: 58px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; color: #cfc6e0; }
+.so-sk i { position: absolute; left: 0; right: 0; bottom: 0; height: 0; background: rgba(0, 0, 0, .65); }
+.so-sk.cd span { opacity: .5; }
+.so-help { position: absolute; bottom: 96px; left: 50%; transform: translateX(-50%); font-size: .8rem; color: #a99fc0; }
+.sonum { position: absolute; left: 0; top: 0; z-index: 4; pointer-events: none; font: 800 1.15rem/1 Georgia, serif; color: #fff; text-shadow: 0 2px 4px #000, 0 0 2px #000; }
+.sonum.weak { color: #ffd43b; font-size: 1.45rem; } .sonum.crit { color: #ffa94d; font-size: 1.35rem; } .sonum.arm { color: #adb5bd; font-size: .95rem; } .sonum.me { color: #ff6b6b; }
+.isbtn.fight.souls { background: linear-gradient(180deg, #5f3dc4, #3b1f8f); }
+.sotrial { margin-top: 14px; padding: 12px; border-radius: 12px; border: 1px solid rgba(151, 117, 250, .45); background: rgba(151, 117, 250, .08); }
+.sotrial p { margin: 4px 0 8px; }

@@ -10,6 +10,12 @@
 // version since the last one they saw (up to 3). D.settings.seenVersion remembers what was last shown,
 // D.settings.guidesSeen which guides have played. A brand-new install never sees either.
 const CHANGELOG = [
+  { v: '2.76.0', notes: [
+    { t: 'The first Souls fight: the Snooze Golem in its own arena, in real time. Move, roll through its attacks, block, and strike', k: 'new' },
+    { t: 'Every spell, move and class skill you have equipped is on a hotbar (keys 1 to 9). Stamina pays for attacks, rolls and blocks', k: 'new' },
+    { t: 'Try it any time as a free Trial from the Practice yard. In the Golem\'s week it counts as a weekly fight on your house\'s bar', k: 'new' },
+    { t: 'The weekly boss on the boss island now breathes and looks around', k: 'tweak' },
+  ] },
   { v: '2.75.0', notes: [
     { t: 'Walk mode: press V (or 🚶 Walk) and walk round your island as your own character, with the camera over your shoulder', k: 'new' },
     { t: 'WASD to move, Shift to run, click to steer with the mouse. Press V again for the builder view', k: 'new' },

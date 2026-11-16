@@ -299,7 +299,7 @@ function wkHud() {
 
 // ---------- input ----------
 addEventListener('keydown', e => {
-  if (e.ctrlKey || e.metaKey || e.altKey || wkTyping(e.target)) return;
+  if (e.ctrlKey || e.metaKey || e.altKey || wkTyping(e.target) || (typeof SO !== 'undefined' && SO)) return;
   const k = e.key.toLowerCase();
   if (k === 'v' && !e.repeat && (view === 'islands' || WK.on) && !document.querySelector('dialog[open]')) {
     if (WK.inside) return; // inside, V does nothing: close the page to walk out
