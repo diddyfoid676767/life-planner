@@ -22,7 +22,7 @@ function sndCtx() {
 }
 // one note: oscillator type, start and end frequency, length, loudness, delay
 function tone(c, { type = 'sine', f = 440, f2, dur = .12, vol = .2, at = 0, attack = .005, q, filter } = {}) {
-  const t = c.currentTime + at, o = c.createOscillator(), g = c.createGain();
+  const t = c.currentTime + at, o = c.createOscillator(), g = c.createGain(); vol *= SND.k || 1;
   o.type = type; o.frequency.setValueAtTime(f, t); if (f2) o.frequency.exponentialRampToValueAtTime(Math.max(20, f2), t + dur);
   g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(vol, t + attack); g.gain.exponentialRampToValueAtTime(.0001, t + dur);
   let node = o; if (filter) { const fl = c.createBiquadFilter(); fl.type = filter; fl.frequency.value = q || 1200; o.connect(fl); node = fl; }
@@ -30,7 +30,7 @@ function tone(c, { type = 'sine', f = 440, f2, dur = .12, vol = .2, at = 0, atta
 }
 // a burst of filtered noise: rustles, swishes, hits
 function hiss(c, { dur = .15, vol = .2, at = 0, type = 'bandpass', f = 2000, f2, q = 1, attack = .004 } = {}) {
-  const t = c.currentTime + at, s = c.createBufferSource(), fl = c.createBiquadFilter(), g = c.createGain();
+  const t = c.currentTime + at, s = c.createBufferSource(), fl = c.createBiquadFilter(), g = c.createGain(); vol *= SND.k || 1;
   s.buffer = SND.noise; s.playbackRate.value = .8 + Math.random() * .4; fl.type = type; fl.Q.value = q; fl.frequency.setValueAtTime(f, t); if (f2) fl.frequency.exponentialRampToValueAtTime(f2, t + dur);
   g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(vol, t + attack); g.gain.exponentialRampToValueAtTime(.0001, t + dur);
   s.connect(fl); fl.connect(g); g.connect(SND.out); s.start(t, Math.random() * .5); s.stop(t + dur + .05);
@@ -142,7 +142,9 @@ function sfxReady(group) {
 function sfx(name, { gap = 0 } = {}) {
   try {
     const now = performance.now(); if (gap && now - (SND.last[name] || 0) < gap) return; SND.last[name] = now;
-    const c = sfxReady(SFX_GROUP[name]); if (c && SFX[name]) SFX[name](c, arguments[1] || {});
+    const g = SFX_GROUP[name], c = sfxReady(g);
+    // 2.78: clicks, tabs and hover ticks are softer
+    if (c && SFX[name]) { SND.k = g === 'ui' || g === 'hover' ? .55 : 1; try { SFX[name](c, arguments[1] || {}); } finally { SND.k = 1; } }
   } catch (e) { /* sound is never worth breaking the app for */ }
 }
 
@@ -206,7 +208,7 @@ function soundCard() {
   return `<div class="card sndcard" data-sec="sound"><div class="card-head"><h2>🔊 Sound effects</h2></div>
     ${row('on', 'Sound on', 'Every sound in the app')}
     <div class="sndvol"><span>🔈</span><input type="range" min="0" max="1" step="0.01" value="${c.vol}" data-snd="vol" ${c.on ? '' : 'disabled'}><span>🔊</span><b>${Math.round(c.vol * 100)}%</b></div>
-    <div class="sndgroups ${c.on ? '' : 'off'}">${row('ui', 'Buttons and menus', 'Clicks, tabs, coins and purchases')}${row('hover', 'Hover ticks', 'A tiny tick when your mouse moves over a button')}${row('garden', 'Garden', 'Rustling trees, popping bubbles, watering and planting')}${row('music', 'Lute and drum music', 'Soft medieval music while your island is on screen (with the medieval look)')}${row('ambience', 'Garden ambience', 'Birds by day, crickets at night, while the garden is open')}${row('arena', 'Arena battles', 'Hits, misses, crits, healing and a sound for each kind of move')}</div>
+    <div class="sndgroups ${c.on ? '' : 'off'}">${row('ui', 'Buttons and menus', 'Clicks, tabs, coins and purchases')}${row('hover', 'Hover ticks', 'A tiny tick when your mouse moves over a button')}${row('garden', 'Garden', 'Rustling trees, popping bubbles, watering and planting')}${row('ambience', 'Garden ambience', 'Birds by day, crickets at night, while the garden is open')}${row('arena', 'Arena battles', 'Hits, misses, crits, healing and a sound for each kind of move')}</div>
     <button class="btn small" data-snd-test="1">▶ Play a test sound</button></div>`;
 }
 document.addEventListener('input', e => {

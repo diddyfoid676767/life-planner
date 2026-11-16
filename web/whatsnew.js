@@ -10,6 +10,12 @@
 // version since the last one they saw (up to 3). D.settings.seenVersion remembers what was last shown,
 // D.settings.guidesSeen which guides have played. A brand-new install never sees either.
 const CHANGELOG = [
+  { v: '2.78.0', guide: 'game', notes: [
+    { t: 'A new look: bright, rounded menus by day and a cosy lantern style at night or in dark mode', k: 'new' },
+    { t: 'No top bar. Your counters sit in the top-left corner and one Menu button opens every place (keys 1 to 6, Q adds, Ctrl+K searches)', k: 'new' },
+    { t: 'Buildings open simple windows that slide in from the right: one big card, a short list, up to 3 tabs and More', k: 'new' },
+    { t: 'No more music on the island or while you study, and clicks are softer. Solis now opens on your island', k: 'tweak' },
+  ] },
   { v: '2.77.0', notes: [
     { t: 'The Market is now the one shop: this week\'s cosmetics, island looks and decorations. Page buildings open their window with one click', k: 'new' },
     { t: 'Hover any hex, even grass, water, rocks and trees, to see what it is and what you can do there', k: 'new' },

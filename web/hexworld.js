@@ -433,7 +433,9 @@ function hxPopHtml(k, st, w, lv, busy, net, sto) {
 }
 // the page buildings open their page
 function hxOpen(id) {
-  ui.hxSel = null; if (hxFree(id)) id = hxFree(id).open; // 2.75: a building's id or its page (the market and yard taps used to land on Today)
+  ui.hxSel = null;
+  if (typeof bwOpen === 'function' && (BW_NAME[id] || BW_ALIAS[id]) && id !== 'spar' && id !== 'shop') { bwOpen(id); return; } // 2.78: page buildings open their simple window
+  if (hxFree(id)) id = hxFree(id).open; // 2.75: a building's id or its page (the market and yard taps used to land on Today)
   if (id === 'shop') { if (view !== 'islands' || (ui.isTab || 'personal') !== 'personal') { view = 'islands'; ui.isTab = 'personal'; } Object.assign(ui, { isPanel: 'market', mkTab: 'cosm', hxP: null }); }
   else if (id === 'cosm') { ui.youLook = true; ui.pfCat = 'shop'; ui.pfTry = null; view = 'profile'; }
   else if (id === 'spar') { ui.isTab = 'boss'; ui.isPanel = 'bspar'; }

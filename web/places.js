@@ -27,7 +27,7 @@ const SUB_LABEL = { today: 'Today', friends: 'Chats' };
 const VIEW_ALIAS = { day: 'today', plan: 'today', inbox: 'today', personal: 'today', todo: 'today', school: 'today', chats: 'friends', character: 'profile', forest: 'islands', arena: 'islands', house: 'islands', training2: 'training', world: 'islands', map: 'islands', home: 'islands', island: 'islands', noticeboard: 'today', notice: 'today', steward: 'settings', lodge: 'settings', rankings: 'board', rank: 'board', library: 'study', tavern: 'friends', hall: 'profile', fitness: 'training', you: 'profile' };
 const placeOf = v => PLACES.find(p => p.views.includes(VIEW_ALIAS[v] || v));
 // the sidebar button for a page, for the setup tour to point at
-function placeBtn(v) { const sv = typeof shellOf === 'function' && shellOf(VIEW_ALIAS[v] || v), hb = sv ? document.querySelector(`#hud [data-shell="go"][data-v="${sv.v[0]}"]`) : (VIEW_ALIAS[v] || v) === 'settings' ? document.querySelector('#hud [data-shell="steward"]') : null; if (hb) return hb; const p = placeOf(v); return p ? document.querySelector(`#places [data-place="${p.id}"]`) : document.querySelector(`#places [data-go="${VIEW_ALIAS[v] || v}"]`); }
+function placeBtn(v) { const hb = document.getElementById('menuBtn'); if (hb) return hb; const p = placeOf(v); return p ? document.querySelector(`#places [data-place="${p.id}"]`) : document.querySelector(`#places [data-go="${VIEW_ALIAS[v] || v}"]`); }
 
 (() => {
   const tabs = document.getElementById('tabs'), side = document.querySelector('.sidebar'), main = document.getElementById('view');
@@ -93,13 +93,6 @@ function placeBtn(v) { const sv = typeof shellOf === 'function' && shellOf(VIEW_
     openPlace(PLACES.find(x => x.id === b.dataset.place));
   });
   sub.addEventListener('click', e => { const s = e.target.closest('[data-go]'); if (s) go(s.dataset.go); });
-  // keys 1 to 6 jump between places (not while typing)
-  document.addEventListener('keydown', e => {
-    if (e.ctrlKey || e.metaKey || e.altKey || e.repeat) return;
-    const t = e.target; if (t && (t.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName))) return;
-    if (document.getElementById('modal')?.open || !document.getElementById('cmdk')?.hidden && document.getElementById('cmdk')) return;
-    const vis = visiblePlaces(), i = +e.key; if (i >= 1 && i <= vis.length) { e.preventDefault(); openPlace(vis[i - 1]); }
-  });
   let queued = false;
   new MutationObserver(() => { if (!queued) { queued = true; queueMicrotask(() => { queued = false; sync(); syncFoot(); }); } })
     .observe(tabs, { subtree: true, childList: true, attributes: true, attributeFilter: ['class', 'hidden', 'data-badge'] });
