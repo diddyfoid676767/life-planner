@@ -182,7 +182,7 @@ function pfShop(av) {
 }
 function pfGrid(cat, av, spec) {
   if (cat === 'shop') return pfShop(av);
-  const items = COSMETICS.filter(c => c.cat === cat);
+  const items = COSMETICS.filter(c => c.cat === cat && !heroGone(c.id));
   const base = { ...spec, hat: av.hat, eyes: av.eyes }, w = cdWallet();
   const ownN = items.filter(c => ownsCos(c.id)).length;
   return `<div class="pfgridhead"><span>${ownN} of ${items.length} unlocked</span><span class="cd-l">${LUMEN} <b>${w.lumen.toLocaleString()}</b></span><span class="cd-e">${EMBER} <b>${w.ember.toLocaleString()}</b></span></div>

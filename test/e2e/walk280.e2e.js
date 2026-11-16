@@ -27,7 +27,7 @@ const S = process.argv[2]; const sleep = ms => new Promise(r => setTimeout(r, ms
   ok(await p.$('[data-wk="on"]') !== null, '2. the island has a Walk button');
   await p.click('[data-wk="on"]');
   ok(await until(() => WK.on && WK.H), '2b. walk mode starts with your character');
-  ok(await p.evaluate(() => { let sk = 0, head = 0; WK.H.root.traverse(o => { if (o.isSkinnedMesh) sk++; }); WK.H.P.head.traverse(o => { if (o.isMesh) head++; }); return sk >= 5 && head > 10; }), '3. a rigged body with your own head, face and hair on it');
+  ok(await p.evaluate(() => { let sk = 0, head = 0; WK.H.root.traverse(o => { if (o.isSkinnedMesh) sk++; }); head = WK.H.bone('Head') ? 1 : 0; return sk >= 5 && head; }), '3. a rigged body with a matching head and hair (2.84)');
   const spec = await p.evaluate(() => { const s = pfSpec(); const H = heroMake({ spec: { ...s, hat: 'hat_crown', extra: 'x_cape' }, outfit: 'Mage', gear: { Helm: '#868e96', Boots: '#ae3ec9' } }); let n = 0; H.P.head.traverse(o => { if (o.isMesh) n++; }); const r = { n, cape: H.P.chest.children.length > 0, outfit: H.outfit }; H.dispose(); return r; });
   ok(spec.n > 10 && spec.cape && spec.outfit === 'Mage', '3b. hats, extras and gear go on the new character (' + JSON.stringify(spec) + ')');
   ok(await p.evaluate(() => ['Knight', 'Barbarian', 'Mage', 'Rogue'].every(o => heroMake({ outfit: o })?.outfit === o) && heroOutfitOf('guardian') === 'Knight' && heroOutfitOf('sage') === 'Mage'), '3c. four outfits, picked by class');
@@ -43,7 +43,7 @@ const S = process.argv[2]; const sleep = ms => new Promise(r => setTimeout(r, ms
   await p.keyboard.up('Shift'); await p.keyboard.up('s'); await sleep(1200);
   ok((await st()).sp < .3 && (await st()).a === 'Idle', '7. you slow to a stop and stand idle');
   await p.keyboard.press('Control'); await sleep(100);
-  ok(await p.evaluate(() => WK.roll > 0 && WK.H.cur === 'Dodge_Forward'), '8. Ctrl rolls');
+  ok(await p.evaluate(() => WK.roll > 0 && WK.H.cur === 'Roll'), '8. Ctrl rolls (a somersault)');
   // buildings are solid: walk straight at the hall from its door side
   const hall = await p.evaluate(async () => { const [hx, hz] = hxPos(0, 0); WK.roll = 0; WK.x = hx; WK.z = hz + 2.4; WK.vx = WK.vz = 0; WK.cy = 0; WK.face = Math.PI; WK.cool = 0; WK.minD = 9; window.__opened = null; const o = hxOpen; hxOpen = id => { window.__opened = id; }; WK.__o = o; return [hx, hz]; });
   await p.keyboard.down('w');

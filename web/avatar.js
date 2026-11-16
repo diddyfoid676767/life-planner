@@ -178,7 +178,7 @@ function cosShop(wk = mondayOf(today())) {
   if (COS_SHOP_MEMO[0] === wk) return COS_SHOP_MEMO[1].slice();
   let seed = 0; for (const ch of 'solis-shop-' + wk) seed = (seed * 31 + ch.charCodeAt(0)) >>> 0;
   const rnd = () => { seed = (seed * 1664525 + 1013904223) >>> 0; return seed / 4294967296; };
-  const pool = COSMETICS.filter(c => c.price), out = [];
+  const pool = COSMETICS.filter(c => c.price && !(typeof heroGone === 'function' && heroGone(c.id))), out = [];
   while (out.length < 6 && pool.length) {
     const tot = pool.reduce((a, c) => a + COS_RAR[c.rar][2], 0); let r = rnd() * tot, i = 0;
     for (; i < pool.length - 1; i++) { r -= COS_RAR[pool[i].rar][2]; if (r < 0) break; }
@@ -245,8 +245,9 @@ const LOOK_OPTS = {
   sideburns: [['none', 'None'], ['short', 'Short'], ['long', 'Long']],
   lashes: [['none', 'Normal'], ['lashes', 'Long lashes']],
   height: [['short', 'Shorter'], ['average', 'Average'], ['tall', 'Taller']],
+  body: [['', 'Auto'], ['m', 'Body A'], ['f', 'Body B']], // 2.84: the 3D character's body and face
 };
-const LOOK_DEFAULT = { skinC: '', hairC: '', eyeCol: '#6b4423', face: 'round', eyes: 'dots', brows: 'straight', nose: 'small', mouth: 'smile', ears: 'normal', beard: 'none', extras: 'none', glasses: 'none', build: 'regular', height: 'average', earrings: 'none', browCut: 'none', sideburns: 'none', lashes: 'none' };
+const LOOK_DEFAULT = { skinC: '', hairC: '', eyeCol: '#6b4423', face: 'round', eyes: 'dots', brows: 'straight', nose: 'small', mouth: 'smile', ears: 'normal', beard: 'none', extras: 'none', glasses: 'none', build: 'regular', height: 'average', earrings: 'none', browCut: 'none', sideburns: 'none', lashes: 'none', body: '' };
 const myLook = () => Object.assign({}, LOOK_DEFAULT, D.arena.look || {});
 function setLook(k, v) { if (!(k in LOOK_DEFAULT)) return; D.arena.look = { ...myLook(), [k]: v }; save(); render(); }
 
@@ -461,8 +462,10 @@ function lookEditor() {
     ${sw('skinC', 'Skin')}${sw('hairC', 'Hair colour')}${sw('eyeCol', 'Eye colour')}
     ${row('face', 'Face shape')}${row('eyes', 'Eyes')}${row('brows', 'Eyebrows')}${row('nose', 'Nose')}${row('mouth', 'Mouth')}${row('ears', 'Ears')}
     ${row('beard', 'Facial hair')}${row('sideburns', 'Sideburns')}${row('extras', 'Details')}${row('lashes', 'Eyelashes')}${row('browCut', 'Eyebrow slit')}${row('earrings', 'Earrings')}${row('glasses', 'Glasses')}
+    <div class="lookrow"><span class="lklabel">3D body</span><div class="lkopts">${LOOK_OPTS.body.map(([v, n]) => `<button class="lkopt ${L.body === v ? 'on' : ''}" data-act="setLook" data-k="body" data-v="${v}">${n}</button>`).join('')}</div></div>
     <div class="lookrow"><span class="lklabel">Build</span><div class="lkopts">${LOOK_OPTS.build.map(([v, n]) => `<button class="lkopt ${L.build === v ? 'on' : ''}" data-act="setLook" data-k="build" data-v="${v}">${n}</button>`).join('')}</div></div>
     <div class="lookrow"><span class="lklabel">Height</span><div class="lkopts">${LOOK_OPTS.height.map(([v, n]) => `<button class="lkopt ${L.height === v ? 'on' : ''}" data-act="setLook" data-k="height" data-v="${v}">${n}</button>`).join('')}</div></div>
+    <p class="muted small-text">Your 3D character takes its body and face from <b>3D body</b>, and its skin, hair, eye colour, facial hair, glasses and headwear from your picks. Face shape, eyes, nose and mouth show on your badge.</p>
     <p class="muted small-text">Hairstyles are under <b>Hair</b>. Ginger, black, brown and blonde are free there too, or pick any colour above.</p></div>`;
 }
 // head-only crop of the avatar for the creator buttons

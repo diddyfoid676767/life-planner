@@ -12,18 +12,19 @@ let fails = 0; const ok = (c, m) => { console.log((c ? 'PASS ' : 'FAIL ') + m); 
   const errs = []; p.on('pageerror', e => errs.push(e.message));
   await p.goto('http://127.0.0.1:47913/?k=' + fs.readFileSync(S + '/data/window.key', 'utf8').trim());
   await p.waitForFunction(() => typeof D === 'object' && D && loaded, null, { timeout: 20000 }); await sleep(1500);
-  await p.evaluate(() => { document.getElementById('boot')?.remove(); ui.clsSeen = true; ui.youTab = 'me'; view = 'profile'; render(); });
-  await p.waitForFunction(() => AV3.fig, null, { timeout: 20000 }); await sleep(800);
-  const cnt = () => p.evaluate(() => { let n = 0, ol = 0; AV3.fig.traverse(o => { if (o.isMesh) { n++; if (o.material.side === THREE.BackSide) ol++; } }); return { n, ol }; });
+  await p.evaluate(() => { document.getElementById('boot')?.remove(); document.getElementById('wizfx')?.remove(); try { wiz = null; } catch { } ui.clsSeen = true; ui.youTab = 'me'; view = 'profile'; render(); });
+  // 2.84: the You page shows the Quaternius character (the toon figure only stands in while it loads)
+  await p.waitForFunction(() => AV3.hero, null, { timeout: 30000 }); await sleep(800);
+  const cnt = () => p.evaluate(() => { let n = 0, sk = 0; AV3.hero.root.traverse(o => { if (o.isMesh) { n++; if (o.isSkinnedMesh) sk++; } }); return { n, sk }; });
   const c0 = await cnt();
-  ok(c0.n > 80 && c0.ol > 30, `1. the toon figure is built with outlines (${c0.n} meshes, ${c0.ol} outlines)`);
+  ok(c0.sk >= 5, `1. the rigged character is built (${c0.n} meshes, ${c0.sk} skinned)`);
   ok(await p.evaluate(() => AV3.fig.children.some(o => o.isMesh || o.isGroup) && document.querySelector('.pfstage.has3d') !== null), '1b. the 3D avatar replaces the 2D one');
-  ok(await p.evaluate(() => [...AV3.mats ? Object.values(AV3.mats) : []].some(m => m.type === 'MeshToonMaterial')), '1c. toon materials');
+  ok(await p.evaluate(() => AV3.hero.mats.some(m => m.type === 'MeshToonMaterial')), '1c. toon materials');
   // what you wear shows: each cosmetic slot changes the model
   const av = await p.evaluate(() => myAv());
   const tries = [['hat', 'hat_crown'], ['eyes', 'eye_aviator'], ['extra', 'x_cape'], ['hair', 'h_afro'], ['pet', 'p_cat']];
   for (const [k, v] of tries) {
-    const n = await p.evaluate(([k, v]) => { const h = document.getElementById('av3host'), d = JSON.parse(h.dataset.av); d.spec[k] = v; h.dataset.av = JSON.stringify(d); mountYou3D(); let n = 0; AV3.fig.traverse(o => { if (o.isMesh || o.isSprite) n++; }); return n; }, [k, v]);
+    const n = await p.evaluate(([k, v]) => { const h = document.getElementById('av3host'), d = JSON.parse(h.dataset.av); d.spec[k] = v; h.dataset.av = JSON.stringify(d); mountYou3D(); let n = 0; (AV3.hero ? AV3.hero.root : AV3.fig).traverse(o => { if (o.isMesh || o.isSprite) n++; }); return n; }, [k, v]);
     ok(n > 0, `2. ${k} ${v} builds (${n} parts)`);
   }
   // gear on the model and preview before wearing

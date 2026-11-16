@@ -54,7 +54,7 @@ const S = process.argv[2]; const sleep = ms => new Promise(r => setTimeout(r, ms
     const hit = (k, behind) => ev(([k, behind]) => { const B = SO.B; B.state = 'recover'; B.t = 9; B.stuck = 0; B.x = 0; B.z = -4; B.face = 0; B.greed = []; const M = SO.me; M.x = 0; M.z = behind ? -7 : -1; M.face = behind ? 0 : Math.PI; M.st = 100; M.act = null; const d0 = SO.dealt; soAct(k); for (let i = 0; i < 80 && M.act; i++) { M.actT += 1 / 60; soActStep(M, 1 / 60); } return SO.dealt - d0; }, [k, behind]);
     const l1 = await hit('light'), hv = await hit('heavy');
     ok(l1 > 0 && hv > l1 * 1.8, `4. light ${l1} and heavy ${hv} hit`);
-    ok(await ev(() => SO.H.cur.includes('Melee')), '4b. attack animations play');
+    ok(await ev(() => /Sword|Spell|Punch|Melee/.test(SO.H.cur)), '4b. attack animations play');
     await ev(() => { SO.me.combo = 0; }); const bk = await hit('light', true);
     ok(bk > l1 * 1.3, `4c. the back crystal is a weak point (${bk} vs ${l1})`);
     const pw = await ev(() => { const a = SO.pow; SO.pow = a * 5; return a; }); await ev(() => { SO.me.combo = 0; }); const big = await hit('light');

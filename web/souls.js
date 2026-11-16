@@ -27,7 +27,8 @@ const SO_BONUS = { l: 60, e: 60, day: 2 };
 const SO_C = {
   jog: 4.6, sprint: 7, acc: 14, dec: 18, air: 3, grav: 20, jump: 7.2, coyote: .12, buffer: .14,
   st: { max: 100, regen: 34, wait: .6, sprint: 18, light: 13, heavy: 28, roll: 24, skill: 12, jump: 8 },
-  roll: { speed: 8.2, time: .55, iFrom: .03, iTo: .42 }, hold: .28, chain: .55, perfect: .26, guard: .2,
+  // a somersault: about 3 m, then a short get-up you can cancel into an attack or another roll
+  roll: { speed: 5.6, time: .78, iFrom: .03, iTo: .42, free: .6 }, hold: .28, chain: .55, perfect: .26, guard: .2,
 };
 // the Golem's moves: wind-up (s, before speed and variation), damage as a share of your health, reach,
 // arc (radians either side), low = a jump clears it, ph = first phase it appears in
@@ -44,8 +45,28 @@ const SO_MV = {
   shock: { n: 'Shockwave', d: .16, low: 1 },
 };
 const SO_PH = [{ at: 0, n: 'Groggy', sp: 1 }, { at: 40, n: '⏰ Alarm Barrage', sp: 1.08 }, { at: 85, n: '😤 Restless', sp: 1.18 }, { at: 130, n: '👁️ Wide Awake', sp: 1.3 }];
-const SO_LIGHT = ['1H_Melee_Attack_Slice_Diagonal', '1H_Melee_Attack_Slice_Horizontal', '1H_Melee_Attack_Chop'];
-const SO_PROPS = { Knight: ['1H_Sword', 'Round_Shield'], Barbarian: ['1H_Axe', 'Round_Shield'], Mage: ['1H_Wand', 'Spellbook'], Rogue: ['Knife', 'Knife_Offhand'] };
+// each class fights its own way. A light combo is a list of swings (clicks chain them); hold for the heavy.
+// c clip, span part of the clip to play, dur seconds, hit times (s), m damage, st stamina, lunge metres,
+// bolt: a magic bolt flies at the Golem instead of a melee hit
+const SO_COMBO = {
+  Knight: { // sword and shield: a steady three-cut chain and an overhead
+    light: [{ c: 'Sword_Regular_A', dur: .44, hit: [.2], m: 1 }, { c: 'Sword_Regular_B', dur: .48, hit: [.22], m: 1.1 }, { c: 'Sword_Regular_C', span: [.12, .62], dur: .6, hit: [.3], m: 1.5, lunge: .7 }],
+    heavy: { c: 'Sword_Attack', span: [0, .72], dur: 1, hit: [.5], m: 2.7, lunge: 1, reach: 3.1 }, idle: 'Sword_Idle',
+  },
+  Barbarian: { // the axe: two big, slow, wide swings that hit hard
+    light: [{ c: 'Sword_Attack', span: [.05, .66], dur: .72, hit: [.36], m: 1.6, st: 17, reach: 3.1, arc: 1.5, lunge: .6 }, { c: 'Sword_Regular_C', span: [.12, .7], dur: .82, hit: [.32, .5], m: 1.15, st: 17, reach: 3.1, arc: 2.3 }],
+    heavy: { c: 'Sword_Regular_C', span: [0, .85], dur: 1.2, hit: [.5, .72], m: 1.9, reach: 3.3, arc: 2.6, lunge: .8 }, idle: 'Sword_Idle',
+  },
+  Mage: { // the staff: quick bolts, and a charged orb
+    light: [{ c: 'Spell_Simple_Shoot', dur: .42, hit: [.2], m: .95, bolt: 1 }, { c: 'Spell_Simple_Shoot', dur: .42, hit: [.2], m: .95, bolt: 1 }, { c: 'Spell_Simple_Shoot', dur: .55, hit: [.28], m: 1.35, bolt: 2 }],
+    heavy: { c: 'Spell_Simple_Enter', dur: .9, hit: [.62], m: 2.6, bolt: 3 }, idle: 'Spell_Simple_Idle_Loop',
+  },
+  Rogue: { // two daggers: four fast cuts, the last one twice
+    light: [{ c: 'Sword_Regular_A', dur: .3, hit: [.13], m: .62, st: 9 }, { c: 'Sword_Regular_B', dur: .32, hit: [.14], m: .62, st: 9 }, { c: 'Melee_Hook', dur: .3, hit: [.13], m: .7, st: 9 }, { c: 'Punch_Cross', span: [.1, .7], dur: .42, hit: [.14, .24], m: .6, st: 11, lunge: .5 }],
+    heavy: { c: 'Sword_Attack', span: [.05, .7], dur: .78, hit: [.36, .46], m: 1.45, lunge: 1.4 }, idle: 'Sword_Idle',
+  },
+};
+const soCombo = () => SO_COMBO[SO.outfit] || SO_COMBO.Knight;
 let SO = null;
 function soGolemWeek() { return hsBoss(mondayOf(today())).n === SO_BOSS && bossWeek() !== 'rest'; }
 const soTestOk = () => typeof solisDevOn === 'function' && solisDevOn();
@@ -85,7 +106,7 @@ async function soStart() {
     if (got.l !== SO_BONUS.l || got.e !== SO_BONUS.e) console.warn('bonus fight charged', got);
   }
   if (house) { const f = hsFight(hsState().id); shared = { hp: f.hp, left: f.left }; }
-  Object.assign(SO, { intro: false, P, wk, shared, dealt: 0, time: 0, over: false, paused: false, keys: {}, hotCd: {}, nums: [], fx: [], tele: [], projs: [], rings: [], drops: [], pow: soPower(),
+  Object.assign(SO, { intro: false, P, wk, shared, dealt: 0, time: 0, over: false, paused: false, keys: {}, hotCd: {}, nums: [], fx: [], tele: [], projs: [], rings: [], drops: [], parts: [], stop: 0, kick: 0, pow: soPower(),
     stats: { hits: 0, weak: 0, perfect: 0, guards: 0, combo: 0, pots: 0, hurt: 0 },
     me: { x: 0, z: 7, y: 0, vx: 0, vz: 0, vy: 0, ground: true, air: 0, jumpBuf: 0, face: Math.PI, sp: 0, st: SO_C.st.max, rest: 0, act: null, actT: 0, iFrom: -1, iTo: -1, rollAt: -9, blockAt: -9, block: false,
       emp: 0, buff: 1, rally: 0, reveal: 0, drowsy: 0, combo: 0, comboT: 0, chain: 0, chainT: 0, pots: SO_POTS, hold: null },
@@ -116,7 +137,7 @@ function soClose() {
   if (!SO) return;
   cancelAnimationFrame(SO.raf); if (document.pointerLockElement) document.exitPointerLock();
   if (SO.H) SO.H.dispose();
-  if (SO.S) SO.S.traverse(o => { if (o.geometry) o.geometry.dispose(); });
+  if (SO.S) SO.S.traverse(o => { if (o.geometry) o.geometry.dispose(); if (o.isSprite) o.material.dispose(); });
   if (SO.R) { SO.R.dispose(); SO.R.forceContextLoss?.(); }
   document.getElementById('soov')?.remove(); document.body.classList.remove('souls-on'); SO = null; render();
 }
@@ -146,7 +167,9 @@ function soScene() {
   SO.gol = soGolem(); S.add(SO.gol.root);
   // you: the KayKit hero in your class outfit, with your head and cosmetics
   const d = youAvData(pfSpec()), ci = typeof cdClassInfo === 'function' ? cdClassInfo() : null, outfit = heroOutfitOf(ci?.id);
-  SO.H = heroMake({ spec: d.spec, gear: d.gear || {}, cls: d.cls || '', outfit, props: SO_PROPS[outfit], scale: .78 });
+  SO.outfit = outfit;
+  SO.H = heroMake({ spec: d.spec, gear: d.gear || {}, cls: d.cls || '', outfit, props: true, scale: .78 });
+  if (SO.H) SO.trail = soTrail();
   if (SO.H) S.add(SO.H.root);
   else { const fig = av3figure({ ...d.spec, force: '' }, d.gear || {}, d.cls || ''); fig.scale.multiplyScalar(.85); SO.fig = new THREE.Group(); SO.fig.add(fig); S.add(SO.fig); }
   // your shadow blob, so you can judge jumps
@@ -185,8 +208,10 @@ function soLoop() {
   const tick = now => {
     if (!SO || !SO.R) return;
     const dt = Math.min(.25, (now - SO.t) / 1000); SO.t = now;
-    if (!SO.paused && !SO.intro) { SO.acc += dt; while (SO.acc >= 1 / 60) { SO.acc -= 1 / 60; if (!SO.over) soStep(1 / 60); else soStepDead(1 / 60); } }
-    soDraw(now / 1000, SO.paused ? 0 : dt);
+    // hit-stop: a landed hit freezes the fight for a few frames so it feels solid
+    const frozen = SO.stop > 0; if (frozen) SO.stop -= dt;
+    if (!SO.paused && !SO.intro && !frozen) { SO.acc += dt; while (SO.acc >= 1 / 60) { SO.acc -= 1 / 60; if (!SO.over) soStep(1 / 60); else soStepDead(1 / 60); } }
+    soDraw(now / 1000, SO.paused ? 0 : frozen ? dt * .04 : dt);
     SO.raf = requestAnimationFrame(tick);
   };
   SO.raf = requestAnimationFrame(tick);
@@ -223,7 +248,7 @@ function soStep(dt) {
   if (sprint) { M.st -= C.st.sprint * dt; M.rest = C.st.wait; }
   M.rest = Math.max(0, M.rest - dt);
   if (M.rest <= 0 && !M.block && !M.act) M.st = Math.min(C.st.max, M.st + C.st.regen * (M.drowsy > 0 ? .5 : 1) * dt);
-  if (M.act?.k === 'roll') { const p = M.actT / C.roll.time, v = C.roll.speed * (p < .75 ? 1 : .35); M.vx = M.act.dx * v; M.vz = M.act.dz * v; }
+  if (M.act?.k === 'roll') { const p = M.actT / C.roll.time, v = C.roll.speed * (p < .5 ? 1 : Math.max(0, 1 - (p - .5) / .3)); M.vx = M.act.dx * v; M.vz = M.act.dz * v; }
   else {
     const k = !M.ground ? C.air : moving ? C.acc : C.dec, tx = mx * top, tz = mz * top;
     M.vx += (tx - M.vx) * Math.min(1, dt * k); M.vz += (tz - M.vz) * Math.min(1, dt * k);
@@ -256,42 +281,54 @@ const SO_ACTS = {
 };
 function soAct(k) {
   const M = SO.me, A = SO_ACTS[k]; if (!SO || SO.over || SO.paused || !A) return;
-  if (M.act && !(k === 'roll' && M.act.k !== 'roll' && M.act.k !== 'stagger' && M.actT > .12)) return; // you can roll out of an attack's tail
+  // you can roll out of an attack's tail, and attack or roll again from a roll's get-up
+  const cancel = M.act && ((k === 'roll' && M.act.k !== 'roll' && M.act.k !== 'stagger' && M.actT > .12) || (M.act.k === 'roll' && k !== 'potion' && M.actT > SO_C.roll.free));
+  if (M.act && !cancel) return;
   if (k !== 'potion' && M.st <= 0) { soPop('😮‍💨 No stamina', 'bad'); return; }
   if (k === 'roll' && !M.ground) return;
-  if (A.st) { M.st -= A.st; M.rest = SO_C.st.wait; }
+  const CB = soCombo(), def = k === 'light' ? CB.light[M.chain % CB.light.length] : k === 'heavy' ? CB.heavy : null;
+  const st = def?.st ? def.st * (k === 'heavy' ? 2 : 1) : A.st;
+  if (st) { M.st -= st; M.rest = SO_C.st.wait; }
   M.act = { k, done: {} }; M.actT = 0;
+  if (def) { M.act.def = { reach: k === 'heavy' ? 3 : 2.6, arc: k === 'heavy' ? 1.5 : 1.25, ...def }; if (def.bolt) M.act.def.reach = 99; }
   if (k === 'roll') {
     const K = SO.keys, fw = (K.w ? 1 : 0) - (K.s ? 1 : 0), stf = (K.d ? 1 : 0) - (K.a ? 1 : 0), cy = SO.cam.cy;
     let dx = Math.sin(M.face), dz = Math.cos(M.face);
     if (fw || stf) { const c = Math.cos(cy), s = Math.sin(cy); dx = -s * fw + c * stf; dz = -c * fw - s * stf; const l = Math.hypot(dx, dz); dx /= l; dz /= l; }
     M.act.dx = dx; M.act.dz = dz; M.face = Math.atan2(dx, dz); M.rollAt = SO.time; M.iFrom = SO.time + SO_C.roll.iFrom; M.iTo = SO.time + SO_C.roll.iTo;
     if (typeof sfx === 'function') sfx('roll', { gap: 60 });
-  } else if (k === 'light') { M.act.n = M.chain % 3; M.chain++; M.chainT = M.act.n === 2 ? 0 : SO_ACTS.light.dur + SO_C.chain; if (M.act.n === 2) M.chain = 0; soAim(); }
-  else if (k === 'heavy') soAim();
+  } else if (k === 'light' || k === 'heavy') {
+    if (k === 'light') { const L = CB.light.length; M.act.n = M.chain % L; M.chain++; M.chainT = M.act.n === L - 1 ? 0 : def.dur + SO_C.chain; if (M.act.n === L - 1) M.chain = 0; }
+    soAim(!!def.bolt);
+    if (def.lunge && soDist(M, SO.B) > SO_BR + 1) M.lunge = { left: def.lunge, t: .18 };
+    SO.trail?.reset();
+  }
   else if (k === 'potion') M.act.healed = 0;
 }
 // a gentle aim: an attack started near the Golem turns you towards it (there's no lock-on)
-function soAim() { const M = SO.me, B = SO.B, a = Math.atan2(B.x - M.x, B.z - M.z); if (soDist(M, B) < 6.5 && Math.abs(soAng(a - M.face)) < 1.4) M.face = a; }
+function soAim(far) { const M = SO.me, B = SO.B, a = Math.atan2(B.x - M.x, B.z - M.z); if ((soDist(M, B) < 6.5 || far) && Math.abs(soAng(a - M.face)) < (far ? 1.9 : 1.4)) M.face = a; }
 function soPotion() {
   const M = SO.me; if (!soLive() || SO.paused || M.act || !M.ground) return;
   if (M.pots <= 0) { soPop('🧪 No potions left', 'bad'); return; }
   M.pots--; SO.stats.pots++; soAct('potion');
 }
 function soActStep(M, dt) {
-  const a = M.act, A = SO_ACTS[a.k] || a.def;
+  const a = M.act, A = a.def || SO_ACTS[a.k];
+  if (M.lunge && M.lunge.left > 0) { const v = Math.min(M.lunge.left, M.lunge.left / M.lunge.t * dt * 1.6); M.lunge.left -= v; M.x += Math.sin(M.face) * v; M.z += Math.cos(M.face) * v; }
   if (a.k === 'potion' && !a.healed && M.actT >= .55) { a.healed = 1; soHeal(SO.P.max * .35, '🧪 Potion'); if (typeof sfx === 'function') sfx('pop'); }
-  if (A.hit) A.hit.forEach((t, i) => { if (!a.done[i] && M.actT >= t * (a.k === 'light' && a.n === 2 ? 1.25 : 1)) { a.done[i] = 1; soSwing(a, A); } });
-  const dur = a.k === 'light' && a.n === 2 ? A.dur * 1.25 : (A.dur || .5);
+  if (A.hit) A.hit.forEach((t, i) => { if (!a.done[i] && M.actT >= t) { a.done[i] = 1; soSwing(a, A); } });
+  const dur = A.dur || .5;
   if (M.actT >= dur) M.act = null;
 }
 function soSwing(a, A) {
   const M = SO.me, B = SO.B, d = soDist(M, B) - SO_BR + .3, ang = Math.abs(soAng(Math.atan2(B.x - M.x, B.z - M.z) - M.face));
+  const s = SO.P.s, base = (3 + (s.str || 5) * .04 + (s.agi || 5) * .02) * (A.m || 1);
+  if (A.bolt) { soBolt({ n: base * SO.pow, size: A.bolt, school: 'staff' }); return; }
   if (typeof sfx === 'function') sfx('swing', { gap: 40 });
   if (d > A.reach || ang > A.arc || B.state === 'air' || M.y > 1.6) return;
-  if (a.sk) { soSkillHit(a.sk); return; }
-  const s = SO.P.s, base = (3 + (s.str || 5) * .04 + (s.agi || 5) * .02) * A.m * (a.k === 'light' ? [1, 1.1, 1.5][a.n] : 1);
+  if (a.sk) { soSkillHit(a.sk); soImpact(a.k === 'heavy' ? 1.4 : 1); return; }
   soHit(base * SO.pow, { label: a.k, base: true });
+  soImpact(a.k === 'heavy' ? 1.6 : (A.m || 1) > 1.4 ? 1.25 : 1);
 }
 // is a hit on a weak point? the back crystal (you're behind it) or its fists while they're stuck in the floor
 function soWeakSpot() {
@@ -318,7 +355,7 @@ function soHit(n, o = {}) {
   n = Math.max(1, Math.round(n * mult));
   SO.dealt += n; SO.stats.hits++; if (weak) SO.stats.weak++;
   if (!o.dot) B.greed.push(SO.time);
-  SO.gol.flash = .12;
+  SO.gol.flash = .12; if (weak) SO.gol.flinch = 1;
   soNum(n, weak ? 'weak' : crit ? 'crit' : armour ? 'arm' : '');
   if (weak && !SO.weakSeen) { SO.weakSeen = 1; soPop('💥 Weak point!', 'good'); }
   if (typeof sfx === 'function') sfx(crit || weak ? 'hithard' : armour ? 'clank' : 'hit', { gap: 30 });
@@ -343,7 +380,7 @@ function soSkill(i) {
   soAim();
   if (s.k === 'spell') { // a bolt that flies at the Golem
     M.act = { k: 'cast', done: {}, def: { dur: .5 } }; M.actT = 0;
-    for (let h = 0; h < (s.hits || 1); h++) SO.projs.push({ s, x: M.x, z: M.z, y: 1.4 + M.y, t: -h * .15 - .15, col: s.t === 'light' ? '#ffd43b' : '#9775fa' });
+    for (let h = 0; h < (s.hits || 1); h++) soBolt({ s, t: -h * .15 - .15, school: s.t === 'light' ? 'light' : 'arcane' });
   } else { // a move: a lunge and a strike
     M.act = { k: 'skill', sk: s, done: {}, def: { dur: .6, hit: Array.from({ length: s.hits || 1 }, (_, i) => .22 + i * .12), reach: 3.2, arc: 1.6 } }; M.actT = 0;
     M.x += Math.sin(M.face) * .9; M.z += Math.cos(M.face) * .9;
@@ -362,10 +399,27 @@ function soProjStep(dt) {
   const B = SO.B;
   SO.projs = SO.projs.filter(p => {
     p.t += dt; if (p.t < 0) return true;
-    if (!p.m) { p.m = is3mesh(new THREE.IcosahedronGeometry(.28, 1), p.col, p.x, p.y, p.z, SO.S, true); p.m.castShadow = false; }
-    const dx = B.x - p.x, dz = B.z - p.z, d = Math.hypot(dx, dz), v = 22 * dt;
-    if (d < 1.9 || p.t > 2) { SO.S.remove(p.m); p.m.geometry.dispose(); if (d < 1.9 && !SO.over && B.state !== 'air') soSkillHit(p.s); return false; }
-    p.x += dx / d * v; p.z += dz / d * v; p.y += ((B.state === 'roll' ? 1.5 : 3) + B.y - p.y) * dt * 3; p.m.position.set(p.x, p.y, p.z); return true;
+    const S = SO_SCHOOL[p.school] || SO_SCHOOL.arcane;
+    if (!p.m) { // it leaves the hand (or the staff's tip) with a flash
+      const at = soCastHand(); p.x = at.x; p.y = at.y; p.z = at.z;
+      p.m = soSprite('flare_01', S.core, .55 * p.size, 1); p.m2 = soSprite(S.tex, S.col, .9 * p.size, .9); SO.S.add(p.m, p.m2);
+      soBurst(at, { tex: 'flare_01', col: S.col, n: 1, size: .9 * p.size, life: .18, speed: 0 }); if (p.size > 1.5) soBurst(at, { tex: 'spark_01', col: S.col, n: 6, size: .25, life: .3, speed: 3 });
+    }
+    const dx = B.x - p.x, dz = B.z - p.z, d = Math.hypot(dx, dz), v = (p.size > 2 ? 16 : 22) * dt;
+    if (d < 1.9 || p.t > 2) {
+      SO.S.remove(p.m, p.m2); p.m.material.dispose(); p.m2.material.dispose();
+      if (d < 1.9 && !SO.over && B.state !== 'air') {
+        if (p.s) soSkillHit(p.s); else soHit(p.n, { base: true });
+        const at = new THREE.Vector3(p.x, p.y, p.z); soBurst(at, { tex: 'star_04', col: S.col, n: 1, size: 1.6 * p.size, life: .25, speed: 0, grow: 1.6 });
+        soBurst(at, { tex: S.tex, col: S.col, n: 3 + 3 * p.size, size: .45, life: .45, speed: 4.5 }); soBurst(at, { tex: 'circle_05', col: S.col, n: 1, size: .5, life: .35, speed: 0, grow: 5 });
+        soImpact(p.size > 2 ? 1.4 : .8, at, true);
+      }
+      return false;
+    }
+    p.x += dx / d * v; p.z += dz / d * v; p.y += ((B.state === 'roll' ? 1.5 : 3) + B.y - p.y) * dt * 3;
+    p.m.position.set(p.x, p.y, p.z); p.m2.position.set(p.x, p.y, p.z); p.m2.material.rotation += dt * 8;
+    if ((p.tr = (p.tr || 0) + dt) > .03) { p.tr = 0; soBurst(p.m.position, { tex: S.trail, col: S.col, n: 1, size: .5 * p.size, life: .32, speed: .3, fade: 1 }); }
+    return true;
   });
 }
 
@@ -563,6 +617,89 @@ function soHurtBy(mv) {
   if (typeof sfx === 'function') sfx(M.block ? 'clank' : 'hurt', { gap: 60 });
   return true;
 }
+// ---------- hit feel: sparks, spell sprites (Kenney Particle Pack, CC0), swing trails, hit-stop, camera kick ----------
+const SO_SCHOOL = {
+  staff: { core: '#e3fafc', col: '#3bc9db', tex: 'magic_05', trail: 'twirl_02' },
+  arcane: { core: '#f3d9fa', col: '#b197fc', tex: 'magic_02', trail: 'magic_05' },
+  light: { core: '#fff9db', col: '#fcc419', tex: 'star_04', trail: 'spark_04' },
+};
+const SO_TEX = {};
+function soTex(n) { if (!SO_TEX[n]) { const t = SO_TEX[n] = new THREE.TextureLoader().load('fx/' + n + '.png'); t.encoding = THREE.sRGBEncoding; } return SO_TEX[n]; }
+function soSprite(tex, col, size, op = 1, add = true) {
+  // the textures are greyscale: added on as light, or used as the shape (alpha) of a solid colour
+  const m = new THREE.Sprite(new THREE.SpriteMaterial({ map: add ? soTex(tex) : null, alphaMap: add ? null : soTex(tex), color: col, transparent: true, opacity: op, depthWrite: false, blending: add ? THREE.AdditiveBlending : THREE.NormalBlending, fog: false }));
+  m.scale.setScalar(size); m.renderOrder = 5; return m;
+}
+// a burst of sprites at a point: n of them flying out at speed, falling with grav, growing by grow over life
+function soBurst(at, o) {
+  if (!SO?.S) return; const n = Math.max(1, Math.round((o.n || 1) * (hxLow() ? .5 : 1)));
+  for (let i = 0; i < n; i++) {
+    const sz = (o.size || .3) * (o.n > 1 ? .7 + Math.random() * .6 : 1), sp = soSprite(o.tex, o.col, sz, o.op ?? 1, o.add !== false);
+    sp.position.copy(at); sp.material.rotation = Math.random() * 6.28; SO.S.add(sp);
+    const v = new THREE.Vector3(Math.random() - .5, Math.random() - .5 + (o.up || 0), Math.random() - .5).normalize().multiplyScalar((o.speed ?? 3) * (.5 + Math.random() * .7));
+    SO.parts.push({ sp, v, t: 0, life: (o.life || .4) * (.8 + Math.random() * .4), s0: sz, grow: o.grow || 0, grav: o.grav || 0, op: o.op ?? 1, spin: (Math.random() - .5) * 6 });
+  }
+}
+function soFxStep(dt) {
+  if (!SO.parts) return;
+  SO.parts = SO.parts.filter(p => {
+    p.t += dt; const k = p.t / p.life;
+    if (k >= 1) { SO.S.remove(p.sp); p.sp.material.dispose(); return false; }
+    p.v.y -= p.grav * dt; p.sp.position.addScaledVector(p.v, dt); p.v.multiplyScalar(1 - Math.min(1, dt * 3));
+    if (p.grav && p.sp.position.y < .05) { p.sp.position.y = .05; p.v.y = Math.abs(p.v.y) * .3; }
+    p.sp.scale.setScalar(p.s0 * (1 + p.grow * k)); p.sp.material.opacity = p.op * (1 - k * k); p.sp.material.rotation += p.spin * dt;
+    return true;
+  });
+  SO.trail?.step(dt);
+}
+// a landed hit: freeze a few frames, kick the camera, throw sparks and stone chips where it struck
+function soImpact(pow = 1, at = null, magic = false) {
+  const M = SO.me, B = SO.B;
+  SO.stop = Math.min(.11, .045 + .03 * pow); SO.kick = Math.min(1, .45 * pow); SO.kickY = .22; SO.shake = Math.max(SO.shake || 0, .05 * pow);
+  if (!at) { // the Golem's side that faces you, at the weapon's height
+    const d = Math.max(.01, soDist(M, B)), r = SO_BR - .5, tip = SO.H?.tip('r');
+    at = new THREE.Vector3(B.x + (M.x - B.x) / d * r, Math.max(1, Math.min(3.4, tip ? tip.y : 1.8)), B.z + (M.z - B.z) / d * r);
+  }
+  if (magic) return;
+  soBurst(at, { tex: 'flare_01', col: '#fff4e6', n: 1, size: 1.1 * pow, life: .14, speed: 0, grow: .6 });
+  soBurst(at, { tex: 'spark_01', col: '#ffd8a8', n: 7 * pow, size: .28, life: .35, speed: 7, grav: 9, up: .4 });
+  soBurst(at, { tex: 'dirt_02', col: '#9a93a8', n: 3 * pow, size: .35, life: .6, speed: 4, grav: 14, up: .6, add: false, op: .9 });
+  if (pow > 1.2) soBurst(at, { tex: 'smoke_03', col: '#6e6680', n: 2, size: 1.2, life: .7, speed: .8, grow: .8, add: false, op: .45 });
+}
+// the swing trail: a ribbon behind the blade while an attack swings
+function soTrail() {
+  const N = 20, pos = new Float32Array(N * 2 * 3), col = new Float32Array(N * 2 * 3), g = new THREE.BufferGeometry(), idx = [];
+  for (let i = 0; i < N - 1; i++) { const a = i * 2; idx.push(a, a + 1, a + 2, a + 1, a + 3, a + 2); }
+  g.setIndex(idx); g.setAttribute('position', new THREE.BufferAttribute(pos, 3)); g.setAttribute('color', new THREE.BufferAttribute(col, 3));
+  const mesh = new THREE.Mesh(g, new THREE.MeshBasicMaterial({ vertexColors: true, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide, fog: false }));
+  mesh.frustumCulled = false; mesh.renderOrder = 4; SO.S.add(mesh);
+  let hist = []; const tip = new THREE.Vector3(), base = new THREE.Vector3(), tint = new THREE.Color();
+  return {
+    mesh, reset() { hist = []; },
+    step(dt) {
+      const M = SO.me, a = M.act, H = SO.H, D = a?.def;
+      hist.forEach(h => { h.t += dt; }); hist = hist.filter(h => h.t < .18);
+      const on = D && !D.bolt && (a.k === 'light' || a.k === 'heavy' || a.k === 'skill') && D.hit && M.actT > D.hit[0] - Math.min(.16, D.dur * .35) && M.actT < D.hit[D.hit.length - 1] + .08;
+      if (on && H?.tip('r', tip)) { base.setFromMatrixPosition(H.weapons.r.matrixWorld).lerp(tip, .12); hist.unshift({ a: tip.clone(), b: base.clone(), t: 0 }); if (hist.length > N) hist.length = N; }
+      tint.set(a?.k === 'heavy' ? '#ffc078' : '#a5d8ff');
+      for (let i = 0; i < N; i++) {
+        const h = hist[Math.min(i, hist.length - 1)], k = h ? Math.max(0, 1 - h.t / .18) * (1 - i / N) * 1.3 : 0;
+        if (h) { pos.set([h.a.x, h.a.y, h.a.z], i * 6); pos.set([h.b.x, h.b.y, h.b.z], i * 6 + 3); }
+        col.set([tint.r * k, tint.g * k, tint.b * k], i * 6); col.set([tint.r * k * .15, tint.g * k * .15, tint.b * k * .15], i * 6 + 3);
+      }
+      mesh.visible = hist.length > 1; g.attributes.position.needsUpdate = true; g.attributes.color.needsUpdate = true;
+    },
+  };
+}
+// where a spell leaves from: the hand that's furthest forward, a little in front of it
+function soCastHand() {
+  const M = SO.me, f = new THREE.Vector3(Math.sin(M.face), 0, Math.cos(M.face)), H = SO.H;
+  if (!H) return new THREE.Vector3(M.x, 1.5 + M.y, M.z).addScaledVector(f, .6);
+  const hs = ['hand_r', 'hand_l'].map(n => new THREE.Vector3().setFromMatrixPosition(H.bone(n).matrixWorld));
+  const h = hs[0].dot(f) >= hs[1].dot(f) ? hs[0] : hs[1]; return h.addScaledVector(f, .25);
+}
+// a magic bolt that flies at the Golem: a skill's spell (s) or the staff's own (n damage)
+function soBolt(o) { SO.projs.push({ s: o.s, n: o.n, school: o.school, size: [1, 1, 1.4, 2.2][o.size || 1], t: o.t ?? 0, x: 0, y: 0, z: 0 }); if (!o.s && typeof sfx === 'function') sfx('cast', { gap: 40 }); }
 function soBoom(x, z, col, s = 1.5) {
   for (let i = 0; i < 10; i++) { const a = i / 10 * 6.28, m = is3mesh(new THREE.IcosahedronGeometry(.25, 0), col, x, .4, z, SO.S, true); m.castShadow = false; m.material = m.material.clone(); m.material.transparent = true; SO.fx.push({ m, a, x, z, t: 0, s }); }
 }
@@ -573,9 +710,8 @@ function soAnim(dt) {
   const H = SO.H, M = SO.me, a = M.act; if (!H) return;
   const one = (n, dur, o = {}) => H.play(n, { loop: false, fade: .08, speed: soClipLen(n) / dur, ...o });
   if (SO.over) { /* soEnd picked Death or Cheer */ }
-  else if (a?.k === 'roll') one('Dodge_Forward', SO_C.roll.time);
-  else if (a?.k === 'light') { one(SO_LIGHT[a.n], a.n === 2 ? SO_ACTS.light.dur * 1.25 : SO_ACTS.light.dur, { restart: a.started !== 1 }); a.started = 1; }
-  else if (a?.k === 'heavy') { one('2H_Melee_Attack_Chop', SO_ACTS.heavy.dur, { restart: a.started !== 1 }); a.started = 1; }
+  else if (a?.k === 'roll') one('Roll', SO_C.roll.time);
+  else if ((a?.k === 'light' || a?.k === 'heavy') && a.def?.c) { const D = a.def, sp = D.span || [0, 1]; one(D.c, D.dur / (sp[1] - sp[0]), { restart: a.started !== 1, from: sp[0] }); a.started = 1; }
   else if (a?.k === 'skill') { one('1H_Melee_Attack_Stab', .6, { restart: a.started !== 1 }); a.started = 1; }
   else if (a?.k === 'cast') { one(a.raise ? 'Spellcast_Raise' : 'Spellcast_Shoot', .5, { restart: a.started !== 1 }); a.started = 1; }
   else if (a?.k === 'potion') one('Use_Item', SO_ACTS.potion.dur);
@@ -584,7 +720,7 @@ function soAnim(dt) {
   else if (M.block) H.play('Blocking', { fade: .1 });
   else if (!M.ground) { if (H.cur !== 'Jump_Start' && H.cur !== 'Jump_Idle') H.play('Jump_Start', { loop: false, fade: .08 }); else if (H.cur === 'Jump_Start' && H.done()) H.play('Jump_Idle', { fade: .12 }); }
   else if (M.land > 0 && M.sp < 1) H.play('Jump_Land', { loop: false, fade: .06, speed: 1.6 });
-  else if (M.sp < .3) H.play('2H_Melee_Idle', { fade: .2 });
+  else if (M.sp < .3) H.play(soCombo().idle, { fade: .2 });
   else if (M.sp < 2.2) H.play('Walking_A', { speed: Math.max(.7, M.sp / 1.7) });
   else if (M.sp < (SO_C.jog + SO_C.sprint) / 2) H.play('Running_A', { speed: M.sp / SO_C.jog });
   else H.play('Running_B', { speed: M.sp / SO_C.sprint * 1.05 });
@@ -596,6 +732,7 @@ function soDraw(t, dt) {
   if (SO.H) { SO.H.root.position.set(M.x, M.y, M.z); SO.H.root.rotation.y = M.face; soAnim(dt); }
   else if (SO.fig) { SO.fig.position.set(M.x, M.y, M.z); SO.fig.rotation.y = M.face; }
   SO.blob.position.set(M.x, .02, M.z); SO.blob.scale.setScalar(1 - Math.min(.5, M.y / 4));
+  soFxStep(dt);
   // the Golem
   const R = G.root; R.position.set(B.x, B.y, B.z); R.rotation.y = B.face;
   const b = G.body, arms = G.arms, wb = Math.sin(t * 3);
@@ -623,6 +760,7 @@ function soDraw(t, dt) {
   else if (st === 'recover' && ak === 'punch') { arms[1].sh.rotation.x = -1.5; b.rotation.y = .3; }
   else if (st === 'recover' && ak === 'sweep') { b.rotation.y = -.7; arms[1].sh.rotation.z = -1; }
   else { b.position.y = 2.6 + wb * .05; arms.forEach((A, i) => { A.sh.rotation.x = Math.sin(t * 1.5 + i) * .08; }); }
+  if (G.flinch > 0) { G.flinch = Math.max(0, G.flinch - dt * 4); b.rotation.x -= Math.sin(G.flinch * Math.PI) * .22; G.head.rotation.x -= G.flinch * .3; }
   if (G.flash > 0) { G.flash -= .016; G.root.traverse(o => { if (o.isMesh && !o.userData.glow && !G.arms.some(A => A.fist === o)) o.material.emissive.set(G.flash > 0 ? '#664433' : '#000000'); }); }
   SO.fx = SO.fx.filter(e => { e.t += .016; const p = e.t / .6; if (p >= 1) { SO.S.remove(e.m); e.m.geometry.dispose(); return false; } e.m.position.set(e.x + Math.cos(e.a) * p * e.s * 1.6, .4 + Math.sin(p * 3) * 1.2, e.z + Math.sin(e.a) * p * e.s * 1.6); e.m.material.opacity = 1 - p; return true; });
   // the camera over your shoulder, free (no lock-on); it pulls in rather than going through the Golem or the wall
@@ -632,6 +770,7 @@ function soDraw(t, dt) {
   for (let f = .1; f <= 1; f += .05) { const x = tx + (px - tx) * f, z = tz + (pz - tz) * f; if (B.state !== 'down' && Math.hypot(x - B.x, z - B.z) < 3.1 && ty + (py - ty) * f < 6 + B.y) { const k = Math.max(.35, f - .1); px = tx + (px - tx) * k; py = ty + (py - ty) * k + (1 - k) * 2.2; pz = tz + (pz - tz) * k; break; } }
   for (let f = .2; f <= 1; f += .05) { const x = tx + (px - tx) * f, z = tz + (pz - tz) * f; if (Math.hypot(x, z) > 14.5) { const k = f - .05; px = tx + (px - tx) * k; py = ty + (py - ty) * k; pz = tz + (pz - tz) * k; break; } }
   if (SO.shake > 0) { SO.shake -= .016; px += (Math.random() - .5) * SO.shake; py += (Math.random() - .5) * SO.shake; }
+  if (SO.kick > 0) { const k = SO.kick * SO.kick * .5; px += (tx - px) * k * .25; py += SO.kickY * k; pz += (tz - pz) * k * .25; SO.kick = Math.max(0, SO.kick - dt * 6); }
   cam.position.set(px, Math.max(.6, py), pz);
   cam.lookAt(tx + Math.cos(C.cy) * side, ty, tz - Math.sin(C.cy) * side);
   SO.R.render(SO.S, cam);

@@ -16,7 +16,7 @@ const WK_C = {
   jog: 2.7, sprint: 4.3, swim: 1.35, swimFast: 2.1,
   acc: 12, dec: 16, air: 2.5,              // how fast you reach your speed, stop, and steer in the air
   grav: 18, jump: 4.1, coyote: .13, buffer: .14, step: .22,
-  roll: { speed: 5, time: .55, cost: 22 },
+  roll: { speed: 5.4, time: .78, cost: 22 }, // a somersault: about 2.8 m, then a short get-up
   sprintJump: 1.1,      // a sprint jump goes a little higher, and flies over a river hex (a standing or jogging jump falls in)
   stam: { max: 100, sprint: 20, regen: 26, wait: .8, back: 30 },
   r: .18,               // your width, for bumping into things
@@ -174,7 +174,7 @@ function wkStep(now, dt) {
   // speed: accelerate toward what you're pressing, slower to turn in the air
   let top = WK.swim ? (wantSprint ? C.swimFast : C.swim) : wantSprint ? C.sprint : C.jog;
   let tx = mx * top, tz = mz * top;
-  if (WK.roll > 0) { WK.roll -= dt; tx = WK.rollDir[0] * C.roll.speed; tz = WK.rollDir[1] * C.roll.speed; }
+  if (WK.roll > 0) { WK.roll -= dt; const p = 1 - WK.roll / C.roll.time, v = C.roll.speed * (p < .5 ? 1 : Math.max(0, 1 - (p - .5) / .3)); tx = WK.rollDir[0] * v; tz = WK.rollDir[1] * v; }
   const k = WK.roll > 0 ? 30 : !WK.ground && !WK.swim ? C.air : moving ? C.acc : C.dec;
   WK.vx += (tx - WK.vx) * Math.min(1, dt * k); WK.vz += (tz - WK.vz) * Math.min(1, dt * k);
   WK.sp = Math.hypot(WK.vx, WK.vz);
@@ -218,7 +218,7 @@ function wkRoll() {
   WK.stam = Math.max(0, WK.stam - WK_C.roll.cost); WK.roll = WK_C.roll.time; WK.rest = WK_C.stam.wait;
   const sp = Math.hypot(WK.vx, WK.vz); WK.rollDir = sp > .3 ? [WK.vx / sp, WK.vz / sp] : [Math.sin(WK.face), Math.cos(WK.face)];
   WK.face = Math.atan2(WK.rollDir[0], WK.rollDir[1]);
-  WK.H?.play('Dodge_Forward', { loop: false, fade: .08, speed: 1.25, restart: true });
+  WK.H?.play('Roll', { loop: false, fade: .08, speed: (HERO.gltf?.animations.find(c => c.name === 'Roll')?.duration || 1.47) / WK_C.roll.time, restart: true });
   if (typeof sfx === 'function') sfx('roll', { gap: 200 });
 }
 // walking into a page building opens that building's window

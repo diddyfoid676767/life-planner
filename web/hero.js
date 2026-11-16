@@ -15,7 +15,7 @@
    - other headwear, eyewear, extras, charms and pets are the toon builders from av3d.js,
      fitted to the new head and bones (HERO_FIT).
    Your class picks the outfit and weapons (HERO_KIT). Looks that can't be remade on the
-   new character are refunded once (heroRefund in profile.js).
+   new character are refunded once (heroRefund, run on start-up from whatsNewCheck).
 
    heroMake({ spec, gear, cls, outfit, props, scale }) gives { root, play(name), update(dt), ... }.
    Old animation names (from the KayKit pack) still work: HERO_CLIP maps them. */
@@ -40,6 +40,26 @@ const HERO_HAIR = {
 };
 // bought looks that the new character can't show any more (refunded once, see heroRefund)
 const HERO_GONE = ['h_spiky', 'h_mohawk', 'h_mullet', 'h_frosted', 'h_wolf', 'h_spacebuns', 'h_pigtails', 'f_focus', 'f_grin', 'f_fierce'];
+const heroGone = id => HERO_GONE.includes(id);
+// what you wear instead of a look that's gone (all free looks)
+const HERO_SWAP = { h_spiky: 'h_short', h_mohawk: 'h_buzz', h_mullet: 'h_long', h_frosted: 'h_short', h_wolf: 'h_long', h_spacebuns: 'h_topknot', h_pigtails: 'h_pony', f_focus: 'f_smile', f_grin: 'f_smile', f_fierce: 'f_smile' };
+// 2.84: once, give back what you paid for those looks and switch to the nearest free one
+function heroRefund() {
+  if (!D?.arena || D.arena.heroRefund) return;
+  D.arena.heroRefund = 1;
+  const own = D.arena.owned || {}, back = { l: 0, e: 0 }, names = [];
+  for (const id of HERO_GONE) {
+    const c = cos(id); if (!c || !own[id]) continue;
+    delete own[id];
+    if (c.price) { back.l += c.price.l || 0; back.e += c.price.e || 0; names.push(c.name); }
+  }
+  const av = myAv(); let swapped = false;
+  for (const k of ['hair', 'face']) if (heroGone(av[k])) { av[k] = HERO_SWAP[av[k]] || AV_DEFAULT[k]; swapped = true; }
+  if (swapped) D.arena.av = av;
+  if (back.l || back.e) { const s = cdState(); s.got = s.got || { l: 0, e: 0 }; s.got.l = (s.got.l || 0) + back.l; s.got.e = (s.got.e || 0) + back.e; }
+  save();
+  if (names.length) toast('💸 Looks refunded', `The new 3D character can't wear ${names.join(', ')}, so you got back ${[back.l && LUMEN + ' ' + back.l, back.e && EMBER + ' ' + back.e].filter(Boolean).join(' and ')}.`);
+}
 // old animation names -> Universal Animation Library clips
 const HERO_CLIP = {
   Idle: 'Idle_Loop', Unarmed_Idle: 'Idle_Loop', Walking_A: 'Walk_Loop', Walking_B: 'Walk_Loop', Walking_C: 'Walk_Formal_Loop', Walking_Backwards: 'Walk_Loop',
@@ -201,12 +221,12 @@ function heroMake(o = {}) {
   const mixer = new THREE.AnimationMixer(rig), acts = {};
   const clip = n => G.animations.find(a => a.name === (HERO_CLIP[n] || n)) || G.animations.find(a => a.name === n);
   const H = { root, rig, fig, P, mixer, outfit, body, cur: '', act: null, bone, weapons, mats,
-    play(name, { fade = .18, loop = true, speed = 1, restart = false } = {}) {
+    play(name, { fade = .18, loop = true, speed = 1, restart = false, from = 0 } = {}) {
       const c = clip(name); if (!c) return null;
       let a = acts[c.name]; if (!a) a = acts[c.name] = mixer.clipAction(c);
       a.timeScale = speed;
       if (name === H.cur && !restart) return a;
-      a.reset(); a.setLoop(loop ? THREE.LoopRepeat : THREE.LoopOnce, Infinity); a.clampWhenFinished = !loop; a.enabled = true; a.setEffectiveWeight(1);
+      a.reset(); a.setLoop(loop ? THREE.LoopRepeat : THREE.LoopOnce, Infinity); a.clampWhenFinished = !loop; a.enabled = true; a.setEffectiveWeight(1); if (from) a.time = from * c.duration;
       if (H.act && H.act !== a) a.crossFadeFrom(H.act, fade, false); a.play();
       H.cur = name; H.act = a; return a;
     },

@@ -10,6 +10,12 @@
 // version since the last one they saw (up to 3). D.settings.seenVersion remembers what was last shown,
 // D.settings.guidesSeen which guides have played. A brand-new install never sees either.
 const CHANGELOG = [
+  { v: '2.84.0', notes: [
+    { t: 'A new, more detailed 3D character everywhere: on your island, in fights, on the You page and as villagers. Pick Body A or B under Look like me', k: 'new' },
+    { t: 'Ctrl now does a real somersault roll: short, with a quick get-up you can attack out of', k: 'new' },
+    { t: 'Each class fights its own way: Knight sword cuts, Barbarian big axe swings, Mage staff bolts, Rogue fast double daggers. Hits land with sparks, a swing trail and a little freeze', k: 'new' },
+    { t: 'A few hairstyles and faces the new character can\'t wear were refunded in full', k: 'tweak' },
+  ] },
   { v: '2.83.0', notes: [
     { t: 'The turn-based quick boss fights are gone. The Souls Golem fight is the only boss fight now', k: 'tweak' },
     { t: 'Settings are a small gear in the top-right corner, and Esc opens them when nothing else is open', k: 'new' },
@@ -179,6 +185,7 @@ function verParts(v) { return String(v || '').replace(/^v/, '').split('.').map(n
 function verCmp(a, b) { const x = verParts(a), y = verParts(b); for (let i = 0; i < 3; i++) { if ((x[i] || 0) !== (y[i] || 0)) return (x[i] || 0) - (y[i] || 0); } return 0; }
 async function whatsNewCheck() {
   if (ONLINE || !D || !D.settings) return;
+  if (typeof heroRefund === 'function') try { heroRefund(); } catch (e) { console.warn('heroRefund', e); }
   let cur = ''; try { cur = (await (await fetch('/api/info', { cache: 'no-store' })).json()).version || ''; } catch { }
   if (!cur) return;
   const seen = D.settings.seenVersion;
