@@ -1,0 +1,3 @@
+Sound effects: RPG Audio, Impact Sounds and Interface Sounds by Kenney (www.kenney.nl),
+CC0 1.0 Universal (public domain). Packed by tools/sfx-pack.sh.
+https://creativecommons.org/publicdomain/zero/1.0/

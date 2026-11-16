@@ -202,7 +202,7 @@ function soAct(k, dir) {
   if (k === 'roll') {
     let dx = M.mx || Math.sin(M.face), dz = M.mz || Math.cos(M.face); const K = SO.keys; if (!(K.w || K.a || K.s || K.d)) { dx = -Math.sin(M.face); dz = -Math.cos(M.face); }
     M.act.dx = dx; M.act.dz = dz; M.iUntil = SO.time + .4; M.rollAt = SO.time; if (!SO.lock) M.face = Math.atan2(dx, dz);
-    if (typeof sfx === 'function') sfx('whoosh', { gap: 60 });
+    if (typeof sfx === 'function') sfx('roll', { gap: 60 });
   }
 }
 function soActStep(M, dt) {
@@ -212,7 +212,7 @@ function soActStep(M, dt) {
 }
 function soSwing(a, A) {
   const M = SO.me, B = SO.B, d = soDist(M, B) - 2.2, ang = Math.abs(soAng(Math.atan2(B.x - M.x, B.z - M.z) - M.face));
-  if (typeof sfx === 'function') sfx('whoosh', { gap: 40 });
+  if (typeof sfx === 'function') sfx('swing', { gap: 40 });
   if (d > A.reach || ang > A.arc) return;
   if (a.sk) { soSkillHit(a.sk); return; }
   const s = SO.P.s, base = (3 + (s.str || 5) * .06 + (s.agi || 5) * .02) * A.m;
@@ -238,7 +238,7 @@ function soHit(n, o = {}) {
   SO.gol.flash = .12;
   soNum(n, weak ? 'weak' : crit ? 'crit' : B.doze > 0 ? 'arm' : '');
   if (weak && !SO.weakSeen) { SO.weakSeen = 1; soPop('💥 Super effective!', 'good'); }
-  if (typeof sfx === 'function') sfx(o.base ? 'pop' : 'coin', { gap: 30 });
+  if (typeof sfx === 'function') sfx(crit || weak ? 'hithard' : B.doze > 0 ? 'clank' : 'hit', { gap: 30 });
   return n;
 }
 function soHeal(n, label) { const P = SO.P, got = Math.min(Math.round(n), P.max - P.hp); P.hp += got; if (label && got) soPop(`${label} +${got}`, 'good'); }
@@ -264,7 +264,7 @@ function soSkill(i) {
     M.act = { k: 'skill', sk: s, done: {}, def: { dur: .6, hit: Array.from({ length: s.hits || 1 }, (_, i) => .22 + i * .12), reach: 3.2, arc: 1.6 } }; M.actT = 0;
     M.x += Math.sin(M.face) * .9; M.z += Math.cos(M.face) * .9;
   }
-  if (typeof sfx === 'function') sfx('start', { gap: 50 });
+  if (typeof sfx === 'function') sfx('cast', { gap: 50 });
 }
 function soSkillHit(s) {
   const P = SO.P, B = SO.B, stat = P.s[s.st] || 5, n = s.pw * (.5 + stat / 80) * .6;
@@ -367,7 +367,7 @@ function soBossStrike(a, ph) {
   if (a.k === 'punch') { if (d < SO_ATK.punch.r && Math.abs(soAng(toP - B.face)) < 1.1 && !soDodged(a)) soHurt(SO_ATK.punch.d, a.n); B.state = 'recover'; B.t = .55; SO.shake = .15; }
   else if (a.k === 'slam') {
     if (d < SO_ATK.slam.r && !soDodged(a)) soHurt(SO_ATK.slam.d, a.n);
-    soBoom(B.x, B.z, '#ff6b3d', 3); SO.shake = .45; if (typeof sfx === 'function') sfx('error', { gap: 100 });
+    soBoom(B.x, B.z, '#ff6b3d', 3); SO.shake = .45; if (typeof sfx === 'function') sfx('slam', { gap: 100 });
     if (ph >= 3) { B.wave = { x: B.x, z: B.z, r: 1, d: SO_ATK.shock.d, n: 'Shockwave', k: 'shock', m: soRing('#ff6b3d') }; B.state = 'wave'; } else { B.state = 'recover'; B.t = 1.1; }
   }
   else if (a.k === 'wave') { B.wave = { x: B.x, z: B.z, r: 1, d: SO_ATK.wave.d, n: a.n, k: 'wave', m: soRing('#74c0fc') }; B.state = 'wave'; }
@@ -396,7 +396,7 @@ function soHurt(n, name) {
   n = Math.max(1, Math.round(n));
   const sh = Math.min(P.shield || 0, n); P.shield = (P.shield || 0) - sh; n -= sh;
   P.hp = Math.max(0, P.hp - n); SO.hurtT = .35; soNum(n, 'me');
-  if (typeof sfx === 'function') sfx('deny', { gap: 60 });
+  if (typeof sfx === 'function') sfx(M.block ? 'clank' : 'hurt', { gap: 60 });
 }
 function soBoom(x, z, col, s = 1.5) {
   for (let i = 0; i < 10; i++) { const a = i / 10 * 6.28, m = is3mesh(new THREE.IcosahedronGeometry(.25, 0), col, x, .4, z, SO.S, true); m.castShadow = false; m.material = m.material.clone(); m.material.transparent = true; SO.fx.push({ m, a, x, z, t: 0, s }); }

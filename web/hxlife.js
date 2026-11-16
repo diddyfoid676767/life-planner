@@ -1,24 +1,24 @@
 'use strict';
 /* Villagers (2.71, roadmap stage 3d). Loaded after hxsky.js.
    Little villagers walk your roads (and the house island's), stop by buildings that touch a
-   road for a moment, then wander on. They reuse the builders' look and hop. Low graphics
-   leaves them out. */
-const HX_VIL = { max: 8, per: 3, speed: .9 };
+   road for a moment, then wander on. 2.80: they're KayKit characters (hero.js) with a random look and real
+   walk animations. Low graphics leaves them out. */
+const HX_VIL = { max: 8, per: 3, speed: .9, scale: .24 };
 function hxVilBuild(W, st, W0) {
+  if (HX3.vil) for (const v of HX3.vil.list) v.H?.dispose();
   HX3.vil = null;
   if (hxLow()) return;
   const roads = new Set(st.road); if (roads.size < 2) return;
+  // 2.80: villagers are KayKit characters with real walk animations; the pack loads first
+  if (!heroReady()) { if (!HERO.fail) heroLoad().then(g => { if (g && view === 'islands') { HX3.sig = ''; render(); } }); return; }
   const n = Math.min(HX_VIL.max, Math.floor(roads.size / HX_VIL.per) + 1), list = [...roads], r = seeded('hxvil' + list.length);
-  const cols = ['#3b5bdb', '#c92a2a', '#2b8a3e', '#e67700', '#862e9c', '#0b7285', '#5c940d', '#a61e4d'], skin = ['#f1c27d', '#e0ac69', '#c68642', '#8d5524'];
   const out = [];
   for (let i = 0; i < n; i++) {
-    const g = new THREE.Group(), body = new THREE.Group(); g.add(body);
-    is3mesh(new THREE.CylinderGeometry(.08, .11, .3, 6), cols[i % cols.length], 0, .15, 0, body);
-    is3mesh(new THREE.SphereGeometry(.08, 8, 6), skin[Math.floor(r() * 4)], 0, .38, 0, body);
-    if (r() < .5) is3mesh(new THREE.ConeGeometry(.09, .12, 6), ['#6b4c33', '#495057', '#e9c46a'][i % 3], 0, .49, 0, body);
+    const H = heroVillager(r, { scale: HX_VIL.scale }); if (!H) break;
+    const g = H.root, body = H.rig;
     const at = list[Math.floor(r() * list.length)], [x, z] = hxPos(...hxQR(at));
-    g.position.set(x + (r() - .5) * .6, 0, z + (r() - .5) * .6); W.add(g);
-    out.push({ g, body, at, to: null, from: [g.position.x, g.position.z], dest: null, p: 1, wait: r() * 2, ph: r() * 6, sp: HX_VIL.speed * (.8 + r() * .4), prev: null });
+    g.position.set(x + (r() - .5) * .6, typeof hxHt === 'function' ? hxHt(at, st) : 0, z + (r() - .5) * .6); W.add(g);
+    out.push({ g, H, body, at, to: null, from: [g.position.x, g.position.z], dest: null, p: 1, wait: r() * 2, ph: r() * 6, sp: HX_VIL.speed * (.8 + r() * .4), prev: null });
   }
   HX3.vil = { list: out, roads, st, W0, t: performance.now() };
 }
@@ -35,7 +35,7 @@ function hxVilStep(now) {
   const V = HX3.vil; if (!V) return;
   const dt = Math.min(.1, (now - V.t) / 1000), t = now / 1000; V.t = now;
   for (const v of V.list) {
-    if (v.wait > 0) { v.wait -= dt; v.body.position.y = 0; continue; }
+    if (v.wait > 0) { v.wait -= dt; v.H.play('Idle', { fade: .3 }); v.H.update(dt, t); continue; }
     if (v.p >= 1) {
       const nx = hxVilNext(v, V), [ax, az] = hxPos(...hxQR(v.at)), [bx, bz] = hxPos(...hxQR(nx.k));
       v.from = [v.g.position.x, v.g.position.z];
@@ -44,11 +44,12 @@ function hxVilStep(now) {
       v.dest = nx.half ? [ax + (bx - ax) * .55, az + (bz - az) * .55] : [bx + side * (bz - az) / 2, bz - side * (bx - ax) / 2];
       if (!nx.half && nx.k !== v.at) { v.prev = v.at; v.at = nx.k; }
       v.p = 0; v.len = Math.max(.1, Math.hypot(v.dest[0] - v.from[0], v.dest[1] - v.from[1])); v.after = nx.wait;
-      if (v.len > .05) v.g.rotation.y = Math.atan2(v.dest[0] - v.from[0], v.dest[1] - v.from[1]);
+      if (v.len > .05) v.yaw = Math.atan2(v.dest[0] - v.from[0], v.dest[1] - v.from[1]);
     }
     v.p = Math.min(1, v.p + dt * v.sp / v.len);
     v.g.position.x = v.from[0] + (v.dest[0] - v.from[0]) * v.p; v.g.position.z = v.from[1] + (v.dest[1] - v.from[1]) * v.p;
-    v.body.position.y = Math.abs(Math.sin(t * 9 + v.ph)) * .05;
+    if (v.yaw != null) { let d = v.yaw - v.g.rotation.y; d = Math.atan2(Math.sin(d), Math.cos(d)); v.g.rotation.y += d * Math.min(1, dt * 8); }
+    v.H.play('Walking_A', { speed: v.sp / .75, fade: .3 }); v.H.update(dt, t);
     if (v.p >= 1) v.wait = v.after || 0;
   }
 }
