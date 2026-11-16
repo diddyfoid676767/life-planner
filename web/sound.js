@@ -1,11 +1,11 @@
 'use strict';
-/* Sound effects, all made on the fly with Web Audio (no sound files): soft
-   ticks when you hover buttons, pops when you click, chimes for coins and
-   purchases, garden sounds (leaf rustles, bubble pops, watering, planting,
-   birdsong by day and crickets at night) and battle sounds for every kind of
-   move. Settings → Sound sets the volume or turns any of it off. */
+/* Sound effects. 2.80 (feedback stage F3): most are real recordings now (web/sfx,
+   Kenney's RPG, Impact and Interface packs, CC0): clicks, tabs, coins, footsteps on
+   grass, stone and wood, jumps, rolls, sword swings, hits and clanks. The few with no
+   recording (whooshes, splashes, unboxing build-ups, spell flavours) are still made on
+   the fly with Web Audio. Settings → Sound sets the volume or turns any of it off. */
 
-const sndCfg = () => Object.assign({ on: true, vol: .6, ui: true, garden: true, arena: true, ambience: true }, ((typeof D !== 'undefined' && D) && D.settings && D.settings.sound) || {});
+const sndCfg = () => Object.assign({ on: true, vol: .6, ui: true, garden: true, arena: true, ambience: true, walk: true }, ((typeof D !== 'undefined' && D) && D.settings && D.settings.sound) || {});
 const SND = { ctx: null, out: null, last: {}, noise: null, hoverEl: null };
 function sndCtx() {
   if (SND.ctx) { if (SND.ctx.state === 'suspended') SND.ctx.resume(); return SND.ctx; }
@@ -13,7 +13,7 @@ function sndCtx() {
   const c = SND.ctx = new AC();
   // the volume sits after the compressor: before it, the compressor's makeup gain undid the slider
   const comp = c.createDynamicsCompressor(); comp.threshold.value = -18; comp.ratio.value = 4; SND.master = c.createGain(); comp.connect(SND.master); SND.master.connect(c.destination);
-  SND.out = c.createGain(); SND.out.connect(comp);
+  SND.out = c.createGain(); SND.out.connect(comp); SND.dry = c.createGain(); SND.dry.connect(comp); // recordings skip the echo
   // a short soft echo shared by everything, so sounds feel less dry
   const dl = c.createDelay(); dl.delayTime.value = .09; const fb = c.createGain(); fb.gain.value = .22; const wet = c.createGain(); wet.gain.value = .18; const lp = c.createBiquadFilter(); lp.frequency.value = 2400;
   SND.out.connect(dl); dl.connect(lp); lp.connect(fb); fb.connect(dl); lp.connect(wet); wet.connect(comp);
@@ -36,7 +36,34 @@ function hiss(c, { dur = .15, vol = .2, at = 0, type = 'bandpass', f = 2000, f2,
   s.connect(fl); fl.connect(g); g.connect(SND.out); s.start(t, Math.random() * .5); s.stop(t + dur + .05);
 }
 const SFX_GROUP = { hover: 'ui', hxtick: 'hover', click: 'ui', tab: 'ui', toggle: 'ui', untoggle: 'ui', open: 'ui', close: 'ui', notify: 'ui', coin: 'ui', buy: 'ui', deny: 'ui', levelup: 'ui', box: 'ui', success: 'ui', undo: 'ui', nav: 'ui', check: 'ui', uncheck: 'ui', add: 'ui', trash: 'ui', sheet: 'ui', sheetclose: 'ui', start: 'ui', whoosh: 'ui', select: 'ui', error: 'ui', save: 'ui',
-  pop: 'garden', rustle: 'garden', water: 'garden', plant: 'garden', pickup: 'garden', chirp: 'garden', cricket: 'garden' };
+  pop: 'garden', rustle: 'garden', water: 'garden', plant: 'garden', pickup: 'garden', chirp: 'garden', cricket: 'garden',
+  step: 'walk', jump: 'walk', land: 'walk', roll: 'walk', splash: 'walk', swim: 'walk', door: 'walk',
+  swing: 'arena', hit: 'arena', hithard: 'arena', clank: 'arena', slam: 'arena', hurt: 'arena', cast: 'arena' };
+// 2.80 recorded sounds: name -> files in web/sfx (one picked at random each time, so repeats don't sound robotic), loudness
+const SFX_REC = {
+  click: [['click1', 'click2', 'click3'], .5], hover: [['hover'], .18], hxtick: [['tick'], .35], tab: [['tab1', 'tab2'], .45], select: [['select'], .5], nav: [['nav'], .45],
+  open: [['open'], .45], close: [['close'], .45], sheet: [['sheet'], .4], sheetclose: [['sheetclose'], .4], toggle: [['toggle'], .5], untoggle: [['untoggle'], .5],
+  check: [['check'], .6], uncheck: [['uncheck'], .45], add: [['add'], .55], trash: [['trash'], .5], error: [['error'], .5], deny: [['deny'], .45], notify: [['notify'], .45],
+  save: [['save'], .5], success: [['success'], .55], levelup: [['levelup'], .6], start: [['start'], .5], undo: [['undo'], .5], pop: [['pop'], .5], ding: [['notify'], .6],
+  coin: [['coin'], .55], buy: [['buy'], .6], door: [['door'], .5],
+  step: [['grass0', 'grass1', 'grass2', 'grass3', 'grass4'], .55], jump: [['jump'], .5], land: [['land'], .55], roll: [['roll'], .6],
+  swing: [['swing1', 'swing2', 'swing3'], .55], hit: [['hit0', 'hit1', 'hit2'], .7], hithard: [['heavy0', 'heavy1', 'heavy2'], .8], clank: [['clank0', 'clank1', 'clank2'], .6],
+  slam: [['slam'], .9], hurt: [['hurt'], .8], cast: [['cast'], .5],
+};
+const SFX_SURF = { grass: ['grass0', 'grass1', 'grass2', 'grass3', 'grass4'], stone: ['stone0', 'stone1', 'stone2', 'stone3', 'stone4'], wood: ['wood0', 'wood1', 'wood2', 'wood3', 'wood4'] };
+const SND_BUF = {}; let sndBufLoad = null;
+// loads every recording once (about 480 KB), the first time a sound can play
+function sndLoad(c) {
+  if (sndBufLoad) return;
+  const names = new Set(); for (const [f] of Object.values(SFX_REC)) f.forEach(n => names.add(n)); for (const f of Object.values(SFX_SURF)) f.forEach(n => names.add(n));
+  sndBufLoad = Promise.all([...names].map(n => fetch('sfx/' + n + '.ogg').then(r => r.ok ? r.arrayBuffer() : Promise.reject()).then(b => new Promise((ok, no) => c.decodeAudioData(b, ok, no))).then(b => { SND_BUF[n] = b; }).catch(() => { })));
+}
+// plays one recording; false if it isn't loaded yet (the caller falls back to the made-up sound)
+function sndPlay(c, files, vol, rate = 1) {
+  const n = files[Math.floor(Math.random() * files.length)], b = SND_BUF[n]; if (!b) return false;
+  const s = c.createBufferSource(), g = c.createGain(); s.buffer = b; s.playbackRate.value = rate * (.94 + Math.random() * .12);
+  g.gain.value = vol * (SND.k || 1); s.connect(g); g.connect(SND.dry || SND.out); s.start(); return true;
+}
 const PENT = [523, 587, 659, 784, 880, 988, 1175];
 const SFX = {
   // 2.60 softer, rounder menu sounds, each a little different so repeats don't sound identical
@@ -68,6 +95,9 @@ const SFX = {
   box: c => { hiss(c, { f: 400, f2: 5000, dur: .5, vol: .05 }); [784, 988, 1175, 1568].forEach((f, i) => tone(c, { f, dur: .3, vol: .05, type: 'triangle', at: .35 + i * .05 })); },
   deny: c => { tone(c, { f: 300, f2: 220, dur: .14, vol: .07, type: 'triangle' }); tone(c, { f: 220, f2: 160, dur: .16, vol: .06, type: 'triangle', at: .1 }); },
   undo: c => { tone(c, { f: 900, f2: 500, dur: .12, vol: .05 }); },
+  // 2.80 walking: no recordings of water in the packs, so these stay made up
+  splash: c => { hiss(c, { f: 1800, f2: 500, dur: .45, vol: .09, type: 'lowpass', attack: .01 }); for (let i = 0; i < 5; i++) tone(c, { f: 700 + Math.random() * 900, f2: 1600 + Math.random() * 800, dur: .05, vol: .025, at: .05 + i * .06 }); },
+  swim: c => { hiss(c, { f: 900, f2: 500, dur: .3, vol: .04, type: 'lowpass', attack: .08 }); },
   // garden
   pop: c => { for (let i = 0; i < 3; i++) tone(c, { f: 380 + i * 160, f2: 1400 + i * 300, dur: .09, vol: .07, at: i * .06 }); hiss(c, { f: 4000, dur: .2, vol: .03, at: .05 }); tone(c, { f: 1568, dur: .25, vol: .04, type: 'triangle', at: .2 }); },
   rustle: c => { hiss(c, { f: 2600 + Math.random() * 1500, dur: .18 + Math.random() * .12, vol: .035, q: .8, attack: .03 }); hiss(c, { f: 5000, dur: .12, vol: .015, at: .05, type: 'highpass' }); },
@@ -142,9 +172,16 @@ function sfxReady(group) {
 function sfx(name, { gap = 0 } = {}) {
   try {
     const now = performance.now(); if (gap && now - (SND.last[name] || 0) < gap) return; SND.last[name] = now;
-    const g = SFX_GROUP[name], c = sfxReady(g);
+    const g = SFX_GROUP[name], c = sfxReady(g), o = arguments[1] || {};
+    if (!c) return;
+    sndLoad(c);
     // 2.78: clicks, tabs and hover ticks are softer
-    if (c && SFX[name]) { SND.k = g === 'ui' || g === 'hover' ? .55 : 1; try { SFX[name](c, arguments[1] || {}); } finally { SND.k = 1; } }
+    SND.k = g === 'ui' || g === 'hover' ? .55 : 1;
+    try {
+      const R = SFX_REC[name], files = name === 'step' && SFX_SURF[o.surf] || R?.[0];
+      if (R && sndPlay(c, files, R[1] * (o.vol || 1), name === 'hxtick' ? (o.f || 600) / 600 : 1)) return;
+      if (SFX[name]) SFX[name](c, o);
+    } finally { SND.k = 1; }
   } catch (e) { /* sound is never worth breaking the app for */ }
 }
 
@@ -208,7 +245,7 @@ function soundCard() {
   return `<div class="card sndcard" data-sec="sound"><div class="card-head"><h2>🔊 Sound effects</h2></div>
     ${row('on', 'Sound on', 'Every sound in the app')}
     <div class="sndvol"><span>🔈</span><input type="range" min="0" max="1" step="0.01" value="${c.vol}" data-snd="vol" ${c.on ? '' : 'disabled'}><span>🔊</span><b>${Math.round(c.vol * 100)}%</b></div>
-    <div class="sndgroups ${c.on ? '' : 'off'}">${row('ui', 'Buttons and menus', 'Clicks, tabs, coins and purchases')}${row('hover', 'Hover ticks', 'A tiny tick when your mouse moves over a button')}${row('garden', 'Garden', 'Rustling trees, popping bubbles, watering and planting')}${row('ambience', 'Garden ambience', 'Birds by day, crickets at night, while the garden is open')}${row('arena', 'Arena battles', 'Hits, misses, crits, healing and a sound for each kind of move')}</div>
+    <div class="sndgroups ${c.on ? '' : 'off'}">${row('ui', 'Buttons and menus', 'Clicks, tabs, coins and purchases')}${row('hover', 'Hover ticks', 'A tiny tick when your mouse moves over a button')}${row('garden', 'Garden', 'Rustling trees, popping bubbles, watering and planting')}${row('ambience', 'Garden ambience', 'Birds by day, crickets at night, while the garden is open')}${row('walk', 'Walking', 'Footsteps, jumps, rolls and splashes in walk mode')}${row('arena', 'Fights', 'Sword swings, hits, clanks and slams')}</div>
     <button class="btn small" data-snd-test="1">▶ Play a test sound</button></div>`;
 }
 document.addEventListener('input', e => {

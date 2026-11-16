@@ -1,0 +1,3 @@
+Character models and animations: KayKit Adventurers Character Pack 1.0 by Kay Lousberg
+(www.kaylousberg.com), CC0 1.0 Universal (public domain). Packed by tools/hero-pack.mjs.
+https://creativecommons.org/publicdomain/zero/1.0/

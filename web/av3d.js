@@ -392,6 +392,8 @@ function av3figure(spec, gear, clsCol) {
     const H = new THREE.Group(); H.position.y = -.5; A.add(H); P.hands.push(H);
     H.userData.hand = av3mesh(H, av3sph(.13, 18, 14), mSkin); H.userData.hand.scale.set(1, 1.05, .9);
   }
+  // 2.80: the body parts so far; the island hero (hero.js) hides these and keeps the head and cosmetics
+  P.base = []; fig.traverse(o => { if (o.isMesh) P.base.push(o); });
   // head
   const head = P.head = new THREE.Group(); head.position.y = T.headY; fig.add(head);
   const skull = av3mesh(head, av3sph(T.headR, 36, 26), mSkin); skull.scale.set(...K.head);

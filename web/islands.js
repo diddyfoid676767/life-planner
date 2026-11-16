@@ -215,7 +215,7 @@ function is3tap(e) {
 }
 // 2.55: three.js (about 640 KB) only loads the first time Islands opens, so the
 // rest of the app starts faster
-const IS3D_SRC = ['vendor/three.min.js', 'vendor/three-extras.js', 'g3fx.js'];
+const IS3D_SRC = ['vendor/three.min.js', 'vendor/three-extras.js', 'vendor/three-gltf.js', 'g3fx.js'];
 let is3dLoad = null, is3dFail = false, is3ok = null;
 function need3D() {
   if (window.THREE && typeof fxRenderer === 'function') return true;

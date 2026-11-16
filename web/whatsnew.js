@@ -10,6 +10,12 @@
 // version since the last one they saw (up to 3). D.settings.seenVersion remembers what was last shown,
 // D.settings.guidesSeen which guides have played. A brand-new install never sees either.
 const CHANGELOG = [
+  { v: '2.80.0', notes: [
+    { t: 'Walk mode is back: press Walk or V to explore your whole island as a real animated hero in your class outfit, with your own face, hair and cosmetics', k: 'new' },
+    { t: 'Smooth running, Shift to sprint, Space to jump, Ctrl to roll, and you can swim in rivers and the sea. A smooth camera follows you, scroll to zoom', k: 'new' },
+    { t: 'Villagers are proper characters now, walking your roads', k: 'tweak' },
+    { t: 'Real recorded sounds for clicks, coins, footsteps, jumps, sword swings and hits', k: 'new' },
+  ] },
   { v: '2.79.0', notes: [
     { t: 'Five main buildings: Hall, Notice Board, Library, Training hall and Tavern. The Market is now a small stall on the town square', k: 'new' },
     { t: 'The Practice yard lives in the Training hall and your settings in the Hall. Your own buildings stay exactly where you put them', k: 'tweak' },
