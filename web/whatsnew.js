@@ -10,6 +10,12 @@
 // version since the last one they saw (up to 3). D.settings.seenVersion remembers what was last shown,
 // D.settings.guidesSeen which guides have played. A brand-new install never sees either.
 const CHANGELOG = [
+  { v: '2.85.0', notes: [
+    { t: 'A real sun crosses your island\'s sky, right where it is over Melbourne now. Turn the view to find it: it\'s in the north at midday and glows orange at sunrise and sunset', k: 'new' },
+    { t: 'Shadows from every building, tree and villager move through the day, and the water reflects the sky, the sun and the buildings, with ripples that catch the light', k: 'new' },
+    { t: 'At night the moon (in its real phase) and the stars come out, and the water shines in the moonlight. Island looks has a slider to see any time of day', k: 'new' },
+    { t: 'Graphics in Settings is now High, Medium or Low: Medium keeps the sun but simpler and faster, Low turns it off', k: 'tweak' },
+  ] },
   { v: '2.84.0', notes: [
     { t: 'A new Workshop on your island holds Build, Roads, Walls, Terraform, Looks, Perks and How it works. Press B to open it from anywhere, so the screen stays clear', k: 'new' },
     { t: 'The other islands float in the distance instead of a bar along the top: hover one to see what\'s there and click to fly over. In walk mode, walk to the end of a dock on the shore to cross', k: 'new' },
