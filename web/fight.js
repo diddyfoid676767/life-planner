@@ -175,7 +175,7 @@ function ftEnd(F, how) {
     const wk = mondayOf(today()), x = ftTermX(wk), before = st.dmg[wk] || 0, n = Math.min((F.cap || FT_ATT_CAP) * x, Math.round(F.dealt)), add = Math.max(0, Math.min(n, FT_WEEK_CAP * x - before));
     st.dmg[wk] = before + add; for (const k in st.dmg) if (k < addDays(wk, -35)) delete st.dmg[k];
     out.push(`<b>${add.toLocaleString()}</b> damage added to ${esc(F.bossName)}'s shared health bar${add < F.dealt ? ` (capped at ${((F.cap || FT_ATT_CAP) * x).toLocaleString()} a fight, ${(FT_WEEK_CAP * x).toLocaleString()} a week)` : ''}.`);
-    out.push(how === 'down' ? 'It knocked you out, but every hit you landed still counts.' : F.souls ? 'You lasted the full 3 minutes.' : 'You lasted all the rounds.');
+    out.push(how === 'down' ? 'It knocked you out, but every hit you landed still counts.' : how === 'felled' ? 'You brought it down before the clock ran out.' : F.souls ? 'You lasted the full 3 minutes.' : 'You lasted all the rounds.');
     if (Math.random() < Math.min(.6, .2 + add / 1200) * x) { const p = ftRollGear(x > 1 ? 1 : 0); out.push(`Gear drop: ${ftGearChip(p)}`); }
     hsLoad(true);
     if (typeof hxEatFood === 'function') hxEatFood(); // 2.65: a harvest's extra health lasts until a boss fight

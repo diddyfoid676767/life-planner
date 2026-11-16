@@ -15,16 +15,18 @@ const HS_HOUSES = [
   { id: 'strathmore', name: 'Strathmore', team: 'Sharks', col: '#7048e8', ink: '#fff', e: '🦈' },
   { id: 'hudson', name: 'Hudson', team: 'Dragons', col: '#2f9e44', ink: '#fff', e: '🐉' },
 ];
+// n is the key saved fights use, so it never changes; t is the name players see (2.87: serious names) and s its lore
 const HS_BOSSES = [
-  { n: 'The Procrastinator', e: '🦥', s: 'Feeds on "I\'ll do it later".' },
-  { n: 'Doomscroll Kraken', e: '🦑', s: 'Its tentacles are made of notifications.' },
-  { n: 'Snooze Golem', e: '🗿', s: 'Hits the snooze button for you.' },
-  { n: 'Couch Troll', e: '🛋️', s: 'Wants you sitting down. Forever.' },
-  { n: 'Cram Wraith', e: '👻', s: 'Appears the night before every test.' },
-  { n: 'Excuse Hydra', e: '🐲', s: 'Grows two excuses for every one you cut.' },
-  { n: 'Fog of Distraction', e: '🌫️', s: 'Makes you forget why you opened the tab.' },
-  { n: 'The Energy Drain', e: '🔋', s: 'Skipped sleep, skipped training, skipped water.' },
+  { n: 'The Procrastinator', t: 'Morrow, the Ever-Waiting', e: '🦥', s: 'It promises tomorrow, and tomorrow never comes.' },
+  { n: 'Doomscroll Kraken', t: 'The Drowned Leviathan', e: '🦑', s: 'It pulls the unwary down into an endless deep.' },
+  { n: 'Snooze Golem', t: 'Somnus, the Sleeping Colossus', e: '🗿', s: 'An ancient stone giant that drags the world into endless sleep.' },
+  { n: 'Couch Troll', t: 'Grothmar, the Rooted Troll', e: '🛋️', s: 'It has not moved in a hundred years, and neither will you.' },
+  { n: 'Cram Wraith', t: 'The Midnight Wraith', e: '👻', s: 'It comes in the last hours before the trial.' },
+  { n: 'Excuse Hydra', t: 'The Hydra of a Thousand Lies', e: '🐲', s: 'Cut one head and two more grow back.' },
+  { n: 'Fog of Distraction', t: 'The Grey Veil', e: '🌫️', s: 'A mist that steals your purpose.' },
+  { n: 'The Energy Drain', t: 'The Withering', e: '🔋', s: 'It feeds on sleep, strength and breath.' },
 ];
+const hsBossName = b => b ? b.t || b.n : '';
 const HS_INT = { Easy: .8, Moderate: 1, Hard: 1.3, 'Race / test': 1.3 };
 // moves: unlocked by a card rating, triggered by something you actually did
 const HS_MOVES = [
