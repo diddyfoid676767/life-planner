@@ -4155,3 +4155,18 @@ body.skin-a .shm-in :is(.muted, small, .shm-lbl) { color: #6b7280; }
 body.skin-a .shm-i { background: #f4efe3; border-color: rgba(42, 49, 64, .08); }
 body.skin-a .shm-mini { background: #dceefa; }
 body.skin-a .isfull .ispanel { background: #fffdf8; }
+
+/* 2.83: no menus in the middle of the screen. Island panels and the pop-up dialogs (add forms, What's new,
+   Chronicle) slide in from the right like the building windows. Only tiny Yes/No confirms stay centred. */
+.ispanel, .ispanel.iscentre, .ispanel.iswide, .ispanel.iscentre.iswide, .ispanel.ypanelbig { top: 12px; bottom: 12px; left: auto; right: 12px; transform: none; width: min(440px, calc(100% - 24px)); animation: winIn .25s ease-out; }
+.ispanel.iswide, .ispanel.iscentre.iswide, .ispanel.ypanelbig { width: min(600px, calc(100% - 24px)); }
+.ispanel.iscentre:not(.iswide) { bottom: auto; max-height: calc(100% - 24px); }
+dialog#modal, dialog#whatsNew, dialog#chronicle { position: fixed; inset: 12px 12px auto auto; margin: 0; max-height: calc(100vh - 24px); width: min(440px, calc(100vw - 24px)); overflow: auto; }
+dialog#modal[open], dialog#whatsNew[open], dialog#chronicle[open] { animation: winIn .25s ease-out; }
+dialog#whatsNew { overflow: auto; }
+
+/* 2.83: the settings gear, top-right */
+#gearBtn { position: fixed; top: 12px; right: 12px; z-index: 41; width: 38px; height: 38px; border-radius: 50%; border: 0; cursor: pointer; font-size: 19px; line-height: 1; background: var(--k-w, #fffdf8); color: var(--k-ink, #2a3140); box-shadow: 0 2px 8px rgba(0, 0, 0, .2); }
+#gearBtn:hover { box-shadow: 0 0 0 2px var(--k-acc, #e8604c); }
+body:not(.world-on) #gearBtn, body.souls-on #gearBtn, body.walking #gearBtn, body.win-open #gearBtn, body:has(.ispanel) #gearBtn { display: none; }
+body.world-on #world .ishud.is-tr { right: 58px; }

@@ -1,9 +1,8 @@
 'use strict';
-/* Sound effects. 2.80 (feedback stage F3): most are real recordings now (web/sfx,
-   Kenney's RPG, Impact and Interface packs, CC0): clicks, tabs, coins, footsteps on
-   grass, stone and wood, jumps, rolls, sword swings, hits and clanks. The few with no
-   recording (whooshes, splashes, unboxing build-ups, spell flavours) are still made on
-   the fly with Web Audio. Settings → Sound sets the volume or turns any of it off. */
+/* Sound effects, made on the fly with Web Audio: soft ticks, pops, chimes, garden and
+   walking sounds. 2.80 added real recordings (web/sfx, Kenney's RPG, Impact and Interface
+   packs, CC0); since 2.83 they play only inside the Souls boss fight and load the first time
+   one starts. Settings → Sound sets the volume or turns any of it off. */
 
 const sndCfg = () => Object.assign({ on: true, vol: .6, ui: true, garden: true, arena: true, ambience: true, walk: true }, ((typeof D !== 'undefined' && D) && D.settings && D.settings.sound) || {});
 const SND = { ctx: null, out: null, last: {}, noise: null, hoverEl: null };
@@ -95,6 +94,13 @@ const SFX = {
   box: c => { hiss(c, { f: 400, f2: 5000, dur: .5, vol: .05 }); [784, 988, 1175, 1568].forEach((f, i) => tone(c, { f, dur: .3, vol: .05, type: 'triangle', at: .35 + i * .05 })); },
   deny: c => { tone(c, { f: 300, f2: 220, dur: .14, vol: .07, type: 'triangle' }); tone(c, { f: 220, f2: 160, dur: .16, vol: .06, type: 'triangle', at: .1 }); },
   undo: c => { tone(c, { f: 900, f2: 500, dur: .12, vol: .05 }); },
+  // 2.83 walking sounds made on the fly (the recordings are for the Souls fight only)
+  step: (c, o) => { const v = (o.vol || 1) * .5; hiss(c, { f: o.surf === 'stone' ? 2200 : o.surf === 'wood' ? 900 : 1100, dur: .07, vol: .05 * v, q: .9, attack: .004, type: 'lowpass' }); tone(c, { f: o.surf === 'wood' ? 150 : 100, f2: 70, dur: .06, vol: .03 * v, type: 'sine' }); },
+  jump: c => { tone(c, { f: 280, f2: 520, dur: .14, vol: .04, type: 'triangle' }); },
+  land: c => { hiss(c, { f: 700, f2: 300, dur: .12, vol: .06, type: 'lowpass', attack: .004 }); tone(c, { f: 110, f2: 60, dur: .1, vol: .05 }); },
+  roll: c => { hiss(c, { f: 600, f2: 1800, dur: .28, vol: .05, q: .7, attack: .1 }); },
+  door: c => { tone(c, { f: 180, f2: 120, dur: .12, vol: .06, type: 'triangle' }); tone(c, { f: 260, f2: 200, dur: .1, vol: .04, type: 'triangle', at: .08 }); },
+  ding: c => { tone(c, { f: 1175, dur: .3, vol: .06, type: 'triangle' }); tone(c, { f: 1568, dur: .35, vol: .04, type: 'triangle', at: .08 }); },
   // 2.80 walking: no recordings of water in the packs, so these stay made up
   splash: c => { hiss(c, { f: 1800, f2: 500, dur: .45, vol: .09, type: 'lowpass', attack: .01 }); for (let i = 0; i < 5; i++) tone(c, { f: 700 + Math.random() * 900, f2: 1600 + Math.random() * 800, dur: .05, vol: .025, at: .05 + i * .06 }); },
   swim: c => { hiss(c, { f: 900, f2: 500, dur: .3, vol: .04, type: 'lowpass', attack: .08 }); },
@@ -174,11 +180,12 @@ function sfx(name, { gap = 0 } = {}) {
     const now = performance.now(); if (gap && now - (SND.last[name] || 0) < gap) return; SND.last[name] = now;
     const g = SFX_GROUP[name], c = sfxReady(g), o = arguments[1] || {};
     if (!c) return;
-    sndLoad(c);
+    if (document.body.classList.contains('souls-on')) sndLoad(c);
     // 2.78: clicks, tabs and hover ticks are softer
     SND.k = g === 'ui' || g === 'hover' ? .55 : 1;
     try {
-      const R = SFX_REC[name], files = name === 'step' && SFX_SURF[o.surf] || R?.[0];
+      // 2.83: recordings play only inside the Souls fight; everywhere else the old made-up sounds are back
+      const R = document.body.classList.contains('souls-on') ? SFX_REC[name] : null, files = name === 'step' && SFX_SURF[o.surf] || R?.[0];
       if (R && sndPlay(c, files, R[1] * (o.vol || 1), name === 'hxtick' ? (o.f || 600) / 600 : 1)) return;
       if (SFX[name]) SFX[name](c, o);
     } finally { SND.k = 1; }

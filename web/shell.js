@@ -70,6 +70,12 @@ function shellRing(on) {
   on = on == null ? r.hidden : on; r.hidden = !on; mb?.setAttribute('aria-expanded', on ? 'true' : 'false'); mb?.classList.toggle('open', on);
   if (on && typeof sfx === 'function') try { sfx('select'); } catch (e) { }
 }
+// 2.83: settings are the gear in the top-right corner (and Esc when nothing else is open), not part of the Hall
+function shellSettings() { shellMap(false); shellRing(false); view = 'settings'; window.scrollTo(0, 0); render(); }
+function shellNothingOpen() {
+  return view === 'islands' && !ui.hxP && !ui.hxSel && !ui.isPanel && !ui.hxVisit && !ui.isSel && !ui.isPlace && !(typeof WK === 'object' && WK.on) && !(typeof SO !== 'undefined' && SO)
+    && !document.querySelector('dialog[open], #guidefx, #cmdk:not([hidden]), #gqa.open, #ftov') && !(typeof focusFullOpen !== 'undefined' && focusFullOpen) && !(typeof tourAt === 'number' && tourAt >= 0);
+}
 function shellInit() {
   const content = document.querySelector('.content'); if (!content || document.getElementById('hudc')) return;
   const world = document.createElement('div'); world.id = 'world'; document.body.prepend(world);
@@ -78,7 +84,8 @@ function shellInit() {
   ring.innerHTML = SHELL_RING.map(([id, e, n], i) => `<button type="button" data-shell="bw" data-v="${id}"><i>${e}</i><span>${n}</span><kbd>${i + 1}</kbd></button>`).join('')
     + '<hr><button type="button" data-shell="map"><i>🧭</i><span>Map</span><kbd>M</kbd></button><button type="button" data-shell="search"><i>🔍</i><span>Search</span><kbd>Ctrl K</kbd></button><button type="button" data-shell="add"><i>＋</i><span>Add something</span><kbd>Q</kbd></button><button type="button" data-act="feedback"><i>💬</i><span>Feedback</span></button>';
   const mb = document.createElement('button'); mb.type = 'button'; mb.id = 'menuBtn'; mb.dataset.shell = 'ring'; mb.title = 'Menu: every place, map, search and add'; mb.setAttribute('aria-expanded', 'false'); mb.innerHTML = '<span>Menu</span>';
-  document.body.append(ring, mb);
+  const gear = document.createElement('button'); gear.type = 'button'; gear.id = 'gearBtn'; gear.dataset.shell = 'settings'; gear.title = 'Settings (Esc)'; gear.setAttribute('aria-label', 'Settings'); gear.textContent = '⚙️';
+  document.body.append(ring, mb, gear);
   // the update, offline and warning notes float along the top, over the world too
   const bars = document.createElement('div'); bars.id = 'hudbars';
   for (const id of ['updateBar', 'tempWarn', 'offline']) { const el = document.getElementById(id); if (el) bars.appendChild(el); }
@@ -130,7 +137,7 @@ function viewTodayCard() {
 function shellMapHtml() {
   const tab = SHELL.tab?.replace(/\+v|2d/g, '') || ui.isTab || 'personal', po = typeof plannerOnly === 'function' && plannerOnly();
   let be = '💀'; try { be = hsBoss(mondayOf(today())).e; } catch (e) { }
-  const isl = [['personal', '🏝️', 'Your island', 'Your buildings, farms and collectors'], ['house', '🏰', 'House island', 'Shared builds, the pool, votes and roles'], ['boss', be, 'Boss island', "This week's boss and spars"], ['plaza', '🏛️', 'Plaza', 'Everyone: statues, duels and portals. Coming in a later update']]
+  const isl = [['personal', '🏝️', 'Your island', 'Your buildings, farms and collectors'], ['house', '🏰', 'House island', 'Shared builds, the pool, votes and roles'], ['boss', be, 'Boss island', "This week's boss"], ['plaza', '🏛️', 'Plaza', 'Everyone: statues, duels and portals. Coming in a later update']]
     .filter(([id]) => id !== 'house' || !po);
   const blds = HX_FREE.filter(f => f.at).map(f => `<button type="button" class="shm-bl" data-shell="pick" data-k="${f.at}" style="--ac:${f.ac || '#ffc94d'}"><i>${f.e}</i>${esc(f.n)}</button>`).join('');
   return `<div class="shm-in" role="dialog" aria-label="Map"><div class="shm-h"><h3>🧭 Map</h3><span class="muted small-text">Pick an island to fly there</span><span class="shp-sp"></span><button type="button" class="isx" data-shell="mapx" title="Close (Esc)">✕</button></div>
@@ -191,7 +198,7 @@ function shell2DSvg(tab, mini) {
   return `<svg class="sh2svg" viewBox="${minX - p} ${minZ - p} ${maxX - minX + 2 * p} ${maxZ - minZ + 2 * p}" preserveAspectRatio="xMidYMid meet">${polys}<g class="sh2l">${labels}</g></svg>`;
 }
 function shell2DHtml(tab) {
-  if (tab === 'boss') return '<div class="isno3d">The boss island is in 3D only. Spars and fights still work from the buttons.</div>';
+  if (tab === 'boss') return '<div class="isno3d">The boss island is in 3D only.</div>';
   return `<div class="sh2d">${shell2DSvg(tab)}</div>${shell2D() && !D.settings?.map2d ? '' : '<div class="sh2note">2D map · switch back to 3D in the Steward</div>'}`;
 }
 // a tap on a hex of the 2D map does what a tap on the 3D island does
@@ -242,7 +249,7 @@ document.addEventListener('click', e => {
     case 'add': setTimeout(() => document.querySelector('#gqa .gqa-btn')?.click(), 0); break;
     case 'home': shellMap(false); if (view !== 'islands') { view = 'islands'; window.scrollTo(0, 0); render(); } break;
     case 'go': shellMap(false); view = el.dataset.v; window.scrollTo(0, 0); render(); break;
-    case 'steward': view = 'settings'; window.scrollTo(0, 0); render(); break;
+    case 'steward': case 'settings': shellSettings(); break;
     case 'search': if (typeof openCmdk === 'function') openCmdk(); break;
     case 'map': shellMap(!document.getElementById('shmap')); break;
     case 'mapx': shellMap(false); break;
@@ -257,7 +264,8 @@ document.addEventListener('keydown', e => {
   if (e.key === 'Escape') {
     if (!document.getElementById('ring')?.hidden) { shellRing(false); e.preventDefault(); return; }
     if (document.getElementById('shmap')) { shellMap(false); e.preventDefault(); return; }
-    if (view !== 'islands' && !e.defaultPrevented && !(typeof focusFullOpen !== 'undefined' && focusFullOpen)) { view = 'islands'; render(); e.preventDefault(); }
+    if (view !== 'islands' && !e.defaultPrevented && !(typeof focusFullOpen !== 'undefined' && focusFullOpen)) { view = 'islands'; render(); e.preventDefault(); return; }
+    if (!e.defaultPrevented && shellNothingOpen()) { e.preventDefault(); shellSettings(); }
   } else if ((e.key === 'm' || e.key === 'M') && !e.repeat && !ui.hxP) { e.preventDefault(); shellMap(!document.getElementById('shmap')); }
   else if (/^[1-6]$/.test(e.key) && !e.repeat && !ui.hxP && !(typeof WK === 'object' && WK.on)) { e.preventDefault(); shellRing(false); if (typeof bwOpen === 'function') bwOpen(SHELL_RING[+e.key - 1][0]); }
 });

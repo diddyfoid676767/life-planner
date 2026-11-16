@@ -10,6 +10,12 @@
 // version since the last one they saw (up to 3). D.settings.seenVersion remembers what was last shown,
 // D.settings.guidesSeen which guides have played. A brand-new install never sees either.
 const CHANGELOG = [
+  { v: '2.83.0', notes: [
+    { t: 'The turn-based quick boss fights are gone. The Souls Golem fight is the only boss fight now', k: 'tweak' },
+    { t: 'Settings are a small gear in the top-right corner, and Esc opens them when nothing else is open', k: 'new' },
+    { t: 'Every menu now slides in from the right, so your island stays in view. Only tiny Yes/No questions stay in the middle', k: 'tweak' },
+    { t: 'The old made-up sounds are back everywhere except the boss fight. Right click no longer rolls (Ctrl does), and a sprint jump clears a river', k: 'tweak' },
+  ] },
   { v: '2.82.0', notes: [
     { t: 'Terraform 2.0: paths are thin roads now, in dirt, stone or boardwalk, and they join up with your roads and buildings by themselves', k: 'new' },
     { t: 'Over 25 things to place: fences, hedges and low walls on hex edges, lamp lines, banners, campfires, a gazebo, wishing well, windmill, rock arch, lily pond, footbridge, rowing boat and more', k: 'new' },

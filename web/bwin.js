@@ -4,15 +4,16 @@
    has one big card with one button, a short list (3 to 5 rows), at most 3 tabs, and More for
    everything else. More opens the full pages (the old Notice Board, Library, Fitness, Friends,
    You and Settings pages) in a wider window. The Market keeps its own panel on the island.
-   The Hall now holds what the Steward's lodge did (settings) and the Training hall holds the
+   Settings are the gear in the top-right corner. The Training hall holds the
    Practice yard (spars). */
 
 const BW_ICON = { notice: '📜', library: '📚', training: '💪', tavern: '🍺', hall: '🏰' };
 const BW_NAME = { notice: 'Notice Board', library: 'Library', training: 'Training hall', tavern: 'Tavern', hall: 'Hall' };
 // old building ids still land somewhere sensible
-const BW_ALIAS = { lodge: 'hall', steward: 'hall', yard: 'training', today: 'notice', calendar: 'notice', study: 'library', friends: 'tavern', profile: 'hall', settings: 'hall' };
+const BW_ALIAS = { yard: 'training', today: 'notice', calendar: 'notice', study: 'library', friends: 'tavern', profile: 'hall' };
 
 function bwOpen(id, tab) {
+  if ((id === 'settings' || id === 'steward' || id === 'lodge') && typeof shellSettings === 'function') { shellSettings(); return; } // 2.83: settings are the corner gear now
   id = BW_ALIAS[id] || id;
   if (id === 'market') { if (typeof hxOpen === 'function') hxOpen('shop'); return; }
   if (!BW_NAME[id]) return;
@@ -90,7 +91,6 @@ const BW_DEF = {
         return { k: n ? 'Next event' : 'Events', v: n ? `${n.name} ${relDays(diffDays(t, n.date)).toLowerCase()}` : 'Nothing booked', go: bwGo('＋ Add event', 'data-act="new" data-kind="tevent"'), hint: 'Races, games and comps',
           list: up.slice(0, 5).map(e => bwRow(esc(e.name), bwWhen(e.date))), empty: '' };
       }],
-      ['spar', 'Practice yard', () => ({ k: 'Practice yard', v: 'Spar a champion', go: bwGo('⚔ Spar now', 'data-bw="spar"'), hint: 'Practise against a champion boss. Spars happen on the boss island', list: [], empty: '' })],
     ],
     more: [['The full fitness page', bwPage('training', { bodyPage: 'train' })], ['Records and progress', bwPage('training', { bodyPage: 'progress' })], ['Body card', bwPage('training', { bodyPage: 'body' })]],
   }),
@@ -128,14 +128,8 @@ const BW_DEF = {
         return { k: 'Equipped', v: `${n} of ${FT_GEAR_SLOTS.length} slots`, go: bwGo('⚔ Change gear', bwPage('profile', { youTab: 'me', youLook: false })), hint: 'Gear drops from boss fights',
           list: eq.slice(0, 5).map(([sn, e, g]) => bwRow(`${g ? g.e : e} ${sn}`, g ? esc(g.n) : 'empty', g ? '' : 'done')), empty: '' };
       }],
-      ['set', 'Settings', () => {
-        const perm = 'Notification' in window ? Notification.permission : 'unsupported', signed = bwTry(() => acct.signedIn, false);
-        const look = { story: 'Storybook', med: 'Parchment', plain: 'Plain' }[typeof medSkin === 'function' ? medSkin() : 'story'];
-        return { k: 'Look and sound', v: `${look} · ${typeof skinNight === 'function' && skinNight() ? 'lantern now' : 'bright now'}`, go: bwGo('⚙ All settings', bwPage('settings', { setTab: 'look' })), hint: 'Bright by day, lantern at night',
-          list: [bwRow('👤 Account', signed ? 'Signed in' : 'Not signed in', '', bwPage('settings', { setTab: 'you' })), bwRow('🔔 Notifications', perm === 'granted' ? 'On' : 'Off', '', bwPage('settings', { setTab: 'cal' })), bwRow('🎨 Graphics', D.settings.lowQuality ? 'Low' : 'High', '', bwPage('settings', { setTab: 'look' })), bwRow('⬆️ Updates', typeof appVersion === 'string' ? 'Solis ' + esc(appVersion) : '', '', bwPage('settings', { setTab: 'app' }))], empty: '' };
-      }],
     ],
-    more: [['Your character page', bwPage('profile', { youTab: 'me' })], ['Records', bwPage('profile', { youTab: 'rec' })], ['Stats and grades', bwPage('profile', { youTab: 'stats' })], ['Account', bwPage('profile', { youTab: 'acct' })], ['All settings', bwPage('settings')], ['Send feedback', 'data-act="feedback"']],
+    more: [['Your character page', bwPage('profile', { youTab: 'me' })], ['Records', bwPage('profile', { youTab: 'rec' })], ['Stats and grades', bwPage('profile', { youTab: 'stats' })], ['Account', bwPage('profile', { youTab: 'acct' })], ['Send feedback', 'data-act="feedback"']],
   }),
 };
 
@@ -160,7 +154,6 @@ document.addEventListener('click', e => {
   const el = e.target.closest('[data-bw]'); if (!el) return;
   const k = el.dataset.bw;
   if (k === 'tab') { ui.bw.tab = el.dataset.v; ui.bw.more = false; render(); }
-  else if (k === 'spar') { view = 'islands'; if (typeof shellTravel === 'function') shellTravel('boss', () => { ui.isPanel = 'bspar'; render(); }); }
   else if (k === 'more') { ui.bw.more = !ui.bw.more; render(); }
   else if (k === 'page') { let set = {}; try { set = JSON.parse(el.dataset.set || '{}'); } catch (x) { } Object.assign(ui, set); view = el.dataset.v; window.scrollTo(0, 0); render(); }
 });
