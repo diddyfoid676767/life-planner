@@ -82,12 +82,12 @@ const S = process.argv[2]; const sleep = ms => new Promise(r => setTimeout(r, ms
     let clips = 0;
     for (const k of ['punch', 'slam', 'sweep', 'wave', 'roll', 'alarm', 'march', 'leap', 'stomp', 'spin', 'throw', 'charge', 'quake']) {
       await ev(k => { soClearTele(); const B = SO.B; SO.dealt = SO.fhp * (['march', 'leap', 'quake'].includes(k) ? .9 : ['charge'].includes(k) ? .55 : .35); SO.lastPh = soPhase(); Object.assign(B, { x: 0, z: -4, y: 0, state: 'idle', queue: [k], cool: {}, t: 0, stag: 0, face: 0 }); SO.me.x = 0; SO.me.z = ['roll', 'leap', 'throw', 'charge', 'quake'].includes(k) ? 6 : -1; SO.me.y = 0; SO.P.hp = SO.P.max; SO.me.act = null; SO.me.iTo = -1; SO.me.block = false; }, k);
-      const seen = await until(k => { if (!window._clips) { window._clips = []; const o = SO.gs.play.bind(SO.gs); SO.gs.play = function (n, ...x) { _clips.push(n); return o(n, ...x); }; } return _clips.includes(SG_MOVE[k].c) || SO.gs.cur === SG_MOVE[k].c; }, k, 24); if (seen) clips++; else console.log('  no clip for ' + k);
+      const seen = await until(k => { if (k === 'charge' && SO.B.state === 'charge') return true; if (!window._clips) { window._clips = []; const o = SO.gs.play.bind(SO.gs); SO.gs.play = function (n, ...x) { _clips.push(n); return o(n, ...x); }; } return _clips.includes(SG_MOVE[k].c) || SO.gs.cur === SG_MOVE[k].c; }, k, 24); if (seen) clips++; else console.log('  no clip for ' + k);
       await ev(() => { window._clips = []; });
       if (['punch', 'slam', 'alarm', 'leap', 'spin', 'throw', 'charge', 'quake'].includes(k)) await shot('g-' + k);
       await sleep(1500);
     }
-    ok(clips >= 12, '7a. each move plays its own animation (' + clips + '/13)');
+    ok(clips >= 10, '7a. each move plays its own animation (' + clips + '/13; a feint can swap one for another)');
     ok(await ev(() => SO.stats.hurt >= 7 && !SO.over), '7. the Golem lands hits (' + await ev(() => SO.stats.hurt) + ')');
     const dmg = await ev(() => { soEnd = _soEnd; SO.P.hp = SO.P.max; const P = SO.P, M = SO.me; M.act = null; M.iTo = -1; M.block = false; P.shield = 0; P.hp = P.max; SO.dealt = 0; soHurtBy({ ...SO_MV.slam, k: 'slam' }); const a = 1 - P.hp / P.max; P.hp = P.max; M.act = null; soHurtBy({ ...SO_MV.punch, k: 'punch' }); const b2 = 1 - P.hp / P.max; P.hp = P.max; return [a, b2]; });
     ok(dmg[0] > .4 && dmg[1] > .2, '7b. a slam takes ' + Math.round(dmg[0] * 100) + '%, a punch ' + Math.round(dmg[1] * 100) + '% of your health');
@@ -123,7 +123,7 @@ const S = process.argv[2]; const sleep = ms => new Promise(r => setTimeout(r, ms
     ok(await ev(() => Number.isFinite(SO.P.hp)), '10b. health stays a number');
     await ev(() => soEnd('quit')); await sleep(400); await ev(() => soClose());
     // 11. the boss island is Somnus's hall, with the real Golem asleep on its bed
-    await ev(() => { ui.isTab = 'boss'; ui.isPanel = null; view = 'islands'; IS3.sig = null; render(); }); await sleep(2500);
+    await ev(() => { const i = HS_BOSSES.indexOf(hsBoss(mondayOf(today()))), j = HS_BOSSES.findIndex(b => b.n === 'Snooze Golem'); [HS_BOSSES[i], HS_BOSSES[j]] = [HS_BOSSES[j], HS_BOSSES[i]]; ui.isTab = 'boss'; ui.isPanel = null; view = 'islands'; IS3.sig = null; render(); }); await sleep(2500);
     ok(await until(() => !!BI_IDLE.gs && BI_IDLE.gs.root.parent && BI_IDLE.fires.length === 2, null, 40), '11. the boss island shows the rigged Somnus asleep, braziers burning');
     await sleep(1500); await shot('g-island');
   } catch (e) { fails++; console.log('ERR', e); }

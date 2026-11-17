@@ -180,7 +180,7 @@ function soEnd(how) {
   } else out.push('Test fight: no attempt used, nothing added to the bar, no reward.');
   SO.res = { how, out, pb };
   if (SO.H) SO.H.play(how === 'dead' ? 'Death_A' : 'Cheer', { loop: how !== 'dead', fade: .2 });
-  if (how === 'felled') { SO.B.state = 'down'; SO.B.t = 0; soClearTele(); soSnd('g_roar', SO.B, { rate: .8 }); }
+  if (how === 'felled') { SO.B.state = 'down'; SO.B.t = 0; SO.B.y = 0; SO.B.stag = 0; soClearTele(); soSnd('g_roar', SO.B, { rate: .8 }); }
   setTimeout(() => SO && soHudDraw(), how === 'dead' ? 1600 : how === 'felled' ? 2600 : 300);
   if (how === 'dead') soSnd('g_hurth', SO.me, { vol: 1.2, rate: .85 });
   SO.rocks.forEach(r => { SO.S.remove(r.m); if (r.tm) SO.S.remove(r.tm); }); SO.rocks = []; SO.fis = [];

@@ -248,7 +248,7 @@ function biSomnus(W, g, top, rnd, dead) {
   }
   // the Golem itself, scaled to the island, asleep sitting on its bed (or toppled and grey once beaten)
   const S = sgMake(); if (!S) return false;
-  const k = .5; S.root.scale.multiplyScalar(k); S.root.position.set(0, .82, -.55); bed.add(S.root);
+  const k = .6; S.root.scale.multiplyScalar(k); S.root.position.set(0, .82, -.55); bed.add(S.root);
   S.root.traverse(o => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } });
   S.eyes.forEach(e => { e.material.emissiveIntensity = dead ? 0 : .35; }); S.veinM.emissiveIntensity = dead ? 0 : .5; S.eyeLight.intensity = 0; S.glow.intensity = dead ? 0 : .5; S.glow.distance = 3;
   if (dead) {
