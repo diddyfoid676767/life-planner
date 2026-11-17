@@ -45,15 +45,15 @@ const S = process.argv[2]; const sleep = ms => new Promise(r => setTimeout(r, ms
   ok(await ev(() => !!document.querySelector('#isfull [data-v="sgwar"]') && hiHas('champion')), '0. a War button on the house island, and you are the Champion');
   ok(H.flinders.b._sg.mb?.u1?.d === today, '0b. opening the island marks you active ' + JSON.stringify(H.flinders.b._sg.mb?.u1));
   ok(await ev(() => sgCalWhy() === ''), '0c. sieges are allowed today (no term calendar in the test) ' + await ev(() => sgCalWhy()));
-  // 0d. 2.94: the buttons are grouped into menus
-  const hud = await ev(() => [...document.querySelectorAll('#isfull .ishud.is-bl > .himw > .isbtn, #isfull .ishud.is-bl > .isbtn, #isfull .ishud.is-br > .himw > .isbtn, #isfull .ishud.is-br > .isbtn')].map(b => b.innerText.replace(/\s+/g, ' ').trim()));
-  ok(hud.length === 4, '0d. four buttons on the house island: ' + JSON.stringify(hud));
-  await p.click('#isfull [data-hm="war"]'); await sleep(300);
-  ok(await ev(() => ui.hiMenu === 'war' && getComputedStyle(document.querySelector('#isfull .himw.on .himenu')).display === 'grid'), '0e. War opens its menu');
-  await p.click('#isfull .himw.on [data-v="sgwar"]'); await sleep(400);
+  // 0d. 2.97: one House button in the house colour, a list like the main Menu
+  ok(await ev(() => document.querySelectorAll('#isfull .isbtn').length === 0 && !!document.querySelector('#isfull .hhhud [data-hm="house"]') && getComputedStyle(document.querySelector('#isfull .hhbtn')).backgroundColor !== 'rgba(0, 0, 0, 0)'), '0d. one House button on the house island');
+  await p.click('#isfull [data-hm="house"]'); await sleep(300);
+  ok(await ev(() => ui.hiMenu === 'house' && getComputedStyle(document.querySelector('#isfull .hhring')).display === 'grid' && document.querySelectorAll('#isfull .hhring button').length >= 12), '0e. it opens the list (projects, war, votes and the builders\' tools)');
+  await p.screenshot({ path: S + '/house-menu.png' });
+  await p.click('#isfull .hhring [data-v="sgwar"]'); await sleep(400);
   ok(await ev(() => ui.isPanel === 'sgwar' && !ui.hiMenu && /War room/.test(document.querySelector('#isfull .ispanel')?.innerText || '')), '0f. picking War room opens it and closes the menu');
-  await ev(() => { ui.isPanel = null; render(); }); await sleep(200); await p.click('#isfull [data-hm="build"]'); await sleep(200); await p.screenshot({ path: S + '/house-menu.png' }); await p.mouse.click(700, 120); await sleep(300);
-  ok(await ev(() => !ui.hiMenu), '0g. clicking elsewhere closes a menu');
+  await ev(() => { ui.isPanel = null; render(); }); await sleep(200); await p.click('#isfull [data-hm="house"]'); await sleep(200); await p.mouse.click(700, 120); await sleep(300);
+  ok(await ev(() => !ui.hiMenu), '0g. clicking elsewhere closes it');
   // 1. the War room
   await ev(() => { ui.isPanel = 'sgwar'; render(); }); await sleep(400);
   const wr = await ev(() => document.querySelector('#isfull .ispanel').innerText);

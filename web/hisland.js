@@ -204,7 +204,7 @@ function viewHouseIsland() {
   const hs = hsState();
   // 2.55: the House page lives here now, as a panel on the house island
   if (!hs.id) return isFrame('house', '', `<div class="ispanel iscentre iswide"><div class="ispanel-b">${hsPicker()}</div></div>`);
-  const hsBtn = `<div class="ishud is-br"><button class="isbtn" data-hi="panel" data-v="house">🏰<span>House</span></button></div>`;
+  const hsBtn = `<div class="ishud is-br" style="right:96px"><button class="isbtn" data-hi="panel" data-v="house">🏰<span>House</span></button></div>`;
   if (ui.isPanel === 'house') return isFrame('house', '', isPanel('🏰 Your house this week', viewHouse()).replace('class="ispanel"', 'class="ispanel iswide"'));
   if (SG_VIS?.home && typeof sgVisitView === 'function') return sgVisitView(); // 2.89: on another island (a siege or a replay)
   hiLoad();
@@ -222,12 +222,12 @@ function viewHouseIsland() {
   const hud = `<div class="ishud is-tl"><div class="islvl house" style="--hc:${h.col}"><b>${hl}</b><div><span>${typeof hsCrest === 'function' ? hsCrest(h, 20) : h.e} ${esc(h.name)} · house level ${hl}</span>${nextT ? `<i style="width:${Math.round((tot - prevT) / (nextT - prevT) * 100)}%"></i>` : ''}</div></div>
       <div class="isbuilders">🔨 ${HI_MAX_BUILDING - busy}/${HI_MAX_BUILDING} builders free · ${hiMyRoles(L).length ? hiMyRoles(L).map(x => `${x.e} You're ${x.n}`).join(' · ') : L.r.champion ? `👑 Champion: ${esc(L.r.champion)}` : 'No roles yet'}</div></div>
     <div class="ishud is-tr">${isBar('cd-l', LUMEN, pool.l, 'House Lumen', 1, '')}${isBar('cd-e', EMBER, pool.e, 'House Ember', 1, '')}</div>
-    ${P ? '' : `<div class="ishud is-br hxtools">${hiMenu('house', '🏰', 'House', [['panel', 'house', '🏰', 'This week'], ['panel', 'pool', '🏦', 'Pool'], ['panel', 'leaders', '👑', 'Roles'], ['panel', 'vote', '🗳️', 'Vote', pr?.open], ['panel', 'perks', '✨', 'Perks'], ['panel', 'sglooks', '🎨', 'Island look']], { ping: pr?.open, right: 1 })}${hiMenu('war', '⚔️', 'War', [['panel', 'sgwar', '⚔️', 'War room', typeof sgPing === 'function' && sgPing()], ['panel', 'sgtest', '🎯', 'Test your defences']], { ping: typeof sgPing === 'function' && sgPing(), right: 1 })}${lead ? hiMenu('build', '🔨', 'Build', [['tool', 'road', '🛣️', 'Roads'], ...(hl >= HH_WALL_LV ? [['tool', 'wall', '🧱', 'Walls'], ['tool', 'gate', '🚪', 'Gates']] : []), ['sg', 'shape', '⛰️', 'Shape the land']], { right: 1 }) : ''}<button class="isbtn big" data-hi="panel" data-v="shop">🛒<span>Projects</span></button></div>`}`;
+    ${P ? '' : hiHouseHud(h, lead, hl, pr)}`;
   // 2.88: watching a Test your defences replay (siege.js): just the replay's own HUD
   if (ui.sgRun && typeof sgRunHtml === 'function') return isFrame('house', `<div class="ishud is-tl"><div class="islvl house" style="--hc:${h.col}"><b>${hl}</b><div><span>${typeof hsCrest === 'function' ? hsCrest(h, 20) : h.e} ${esc(h.name)} · test siege</span></div></div></div>`, sgRunHtml());
   let extra = `<div class="isbubs">${bubs}</div>${!P && typeof sgBanner === 'function' ? sgBanner() : ''}`, pn = ui.isPanel;
   if (P) extra += hhPlaceBar(P, P.mode === 'tool');
-  else if (pn === 'shop') extra += isPanel(`🛒 House projects · level ${hl}`, hiShopHtml(d, pool, lead, pr, hl, busy));
+  else if (pn === 'shop') extra += isPanel(`🏗️ ${esc(h.name)} projects · house level ${hl}`, `<div class="hhbanner" style="--hc:${h.col}">${typeof hsCrest === 'function' ? hsCrest(h, 26) : h.e}<div><b>Built together by ${esc(h.name)}</b><span>Paid from the house pool (${hxCost(pool.l, pool.e)}) · ${HI_MAX_BUILDING - busy}/${HI_MAX_BUILDING} house builders free · perks for everyone in the house</span></div></div>${hiShopHtml(d, pool, lead, pr, hl, busy)}`).replace('class="ispanel"', `class="ispanel hhpanel" style="--hc:${h.col}"`);
   else if (pn === 'pool') extra += isPanel(`🏦 ${h.name} house pool`, hiPoolHtml(pool));
   else if (pn === 'leaders') extra += isPanel(`👑 House roles · ${cdTermName(hiTerm().id)}`, hiLeadHtml(d, L));
   else if (pn === 'vote') extra += isPanel('🗳️ House vote', hiVoteHtml(d, pr, lead));
@@ -244,17 +244,21 @@ function viewHouseIsland() {
   else if (ui.isSel && d.b?.[ui.isSel]) extra += hiPopHtml(ui.isSel, d, pool, lead, hl, busy);
   return isFrame('house', hud, extra);
 }
-// 2.94: the house island's buttons are grouped into a few menus. Items keep their old data attributes,
-// so the existing click handlers work; the menu closes on any click.
-function hiMenu(id, e, n, items, o = {}) {
-  const on = ui.hiMenu === id;
-  const it = items.map(([k, v, ie, iname, ping]) => k === 'sg' ? `<button class="himi" data-sg="${v}">${ie} ${iname}</button>` : `<button class="himi ${ping ? 'ping' : ''}" data-hi="${k}" data-v="${v}">${ie} ${iname}</button>`).join('');
-  return `<span class="himw ${o.right ? 'r' : ''} ${on ? 'on' : ''}"><button class="isbtn ${o.ping ? 'ping' : ''} ${on ? 'on' : ''}" data-hm="${id}" title="${esc(n)}">${e}<span>${esc(n)} ▴</span></button><div class="himenu">${it}</div></span>`;
+// 2.97: one round button in the house's colour, next to the Menu button, opens everything as a list of
+// pills like the main Menu (most used first, then the leaders' building tools)
+function hiHouseHud(h, lead, hl, pr) {
+  const sp = typeof sgPing === 'function' && sgPing(), on = ui.hiMenu === 'house';
+  const it = ([k, v, e, n, sub, ping]) => `<button class="${ping ? 'ping' : ''}" ${k === 'sg' ? `data-sg="${v}"` : `data-hi="${k}" data-v="${v}"`}><i>${e}</i><span>${n}<small>${sub}</small></span></button>`;
+  const main = [['panel', 'shop', '🏗️', 'Projects', 'Build together from the pool'], ['panel', 'sgwar', '⚔️', 'War room', 'Sieges', sp], ['panel', 'house', '🐉', 'This week', 'The house boss fight'], ['panel', 'vote', '🗳️', 'Vote', 'House votes', pr?.open], ['panel', 'pool', '🏦', 'Pool', 'House Lumen and Ember'], ['panel', 'leaders', '👑', 'Roles', 'Who leads the house'], ['panel', 'perks', '✨', 'Perks', 'What the house gives you'], ['panel', 'sglooks', '🎨', 'Island look', 'Fortress and more'], ['panel', 'sgtest', '🎯', 'Test defences', 'A practice siege']];
+  const tools = lead ? [['tool', 'road', '🛣️', 'Roads', 'Drag to lay'], ...(hl >= HH_WALL_LV ? [['tool', 'wall', '🧱', 'Walls', 'Drag to lay'], ['tool', 'gate', '🚪', 'Gates', 'Drag to lay']] : []), ['sg', 'shape', '⛰️', 'Shape the land', 'Forest, hills, cliffs, moats']] : [];
+  return `<div class="ishud hhhud ${on ? 'on' : ''}" style="--hc:${h.col}"><nav class="himenu hhring">${main.map(it).join('')}${tools.length ? `<hr><b class="hhlbl">${esc(h.name)} builders</b>${tools.map(it).join('')}` : ''}</nav>
+    <button class="hhbtn ${pr?.open || sp ? 'ping' : ''}" data-hm="house" title="Everything for ${esc(h.name)}">${typeof hsCrest === 'function' ? hsCrest(h, 24) : h.e}<span>House</span></button></div>`;
 }
+// the menu opens on its button and closes on any other click (items keep their own click handlers)
 document.addEventListener('click', e => {
   const m = e.target.closest?.('[data-hm]');
   if (m) { ui.hiMenu = ui.hiMenu === m.dataset.hm ? null : m.dataset.hm; render(); return; }
-  if (ui.hiMenu) { ui.hiMenu = null; if (!e.target.closest?.('.himi')) render(); }
+  if (ui.hiMenu) { ui.hiMenu = null; if (!e.target.closest?.('.himi, .hhring button')) render(); }
 }, true);
 function hiShopHtml(d, pool, lead, pr, hl, busy) {
   const sl = hhSlots(hl);

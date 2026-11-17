@@ -161,7 +161,7 @@ function sgTfBar(P) {
   const id = P.brush || 'forest', d = HI.doc || {}, st = hhSt(), n = sgStrongN(st.tf), mx = sgStrongMax();
   const spent = (P.ops || []).filter(o => o[0] === 'tf').reduce((t, o) => [t[0] + o[3], t[1] + o[4]], [0, 0]);
   const btn = k => { const b = SG.tf[k]; return `<button class="tfb ${k === id ? 'on' : ''}" data-sg="brush" data-v="${k}" title="${esc(b.n)}: ${esc(b.d)}"><span>${b.e}</span>${esc(b.n)}<i>${b.l || b.x ? hxCost(b.l, b.x) : 'Free'}</i></button>`; };
-  return `<div class="ishud is-bc isplace hxbar tfbar sgbar">
+  return `<div class="ishud is-bc isplace hxbar tfbar sgbar hhbar" style="--hc:${hsHouse(hhHid())?.col || '#ffd43b'}"><span class="hhchip">🏰 House land · paid from the house pool</span>
     <div class="tfitems">${SG.tfOrder.map(btn).join('')}</div>
     <div class="tfrow"><span id="tfhint"><b>${SG.tf[id].e} ${esc(SG.tf[id].n)}</b> · ${esc(SG.tf[id].d)}. Drag over the island, paid from the house pool.${P.n ? ` <b class="tfstroke">${P.n} done${spent[0] || spent[1] ? ' · ' + hxCost(spent[0], spent[1]) : ''}</b>` : ''} ${P.why ? `<b class="hxwhy bad">${esc(P.why)}</b>` : ''}</span>
     ${sgWarLeft() != null ? `<span class="tag hxbad" title="A war has been declared on the house">🔒 War lock: ${Math.max(0, sgWarLeft() - (P.ops || []).filter(o => o[0] === 'tf').length)}/${SGW.lock.n} changes left, ${SGW.lock.k}× price</span>` : ''}<span class="tag" title="Moats and anything raised 2+ steps">🧗 Strong terrain ${n}/${mx}</span><button class="btn small primary" data-hx="cancel">✔ Done</button></div></div>`;
@@ -171,6 +171,12 @@ document.addEventListener('click', e => {
   ui.hxP.brush = ui.sgBrush = el.dataset.v; ui.hxP.why = ''; if (typeof sfx === 'function') sfx('select'); render();
 });
 
+
+// 2.97: the same looks for your own island, bought with your own Lumen and Ember (hxsky.js HX_THEMES).
+// Harvest is left out there because the personal Autumn look is the same idea.
+for (const id of ['fortress', 'blossom', 'frost', 'sands', 'ember', 'jungle']) { const { keep, ...t } = SG_HLOOKS[id]; HX_THEMES[id] = { ...t, n: id === 'fortress' ? 'Stone fortress' : t.n, d: id === 'fortress' ? 'Stone ground and rocky crags round the coast' : t.d, l: 250, x: 250 }; }
+HX_HOME_W.base = () => HX_THEMES[hxCur().theme]?.base || null;
+HX_HOME_W.dress = (W, add, rnd, col) => { const t = HX_THEMES[hxCur().theme]; if (t?.crag) sgFortDress(W, add, rnd, col, t, hxLand(), HX_R + 1, false); };
 
 // ---------- house island looks (the Stone fortress and more) ----------
 function sgFortHtml(d) {
@@ -204,16 +210,16 @@ document.addEventListener('click', async e => {
   HX3.sig = ''; render();
 });
 // extra pieces on the island when it's a fortress (called from hhDress): crags round the coast and a keep
-function sgFortDress(W, add, rnd, col) {
-  const LK = sgHLook(); if (!LK?.crag) return;
-  const L = hhLand(), R = HH_R + 1, low = hxLow(), r2 = seeded('sg-fort');
+function sgFortDress(W, add, rnd, col, LK = sgHLook(), L = hhLand(), R = HH_R + 1, keep = true) {
+  if (!LK?.crag) return;
+  const low = hxLow(), r2 = seeded('sg-fort');
   // a ring of grey crags along the shore
   for (const [k, h] of L) {
     const [q, r] = hxQR(k); if (h.t !== 'water' || hxDist(q, r) !== R) continue;
     if (r2() < .42) { const [x, z] = hxPos(q, r), ht = 1.4 + r2() * 2.4; const m = is3mesh(is3rock(new THREE.ConeGeometry(.9 + r2() * .6, ht, 5, 2), r2, .25, .2), LK.crag[Math.floor(r2() * 3)], x + (r2() - .5) * .8, ht / 2 - .4, z + (r2() - .5) * .8, W); m.rotation.y = r2() * 6; }
     else if (!low && r2() < .5) { const g = add('rock_single_' + 'ABCDE'[Math.floor(r2() * 5)], k, 0, -.1, 1.8 + r2()); g.rotation.y = r2() * 6.28; }
   }
-  if (!LK.keep) return;
+  if (!LK.keep || !keep) return;
   // the keep: a stone plinth under the great hall, small towers at three corners and banners
   is3mesh(new THREE.CylinderGeometry(1.55, 1.7, .3, 6), '#9a958b', 0, .15, 0, W).rotation.y = Math.PI / 6;
   for (let i = 0; i < 3; i++) { const a = i / 3 * Math.PI * 2 + Math.PI / 6, t = hxModel('building_tower_A', col); t.position.set(Math.cos(a) * 1.35, .25, Math.sin(a) * 1.35); t.scale.setScalar(.5); W.add(t); }
@@ -628,8 +634,8 @@ if (typeof GUIDES === 'object') GUIDES.fortify = {
   end: () => { ui.isPanel = null; if (view === 'islands') render(); },
   steps: [
     { title: 'Get your fortress ready ⚔️', text: 'Sieges are coming: one day another house will try to take your island. Now you can shape the land to defend it, and test it.', go: sgGuideHome, wait: 600 },
-    { title: 'Shape the land', go: sgGuideHome, text: 'The Architect and Warlord open 🔨 <b>Build</b> and press ⛰️ <b>Shape the land</b>: forest slows attackers, cliffs and moats stop them, and towers on raised ground shoot further. Moats and cliffs cost more and are limited by house level. There\'s always one way in.', sel: '#isfull [data-hm="build"]' },
-    { title: 'Test your defences', go: sgGuideHome, text: 'Open ⚔️ <b>War</b> and press 🎯 <b>Test your defences</b> to watch your own character try to take the island from any side. Nothing is damaged. Try different sides and see where it\'s weak.', sel: '#isfull [data-hm="war"]' },
+    { title: 'Shape the land', go: sgGuideHome, text: 'The Architect and Warlord open 🏰 <b>House</b> and press ⛰️ <b>Shape the land</b>: forest slows attackers, cliffs and moats stop them, and towers on raised ground shoot further. Moats and cliffs cost more and are limited by house level. There\'s always one way in.', sel: '#isfull [data-hm="house"]' },
+    { title: 'Test your defences', go: sgGuideHome, text: 'Open 🏰 <b>House</b> and press 🎯 <b>Test defences</b> to watch your own character try to take the island from any side. Nothing is damaged. Try different sides and see where it\'s weak.', sel: '#isfull [data-hm="house"]' },
     { title: 'A fortress look', go: sgGuideHome, text: 'Open 🏰 <b>House</b> and press 🎨 <b>Island look</b> for the Stone fortress look: stone ground, rocky crags and a keep. It\'s just a look: defences work the same either way.', sel: '#isfull [data-hm="house"]' },
   ],
 };

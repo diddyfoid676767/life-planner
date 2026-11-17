@@ -63,7 +63,7 @@ const S = process.argv[2]; const sleep = ms => new Promise(r => setTimeout(r, ms
   ok(await p.evaluate(() => ui.isSel === 'lbank' && !!document.querySelector('.ispop')), '4d. its card opens');
   // 5. drag across hexes to lay roads, saved in one go
   const free = await p.evaluate(() => { const st = hhSt(), L = hhLand(); const ks = [...L.keys()].filter(k => L.get(k).d === 3 && hxCheck('road', k, st).ok); for (const a of ks) for (const n of hxNb(a)) if (ks.includes(n)) return [a, n]; return null; });
-  await p.evaluate(() => { ui.isSel = null; render(); }); await sleep(200); await p.click('#isfull [data-hm=build]'); await sleep(200); await p.click('#isfull [data-hi=tool][data-v=road]'); await sleep(300);
+  await p.evaluate(() => { ui.isSel = null; render(); }); await sleep(200); await p.click('#isfull [data-hm=house]'); await sleep(200); await p.click('#isfull [data-hi=tool][data-v=road]'); await sleep(300);
   const [r1x, r1y] = await pt(free[0]), [r2x, r2y] = await pt(free[1]); const n5 = puts.length;
   await p.mouse.move(r1x, r1y); await p.mouse.down(); await p.mouse.move(r2x, r2y, { steps: 6 }); await p.mouse.up(); await sleep(1200);
   const d5 = puts[puts.length - 1];

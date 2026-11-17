@@ -4303,6 +4303,28 @@ body.walking #fatag, body.souls-on #fatag { display: none; }
 .himi:hover { background: rgba(255, 255, 255, .1); }
 .himi.ping::after { content: ''; position: absolute; top: 50%; right: 10px; width: 8px; height: 8px; margin-top: -4px; border-radius: 50%; background: #ff6b6b; }
 .isbtn.on { background: rgba(60, 66, 120, .9); }
+/* 2.97: building on the house island looks different from your own island */
+.isbtn.big.house { background: linear-gradient(160deg, color-mix(in srgb, var(--hc, #4dabf7) 70%, #fff), var(--hc, #4dabf7)); border-color: color-mix(in srgb, var(--hc, #4dabf7) 40%, #fff); color: #fff; text-shadow: 0 1px 2px rgba(0, 0, 0, .45); }
+.hhbar { border: 2px solid var(--hc, #ffd43b); box-shadow: 0 0 0 3px color-mix(in srgb, var(--hc, #ffd43b) 25%, transparent), 0 8px 22px rgba(0, 0, 0, .3); }
+.hhchip { display: inline-block; padding: 3px 10px; margin-right: 8px; border-radius: 999px; background: var(--hc, #ffd43b); color: #fff; font-weight: 700; font-size: .78rem; text-shadow: 0 1px 2px rgba(0, 0, 0, .4); white-space: nowrap; }
+.hhpanel { border-top: 5px solid var(--hc, #ffd43b); }
+.hhbanner { display: flex; gap: 10px; align-items: center; margin: 0 0 10px; padding: 10px 12px; border-radius: 12px; background: color-mix(in srgb, var(--hc, #ffd43b) 16%, transparent); border: 1px solid color-mix(in srgb, var(--hc, #ffd43b) 45%, transparent); }
+.hhbanner div { display: grid; gap: 2px; } .hhbanner span { font-size: .82rem; opacity: .85; }
+/* 2.97: the house island menu: one round button in the house's colour, pills like the main Menu */
+.hhhud { right: 92px; bottom: 16px; display: grid; justify-items: end; gap: 8px; }
+.hhbtn { position: relative; width: 62px; height: 62px; border-radius: 50%; border: 3px solid var(--k-w, #fffdf8); cursor: pointer; display: grid; place-items: center; align-content: center; gap: 0; background: var(--hc, #4dabf7); color: #fff; font: 700 12px 'Nunito', 'Segoe UI', sans-serif; text-shadow: 0 1px 2px rgba(0, 0, 0, .45); box-shadow: 0 6px 18px rgba(0, 0, 0, .35); transition: transform .12s; }
+.hhbtn:hover { transform: scale(1.06); } .hhhud.on .hhbtn { transform: rotate(-8deg) scale(1.04); }
+.hhbtn.ping::after { content: ''; position: absolute; top: 2px; right: 2px; width: 12px; height: 12px; border-radius: 50%; background: #ff5252; box-shadow: 0 0 0 3px var(--k-w, #fff); }
+.hhhud .hhring { display: none; position: static; padding: 0; background: none; border: 0; box-shadow: none; backdrop-filter: none; min-width: 0; gap: 6px; justify-items: end; max-height: calc(100vh - 170px); overflow-y: auto; }
+.hhhud.on .hhring { display: grid; animation: ringIn .18s ease-out; }
+.hhring button { position: relative; display: flex; align-items: center; gap: 8px; border: 0; border-left: 5px solid var(--hc, #4dabf7); cursor: pointer; padding: 6px 14px 6px 9px; border-radius: 999px; background: var(--k-w, #fffdf8); color: var(--k-ink, #2a3140); font: 700 14px 'Nunito', 'Segoe UI', sans-serif; box-shadow: 0 2px 10px rgba(0, 0, 0, .25); }
+.hhring button:hover { background: var(--hc, #4dabf7); color: #fff; }
+.hhring button i { font-style: normal; font-size: 17px; }
+.hhring button span { display: grid; text-align: left; line-height: 1.1; } .hhring button small { font-size: 11px; font-weight: 700; opacity: .7; }
+.hhring button.ping::after { content: ''; position: absolute; top: -3px; left: -3px; width: 12px; height: 12px; border-radius: 50%; background: #ff5252; box-shadow: 0 0 0 2px #fff; }
+.hhring hr { width: 60%; border: 0; border-top: 1px solid rgba(255, 255, 255, .45); margin: 2px 0; }
+.hhring .hhlbl { font: 800 11px 'Nunito', sans-serif; letter-spacing: .04em; text-transform: uppercase; color: #fff; text-shadow: 0 1px 3px rgba(0, 0, 0, .6); padding-right: 8px; }
+.hhhud .hhbtn, .hhhud.on .hhring button { pointer-events: auto; }
 
 /* 2.98: the owner's boss list on the boss island */
 .bitest { display: flex; flex-direction: column; gap: 6px; }

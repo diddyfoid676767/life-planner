@@ -79,7 +79,7 @@ const S = process.argv[2]; const sleep = ms => new Promise(r => setTimeout(r, ms
   await p.screenshot({ path: S + '/siege-fortress.png' });
   ok(await ev(() => { let n = 0; IS3.world.traverse(o => { if (o.material?.color?.getHexString?.() === '8f8a80') n++; }); return n > 0; }), '5d. the island sits on grey fortress rock');
   // 5e. 2.95: more house looks, and Island look sits in the House menu
-  ok(await ev(() => !!document.querySelector('#isfull .himw [data-hm="house"]') && !!document.querySelector('#isfull [data-hm="house"] ~ .himenu [data-v="sglooks"]') && !!document.querySelector('#isfull .ishud.is-br [data-hm="house"]') && !document.querySelector('#isfull .ishud.is-bl')), '5e. the House menu is on the right, with Island look in it');
+  ok(await ev(() => !!document.querySelector('#isfull .hhhud [data-hm="house"]') && !!document.querySelector('#isfull .hhring [data-v="sglooks"]') && !document.querySelector('#isfull .ishud.is-bl')), '5e. the House menu is on the right, with Island look in it');
   await ev(() => { ui.isPanel = 'sglooks'; render(); }); await sleep(300);
   ok(await ev(() => document.querySelectorAll('#isfull .ispanel .isitem').length >= 8), '5f. eight house looks to choose from');
   const spE = await ev(() => HI.doc.sp.l);
@@ -93,6 +93,11 @@ const S = process.argv[2]; const sleep = ms => new Promise(r => setTimeout(r, ms
   await p.click('#isfull [data-sg="lkuse"][data-v="fortress"]'); await sleep(1200);
   ok(await ev(() => sgFortOn()) && (await ev(() => HI.doc.sp.l)) === spF2, '5i. switching back to an owned look is free');
   await ev(() => { ui.isPanel = null; render(); }); await sleep(800);
+  // 5j. 2.97: the new looks on your own island too, with your own Lumen and Ember
+  ok(await ev(() => ['fortress', 'blossom', 'frost', 'sands', 'ember', 'jungle'].every(id => HX_THEMES[id]?.l === 250 && HX_THEMES[id].gr) && HX_HOME_W.base() === null), '5j. six new looks for your own island');
+  ok(await ev(() => { const st = hxState(), was = st.theme, h3 = IS3.house; IS3.house = 'hex'; st.theme = 'frost'; const b = HX_HOME_W.base(); st.theme = was; IS3.house = h3; return b?.[0] === '#c9d6e4'; }), '5k. Frost keep gives your island icy rock underneath');
+  // 5l. building on the house island is marked as the house's
+  ok(await ev(() => { hxStartPlace({ id: 'road', mode: 'tool', ops: [] }); render(); const t = document.querySelector('#isfull .hhbar .hhchip')?.innerText || ''; ui.hxP = null; render(); return /House build/.test(t); }), '5l. the house build bar says House build, in the house colour');
   // 6. the sim: deterministic, terrain and defences matter
   const sim = await ev(() => {
     const A = sgAttacker({ stats: { str: 50, end: 50, spd: 50, agi: 50, foc: 50, log: 50, kno: 50, exp: 50 }, cls: 'striker', power: 1.5, g: {} });
