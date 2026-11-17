@@ -1373,7 +1373,7 @@ addEventListener('resize', () => { if (SO?.R) soResize(); });
 document.addEventListener('click', e => {
   const el = e.target.closest('[data-so]'); if (!el) return;
   const v = el.dataset.so;
-  if (v === 'house' || v === 'bonus' || v === 'test' || v === 'trial') { e.preventDefault(); soOpen(v); return; }
+  if (v === 'house' || v === 'bonus' || v === 'test' || v === 'trial') { e.preventDefault(); soOpen(v, el.dataset.b); return; } // 2.98: a test fight can name its boss
   if (!SO) return;
   e.preventDefault();
   if (v === 'go') soStart();
