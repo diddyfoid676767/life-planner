@@ -226,9 +226,45 @@ function heroMake(o = {}) {
       let a = acts[c.name]; if (!a) a = acts[c.name] = mixer.clipAction(c);
       a.timeScale = speed;
       if (name === H.cur && !restart) return a;
-      a.reset(); a.setLoop(loop ? THREE.LoopRepeat : THREE.LoopOnce, Infinity); a.clampWhenFinished = !loop; a.enabled = true; a.setEffectiveWeight(1); if (from) a.time = from * c.duration;
+      if (H.cur === 'loco') { // 2.102: leaving the blended walk/jog/sprint: fade every part of it out together
+        for (const b of H.lc.acts) if (b !== a) b.fadeOut(fade);
+        a.reset(); a.timeScale = speed; a.setLoop(loop ? THREE.LoopRepeat : THREE.LoopOnce, Infinity); a.clampWhenFinished = !loop; a.weight = 1; if (from) a.time = from * c.duration;
+        a.fadeIn(fade); a.play(); H.cur = name; H.act = a; return a;
+      }
+      a.reset(); a.timeScale = speed; a.setLoop(loop ? THREE.LoopRepeat : THREE.LoopOnce, Infinity); a.clampWhenFinished = !loop; a.enabled = true; a.setEffectiveWeight(1); if (from) a.time = from * c.duration;
       if (H.act && H.act !== a) a.crossFadeFrom(H.act, fade, false); a.play();
       H.cur = name; H.act = a; return a;
+    },
+    // 2.102: moving on foot. Idle, walk, jog and sprint all play at once, blended by your speed, with
+    // their steps kept in time, so speeding up and slowing down never pops from one clip to the next.
+    // refs: the speeds the walk, jog and sprint clips look right at. H.cur is 'loco' while it runs.
+    loco(sp, { refs = [1.5, 2.7, 4.3], idle = 'Idle', fade = .2 } = {}) {
+      const L = H.lc || (H.lc = { ph: 0, acts: [] });
+      L.sp = sp; L.refs = refs;
+      const want = [idle, 'Walking_A', 'Running_A', 'Running_B'].map(n => { const c = clip(n); return acts[c.name] || (acts[c.name] = mixer.clipAction(c)); });
+      if (H.cur === 'loco' && L.acts[0] === want[0]) return;
+      if (H.cur === 'loco') { L.acts[0].fadeOut(fade); L.acts[0] = want[0]; want[0].reset(); want[0].weight = 1; want[0].fadeIn(fade); want[0].play(); return; } // a new idle (the fight's guard stance)
+      const prev = H.act;
+      L.acts = want; L.w = 0; L.fade = Math.max(.01, fade);
+      want.forEach((a, i) => { if (a === prev) return; a.reset(); a.setLoop(THREE.LoopRepeat, Infinity); a.weight = 0; a.timeScale = i ? 0 : 1; a.play(); });
+      if (prev && !want.includes(prev)) prev.fadeOut(fade); else if (prev) { prev.stopFading(); prev.setLoop(THREE.LoopRepeat, Infinity); prev.timeScale = want.indexOf(prev) ? 0 : 1; L.w = 1; }
+      H.cur = 'loco'; H.locoStep(0);
+    },
+    locoStep(dt) {
+      const L = H.lc, [r1, r2, r3] = L.refs, sp = L.sp, A = L.acts;
+      L.w = Math.min(1, L.w + dt / L.fade);
+      // weights: idle until a slow walk, then walk, jog and sprint each strongest at its own speed
+      const k = [.15, r1 * .75, r2, r3], w = [0, 0, 0, 0];
+      if (sp <= k[0]) w[0] = 1; else if (sp >= k[3]) w[3] = 1;
+      else for (let i = 0; i < 3; i++) if (sp <= k[i + 1]) { const t = (sp - k[i]) / (k[i + 1] - k[i]), s = t * t * (3 - 2 * t); w[i] = 1 - s; w[i + 1] = s; break; }
+      // one step cycle shared by the moving clips: each clip's own pace at this speed, mixed by weight
+      let f = 0, fw = 0;
+      for (let i = 1; i < 4; i++) if (w[i] > 0) { const d = A[i].getClip().duration; f += w[i] * Math.max(.65, sp / L.refs[i - 1]) / d; fw += w[i]; }
+      if (fw) L.ph = (L.ph + dt * f / fw) % 1;
+      // the same clip can be idle and a step clip at once only if a caller passes a moving clip as idle; let the idle win
+      for (let i = 1; i < 4; i++) if (A[i] !== A[0]) A[i].time = L.ph * A[i].getClip().duration;
+      let best = 0; for (let i = 0; i < 4; i++) { if (A[i] === A[0] && i) continue; A[i].enabled = true; A[i].weight = w[i] * L.w; if (w[i] > w[best]) best = i; }
+      H.act = A[best]; L.main = ['Idle', 'Walking_A', 'Running_A', 'Running_B'][best];
     },
     speed(s) { if (H.act) H.act.timeScale = s; },
     phase() { const a = H.act; return a ? (a.time / a.getClip().duration) % 1 : 0; },
@@ -236,6 +272,7 @@ function heroMake(o = {}) {
     // where a weapon tip is in the world (for swing trails); null with no weapon
     tip(side = 'r', out = new THREE.Vector3()) { const w = weapons[side]; if (!w) return null; const f = HERO_WEAPON[kit[side]] || HERO_WEAPON.Dagger; return out.set(...f.tip).applyMatrix4(w.matrixWorld); },
     update(dt, t = performance.now() / 1000) {
+      if (H.cur === 'loco') H.locoStep(dt);
       mixer.update(dt);
       if (P.charm) { P.charm.position.y = F.charm[1] / (F.chest * 1.15) + Math.sin(t * 1.6) * .06; P.charm.rotation.y = t; }
       if (P.pet) P.pet.position.y = .28 + Math.abs(Math.sin(t * 3)) * .1;

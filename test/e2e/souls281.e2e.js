@@ -47,7 +47,7 @@ const S = process.argv[2]; const sleep = ms => new Promise(r => setTimeout(r, ms
     await p.keyboard.up('Shift'); await p.keyboard.up('w');
     await p.keyboard.press(' '); await sleep(150);
     ok(await ev(() => SO.me.y > .3 && SO.H.cur.startsWith('Jump')), '3b. Space jumps');
-    await sleep(700); const t0 = await ev(() => { SO.me.st = 100; window._acts = []; const o = soAct; soAct = k => { o(k); if (SO.me.act?.k === k) _acts.push(k); }; return SO.time; }); await p.keyboard.press('Control'); await sleep(80);
+    await sleep(700); const t0 = await ev(() => { SO.me.st = 100; window._acts = []; const o = soAct; soAct = k => { o(k); if (SO.me.act?.k === k) _acts.push(k); }; return SO.time; }); await p.keyboard.press('Shift'); await sleep(80);
     ok(await ev(t0 => _acts.includes('roll') && SO.me.rollAt > t0 && SO.me.iTo - SO.me.iFrom > .3, t0), '3c. Ctrl rolls with i-frames');
     await sleep(600);
     // 4. attacks: light chain, hold for heavy, damage scales with power, weak point from behind

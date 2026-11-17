@@ -231,6 +231,7 @@ function stewardHtml() {
     ${row('🔒', 'Privacy', 'Your planner stays on this computer. Only your name, avatar, house and leaderboard numbers are shared.', '<a class="btn small" href="https://diddyfoid676767.github.io/life-planner/download/privacy.html" target="_blank" rel="noopener noreferrer">Read the privacy page</a>')}
     ${row('🔔', 'Notifications', perm === 'granted' ? 'On: reminders and timers can pop up.' : perm === 'denied' ? 'Blocked in this browser.' : 'Off for now.', perm === 'granted' || perm === 'unsupported' ? '' : '<button class="btn small" data-shell="notify">Turn on</button>')}
     ${row('🎨', 'Graphics', 'High shows the real sun with moving shadows and water reflections. Medium is simpler and faster; Low drops shadows, the sun and weather. The 2D map is for computers that struggle with 3D.', `${gfxPick()}<label class="row"><input type="checkbox" data-mn="map2d" ${D.settings.map2d ? 'checked' : ''}> 2D map</label>`)}
+    ${typeof rollPick === 'function' ? row('🤸', 'Roll key', 'The key that rolls when you walk the island and in boss fights. A mouse side button always rolls too.', rollPick()) : ''}
     ${typeof ONLINE !== 'undefined' && ONLINE ? '' : row('⬆️', 'Updates', `Solis ${esc(typeof appVersion === 'string' ? appVersion : '')}. Updates install by themselves.`, '<button class="btn small primary" data-act="checkUpdateNow">Check for updates</button>')}
   </div>`;
 }
