@@ -181,7 +181,7 @@ function hhLook(k, s, st) {
 }
 function hhSig(st) {
   const d = st.__d || {};
-  return [HI.ut, hiLevel(), typeof biTrophies === 'function' ? biTrophies().length : 0, JSON.stringify(st.b), st.road.join(';'), JSON.stringify(st.tf || {}), typeof sgFortOn === 'function' && sgFortOn() ? 'fort' : '', hiKeys(d).map(k => hiCond(k, today(), d) + hiLvOn(d.b[k])).join()].join('|');
+  return [HI.ut, hiLevel(), typeof biTrophies === 'function' ? biTrophies().length : 0, JSON.stringify(st.b), st.road.join(';'), JSON.stringify(st.tf || {}), typeof sgLkId === 'function' ? sgLkId() : '', hiKeys(d).map(k => hiCond(k, today(), d) + hiLvOn(d.b[k])).join()].join('|');
 }
 // flags round the great hall and the boss trophies floating by the coast
 function hhDress(W, add, rnd, col) {

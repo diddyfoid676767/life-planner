@@ -45,11 +45,11 @@ const S = process.argv[2]; const sleep = ms => new Promise(r => setTimeout(r, ms
     const col = () => ev(() => { const u = IS3.world.getObjectByName('underside'); let c = null; u.traverse(o => { if (!c && o.isMesh && o.material === US.mats.rock) { const a = o.geometry.attributes.color; c = [a.getX(0), a.getY(0), a.getZ(0)]; } }); return c; });
     const c1 = await col();
     ok(await ev(() => IS3.house === 'hexh' && !!IS3.world.getObjectByName('underside')), '9. the house island has the underside too');
-    await ev(() => { ui.sgFortPv = true; render(); }); await sleep(2000);
+    await ev(() => { ui.sgLkPv = 'fortress'; render(); }); await sleep(2000);
     const c2 = await col();
     ok(c1 && c2 && c2[0] + c2[1] + c2[2] < c1[0] + c1[1] + c1[2], '10. the rocky fortress look makes the rock darker ' + JSON.stringify([c1, c2]));
     await ev(() => { IS3.yaw = .6; IS3.pitch = .25; IS3.dist = 80; is3draw(); }); await sleep(600); await shot('us-fort');
-    await ev(() => { ui.sgFortPv = false; });
+    await ev(() => { ui.sgLkPv = null; });
     // 4. the boss island: dark, cracked, lava dripping
     await ev(() => { ui.isTab = 'boss'; render(); }); await sleep(2500);
     ok(await ev(() => { const u = IS3.world.getObjectByName('underside'); let lava = 0; u.traverse(o => { if (o.material === US.mats.lava) lava++; }); return lava > 0 || !!hsFight(hsState().id)?.dead; }), '11. lava drips from the boss island');
