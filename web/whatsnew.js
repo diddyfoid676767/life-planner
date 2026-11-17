@@ -10,6 +10,7 @@
 // version since the last one they saw (up to 3). D.settings.seenVersion remembers what was last shown,
 // D.settings.guidesSeen which guides have played. A brand-new install never sees either.
 const CHANGELOG = [
+  { v: '2.90.0', notes: [{ t: 'The sun and moon now stay in one spot in the sky. Turning the island moves them across the view instead of following your camera.', k: 'fix' }] },
   { v: '2.89.0', notes: [
     { t: 'Islands have proper undersides now: chunky layered rock, roots and vines that sway, glowing crystals and drifting motes in the season\'s colours', k: 'new' },
     { t: 'Waterfalls pour off the edge of your island where the river (or a pond) meets it', k: 'new' },

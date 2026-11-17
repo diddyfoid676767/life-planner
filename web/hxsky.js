@@ -140,9 +140,8 @@ function hxSkyApply() {
   hxEnvSoon();
 }
 
-// the sun and moon you can see: sprites far out along their real direction. The view looks down
-// at the island, so their height is squeezed into the top strip of the screen (left and right stay true):
-// turn the camera to find the sun; it's in the north at midday.
+// the sun and moon you can see: sprites far out along their real direction. Fixed in the world:
+// turn the view to find the sun; it's in the north at midday.
 function hxSunTex() {
   if (HX_SUN.tex) return HX_SUN.tex;
   const mk = (stops, n = 128) => { const cv = document.createElement('canvas'); cv.width = cv.height = n; const x = cv.getContext('2d'), g = x.createRadialGradient(n / 2, n / 2, 0, n / 2, n / 2, n / 2); stops.forEach(([o, col]) => g.addColorStop(o, col)); x.fillStyle = g; x.fillRect(0, 0, n, n); const t = new THREE.CanvasTexture(cv); t.encoding = THREE.sRGBEncoding; return t; };
@@ -198,10 +197,13 @@ function hxSkyCam(cam) {
   const g = HX_SUN.g; if (!g) return;
   const on = !!IS3.hexMode && (IS3.house === 'hex' || IS3.house === 'hexh') && hxGfx() !== 'low' && !!HX_SUN.sp;
   g.visible = on; if (!on) return;
-  const f = cam.getWorldDirection(HX_SUN.v1 || (HX_SUN.v1 = new THREE.Vector3())), fov = cam.fov * HX_RAD, top = Math.asin(Math.max(-1, Math.min(1, f.y))) + fov / 2;
+  // 2.90: they sit at a fixed place in the world (the real compass direction, with the height squeezed into
+  // a band just below the horizon so they show up behind the island from the usual looking-down view). They
+  // no longer follow the camera: turning the view moves them across the screen like anything else out there.
+  const c0 = HX_SUN.v1 || (HX_SUN.v1 = new THREE.Vector3()); c0.set(IS3.tgt?.[0] || 0, 0, IS3.tgt?.[1] || 0);
   const put = (alt, az, objs, size) => {
-    const a = top - .055 - (1 - Math.min(1, Math.max(0, alt) / .9)) * .14 * fov, v = hxDir(a, az, HX_SUN.v2 || (HX_SUN.v2 = new THREE.Vector3()));
-    objs.forEach(([o, s]) => { o.position.copy(cam.position).addScaledVector(v, 250); o.scale.setScalar(size * s); });
+    const a = (-34 + 30 * Math.min(1, Math.max(-.2, alt) / .9)) * HX_RAD, v = hxDir(a, az, HX_SUN.v2 || (HX_SUN.v2 = new THREE.Vector3()));
+    objs.forEach(([o, s]) => { o.position.copy(c0).addScaledVector(v, 250); o.scale.setScalar(size * s); });
     return v;
   };
   put(HX_SUN.sp.alt, HX_SUN.sp.az, [[HX_SUN.disc, 1], [HX_SUN.glow, 5.5]], 17);
