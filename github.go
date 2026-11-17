@@ -199,3 +199,26 @@ func handleUpdateCheck(w http.ResponseWriter, r *http.Request) {
 	resp["latest"] = latestTag
 	json.NewEncoder(w).Encode(resp)
 }
+
+// 2.89: the owner's switch for house sieges (sieges.json on main): {"paused": bool, "note": "...",
+// "cancel": ["<war id>", ...]}. Read at most every 10 minutes; offline means "not paused".
+var (
+	siegeCfg   []byte
+	siegeCfgAt atomic.Int64
+)
+
+func handleSieges(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Cache-Control", "no-store")
+	if time.Now().Unix()-siegeCfgAt.Load() > 600 || siegeCfg == nil {
+		siegeCfgAt.Store(time.Now().Unix())
+		if b, err := ghGet("https://raw.githubusercontent.com/"+githubRepo+"/main/sieges.json", 16384); err == nil && json.Valid(b) {
+			siegeCfg = b
+		}
+	}
+	if siegeCfg == nil {
+		w.Write([]byte(`{"paused":false}`))
+		return
+	}
+	w.Write(siegeCfg)
+}
