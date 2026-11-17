@@ -91,7 +91,20 @@ const SO_COMBO = {
 };
 const soCombo = () => SO_COMBO[SO.outfit] || SO_COMBO.Knight;
 let SO = null;
-function soGolemWeek() { return hsBoss(mondayOf(today())).n === SO_BOSS && bossWeek() !== 'rest'; }
+// 2.95: more than one Souls boss. Each is a definition; Somnus's (the code in this file) is the default, and
+// a boss in its own file (smorrow.js: Morrow, the Ever-Waiting) adds hooks that replace the Golem's parts:
+// scene (arena + model), step (its brain), anim, open (is it exposed?), weak, cine (its intro), tag, mult, onHurt.
+const SO_DEFS = {
+  'Snooze Golem': { key: SO_BOSS, name: SO_NAME, title: SO_TITLE, lore: SO_LORE, felled: 'COLOSSUS FELLED', ph: SO_PH, br: SO_BR,
+    tips: 'It is fast and it hits hard: two or three mistakes and you\'re down, and you have ' + SO_POTS + ' potions. Strike in the openings after its attacks. Rolls are short and costly, so time them. Hold right click to aim: spells fly exactly where the crosshair points, and the crystal on its back is a weak point. Esc shows the controls.',
+    armTxt: '🪨 Armoured: hits barely scratch it. Strike when it glows, after its attacks', snd: { die: 'g_roar' } },
+};
+const soD = () => SO?.def || SO_DEFS['Snooze Golem'];
+// has this boss's intro been seen (so it can be skipped)? Somnus keeps its old flag
+const soSeen = () => { const st = ftState(), k = soD().key; return k === SO_BOSS ? !!st.soIntroSeen : !!(st.soSeen || {})[k]; };
+// this week's boss, if it has a Souls fight yet (and the house boss isn't resting)
+function soWeekDef() { const b = hsBoss(mondayOf(today())); return bossWeek() !== 'rest' && SO_DEFS[b.n] || null; }
+function soGolemWeek() { return !!soWeekDef(); }
 const soTestOk = () => typeof solisDevOn === 'function' && solisDevOn();
 const soBonusLeft = () => { const st = ftState(); return Math.max(0, SO_BONUS.day - ((st.bonus || {})[today()] || 0)); };
 function soCanBonus() { const w = cdWallet(), a = ftAttempts(); return soGolemWeek() && !!hsState().id && !a.left && !a.rest && soBonusLeft() > 0 && w.lumen >= SO_BONUS.l && w.ember >= SO_BONUS.e; }
@@ -103,7 +116,7 @@ function soPower() {
 }
 
 // ---------- start, end ----------
-function soOpen(kind) {
+function soOpen(kind, key) {
   if (SO) return;
   if (kind === 'trial') kind = 'test';
   if (kind === 'test' && !soTestOk()) return;
@@ -112,7 +125,9 @@ function soOpen(kind) {
   if (!need3D()) { toast('Loading 3D…', 'Try again in a moment.'); return; }
   if (!webglOK()) { toast('No 3D here', 'This computer can\'t draw the Souls fight.'); return; }
   heroLoad();
-  SO = { kind, intro: true };
+  // the boss: this week's for a real fight (Somnus if a test has forced the week); a test fight can pick any
+  const def = kind === 'test' ? SO_DEFS[key] || soWeekDef() || SO_DEFS[Object.keys(SO_DEFS).pop()] : soWeekDef() || SO_DEFS[SO_BOSS];
+  SO = { kind, intro: true, def };
   soOverlay(); soIntroDraw();
 }
 async function soStart() {
@@ -137,10 +152,11 @@ async function soStart() {
       emp: 0, buff: 1, rally: 0, reveal: 0, drowsy: 0, combo: 0, comboT: 0, chain: 0, chainT: 0, pots: SO_POTS, hold: null },
     B: { x: 0, z: -5, y: 0, face: 0, state: 'sleep', t: 1.4, atk: null, queue: [], cool: {}, stag: 0, greed: [], mark: 0, dot: [], vy: 0, stuck: 0, hist: [] },
     cam: { cy: 0, cp: .32, cd: 6.4 }, t: performance.now(), acc: 0 });
+  soD().start?.();
   document.querySelector('#soov .so-intro')?.remove();
   soScene();
   // the intro: it sleeps, wakes, stands and roars, then its name. Skippable once you've seen it.
-  SO.cine = { t: 0, skip: !!ftState().soIntroSeen };
+  SO.cine = { t: 0, skip: soSeen() };
   soHudDraw(); soCineDraw(); soLoop(); soAmbStart();
 }
 // 2.88: the hall's own sound, made live: a deep rumble that swells and fades, a low hum, and the crackle of the fires
@@ -173,17 +189,18 @@ function soEnd(how) {
   const out = [], dealt = Math.round(SO.dealt), st = ftState();
   let pb = null;
   if (SO.kind === 'house' || SO.kind === 'bonus') {
-    const F = { kind: 'house', dealt, bossName: SO_NAME, cap: SO_ATT_CAP, souls: 1 };
+    const F = { kind: 'house', dealt, bossName: soD().name, cap: SO_ATT_CAP, souls: 1 };
     ftEnd(F, how === 'dead' ? 'down' : how === 'felled' ? 'felled' : 'time'); out.push(...F.res.out);
-    st.soPb = st.soPb || {}; const old = st.soPb[SO_BOSS] || 0; pb = { old, now: Math.max(old, dealt), isNew: dealt > old && dealt > 0 };
-    st.soPb[SO_BOSS] = pb.now; save();
+    st.soPb = st.soPb || {}; const old = st.soPb[soD().key] || 0; pb = { old, now: Math.max(old, dealt), isNew: dealt > old && dealt > 0 };
+    st.soPb[soD().key] = pb.now; save();
   } else out.push('Test fight: no attempt used, nothing added to the bar, no reward.');
   SO.res = { how, out, pb };
   if (SO.H) SO.H.play(how === 'dead' ? 'Death_A' : 'Cheer', { loop: how !== 'dead', fade: .2 });
-  if (how === 'felled') { SO.B.state = 'down'; SO.B.t = 0; SO.B.y = 0; SO.B.stag = 0; soClearTele(); soSnd('g_roar', SO.B, { rate: .8 }); }
+  if (how === 'felled') { SO.B.state = 'down'; SO.B.t = 0; SO.B.y = 0; SO.B.stag = 0; soClearTele(); soSnd(soD().snd.die, SO.B, { rate: .8 }); }
   setTimeout(() => SO && soHudDraw(), how === 'dead' ? 1600 : how === 'felled' ? 2600 : 300);
   if (how === 'dead') soSnd('g_hurth', SO.me, { vol: 1.2, rate: .85 });
   SO.rocks.forEach(r => { SO.S.remove(r.m); if (r.tm) SO.S.remove(r.tm); }); SO.rocks = []; SO.fis = [];
+  soD().end?.(how);
 }
 function soClose() {
   if (!SO) return;
@@ -201,6 +218,7 @@ function soScene() {
   // 2.88: a much darker hall, lit by fire (see soTorches) and a thin shaft of moonlight
   S.background = new THREE.Color('#06050b'); S.fog = new THREE.FogExp2('#0a0812', .026);
   SO.cam3 = new THREE.PerspectiveCamera(58, 1, .1, 200);
+  if (soD().scene) soD().scene(S, low); else {
   S.add(new THREE.HemisphereLight('#6a71a6', '#1c1424', .5));
   const moon = new THREE.DirectionalLight('#aab8ff', .8); moon.position.set(-8, 26, 10); moon.castShadow = !low; moon.shadow.mapSize.set(low ? 512 : 2048, low ? 512 : 2048);
   Object.assign(moon.shadow.camera, { left: -18, right: 18, top: 18, bottom: -18, near: 1, far: 70 }); S.add(moon);
@@ -235,6 +253,7 @@ function soScene() {
   SO.gs = typeof sgMake === 'function' ? sgMake() : null;
   if (SO.gs) { SO.gs.onFall = at => { soBurst(at, { tex: 'dirt_02', col: '#8a8398', n: 6, size: .7, life: 1, speed: 4, grav: 16, up: .3, add: false, op: .95 }); soSnd('g_crumble', at); }; SO.gs.play('Crouch_Idle_Loop', { speed: .45 }); SO.gs.eyes.forEach(e => e.material.emissiveIntensity = 0); }
   SO.gol = SO.gs || soGolem(); S.add(SO.gol.root);
+  }
   // you: the KayKit hero in your class outfit, with your head and cosmetics
   const d = youAvData(pfSpec()), ci = typeof cdClassInfo === 'function' ? cdClassInfo() : null, outfit = heroOutfitOf(ci?.id);
   SO.outfit = outfit;
@@ -339,10 +358,10 @@ function soLoop() {
 }
 // this fight's bar: how much of it is left (0..1), and the phase that gives
 const soLeft = () => SO.fhp ? Math.max(0, 1 - SO.dealt / SO.fhp) : 1;
-const soPhase = () => { const l = soLeft(); let p = 0; for (let i = 1; i < SO_PH.length; i++) if (l < SO_PH[i].at) p = i; return p; };
+const soPhase = () => { const l = soLeft(); let p = 0; const P = soD().ph; for (let i = 1; i < P.length; i++) if (l < P[i].at) p = i; return p; };
 // the way the camera (and so the crosshair) faces, as a facing angle
 const soCamFace = () => SO.cam.cy + Math.PI;
-const soSpeed = () => SO_PH[soPhase()].sp;
+const soSpeed = () => soD().ph[soPhase()].sp * (SO.spX || 1);
 function soPct() { const s = SO.shared; return s ? Math.max(0, (s.left - SO.dealt) / s.hp) : 1; }
 const soDist = (a, b) => Math.hypot(a.x - b.x, a.z - b.z);
 const soAng = d => Math.atan2(Math.sin(d), Math.cos(d));
@@ -352,7 +371,7 @@ function soStep(dt) {
   const M = SO.me, B = SO.B, K = SO.keys, P = SO.P, C = SO_C;
   SO.time += dt; if (SO.time >= SO_TIME) { soEnd('time'); return; }
   const sec = Math.floor(SO.time) !== Math.floor(SO.time - dt);
-  for (const k of ['drowsy', 'emp', 'rally']) if (M[k] > 0) M[k] -= dt;
+  for (const k of ['drowsy', 'emp', 'rally', 'frozen', 'slow']) if (M[k] > 0) M[k] -= dt;
   if (M.comboT > 0) { M.comboT -= dt; if (M.comboT <= 0) M.combo = 0; }
   if (M.chainT > 0) { M.chainT -= dt; if (M.chainT <= 0) M.chain = 0; }
   if (sec && Math.floor(SO.time) % 4 === 0) { if (P.g?.rg) soHeal(P.g.rg, ''); if (P.cls === 'bard') soHeal(P.max * .02, ''); }
@@ -369,7 +388,7 @@ function soStep(dt) {
   if (fw || stf) { const c = Math.cos(cy), s = Math.sin(cy); mx = -s * fw + c * stf; mz = -c * fw - s * stf; const l = Math.hypot(mx, mz); mx /= l; mz /= l; }
   const moving = !!(fw || stf), busy = M.act && M.act.k !== 'roll';
   const sprint = moving && K.shift && !M.block && !busy && !SO.aim && M.st > 1 && M.ground;
-  const top = (M.block ? 1.8 : sprint ? C.sprint : SO.aim ? C.jog * .55 : C.jog) * (M.drowsy > 0 ? .65 : 1) * (busy ? (M.act.k === 'potion' ? .2 : .15) : 1);
+  const top = (M.block ? 1.8 : sprint ? C.sprint : SO.aim ? C.jog * .55 : C.jog) * (M.drowsy > 0 ? .65 : 1) * (M.slow > 0 ? .55 : 1) * (M.frozen > 0 ? 0 : 1) * (busy ? (M.act.k === 'potion' ? .2 : .15) : 1);
   if (sprint) { M.st -= C.st.sprint * dt; M.rest = C.st.wait; }
   M.rest = Math.max(0, M.rest - dt);
   if (M.rest <= 0 && !M.block && !M.act) M.st = Math.min(C.st.max, M.st + C.st.regen * (M.drowsy > 0 ? .5 : 1) * dt);
@@ -384,12 +403,12 @@ function soStep(dt) {
   // jumping
   M.jumpBuf = Math.max(0, M.jumpBuf - dt);
   if (M.ground) M.air = 0; else M.air += dt;
-  if (M.jumpBuf > 0 && (M.ground || M.air < C.coyote) && !M.act && M.st >= C.st.jump * .5) { M.vy = C.jump; M.ground = false; M.air = C.coyote; M.jumpBuf = 0; M.st -= C.st.jump; M.rest = C.st.wait; soSnd('g_armour', M, { gap: 150 }); }
+  if (M.jumpBuf > 0 && (M.ground || M.air < C.coyote) && !M.act && !(M.frozen > 0) && M.st >= C.st.jump * .5) { M.vy = C.jump; M.ground = false; M.air = C.coyote; M.jumpBuf = 0; M.st -= C.st.jump; M.rest = C.st.wait; soSnd('g_armour', M, { gap: 150 }); }
   if (!M.ground) { M.vy -= C.grav * dt; M.y += M.vy * dt; if (M.y <= 0) { M.y = 0; M.vy = 0; M.ground = true; M.land = .25; soSnd('g_armour', M, { gap: 150 }); } }
   if (M.land > 0) M.land -= dt;
   // the arena edge and the Golem's body push you back
   const r = Math.hypot(M.x, M.z); if (r > SO_ARENA) { M.x *= SO_ARENA / r; M.z *= SO_ARENA / r; }
-  const db = soDist(M, B); if (db < SO_BR && B.state !== 'roll' && B.state !== 'charge' && B.state !== 'air' && M.y < 2) { const k = SO_BR / Math.max(.01, db); M.x = B.x + (M.x - B.x) * k; M.z = B.z + (M.z - B.z) * k; }
+  const BR = soD().br, db = soDist(M, B); if (db < BR && B.state !== 'roll' && B.state !== 'charge' && B.state !== 'air' && M.y < 2) { const k = BR / Math.max(.01, db); M.x = B.x + (M.x - B.x) * k; M.z = B.z + (M.z - B.z) * k; }
   soBossStep(dt);
   soHazStep(dt);
   soProjStep(dt);
@@ -407,7 +426,7 @@ const SO_ACTS = {
   potion: { dur: 1.3 }, // you stand still and drink: a hit before it goes down spills it
 };
 function soAct(k) {
-  const M = SO.me, A = SO_ACTS[k]; if (!SO || SO.over || SO.paused || !A) return;
+  const M = SO.me, A = SO_ACTS[k]; if (!SO || SO.over || SO.paused || !A || M.frozen > 0) return;
   // you can roll out of an attack's tail, and attack or roll again from a roll's get-up
   // 2.87: a roll's get-up can only turn into an attack, not straight into another roll
   const cancel = M.act && ((k === 'roll' && M.act.k !== 'roll' && M.act.k !== 'stagger' && M.act.k !== 'potion' && M.actT > .12) || (M.act.k === 'roll' && k !== 'potion' && k !== 'roll' && M.actT > SO_C.roll.free));
@@ -432,7 +451,7 @@ function soAct(k) {
   } else if (k === 'light' || k === 'heavy') {
     if (k === 'light') { const L = CB.light.length; M.act.n = M.chain % L; M.chain++; M.chainT = M.act.n === L - 1 ? 0 : def.dur + SO_C.chain; if (M.act.n === L - 1) M.chain = 0; }
     M.face = soCamFace(); // you strike where the camera faces: no turning towards the Golem for you
-    if (def.lunge && soDist(M, SO.B) > SO_BR + 1) M.lunge = { left: def.lunge, t: .18 };
+    if (def.lunge && soDist(M, SO.B) > soD().br + 1) M.lunge = { left: def.lunge, t: .18 };
     SO.trail?.reset();
   }
   else if (k === 'potion') M.act.healed = 0;
@@ -451,7 +470,7 @@ function soActStep(M, dt) {
   if (M.actT >= dur) M.act = null;
 }
 function soSwing(a, A) {
-  const M = SO.me, B = SO.B, d = soDist(M, B) - SO_BR + .3, ang = Math.abs(soAng(Math.atan2(B.x - M.x, B.z - M.z) - M.face));
+  const M = SO.me, B = SO.B, d = soDist(M, B) - soD().br + .3, ang = Math.abs(soAng(Math.atan2(B.x - M.x, B.z - M.z) - M.face));
   const s = SO.P.s, base = (3 + (s.str || 5) * .04 + (s.agi || 5) * .02) * (A.m || 1);
   if (A.bolt) { soBolt({ n: base * SO.pow, size: A.bolt, school: 'staff' }); return; }
   soSnd('g_swish', M, { gap: 40 }); if (a.k === 'heavy') soSnd('g_grunt', M, { gap: 300 });
@@ -462,6 +481,7 @@ function soSwing(a, A) {
 }
 // is a hit on a weak point? the back crystal (you're behind it) or its fists while they're stuck in the floor
 function soWeakSpot() {
+  if (soD().weak) return soD().weak();
   const M = SO.me, B = SO.B, behind = Math.abs(soAng(Math.atan2(M.x - B.x, M.z - B.z) - B.face)) > 2.1;
   return B.stuck > 0 || behind;
 }
@@ -477,15 +497,17 @@ function soHit(n, o = {}) {
   // 2.88: outside its openings the stone barely notices you (a twentieth of the damage); in them, you hit harder
   const armour = !o.dot && !soOpenNow(); mult *= armour ? .05 : 1.25; SO.lastArm = armour;
   if (B.mark > 0) mult *= 1.25;
+  if (soD().mult) mult *= soD().mult(o, armour);
   if (M.emp > 0) mult *= 1.3;
   if (M.rally > 0) mult *= 1.3;
   if (M.buff > 1 && !o.dot) { mult *= M.buff; M.buff = 1; }
   if (!o.dot && !armour) { M.combo++; M.comboT = 3.5; SO.stats.combo = Math.max(SO.stats.combo, M.combo); }
-  if (armour && !SO.armSeen) { SO.armSeen = 1; soPop('🪨 Armoured: hits barely scratch it. Strike when it glows, after its attacks', 'bad'); }
+  if (armour && !SO.armSeen) { SO.armSeen = 1; soPop(soD().armTxt, 'bad'); }
   mult *= 1 + Math.min(.6, Math.max(0, M.combo - 1) * .04);
   n = Math.max(1, Math.round(n * mult));
   SO.dealt += n; SO.stats.hits++; if (weak) SO.stats.weak++;
   if (!o.dot) B.greed.push(SO.time);
+  soD().onHit?.(armour, o);
   SO.gol.flash = armour ? 0 : .12; if (weak && !armour) SO.gol.flinch = 1;
   soNum(n, armour ? 'arm' : weak ? 'weak' : crit ? 'crit' : '');
   if (weak && !armour && !SO.weakSeen) { SO.weakSeen = 1; soPop('💥 Weak point!', 'good'); }
@@ -497,7 +519,7 @@ function soHeal(n, label) { const P = SO.P, got = Math.min(Math.round(n), P.max 
 // ---------- the hotbar: every equipped skill ----------
 const soSkCd = s => 4 + (s.cd || 0) * 3; // seconds
 function soSkill(i) {
-  const s = SO?.P?.sk[i], M = SO?.me; if (!s || SO.over || SO.paused || M.act) return;
+  const s = SO?.P?.sk[i], M = SO?.me; if (!s || SO.over || SO.paused || M.act || M.frozen > 0) return;
   if ((SO.hotCd[s.id] || 0) > SO.time) return;
   if (M.st < SO_C.st.skill) { soPop('😮‍💨 No stamina', 'bad'); return; }
   M.st -= SO_C.st.skill; M.rest = SO_C.st.wait; SO.hotCd[s.id] = SO.time + soSkCd(s);
@@ -535,7 +557,7 @@ function soBody() {
   const B = SO.B, G = SO.gs, v = new THREE.Vector3();
   if (!G) return { parts: [{ x: B.x, y: 2.6 + B.y, z: B.z, r: 1.9, n: 'body' }], crystal: null };
   G.root.updateMatrixWorld(true);
-  const parts = SO_HITB.map(([n, r]) => { v.setFromMatrixPosition(G.bone(n).matrixWorld); return { x: v.x, y: v.y, z: v.z, r, n }; });
+  const parts = (soD().hitb || SO_HITB).map(([n, r]) => { v.setFromMatrixPosition(G.bone(n).matrixWorld); return { x: v.x, y: v.y, z: v.z, r, n }; });
   v.setFromMatrixPosition(G.crystal.matrixWorld);
   return { parts, crystal: { x: v.x, y: v.y, z: v.z, r: .9 } };
 }
@@ -568,6 +590,7 @@ function soProjStep(dt) {
       if (b.crystal && near(b.crystal)) { hitPart = b.crystal; weak = true; }
       else hitPart = b.parts.find(near) || null;
       if (hitPart && !weak && B.stuck > 0 && /hand/.test(hitPart.n)) weak = true; // its fists stuck in the floor
+      if (hitPart && !weak && soD().weakBone?.(hitPart.n)) weak = true; // 2.95: a boss's own weak part (Morrow's hourglass)
     }
     const gone = p.t > 1.6 || p.y < 0 || Math.hypot(p.x, p.z) > 17;
     if (hitPart || gone) {
@@ -591,11 +614,12 @@ function soProjStep(dt) {
 // 2.88: it can only really be hurt in its openings: straight after an attack (not between the hits of a combo),
 // while it pants after a long combo, when it's staggered, or while its fists are stuck in the floor.
 // Anywhere else your hits barely scratch the stone.
-const soOpenNow = () => { const B = SO.B; return B.state === 'down' || B.stag > 0 || B.stuck > 0 || B.state === 'tired' || (B.state === 'recover' && !B.guard); };
+const soOpenNow = () => { const B = SO.B; if (soD().open) return soD().open(); return B.state === 'down' || B.stag > 0 || B.stuck > 0 || B.state === 'tired' || (B.state === 'recover' && !B.guard); };
 // what each move can lead into when it chains (picked at random, each with its own tempo)
 const SO_FOL = { punch: ['punch', 'sweep', 'slam', 'stomp', 'spin'], sweep: ['slam', 'punch', 'stomp', 'spin', 'sweep'], slam: ['punch', 'sweep', 'slam', 'stomp'], stomp: ['punch', 'slam', 'sweep', 'charge'],
   spin: ['slam', 'punch', 'stomp'], charge: ['slam', 'sweep', 'stomp', 'spin'], throw: ['charge', 'throw', 'leap'], march: ['sweep', 'spin'], leap: ['sweep', 'stomp', 'spin'], shrug: ['punch', 'slam'] };
 function soBossStep(dt) {
+  if (soD().step) return soD().step(dt);
   const B = SO.B, M = SO.me, ph = soPhase(), sp = soSpeed();
   // a new phase: it stops whatever it was doing and roars (the shout knocks back anyone close)
   if (ph !== SO.lastPh) {
@@ -890,6 +914,7 @@ function soHurtBy(mv) {
   M.combo = 0; M.comboT = 0;
   if (M.block) { if (typeof sfx === 'function') sfx('clank', { gap: 60 }); }
   else if (P.hp > 0) soGrunt(n / P.max); // 2.88: no more yell; a grunt that gets heavier with the damage (the fall has its own)
+  soD().onHurt?.(mv, n);
   return true;
 }
 // your hurt grunt: a light breath, a solid grunt with a thump, or a winded groan under a crushing hit
@@ -934,7 +959,7 @@ function soImpact(pow = 1, at = null, magic = false) {
   const M = SO.me, B = SO.B;
   SO.stop = Math.min(.11, .045 + .03 * pow); SO.kick = Math.min(1, .45 * pow); SO.kickY = .22; SO.shake = Math.max(SO.shake || 0, .05 * pow);
   if (!at) { // the Golem's side that faces you, at the weapon's height
-    const d = Math.max(.01, soDist(M, B)), r = SO_BR - .5, tip = SO.H?.tip('r');
+    const d = Math.max(.01, soDist(M, B)), r = soD().br - .5, tip = SO.H?.tip('r');
     at = new THREE.Vector3(B.x + (M.x - B.x) / d * r, Math.max(1, Math.min(3.4, tip ? tip.y : 1.8)), B.z + (M.z - B.z) / d * r);
   }
   if (SO.lastArm) { // 2.88: bounced off the stone: a quick blue-grey glint, hardly a pause
@@ -1009,11 +1034,12 @@ const SO_CINE = { eyes: 3.2, stand: 3.7, roar: 5, title: 5.6, bar: 7.6, back: 8.
 function soCineDraw() {
   const ov = document.getElementById('soov'); if (!ov) return;
   ov.classList.add('cine');
-  ov.insertAdjacentHTML('beforeend', `<div class="so-cine"><div class="so-fade"></div><div class="so-flash"></div><div class="so-title"><b>${esc(SO_TITLE)}</b><i></i></div>${SO.cine.skip ? '<small class="so-skip">Press any key to skip</small>' : ''}</div>`);
+  ov.insertAdjacentHTML('beforeend', `<div class="so-cine"><div class="so-fade"></div><div class="so-flash"></div><div class="so-title"><b>${esc(soD().title)}</b><i></i></div>${SO.cine.skip ? '<small class="so-skip">Press any key to skip</small>' : ''}</div>`);
 }
 function soCineStep(dt) {
-  const C = SO.cine, B = SO.B, G = SO.gs, T = SO_CINE, was = C.t; C.t += dt;
+  const C = SO.cine, B = SO.B, G = SO.gs, D = soD(), T = D.cineT || SO_CINE, was = C.t; C.t += dt;
   const at = k => was < k && C.t >= k;
+  if (D.cine) D.cine(C, at, dt); else { // 2.95: a boss with its own intro runs its own events; the overlay below is shared
   if (at(.3) || at(1.9)) soSnd('g_snore', B);
   // 2.88: the torches round the hall flare up one by one as the camera passes, then the braziers by its bed
   (SO.torches || []).forEach((tc, i) => { if (!tc.big && at(.45 + i * .28)) soTorchLight(tc); if (tc.big && at(T.eyes - .45 + (i % 2) * .12)) soTorchLight(tc, 1.4); });
@@ -1029,6 +1055,7 @@ function soCineStep(dt) {
   if (at(T.title)) { soSnd('g_title', null); SO.shake = Math.max(SO.shake, .35); }
   if (at(T.roar + 1.6)) B.state = 'wake';
   if (G) { const k = Math.max(0, Math.min(1, (C.t - T.eyes) / .6)); G.eyes.forEach(e => e.material.emissiveIntensity = 1.4 * k); }
+  }
   // the roar's ring only shows; it can't hurt you in the intro
   SO.rings = SO.rings.filter(w => { if (!w.cine) return true; w.r += w.v * dt; w.m.scale.setScalar(w.r); w.m.material.opacity = Math.max(0, .6 - w.r / 30); if (w.r > 20) { SO.S.remove(w.m); w.m.geometry.dispose(); return false; } return true; });
   const ov = document.getElementById('soov');
@@ -1045,15 +1072,16 @@ function soCineEnd() {
   if (!SO?.cine) return;
   SO.cine = null; SO.B.state = 'idle'; SO.B.t = .8; SO.shake = 0;
   (SO.torches || []).forEach(tc => { tc.lit = 1; });
-  if (SO.gs) SO.gs.eyes.forEach(e => e.material.emissiveIntensity = 1.4);
+  if (soD().cineEnd) soD().cineEnd(); else if (SO.gs) SO.gs.eyes.forEach(e => e.material.emissiveIntensity = 1.4);
   SO.rings = SO.rings.filter(w => { if (w.cine) { SO.S.remove(w.m); w.m.geometry.dispose(); } return !w.cine; });
   const ov = document.getElementById('soov'); ov?.querySelector('.so-cine')?.remove(); ov?.classList.remove('cine'); ov?.classList.add('bar-in');
-  const st = ftState(); if (!st.soIntroSeen) { st.soIntroSeen = 1; save(); }
+  const st = ftState(); if (!soSeen()) { if (soD().key === SO_BOSS) st.soIntroSeen = 1; else (st.soSeen = st.soSeen || {})[soD().key] = 1; save(); }
   SO.t = performance.now(); SO.acc = 0;
   soHudDraw(); if (typeof sfx === 'function') sfx('start');
 }
 // where the intro camera is: round the sleeping Golem, up to its face for the roar, then back behind you
 function soCineCam(cam) {
+  if (soD().cineCam) return soD().cineCam(cam);
   const C = SO.cine, B = SO.B, T = SO_CINE, t = C.t, look = new THREE.Vector3(B.x, 2.6, B.z);
   let pos;
   if (t < T.eyes) { const k = t / T.eyes, a = .9 - k * 1.5, r = 10 - k * 2.5; pos = new THREE.Vector3(B.x + Math.sin(a) * r, 2 + k * 1.2, B.z + Math.cos(a) * r); }
@@ -1137,7 +1165,7 @@ function soAnim(dt) {
   else if (M.sp < 2.2) H.play('Walking_A', { speed: Math.max(.7, M.sp / 1.7) });
   else if (M.sp < (SO_C.jog + SO_C.sprint) / 2) H.play('Running_A', { speed: M.sp / SO_C.jog });
   else H.play('Running_B', { speed: M.sp / SO_C.sprint * 1.05 });
-  H.update(dt);
+  H.update(dt * (M.frozen > 0 ? .02 : M.slow > 0 ? .55 : 1)); // 2.95: frozen or slowed in time (Morrow)
 }
 function soDraw(t, dt) {
   if (!SO.R || !SO.S) return;
@@ -1148,7 +1176,7 @@ function soDraw(t, dt) {
   soFxStep(dt);
   // the Golem
   const R = G.root; R.position.set(B.x, B.y, B.z); R.rotation.y = B.face + (B.spinT > 0 ? (1 - B.spinT / .42) * Math.PI * 2 : 0);
-  if (SO.gs) sgAnim(dt, t); else {
+  if (soD().anim) soD().anim(dt, t); else if (SO.gs) sgAnim(dt, t); else {
   const b = G.body, arms = G.arms, wb = Math.sin(t * 3);
   b.rotation.set(0, 0, 0); b.position.y = 2.6; G.head.rotation.set(0, 0, 0);
   arms.forEach(A => { A.sh.rotation.set(0, 0, A.s * .15); }); G.legs.forEach(L => { L.rotation.x = 0; });
@@ -1177,7 +1205,7 @@ function soDraw(t, dt) {
   if (G.flinch > 0) { G.flinch = Math.max(0, G.flinch - dt * 4); b.rotation.x -= Math.sin(G.flinch * Math.PI) * .22; G.head.rotation.x -= G.flinch * .3; }
   if (G.flash > 0) { G.flash -= .016; G.root.traverse(o => { if (o.isMesh && !o.userData.glow && !G.arms.some(A => A.fist === o)) o.material.emissive.set(G.flash > 0 ? '#664433' : '#000000'); }); }
   }
-  SO.fx = SO.fx.filter(e => { e.t += .016; const p = e.t / .6; if (p >= 1) { SO.S.remove(e.m); e.m.geometry.dispose(); return false; } e.m.position.set(e.x + Math.cos(e.a) * p * e.s * 1.6, .4 + Math.sin(p * 3) * 1.2, e.z + Math.sin(e.a) * p * e.s * 1.6); e.m.material.opacity = 1 - p; return true; });
+  SO.fx = SO.fx.filter(e => { if (e.arc) return true; e.t += .016; const p = e.t / .6; if (p >= 1) { SO.S.remove(e.m); e.m.geometry.dispose(); return false; } e.m.position.set(e.x + Math.cos(e.a) * p * e.s * 1.6, .4 + Math.sin(p * 3) * 1.2, e.z + Math.sin(e.a) * p * e.s * 1.6); e.m.material.opacity = 1 - p; return true; });
   soTorchStep(dt, t); soAmbStep(dt);
   if (SO.cine) { soCineCam(cam); SO.R.render(SO.S, cam); soHudTick(); return; }
   // the camera over your shoulder, free (no lock-on); it pulls in rather than going through the Golem or the wall
@@ -1204,7 +1232,7 @@ function soDraw(t, dt) {
 function soNum(n, cls) {
   const el = document.createElement('div'); el.className = 'sonum ' + cls; el.textContent = (cls === 'me' ? '-' : '') + n + (cls === 'weak' ? ' 💥' : cls === 'crit' ? '!' : '');
   document.getElementById('soov')?.appendChild(el);
-  const B = SO.B, M = SO.me, w = cls === 'me' ? { x: M.x, y: 2.2 + M.y, z: M.z } : { x: B.x + (Math.random() - .5) * 1.4, y: 4 + B.y + Math.random(), z: B.z };
+  const B = SO.B, M = SO.me, w = cls === 'me' ? { x: M.x, y: 2.2 + M.y, z: M.z } : { x: B.x + (Math.random() - .5) * 1.4, y: (soD().numY || 4) + B.y + Math.random(), z: B.z };
   SO.nums.push({ el, w, t: 0 });
 }
 function soPop(text, cls) {
@@ -1221,12 +1249,13 @@ function soOverlay() {
 }
 const SO_KEYS = '<span><kbd>W A S D</kbd> move</span><span><kbd>Mouse</kbd> look</span><span>hold <kbd>Right click</kbd> aim</span><span><kbd>Shift</kbd> sprint</span><span><kbd>Space</kbd> jump</span><span><kbd>Ctrl</kbd> roll</span><span><kbd>F</kbd> block</span><span><kbd>Left click</kbd> attack</span><span>hold <kbd>Left</kbd> heavy</span><span><kbd>1-9</kbd> skills</span><span><kbd>R</kbd> potion</span><span><kbd>Esc</kbd> pause</span>';
 function soIntroDraw() {
-  const ov = soOverlay(), k = SO.kind, st = ftState(), pb = (st.soPb || {})[SO_BOSS] || 0;
+  const ov = soOverlay(), k = SO.kind, st = ftState(), pb = (st.soPb || {})[soD().key] || 0, D = soD(), keys = Object.keys(SO_DEFS);
   ov.innerHTML = `<div class="so-intro"><div class="so-card">
     <div class="so-kicker">${k === 'bonus' ? 'BONUS FIGHT · DAMAGE RACE' : k === 'test' ? 'TEST FIGHT · OWNER ONLY' : 'WEEKLY WARBAND · DAMAGE RACE'}</div>
-    <h2>${esc(SO_TITLE)}</h2><p class="so-sub">${esc(SO_LORE)}</p>
+    ${k === 'test' && keys.length > 1 ? `<div class="seg so-pick">${keys.map(x => `<button class="${x === D.key ? 'on' : ''}" data-so="pick" data-b="${esc(x)}">${esc(SO_DEFS[x].name)}</button>`).join('')}</div>` : ''}
+    <h2>${esc(D.title)}</h2><p class="so-sub">${esc(D.lore)}</p>
     <p>${k === 'bonus' ? `An extra fight for ${SO_BONUS.l} ${LUMEN} and ${SO_BONUS.e} ${EMBER} (${soBonusLeft()} left today).` : k === 'test' ? 'Free test fight: no attempt used and nothing goes on the bar.' : `Uses one of your weekly fights (${ftAttempts().left} left).`} <b>3 minutes, one life: deal as much damage as you can.</b> Everything you hit goes on your house's shared bar. Dying just ends the run early.</p>
-    <p class="so-tips">It is fast and it hits hard: two or three mistakes and you're down, and you have ${SO_POTS} potions. Strike in the openings after its attacks. Rolls are short and costly, so time them. Hold right click to aim: spells fly exactly where the crosshair points, and the crystal on its back is a weak point. Esc shows the controls.</p>
+    <p class="so-tips">${esc(D.tips)}</p>
     ${pb ? `<p class="muted small-text">Your best: ${pb.toLocaleString()} damage · power ×${soPower().toFixed(2)} from your level and gear</p>` : `<p class="muted small-text">Power ×${soPower().toFixed(2)} from your level and gear</p>`}
     <div class="so-btns"><button class="btn primary" data-so="go">⚔️ Fight</button><button class="btn ghost" data-so="cancel">Not now</button></div></div></div>`;
 }
@@ -1234,7 +1263,7 @@ function soHudDraw() {
   const ov = soOverlay(); if (!SO || SO.intro) return;
   ov.querySelector('.so-hud')?.remove(); ov.querySelector('.so-end')?.remove();
   const hud = document.createElement('div'); hud.className = 'so-hud';
-  hud.innerHTML = `<div class="so-boss"><div class="so-bn">${esc(SO_TITLE)} <span class="so-ph"></span><b class="so-open">EXPOSED</b></div><div class="so-bar"><i class="so-bhp"></i></div><div class="so-bsub"></div></div>
+  hud.innerHTML = `<div class="so-boss"><div class="so-bn">${esc(soD().title)} <span class="so-ph"></span><b class="so-open">EXPOSED</b></div><div class="so-bar"><i class="so-bhp"></i></div><div class="so-bsub"></div></div>
     <div class="so-dmg"><small>Your damage</small><b>0</b><span class="so-combo"></span></div>
     <div class="so-ptime"></div><div class="so-cross ${SO.aim ? 'aim' : ''}"><i></i><i></i><i></i><i></i></div><div class="so-pops"></div>
     <div class="so-me"><div class="so-hp"><i></i><span></span></div><div class="so-st"><i></i></div><div class="so-chips"></div></div>
@@ -1252,7 +1281,7 @@ function soResultHtml() {
     const f = hsFight(hs.id), rows = f.rows.filter(x => (x.d || 0) > 0).slice(0, 5);
     if (rows.length) top = `<div class="so-top"><div class="ftlbl">${esc(hsHouse(hs.id)?.name || 'House')} top hitters this week</div><ol>${rows.map((x, i) => `<li class="${x.me ? 'me' : ''}"><span>${['🥇', '🥈', '🥉'][i] || i + 1 + '.'}</span><span>${x.me ? 'You' : esc(x.name)}</span><b>${(x.d || 0).toLocaleString()}</b></li>`).join('')}</ol></div>`;
   }
-  return `<div class="so-card so-res"><h2>${{ dead: 'YOU DIED', time: 'TIME', win: 'COLOSSUS FELLED', felled: 'COLOSSUS FELLED', quit: 'Fight ended' }[r.how]}</h2>
+  return `<div class="so-card so-res"><h2>${{ dead: 'YOU DIED', time: 'TIME', win: soD().felled, felled: soD().felled, quit: 'Fight ended' }[r.how]}</h2>
     <div class="so-big"><b>${dealt.toLocaleString()}</b><small>damage in ${Math.floor(t / 60)}:${String(Math.floor(t % 60)).padStart(2, '0')}</small></div>
     ${r.pb ? `<p class="so-pb">${r.pb.isNew ? `🏅 New personal best!${r.pb.old ? ` (was ${r.pb.old.toLocaleString()})` : ''}` : `Personal best: ${r.pb.now.toLocaleString()}`}</p>` : ''}
     <div class="so-stats"><span>🔗 Best combo <b>${S.combo}</b></span><span>💥 Weak hits <b>${S.weak}</b></span><span>✨ Perfect dodges <b>${S.perfect}</b></span><span>🛡️ Perfect guards <b>${S.guards}</b></span><span>🧪 Potions <b>${S.pots}/${SO_POTS}</b></span></div>
@@ -1265,10 +1294,10 @@ function soHudTick() {
   const pct = soPct(), ph = soPhase(), left = soLeft();
   // the big bar is this fight's own (phases at 70/40/15%); the house's weekly bar is the small line under it
   if (q('.so-bhp')) q('.so-bhp').style.width = (left * 100) + '%';
-  const open = soOpenNow(), tag = B.stuck > 0 ? ' · fists stuck: weak point' : B.state === 'tired' ? ' · exhausted: hit it now' : open ? ' · exposed' : ' · armoured';
+  const open = soOpenNow(), tag = soD().tag ? soD().tag(open) : B.stuck > 0 ? ' · fists stuck: weak point' : B.state === 'tired' ? ' · exhausted: hit it now' : open ? ' · exposed' : ' · armoured';
   q('.so-boss')?.classList.toggle('open', open);
   if (q('.so-bsub')) q('.so-bsub').textContent = (SO.shared ? `House bar ${Math.round(pct * 100)}%` : 'Test fight') + tag;
-  if (q('.so-ph')) q('.so-ph').textContent = ph ? '· ' + SO_PH[ph].n : '';
+  if (q('.so-ph')) q('.so-ph').textContent = ph ? '· ' + soD().ph[ph].n : '';
   if (q('.so-dmg b')) q('.so-dmg b').textContent = Math.round(SO.dealt).toLocaleString();
   const cm = M.combo > 1 ? `🔗 ${M.combo} hits +${Math.round(Math.min(.6, (M.combo - 1) * .04) * 100)}%` : '';
   if (q('.so-combo') && q('.so-combo').textContent !== cm) q('.so-combo').textContent = cm;
@@ -1285,9 +1314,10 @@ function soHudTick() {
   if (q('.so-st i')) { q('.so-st i').style.width = Math.max(0, M.st) + '%'; q('.so-st').classList.toggle('low', M.st < SO_C.st.light); }
   if (q('.so-potn')) q('.so-potn').textContent = `${M.pots} left`;
   q('.so-pot')?.classList.toggle('cd', M.pots <= 0);
-  const chips = [M.drowsy > 0 && '😴 Drowsy', M.emp > 0 && '✨ +30%', M.rally > 0 && '🎻 Rally', M.buff > 1 && '♟️ ×2 ready', M.reveal > 0 && `📖 ×${M.reveal}`, M.block && '🛡️ Blocking'].filter(Boolean).join(' · ');
+  const chips = [M.drowsy > 0 && '😴 Drowsy', M.emp > 0 && '✨ +30%', M.rally > 0 && '🎻 Rally', M.buff > 1 && '♟️ ×2 ready', M.reveal > 0 && `📖 ×${M.reveal}`, M.block && '🛡️ Blocking', M.frozen > 0 && '⏳ Frozen in time', M.slow > 0 && '🐢 Slowed', ...(soD().chips?.() || [])].filter(Boolean).join(' · ');
   if (q('.so-chips') && q('.so-chips').textContent !== chips) q('.so-chips').textContent = chips;
   ov.querySelectorAll('.so-sk[data-i]').forEach(el => { const s = P.sk[+el.dataset.i], c = Math.max(0, (SO.hotCd[s.id] || 0) - SO.time); el.classList.toggle('cd', c > 0); el.querySelector('i').style.height = (c / soSkCd(s) * 100) + '%'; });
+  ov.classList.toggle('frozen', M.frozen > 0 || M.slow > 0);
   ov.classList.toggle('hurt', (SO.hurtT = (SO.hurtT || 0) - .016) > 0);
   const W = SO.canvas.clientWidth, H = SO.canvas.clientHeight, v = new THREE.Vector3();
   SO.nums = SO.nums.filter(n => { n.t += .016; if (n.t > 1) { n.el.remove(); return false; } v.set(n.w.x, n.w.y + n.t * 1.2, n.w.z).project(SO.cam3); n.el.style.transform = `translate(${(v.x + 1) / 2 * W}px, ${(1 - v.y) / 2 * H}px) translate(-50%, -50%)`; n.el.style.opacity = 1 - n.t * n.t; return true; });
@@ -1346,6 +1376,7 @@ document.addEventListener('click', e => {
   if (!SO) return;
   e.preventDefault();
   if (v === 'go') soStart();
+  else if (v === 'pick' && SO.intro) { SO.def = SO_DEFS[el.dataset.b] || SO.def; soIntroDraw(); }
   else if (v === 'cancel' || v === 'close') soClose();
   else if (v === 'resume') { SO.paused = false; soHudDraw(); }
   else if (v === 'quit') { SO.paused = false; soEnd('quit'); }
@@ -1362,7 +1393,7 @@ function biIdle(m, o = {}) {
     if (IS3.house !== 'boss' || view !== 'islands' || !IS3.canvas?.isConnected || !node()?.parent || hxLow()) return;
     const t = now / 1000, dt = BI_IDLE.last ? Math.min(.1, t - BI_IDLE.last) : 0, o = BI_IDLE.m; BI_IDLE.last = t;
     if (o) { o.position.y = BI_IDLE.y + Math.sin(t * 1.6) * .08; o.rotation.y = Math.sin(t * .5) * .25; o.rotation.z = Math.sin(t * .8) * .03; }
-    if (BI_IDLE.gs) { const G = BI_IDLE.gs; G.update(dt); G.cm.emissiveIntensity = 1 + Math.sin(t * 1.3) * .5; G.eyes.forEach(e => { e.material.emissiveIntensity = .3 + Math.max(0, Math.sin(t * .7)) * .25; }); }
+    if (BI_IDLE.gs) { const G = BI_IDLE.gs; G.update(dt); G.idle?.(t, dt); G.cm.emissiveIntensity = 1 + Math.sin(t * 1.3) * .5; G.eyes.forEach(e => { e.material.emissiveIntensity = .3 + Math.max(0, Math.sin(t * .7)) * .25; }); }
     for (const f of BI_IDLE.fires) { const n = Math.sin(t * 9 + f.ph) * .5 + Math.sin(t * 23 + f.ph) * .3; f.fl.scale.set(1 + n * .08, 1 + n * .22, 1 + n * .08); f.fl2.scale.setScalar(1 + n * .15); if (f.L) f.L.intensity = 2.2 * (1 + n * .18); }
     is3draw(); BI_IDLE.raf = requestAnimationFrame(tick);
   };

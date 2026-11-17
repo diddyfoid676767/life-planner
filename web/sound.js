@@ -57,6 +57,10 @@ const SFX_REC = {
   // 2.88: your hurt grunts by how hard you were hit (no more yell), torches flaring, the intro's riser and title hit, the hall shaking
   g_hurt: [['g_hurt0', 'g_hurt1'], .5], g_hurtm: [['g_hurtm0', 'g_hurtm1'], .6], g_hurth: [['g_hurth0', 'g_hurth1'], .7],
   g_fire: [['g_fire0', 'g_fire1'], .55], g_rise: [['g_rise'], .7], g_title: [['g_title'], .95], g_quake: [['g_quake'], .75],
+  // 2.95: Morrow, the Ever-Waiting (tools/fight-sfx-pack-295.sh): the great bell, the clock, its whispering voice, its blades
+  m_toll: [['m_toll'], 1], m_bell: [['m_bell0', 'm_bell1'], .7], m_tick: [['m_tick0', 'm_tick1'], .45], m_whisper: [['m_whisper0', 'm_whisper1'], .7],
+  m_roar: [['m_roar'], .95], m_blade: [['m_blade0', 'm_blade1', 'm_blade2'], .7], m_scrape: [['m_scrape'], .6], m_freeze: [['m_freeze'], .75],
+  m_sand: [['m_sand'], .55], m_blink: [['m_blink'], .7], m_crash: [['m_crash0', 'm_crash1'], .8],
 };
 const SFX_SURF = { grass: ['grass0', 'grass1', 'grass2', 'grass3', 'grass4'], stone: ['stone0', 'stone1', 'stone2', 'stone3', 'stone4'], wood: ['wood0', 'wood1', 'wood2', 'wood3', 'wood4'] };
 const SND_BUF = {}; let sndBufLoad = null;
@@ -199,7 +203,7 @@ function sfx(name, { gap = 0 } = {}) {
       // 2.83: recordings play only inside the Souls fight; everywhere else the old made-up sounds are back
       const R = document.body.classList.contains('souls-on') ? SFX_REC[name] : null, files = name === 'step' && SFX_SURF[o.surf] || R?.[0];
       if (R && sndPlay(c, files, R[1] * (o.vol ?? 1), name === 'hxtick' ? (o.f || 600) / 600 : o.rate || 1, o.pan || 0)) return;
-      if (name.startsWith('g_')) return; // fight-only recordings have no made-up stand-in
+      if (name.startsWith('g_') || name.startsWith('m_')) return; // fight-only recordings have no made-up stand-in
       if (SFX[name]) SFX[name](c, o);
     } finally { SND.k = 1; }
   } catch (e) { /* sound is never worth breaking the app for */ }
