@@ -509,8 +509,8 @@ if (typeof GUIDES === 'object') GUIDES.sieges = {
   end: () => { ui.isPanel = null; if (view === 'islands') render(); },
   steps: [
     { title: 'Sieges are here ⚔️', text: 'Houses can now go to war. The Champion calls a siege vote, everyone votes and picks a target, and volunteers march on the enemy island.', go: sgGuideHome, wait: 600 },
-    { title: 'The War room', go: sgGuideHome, text: 'Open ⚔️ <b>War</b> and press <b>War room</b> to vote, see the other houses\' strength, march when the siege window opens, and stand guard when another house attacks.', sel: '#isfull [data-hm="war"]' },
-    { title: 'Win and lose', go: sgGuideHome, text: 'A win takes loot from the other house\'s pool and damages up to 2 of its buildings. Losing costs the same. The Vault keeps some safe, and personal islands, balances and gear are never at risk.', sel: '#isfull [data-hm="war"]' },
+    { title: 'The War room', go: sgGuideHome, text: 'Open 🏰 <b>House</b> and press ⚔️ <b>War room</b> to vote, see the other houses\' strength, march when the siege window opens, and stand guard when another house attacks.', sel: '#isfull [data-hm="house"]' },
+    { title: 'Win and lose', go: sgGuideHome, text: 'A win takes loot from the other house\'s pool and damages up to 2 of its buildings. Losing costs the same. The Vault keeps some safe, and personal islands, balances and gear are never at risk.', sel: '#isfull [data-hm="house"]' },
   ],
 };
 // check for wars now and then, even when the house island isn't open
