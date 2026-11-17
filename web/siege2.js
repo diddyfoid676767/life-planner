@@ -1,5 +1,5 @@
 'use strict';
-/* Sieges, stage 2 (2.89.0): real wars between houses. Loaded after siege.js. Design: house-raids/plan.md.
+/* Sieges, stage 2 (2.90.0): real wars between houses. Loaded after siege.js. Design: house-raids/plan.md.
    Everything lives in each house's own document under b._sg (no rules change): a house only ever writes
    its own document, and reads the other houses' to see wars against it.
    - Siege vote (vt): the Champion calls it and pays a war chest from the pool. Active members vote yes or
@@ -108,8 +108,9 @@ function sgSnap(d) {
 
 // ---------- reading every house ----------
 async function sgScan(force) {
+  if (SGS.busy) { await SGS.p; if (!force) return; } // a forced scan waits for one already running, then reads again
   if (SGS.busy || (!force && Date.now() - SGS.at < SGW.scan * 1000)) return;
-  SGS.busy = true;
+  SGS.busy = true; let done; SGS.p = new Promise(r => { done = r; });
   try {
     const me = sgMyH(), out = {};
     await Promise.all(HS_HOUSES.map(async x => {
@@ -119,7 +120,7 @@ async function sgScan(force) {
     SGS.docs = out;
     try { const r = await fetch('/api/sieges', { cache: 'no-store' }); if (r.ok) SGS.cfg = Object.assign({ paused: false, cancel: [] }, await r.json()); } catch { }
     SGS.at = Date.now();
-  } finally { SGS.busy = false; }
+  } finally { SGS.busy = false; done(); }
 }
 // every war any house has declared: live ones (war) and finished ones (log)
 function sgWars() {
@@ -189,7 +190,9 @@ function sgTidy(d) {
 
 // ---------- the things only the passing of time does: close votes, end wars, take hits ----------
 async function sgSync(force) {
+  if (SGS.syncing && force) await SGS.syncP;
   if (SG_VIS || SGS.syncing || !HI.doc || !hsState().id || (!force && Date.now() - SGS.syncAt < 60000)) return;
+  let done; SGS.syncP = new Promise(r => { done = r; });
   SGS.syncing = true; SGS.syncAt = Date.now();
   try {
     await sgScan(force);
@@ -198,7 +201,7 @@ async function sgSync(force) {
     if (jobs.length) { await hiWrite(d => { let any = false; for (const j of sgJobs(d)) any = j(d) !== false || any; return any ? undefined : false; }, true, true); HX3.sig = ''; }
     sgNotify();
     if (view === 'islands' && ui.isTab === 'house') render();
-  } catch (e) { console.error(e); } finally { SGS.syncing = false; }
+  } catch (e) { console.error(e); } finally { SGS.syncing = false; done(); }
 }
 // what needs doing to the document d (each job changes d)
 function sgJobs(d) {

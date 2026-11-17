@@ -10,11 +10,17 @@
 // version since the last one they saw (up to 3). D.settings.seenVersion remembers what was last shown,
 // D.settings.guidesSeen which guides have played. A brand-new install never sees either.
 const CHANGELOG = [
-  { v: '2.89.0', guide: 'sieges', notes: [
+  { v: '2.90.0', guide: 'sieges', notes: [
     { t: '⚔️ Sieges are here: the Champion calls a siege vote, the house votes and picks a target, and war is declared with a day\'s warning', k: 'new' },
     { t: 'When the siege window opens, volunteers march on the enemy island: pick a side and a plan, then watch your character attack. Stars earn you Lumen, Ember and sometimes gear', k: 'new' },
     { t: 'Win and the house takes loot from the other house\'s pool and damages up to 2 of its buildings. Lose and it happens to you, so stand guard and repair', k: 'new' },
     { t: 'Open the ⚔️ War room on the house island to see every house\'s strength, the war log and replays of every attack', k: 'new' },
+  ] },
+  { v: '2.89.0', notes: [
+    { t: 'Islands have proper undersides now: chunky layered rock, roots and vines that sway, glowing crystals and drifting motes in the season\'s colours', k: 'new' },
+    { t: 'Waterfalls pour off the edge of your island where the river (or a pond) meets it', k: 'new' },
+    { t: 'Each island has its own look underneath: trailing roots under yours, stone spikes and a lantern on a chain under the house fortress (darker and spikier with the Stone fortress look), cracks and dripping lava under the boss island', k: 'new' },
+    { t: 'The islands in the distance look like the real thing: your buildings in miniature, the fortress with its walls, and housemates\' islands in their own look', k: 'new' },
   ] },
   { v: '2.88.0', guide: 'fortify', notes: [
     { t: 'Get the house island ready for sieges: the Architect and Warlord can shape the land with ⛰️ Shape. Forest slows attackers, cliffs and moats stop them, and towers on raised ground shoot further', k: 'new' },
