@@ -31,7 +31,7 @@
    on its back is a weak-point hit. A Dark Souls style intro, the timer floats over your head, and
    the fight has its own recorded sounds, placed left or right of you. */
 
-const SO_TIME = 180, SO_ARENA = 13.2, SO_BOSS = 'Snooze Golem', SO_ATT_CAP = 5000, SO_POTS = 2, SO_BR = 2.7;
+const SO_TIME = 180, SO_ARENA = 13.2, SO_BOSS = 'Snooze Golem', SO_ATT_CAP = 5000, SO_POTS = 2, SO_BR = 3.1;
 // SO_BOSS stays the old name: it's the key the house fights and your best are saved under. Players see these:
 const SO_NAME = 'Somnus', SO_TITLE = 'Somnus, the Sleeping Colossus', SO_LORE = 'An ancient stone giant that drags the world into endless sleep';
 const SO_BONUS = { l: 60, e: 60, day: 2 };
@@ -46,22 +46,28 @@ const SO_C = {
 // arc (radians either side), low = a jump clears it, ph = first phase it appears in
 // 2.87: about 60% quicker wind-ups and two to three times the damage of 2.86
 const SO_MV = {
-  punch: { n: 'Stone Fist', w: .33, d: .3, r: 4.4, arc: 1.1, open: .5 },
-  slam: { n: 'Hammerfall', w: .55, d: .55, r: 4.6, open: 1.25, weak: 1 },
-  sweep: { n: 'Earthsweep', w: .38, d: .3, r: 5.6, arc: 1.9, low: 1, open: .55 },
-  roll: { n: 'Boulder Roll', w: .5, d: .45, open: 1 },
-  wave: { n: 'Slumber Wave', w: .5, d: .18, low: 1, open: .3 },
-  shrug: { n: 'Shoulder Crush', w: .22, d: .22, r: 4, open: .4 },
-  alarm: { n: 'Falling Stones', w: .55, d: .28, r: 1.9, open: .25, ph: 1 },
-  march: { n: 'Tremor March', w: .32, d: .4, r: 3.4, open: 1.1, ph: 2, weak: 1 },
-  leap: { n: 'Colossal Leap', w: .65, d: .65, r: 4.2, open: 1.15, ph: 3, weak: 1 },
+  // 2.88: bigger and faster again (wind-ups about 15% quicker, a longer reach for a wider body), and five new moves
+  punch: { n: 'Stone Fist', w: .28, d: .3, r: 5, arc: 1.1, open: .55 },
+  slam: { n: 'Hammerfall', w: .48, d: .55, r: 5.1, open: 1.3, weak: 1 },
+  sweep: { n: 'Earthsweep', w: .33, d: .3, r: 6.2, arc: 1.9, low: 1, open: .6 },
+  roll: { n: 'Boulder Roll', w: .45, d: .45, open: 1 },
+  wave: { n: 'Slumber Wave', w: .45, d: .18, low: 1, open: .35 },
+  shrug: { n: 'Shoulder Crush', w: .2, d: .22, r: 4.5, open: .45 },
+  stomp: { n: 'Quake Stomp', w: .26, d: .26, r: 4.4, low: 1, open: .6 },
+  spin: { n: 'Ruin Spin', w: .3, d: .34, r: 5.6, open: .8 },
+  alarm: { n: 'Falling Stones', w: .5, d: .28, r: 1.9, open: .3, ph: 1 },
+  throw: { n: 'Boulder Throw', w: .42, d: .38, r: 2.2, open: .7, ph: 1 },
+  march: { n: 'Tremor March', w: .28, d: .4, r: 3.8, open: 1.15, ph: 2, weak: 1 },
+  charge: { n: 'Rampage', w: .36, d: .48, open: 1.1, ph: 2 },
+  leap: { n: 'Colossal Leap', w: .58, d: .65, r: 4.6, open: 1.2, ph: 3, weak: 1 },
+  quake: { n: 'Earthbreaker', w: .7, d: .5, r: 2.4, open: 1.6, ph: 3, weak: 1 },
   shock: { n: 'Shockwave', d: .25, low: 1 },
   roar: { n: 'Roar', d: .12, r: 5 },
 };
 // phases by this fight's own health bar (at = the share of it left), not by time
-const SO_PH = [{ at: 1, n: 'Stirring', sp: 1 }, { at: .7, n: 'Falling Stones', sp: 1.1 }, { at: .4, n: 'Awakened', sp: 1.22 }, { at: .15, n: 'Enraged', sp: 1.4 }];
+const SO_PH = [{ at: 1, n: 'Stirring', sp: 1.08 }, { at: .7, n: 'Falling Stones', sp: 1.2 }, { at: .4, n: 'Awakened', sp: 1.35 }, { at: .15, n: 'Enraged', sp: 1.55 }];
 // this fight's bar: about 110 of your light hits, so a strong run reaches the last phase and a great one fells it
-const SO_FHITS = 110;
+const SO_FHITS = 80; // 2.88: fewer, because only hits in its openings really count
 // each class fights its own way. A light combo is a list of swings (clicks chain them); hold for the heavy.
 // c clip, span part of the clip to play, dur seconds, hit times (s), m damage, st stamina, lunge metres,
 // bolt: a magic bolt flies at the Golem instead of a melee hit
@@ -124,18 +130,42 @@ async function soStart() {
   }
   if (house) { const f = hsFight(hsState().id); shared = { hp: f.hp, left: f.left }; }
   const base = 3 + ((P.s || {}).str || 5) * .04 + ((P.s || {}).agi || 5) * .02, pow = soPower();
-  Object.assign(SO, { intro: false, P, wk, shared, dealt: 0, time: 0, over: false, paused: false, keys: {}, hotCd: {}, nums: [], fx: [], tele: [], projs: [], rings: [], drops: [], parts: [], stop: 0, kick: 0, pow,
+  Object.assign(SO, { intro: false, P, wk, shared, dealt: 0, time: 0, over: false, paused: false, keys: {}, hotCd: {}, nums: [], fx: [], tele: [], projs: [], rings: [], drops: [], rocks: [], fis: [], parts: [], stop: 0, kick: 0, pow,
     fhp: Math.round(base * pow * SO_FHITS), aim: false, aimK: 0, atkId: 0,
     stats: { hits: 0, weak: 0, perfect: 0, guards: 0, combo: 0, pots: 0, hurt: 0 },
     me: { x: 0, z: 7, y: 0, vx: 0, vz: 0, vy: 0, ground: true, air: 0, jumpBuf: 0, face: Math.PI, sp: 0, st: SO_C.st.max, rest: 0, act: null, actT: 0, iFrom: -1, iTo: -1, rollAt: -9, blockAt: -9, block: false,
       emp: 0, buff: 1, rally: 0, reveal: 0, drowsy: 0, combo: 0, comboT: 0, chain: 0, chainT: 0, pots: SO_POTS, hold: null },
-    B: { x: 0, z: -5, y: 0, face: 0, state: 'sleep', t: 1.4, atk: null, queue: [], cool: {}, stag: 0, greed: [], mark: 0, dot: [], vy: 0, stuck: 0 },
+    B: { x: 0, z: -5, y: 0, face: 0, state: 'sleep', t: 1.4, atk: null, queue: [], cool: {}, stag: 0, greed: [], mark: 0, dot: [], vy: 0, stuck: 0, hist: [] },
     cam: { cy: 0, cp: .32, cd: 6.4 }, t: performance.now(), acc: 0 });
   document.querySelector('#soov .so-intro')?.remove();
   soScene();
   // the intro: it sleeps, wakes, stands and roars, then its name. Skippable once you've seen it.
   SO.cine = { t: 0, skip: !!ftState().soIntroSeen };
-  soHudDraw(); soCineDraw(); soLoop();
+  soHudDraw(); soCineDraw(); soLoop(); soAmbStart();
+}
+// 2.88: the hall's own sound, made live: a deep rumble that swells and fades, a low hum, and the crackle of the fires
+function soAmbStart() {
+  try {
+    const cfg = sndCfg(); if (!cfg.on || !cfg.vol || cfg.arena === false || cfg.ambience === false) return;
+    const c = sndCtx(); if (!c || !SND.noise || !SND.dry) return;
+    const g = c.createGain(); g.gain.value = 0; g.connect(SND.dry);
+    const n = c.createBufferSource(); n.buffer = SND.noise; n.loop = true; n.playbackRate.value = .5;
+    const lp = c.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 110; lp.Q.value = .8; const rg = c.createGain(); rg.gain.value = 1.4; n.connect(lp); lp.connect(rg); rg.connect(g);
+    const lfo = c.createOscillator(); lfo.frequency.value = .06; const lg = c.createGain(); lg.gain.value = .8; lfo.connect(lg); lg.connect(rg.gain);
+    const o = c.createOscillator(); o.type = 'sine'; o.frequency.value = 43; const og = c.createGain(); og.gain.value = .06; o.connect(og); og.connect(g);
+    const n2 = c.createBufferSource(); n2.buffer = SND.noise; n2.loop = true; const bp = c.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = 2400; bp.Q.value = .9; const cg = c.createGain(); cg.gain.value = .0001; n2.connect(bp); bp.connect(cg); cg.connect(g);
+    [n, n2, o, lfo].forEach(x => x.start());
+    g.gain.setValueAtTime(0, c.currentTime); g.gain.linearRampToValueAtTime(.5, c.currentTime + 3);
+    SO.amb = { c, g, src: [n, n2, o, lfo], cg };
+  } catch (e) { /* sound is never worth breaking the fight for */ }
+}
+function soAmbStep(dt) {
+  const A = SO.amb; if (!A) return;
+  try { if (Math.random() < dt * 16) { const t0 = A.c.currentTime; A.cg.gain.setValueAtTime(.03 + Math.random() * .09, t0); A.cg.gain.exponentialRampToValueAtTime(.0001, t0 + .02 + Math.random() * .06); } } catch (e) { }
+}
+function soAmbStop() {
+  const A = SO?.amb; if (!A) return; SO.amb = null;
+  try { const t0 = A.c.currentTime; A.g.gain.cancelScheduledValues(t0); A.g.gain.setValueAtTime(A.g.gain.value, t0); A.g.gain.linearRampToValueAtTime(0, t0 + .6); A.src.forEach(x => x.stop(t0 + .7)); setTimeout(() => A.g.disconnect(), 900); } catch (e) { }
 }
 function soEnd(how) {
   if (SO.over) return; SO.over = true; SO.aim = false;
@@ -150,13 +180,14 @@ function soEnd(how) {
   } else out.push('Test fight: no attempt used, nothing added to the bar, no reward.');
   SO.res = { how, out, pb };
   if (SO.H) SO.H.play(how === 'dead' ? 'Death_A' : 'Cheer', { loop: how !== 'dead', fade: .2 });
-  if (how === 'felled') { SO.B.state = 'down'; SO.B.t = 0; soClearTele(); soSnd('g_roar', SO.B, { rate: .8 }); }
+  if (how === 'felled') { SO.B.state = 'down'; SO.B.t = 0; SO.B.y = 0; SO.B.stag = 0; soClearTele(); soSnd('g_roar', SO.B, { rate: .8 }); }
   setTimeout(() => SO && soHudDraw(), how === 'dead' ? 1600 : how === 'felled' ? 2600 : 300);
-  if (how === 'dead') soSnd('g_pain', SO.me, { vol: 1.2 });
+  if (how === 'dead') soSnd('g_hurth', SO.me, { vol: 1.2, rate: .85 });
+  SO.rocks.forEach(r => { SO.S.remove(r.m); if (r.tm) SO.S.remove(r.tm); }); SO.rocks = []; SO.fis = [];
 }
 function soClose() {
   if (!SO) return;
-  cancelAnimationFrame(SO.raf); if (document.pointerLockElement) document.exitPointerLock();
+  cancelAnimationFrame(SO.raf); if (document.pointerLockElement) document.exitPointerLock(); soAmbStop();
   if (SO.H) SO.H.dispose(); if (SO.gs) SO.gs.dispose();
   if (SO.S) SO.S.traverse(o => { if (o.geometry) o.geometry.dispose(); if (o.isSprite) o.material.dispose(); });
   if (SO.R) { SO.R.dispose(); SO.R.forceContextLoss?.(); }
@@ -167,10 +198,11 @@ function soClose() {
 function soScene() {
   const R = SO.R = fxRenderer(), S = SO.S = new THREE.Scene(), low = hxLow();
   SO.canvas = R.domElement; SO.canvas.className = 'socanvas'; document.getElementById('soov').prepend(SO.canvas);
-  S.background = new THREE.Color('#0b0a1a'); S.fog = new THREE.Fog('#0b0a1a', 24, 62);
+  // 2.88: a much darker hall, lit by fire (see soTorches) and a thin shaft of moonlight
+  S.background = new THREE.Color('#06050b'); S.fog = new THREE.FogExp2('#0a0812', .026);
   SO.cam3 = new THREE.PerspectiveCamera(58, 1, .1, 200);
-  S.add(new THREE.HemisphereLight('#8f98d9', '#2a2238', .7));
-  const moon = new THREE.DirectionalLight('#b9c6ff', 1.05); moon.position.set(-8, 26, 10); moon.castShadow = !low; moon.shadow.mapSize.set(low ? 512 : 2048, low ? 512 : 2048);
+  S.add(new THREE.HemisphereLight('#6a71a6', '#1c1424', .5));
+  const moon = new THREE.DirectionalLight('#aab8ff', .8); moon.position.set(-8, 26, 10); moon.castShadow = !low; moon.shadow.mapSize.set(low ? 512 : 2048, low ? 512 : 2048);
   Object.assign(moon.shadow.camera, { left: -18, right: 18, top: 18, bottom: -18, near: 1, far: 70 }); S.add(moon);
   const W = new THREE.Group(); S.add(W); const rnd = seeded('snooze-hollow');
   const m = (geo, col, x, y, z, glow) => is3mesh(geo, col, x, y, z, W, glow);
@@ -190,7 +222,15 @@ function soScene() {
   for (let i = 0; i < 26; i++) { const a = rnd() * Math.PI * 2, r = 8 + rnd() * 6.5, k = .25 + rnd() * .6, c = m(is3rock(new THREE.DodecahedronGeometry(k, 0), rnd, .3), rnd() < .3 ? '#4f6b3e' : '#5d566b', Math.cos(a) * r, k * .4, Math.sin(a) * r); c.rotation.y = rnd() * 6; }
   for (let i = 0; i < 7; i++) { const c = m(new THREE.CircleGeometry(1.2 + rnd() * 2.2, 9), '#3f5232', (rnd() - .5) * 22, .012, (rnd() - .5) * 22); c.rotation.x = -Math.PI / 2; c.castShadow = false; }
   const beam = new THREE.Mesh(new THREE.CylinderGeometry(3.4, 6, 30, 24, 1, true), new THREE.MeshBasicMaterial({ color: '#b9c6ff', transparent: true, opacity: .06, depthWrite: false, side: THREE.DoubleSide })); beam.position.set(-3, 14, 3); beam.rotation.z = .25; S.add(beam);
-  for (const [x, z] of [[-11, -9], [11, -9]]) { const t = new THREE.PointLight('#ff922b', 1.1, 16, 1.6); t.position.set(x, 3.2, z); S.add(t); m(new THREE.CylinderGeometry(.14, .1, 2.6, 6), '#495057', x, 1.3, z); m(new THREE.ConeGeometry(.24, .6, 5), '#ff922b', x, 2.9, z, true); }
+  soTorches(W, rnd, low);
+  // 2.88: scorched floor, old bones of those who came before, and the claw marks of its fists
+  for (let i = 0; i < 9; i++) { const sc = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), new THREE.MeshBasicMaterial({ color: '#000000', alphaMap: soTex('scorch_01'), transparent: true, opacity: .55 + rnd() * .3, depthWrite: false })); sc.rotation.set(-Math.PI / 2, 0, rnd() * 6); sc.scale.setScalar(2 + rnd() * 3.5); const a = rnd() * 6.28, r = 3 + rnd() * 9; sc.position.set(Math.cos(a) * r, .015, Math.sin(a) * r); sc.renderOrder = 1; W.add(sc); }
+  for (let i = 0; i < 7; i++) {
+    const a = rnd() * 6.28, r = 10.5 + rnd() * 2.8, bx = Math.cos(a) * r, bz = Math.sin(a) * r, bone = '#c9bfa8';
+    for (let j = 0; j < 4; j++) { const b = m(new THREE.CylinderGeometry(.05, .06, .6 + rnd() * .5, 5), bone, bx + (rnd() - .5) * 1.1, .07, bz + (rnd() - .5) * 1.1); b.rotation.set(Math.PI / 2, 0, rnd() * 6); }
+    if (i % 2 === 0) { const sk = m(new THREE.SphereGeometry(.2, 8, 6), bone, bx, .17, bz); sk.scale.set(1, .9, 1.15); m(new THREE.BoxGeometry(.06, .05, .03), '#1a1520', bx - .07, .2, bz + .21); m(new THREE.BoxGeometry(.06, .05, .03), '#1a1520', bx + .07, .2, bz + .21); }
+    if (i === 3) { const sw = m(new THREE.BoxGeometry(.08, 1.3, .03), '#6c6f75', bx + .6, .55, bz); sw.rotation.z = .35; m(new THREE.BoxGeometry(.4, .06, .06), '#4a3b2a', bx + .4, 1.05, bz); }
+  }
   // Somnus: the rigged stone body (sgolem.js); the old block golem only if the animations didn't load
   SO.gs = typeof sgMake === 'function' ? sgMake() : null;
   if (SO.gs) { SO.gs.onFall = at => { soBurst(at, { tex: 'dirt_02', col: '#8a8398', n: 6, size: .7, life: 1, speed: 4, grav: 16, up: .3, add: false, op: .95 }); soSnd('g_crumble', at); }; SO.gs.play('Crouch_Idle_Loop', { speed: .45 }); SO.gs.eyes.forEach(e => e.material.emissiveIntensity = 0); }
@@ -205,6 +245,56 @@ function soScene() {
   // your shadow blob, so you can judge jumps
   SO.blob = new THREE.Mesh(new THREE.CircleGeometry(.45, 20), new THREE.MeshBasicMaterial({ color: '#000000', transparent: true, opacity: .35, depthWrite: false })); SO.blob.rotation.x = -Math.PI / 2; S.add(SO.blob);
   soResize();
+}
+// ---------- 2.88: fire light. Torches round the walls and two great braziers either side of its bed ----------
+// They flicker, throw real shadows (the braziers, on High graphics), drift embers, and the intro lights them one by one.
+function soTorches(W, rnd, low) {
+  const gfx = typeof hxGfx === 'function' ? hxGfx() : low ? 'low' : 'high', T = SO.torches = [];
+  const iron = '#2b2830', put = (x, z, h, big) => {
+    const g = new THREE.Group(); g.position.set(x, 0, z); W.add(g);
+    if (big) { // a brazier: a stone plinth and a wide iron bowl
+      is3mesh(is3rock(new THREE.CylinderGeometry(.8, 1, 1.1, 7), rnd, .06), '#4a4454', 0, .55, 0, g);
+      is3mesh(new THREE.CylinderGeometry(1.15, .55, .7, 9, 1, true), iron, 0, 1.45, 0, g).material.side = THREE.DoubleSide;
+      is3mesh(new THREE.CylinderGeometry(.95, .95, .12, 9), '#1c1418', 0, 1.6, 0, g);
+    } else { // an iron torch stand with a cage
+      is3mesh(new THREE.CylinderGeometry(.07, .1, h, 6), iron, 0, h / 2, 0, g);
+      is3mesh(new THREE.CylinderGeometry(.28, .12, .35, 6, 1, true), iron, 0, h + .1, 0, g).material.side = THREE.DoubleSide;
+      for (let i = 0; i < 4; i++) { const p = is3mesh(new THREE.BoxGeometry(.03, .4, .03), iron, Math.cos(i * 1.57) * .26, h + .35, Math.sin(i * 1.57) * .26, g); p.rotation.z = Math.cos(i * 1.57) * -.2; p.rotation.x = Math.sin(i * 1.57) * .2; }
+    }
+    const fy = big ? 1.95 : h + .45, k = big ? 2.4 : 1;
+    const f1 = soSprite('flame_03', '#ff8a2a', 1.1 * k, 1), f2 = soSprite('fire_01', '#ffd28a', .7 * k, .9), gl = soSprite('flare_01', '#ff7a2a', 3.6 * k, .2);
+    f1.position.set(x, fy + .25 * k, z); f2.position.set(x, fy + .12 * k, z); gl.position.set(x, fy + .1, z); [f1, f2, gl].forEach(sp => { sp.renderOrder = 3; SO.S.add(sp); });
+    T.push({ x, y: fy, z, k, f1, f2, gl, big, lit: 0, base: big ? 2.6 : 1.5, ph: rnd() * 100, light: null, flare: 0 });
+  };
+  // eight wall torches round the hall, two braziers by the bed
+  for (let i = 0; i < 8; i++) { const a = i / 8 * Math.PI * 2 + Math.PI / 8, r = 14.3; put(Math.cos(a) * r, Math.sin(a) * r, 2.3 + rnd() * .5); }
+  put(-6.8, -11.2, 0, true); put(6.8, -11.2, 0, true);
+  // real lights on some of them: High lights every torch and the braziers cast shadows; Medium half; Low just the braziers
+  T.forEach((t, i) => {
+    const want = t.big || gfx === 'high' || (gfx === 'medium' && i % 2 === 0); if (!want) return;
+    const L = t.light = new THREE.PointLight('#ff8a3a', 0, t.big ? 26 : 15, 1.7); L.position.set(t.x, t.y + .5, t.z);
+    if (t.big && gfx === 'high' && !low) { L.castShadow = true; L.shadow.mapSize.set(512, 512); L.shadow.bias = -.004; L.shadow.camera.near = .5; L.shadow.camera.far = 28; }
+    SO.S.add(L);
+  });
+  // mist lying on the floor
+  SO.mist = [];
+  for (let i = 0; i < (low ? 5 : 12); i++) { const sp = soSprite('smoke_03', '#5a5070', 7 + rnd() * 5, .1, false); const a = rnd() * 6.28, r = rnd() * 12; sp.position.set(Math.cos(a) * r, .5 + rnd() * .5, Math.sin(a) * r); sp.renderOrder = 1; SO.S.add(sp); SO.mist.push({ sp, a, r, v: (rnd() - .5) * .05, y: sp.position.y }); }
+}
+function soTorchLight(t, flare = 1) { if (t.lit) return; t.lit = .01; t.flare = flare; soBurst(new THREE.Vector3(t.x, t.y + .3, t.z), { tex: 'flare_01', col: '#ffb070', n: 1, size: 2.4 * t.k, life: .35, speed: 0, grow: 1 }); soBurst(new THREE.Vector3(t.x, t.y + .3, t.z), { tex: 'spark_01', col: '#ffb070', n: 6, size: .2, life: .8, speed: 3, grav: -2, up: 1 }); soSnd('g_fire', t, { gap: 60, vol: t.big ? 1.2 : .8 }); }
+function soTorchFlare(k) { (SO.torches || []).forEach(t => { if (t.lit) t.flare = Math.max(t.flare, k); }); }
+function soTorchStep(dt, t) {
+  for (const T of SO.torches || []) {
+    if (T.lit && T.lit < 1) T.lit = Math.min(1, T.lit + dt * 3);
+    T.flare = Math.max(0, T.flare - dt * 1.4);
+    const n = Math.sin(t * 9 + T.ph) * .5 + Math.sin(t * 23.7 + T.ph * 2) * .3 + Math.sin(t * 4.1 + T.ph) * .2, l = T.lit, f = 1 + n * .14 + T.flare * .9;
+    T.f1.visible = T.f2.visible = T.gl.visible = l > 0;
+    T.f1.scale.set(1.1 * T.k * (1 + n * .1) * f, 1.4 * T.k * (1 + n * .2) * f * l, 1); T.f2.scale.setScalar(.7 * T.k * f * l); T.gl.scale.setScalar(3.6 * T.k * f * l);
+    T.f1.material.rotation = n * .15; T.gl.material.opacity = .16 * l * (1 + n * .2);
+    if (T.light) T.light.intensity = T.base * l * f;
+    // embers drift up off the fire
+    if (l >= 1 && Math.random() < dt * (T.big ? 9 : 2.5) && !hxLow()) soBurst(new THREE.Vector3(T.x + (Math.random() - .5) * .4 * T.k, T.y + .4, T.z + (Math.random() - .5) * .4 * T.k), { tex: 'spark_01', col: '#ff9a4a', n: 1, size: .09 + Math.random() * .08, life: 1.6 + Math.random(), speed: .6, grav: -1.4, up: 2 });
+  }
+  for (const m of SO.mist || []) { m.a += m.v * dt; m.sp.position.x = Math.cos(m.a) * m.r; m.sp.position.z = Math.sin(m.a) * m.r; m.sp.material.rotation += m.v * dt * 2; }
 }
 // the Snooze Golem: body, head, arms with fists, legs, and the glowing crystal on its back (a weak point)
 function soGolem() {
@@ -299,7 +389,7 @@ function soStep(dt) {
   if (M.land > 0) M.land -= dt;
   // the arena edge and the Golem's body push you back
   const r = Math.hypot(M.x, M.z); if (r > SO_ARENA) { M.x *= SO_ARENA / r; M.z *= SO_ARENA / r; }
-  const db = soDist(M, B); if (db < SO_BR && B.state !== 'roll' && B.state !== 'air' && M.y < 2) { const k = SO_BR / Math.max(.01, db); M.x = B.x + (M.x - B.x) * k; M.z = B.z + (M.z - B.z) * k; }
+  const db = soDist(M, B); if (db < SO_BR && B.state !== 'roll' && B.state !== 'charge' && B.state !== 'air' && M.y < 2) { const k = SO_BR / Math.max(.01, db); M.x = B.x + (M.x - B.x) * k; M.z = B.z + (M.z - B.z) * k; }
   soBossStep(dt);
   soHazStep(dt);
   soProjStep(dt);
@@ -384,21 +474,22 @@ function soHit(n, o = {}) {
   if (M.reveal > 0 && !o.dot) { weak = true; M.reveal--; }
   if (weak) mult *= 1.6 + (g.wk || 0);
   const crit = !o.dot && Math.random() < (g.cr || 0) + .05; if (crit) mult *= 1.5;
-  // stone armour while it attacks: hit it in the openings
-  const armour = !o.dot && (B.state === 'wind' || B.state === 'hold' || B.state === 'roll' || B.state === 'march' || B.state === 'roar'); if (armour) mult *= .5;
+  // 2.88: outside its openings the stone barely notices you (a twentieth of the damage); in them, you hit harder
+  const armour = !o.dot && !soOpenNow(); mult *= armour ? .05 : 1.25; SO.lastArm = armour;
   if (B.mark > 0) mult *= 1.25;
   if (M.emp > 0) mult *= 1.3;
   if (M.rally > 0) mult *= 1.3;
   if (M.buff > 1 && !o.dot) { mult *= M.buff; M.buff = 1; }
-  if (!o.dot) { M.combo++; M.comboT = 3.5; SO.stats.combo = Math.max(SO.stats.combo, M.combo); }
+  if (!o.dot && !armour) { M.combo++; M.comboT = 3.5; SO.stats.combo = Math.max(SO.stats.combo, M.combo); }
+  if (armour && !SO.armSeen) { SO.armSeen = 1; soPop('🪨 Armoured: hits barely scratch it. Strike when it glows, after its attacks', 'bad'); }
   mult *= 1 + Math.min(.6, Math.max(0, M.combo - 1) * .04);
   n = Math.max(1, Math.round(n * mult));
   SO.dealt += n; SO.stats.hits++; if (weak) SO.stats.weak++;
   if (!o.dot) B.greed.push(SO.time);
-  SO.gol.flash = .12; if (weak) SO.gol.flinch = 1;
-  soNum(n, weak ? 'weak' : crit ? 'crit' : armour ? 'arm' : '');
-  if (weak && !SO.weakSeen) { SO.weakSeen = 1; soPop('💥 Weak point!', 'good'); }
-  if (!o.dot) soSnd(crit || weak ? 'g_crack' : 'g_clang', B, { gap: 30, vol: armour ? .7 : 1 });
+  SO.gol.flash = armour ? 0 : .12; if (weak && !armour) SO.gol.flinch = 1;
+  soNum(n, armour ? 'arm' : weak ? 'weak' : crit ? 'crit' : '');
+  if (weak && !armour && !SO.weakSeen) { SO.weakSeen = 1; soPop('💥 Weak point!', 'good'); }
+  if (!o.dot) soSnd(armour ? 'g_clang' : crit || weak ? 'g_crack' : 'g_clang', B, { gap: 30, vol: armour ? .55 : 1, rate: armour ? 1.3 : 1 });
   return n;
 }
 function soHeal(n, label) { const P = SO.P, got = Math.min(Math.round(n), P.max - P.hp); P.hp += got; if (label && got) soPop(`${label} +${got}`, 'good'); }
@@ -438,14 +529,15 @@ function soSkillHit(s, weak) {
 // 2.87: no homing. A bolt leaves your hand on the line to where the crosshair points and flies
 // straight; it hits whatever part of the Golem it meets, or the floor, or nothing.
 // the Golem's body as spheres around its bones (world space), and its back crystal
-const SO_HITB = [['pelvis', 1], ['spine_02', 1.15], ['spine_03', 1.3], ['Head', .6], ['upperarm_l', .55], ['upperarm_r', .55], ['lowerarm_l', .6], ['lowerarm_r', .6], ['hand_l', .65], ['hand_r', .65], ['thigh_l', .6], ['thigh_r', .6], ['calf_l', .55], ['calf_r', .55]];
+// 2.88: wider, for the bulkier body
+const SO_HITB = [['pelvis', 1.35], ['spine_02', 1.5], ['spine_03', 1.7], ['Head', .75], ['upperarm_l', .75], ['upperarm_r', .75], ['lowerarm_l', .8], ['lowerarm_r', .8], ['hand_l', .85], ['hand_r', .85], ['thigh_l', .8], ['thigh_r', .8], ['calf_l', .7], ['calf_r', .7]];
 function soBody() {
   const B = SO.B, G = SO.gs, v = new THREE.Vector3();
   if (!G) return { parts: [{ x: B.x, y: 2.6 + B.y, z: B.z, r: 1.9, n: 'body' }], crystal: null };
   G.root.updateMatrixWorld(true);
   const parts = SO_HITB.map(([n, r]) => { v.setFromMatrixPosition(G.bone(n).matrixWorld); return { x: v.x, y: v.y, z: v.z, r, n }; });
   v.setFromMatrixPosition(G.crystal.matrixWorld);
-  return { parts, crystal: { x: v.x, y: v.y, z: v.z, r: .75 } };
+  return { parts, crystal: { x: v.x, y: v.y, z: v.z, r: .9 } };
 }
 // where the crosshair points: the first bit of the Golem on the line, else the floor, else far away
 function soAimPoint() {
@@ -496,59 +588,88 @@ function soProjStep(dt) {
 }
 
 // ---------- the Golem ----------
+// 2.88: it can only really be hurt in its openings: straight after an attack (not between the hits of a combo),
+// while it pants after a long combo, when it's staggered, or while its fists are stuck in the floor.
+// Anywhere else your hits barely scratch the stone.
+const soOpenNow = () => { const B = SO.B; return B.state === 'down' || B.stag > 0 || B.stuck > 0 || B.state === 'tired' || (B.state === 'recover' && !B.guard); };
+// what each move can lead into when it chains (picked at random, each with its own tempo)
+const SO_FOL = { punch: ['punch', 'sweep', 'slam', 'stomp', 'spin'], sweep: ['slam', 'punch', 'stomp', 'spin', 'sweep'], slam: ['punch', 'sweep', 'slam', 'stomp'], stomp: ['punch', 'slam', 'sweep', 'charge'],
+  spin: ['slam', 'punch', 'stomp'], charge: ['slam', 'sweep', 'stomp', 'spin'], throw: ['charge', 'throw', 'leap'], march: ['sweep', 'spin'], leap: ['sweep', 'stomp', 'spin'], shrug: ['punch', 'slam'] };
 function soBossStep(dt) {
   const B = SO.B, M = SO.me, ph = soPhase(), sp = soSpeed();
   // a new phase: it stops whatever it was doing and roars (the shout knocks back anyone close)
   if (ph !== SO.lastPh) {
-    if (SO.lastPh != null && ph > SO.lastPh && B.state !== 'air' && B.state !== 'roll') {
+    if (SO.lastPh != null && ph > SO.lastPh && !['air', 'roll', 'charge'].includes(B.state)) {
       soPop(`${SO_NAME}: ${SO_PH[ph].n}`, 'phase'); soClearTele(); B.queue = []; B.atk = { k: 'roar', w: 1.5, n: 'Roar' }; B.state = 'roar'; B.t = 1.5; B.stuck = 0; SO.atkId++;
-      soSnd(ph >= 3 ? 'g_roar' : 'g_roar2', B); SO.shake = .9; SO.rings.push({ x: B.x, z: B.z, r: 1, v: 9, mv: SO_MV.roar, m: soRing('#ffd8a8') });
+      soSnd(ph >= 3 ? 'g_roar' : 'g_roar2', B); soSnd('g_quake', B, { gap: 200 }); SO.shake = .9; SO.rings.push({ x: B.x, z: B.z, r: 1, v: 9, mv: SO_MV.roar, m: soRing('#ffd8a8') }); soTorchFlare(1);
       SO.lastPh = ph;
-    } else if (SO.lastPh == null || ph < SO.lastPh || (B.state !== 'air' && B.state !== 'roll')) SO.lastPh = ph;
+    } else if (SO.lastPh == null || ph < SO.lastPh || !['air', 'roll', 'charge'].includes(B.state)) SO.lastPh = ph;
   }
-  if (B.mark > 0) B.mark -= dt; if (B.stuck > 0) B.stuck -= dt;
+  if (B.mark > 0) B.mark -= dt; if (B.stuck > 0) B.stuck -= dt; if (B.spinT > 0) B.spinT -= dt;
   for (const d of B.dot) { d.t -= dt; if (d.t <= 0 && d.left > 0) { d.t = 1; d.left--; soHit(d.n, { dot: true }); } } B.dot = B.dot.filter(d => d.left > 0);
   B.greed = B.greed.filter(t => SO.time - t < 2.4);
   if (B.stag > 0) { B.stag -= dt; return; }
   const dist = soDist(B, M), toP = Math.atan2(M.x - B.x, M.z - B.z);
   B.t -= dt;
   switch (B.state) {
-    case 'roar': { if (B.t <= 0) { B.state = 'idle'; B.t = .2; } break; }
+    case 'roar': { if (B.t <= 0) { B.state = 'idle'; B.t = .1 + Math.random() * .3; } break; }
     case 'idle': case 'chase': {
-      // 2.87: it turns and walks fast, so you can't just stay behind it
-      B.face += soAng(toP - B.face) * Math.min(1, dt * 5.5 * sp);
-      if (dist > 3.8) { const v = 3.9 * sp; B.x += Math.sin(B.face) * v * dt; B.z += Math.cos(B.face) * v * dt; B.state = 'chase'; } else B.state = 'idle';
+      // it turns and walks fast, so you can't just stay behind it (2.88: faster again)
+      B.face += soAng(toP - B.face) * Math.min(1, dt * 6.5 * sp);
+      if (dist > 4.3) { const v = 4.6 * sp; B.x += Math.sin(B.face) * v * dt; B.z += Math.cos(B.face) * v * dt; B.state = 'chase'; } else B.state = 'idle';
       soBossFence();
       // greedy hitting gets you shrugged off
-      if (B.greed.length >= 4 && dist < 4.5 && !(B.cool.shrug > SO.time)) { B.queue = ['shrug']; B.t = 0; }
-      if (B.t <= 0) soBossPick(dist, ph);
+      if (B.greed.length >= 4 && dist < 5 && !(B.cool.shrug > SO.time)) { B.queue = ['shrug']; B.t = 0; }
+      if (B.t <= 0) {
+        // 2.88: sometimes it circles you, or steps back, before it strikes: you can't count the beats
+        const r = Math.random();
+        if (!B.queue.length && dist < 9 && r < [.16, .2, .24, .26][ph] && B.lastMove !== 'stalk') { B.state = 'stalk'; B.t = .45 + Math.random() * .9; B.side = Math.random() < .5 ? -1 : 1; B.lastMove = 'stalk'; break; }
+        if (!B.queue.length && dist < 4.2 && r < .32 && B.lastMove !== 'back') { B.state = 'back'; B.t = .32; B.lastMove = 'back'; soSnd('g_step', B, { gap: 80 }); soDust(B.x, B.z, .6); break; }
+        B.lastMove = ''; soBossPick(dist, ph);
+      }
+      break;
+    }
+    case 'stalk': { // circling you, watching, then it strikes without warning
+      B.face += soAng(toP - B.face) * Math.min(1, dt * 8);
+      const v = 2.4 * sp, sx = Math.cos(B.face) * B.side, sz = -Math.sin(B.face) * B.side, close = dist > 5.5 ? .7 : dist < 3.6 ? -.5 : 0;
+      B.x += (sx + Math.sin(B.face) * close) * v * dt; B.z += (sz + Math.cos(B.face) * close) * v * dt; soBossFence();
+      if (B.t <= 0 || (dist < 4.5 && Math.random() < dt * 1.5)) soBossPick(dist, ph);
+      break;
+    }
+    case 'back': { // a heavy hop backwards, then straight into something
+      const v = 9 * sp; B.x -= Math.sin(B.face) * v * dt; B.z -= Math.cos(B.face) * v * dt; soBossFence();
+      if (B.t <= 0) { soSnd('g_step', B, { gap: 60, vol: 1.2 }); soDust(B.x, B.z, .9); SO.shake = Math.max(SO.shake || 0, .25); soBossPick(soDist(B, M), ph); }
       break;
     }
     case 'wind': {
-      const a = B.atk, turn = { punch: 6, slam: 2.6, sweep: 3.4, march: 4.5, shrug: 0 }[a.k];
+      const a = B.atk, turn = { punch: 6.5, slam: 3, sweep: 3.8, march: 5, stomp: 4, spin: 0, quake: 3.4, throw: 5, charge: 7, shrug: 0 }[a.k];
       if (turn) B.face += soAng(toP - B.face) * Math.min(1, dt * turn);
       if (a.k === 'leap') soLeapAim(a, dt);
+      if (a.k === 'throw') soThrowAim(a, dt);
       soTeleStep(a, 1 - B.t / a.w);
       if (a.feint && B.t <= a.w * (1 - a.feint)) { soFeint(a); break; }
       if (B.t <= 0) {
         // it holds the hit when it sees you roll too early, so rolling every time gets caught
-        if (a.delay && !a.held && soRolling() && SO.time < M.iTo + .1) { a.held = 1; B.t = Math.max(0, M.iTo - SO.time) + .12 + Math.random() * .1; B.state = 'hold'; break; }
+        if (a.delay && !a.held && soRolling() && SO.time < M.iTo + .1) { a.held = 1; B.t = Math.max(0, M.iTo - SO.time) + .1 + Math.random() * .14; B.state = 'hold'; break; }
+        // 2.88: and sometimes it just holds the swing up there, trembling, for a beat you can't predict
+        if (a.wait && !a.held) { a.held = 1; B.t = a.wait; B.state = 'hold'; break; }
         soBossStrike(a, ph);
       }
       break;
     }
-    case 'hold': { const a = B.atk; soTeleStep(a, 1); if (a.k === 'punch') B.face += soAng(toP - B.face) * Math.min(1, dt * 3); if (B.t <= 0) soBossStrike(a, ph); break; }
-    case 'roll': {
-      const a = B.atk, v = 16 * sp; B.x += a.dx * v * dt; B.z += a.dz * v * dt; a.go -= v * dt;
-      if (soDist(B, M) < 2.2 && !a.hit && M.y < 1.4) { a.hit = 1; soHurtBy({ ...SO_MV.roll, k: 'roll' }); }
-      if (a.go <= 0 || Math.hypot(B.x, B.z) > SO_ARENA - 1) { B.state = 'recover'; B.t = SO_MV.roll.open / sp; B.stuck = .9; soClearTele(); soSnd('g_boom', B, { vol: .8 }); soDust(B.x, B.z, 1.2); SO.shake = .4; }
+    case 'hold': { const a = B.atk; soTeleStep(a, 1); if (a.k === 'punch' || a.k === 'charge') B.face += soAng(toP - B.face) * Math.min(1, dt * 3); if (a.k === 'throw') soThrowAim(a, dt); if (B.t <= 0) soBossStrike(a, ph); break; }
+    case 'roll': case 'charge': {
+      const a = B.atk, ch = B.state === 'charge', v = (ch ? 15 : 16) * sp; B.x += a.dx * v * dt; B.z += a.dz * v * dt; a.go -= v * dt;
+      if (ch && (a.st = (a.st || 0) + dt) > .16) { a.st = 0; soSnd('g_step', B, { gap: 90 }); soDust(B.x, B.z, .5); SO.shake = Math.max(SO.shake || 0, .15); }
+      if (soDist(B, M) < (ch ? 2.8 : 2.4) && !a.hit && M.y < 1.4) { a.hit = 1; soHurtBy({ ...SO_MV[a.k], k: a.k }); }
+      if (a.go <= 0 || Math.hypot(B.x, B.z) > SO_ARENA - 1) { B.state = 'recover'; B.guard = false; B.t = SO_MV[a.k].open * (.85 + Math.random() * .4) / sp; B.stuck = ch ? 0 : .9; soClearTele(); soSnd('g_boom', B, { vol: .8 }); soDust(B.x, B.z, 1.2); SO.shake = .4; soBossFence(); }
       break;
     }
-    case 'air': { // Rude Awakening: up and down onto the spot it locked
+    case 'air': { // Colossal Leap: up and down onto the spot it locked
       const a = B.atk, p = Math.min(1, 1 - B.t / a.air);
       B.x = a.fx + (a.tx - a.fx) * p; B.z = a.fz + (a.tz - a.fz) * p; B.y = Math.sin(p * Math.PI) * 6;
       if (a.tm) { a.tm.material.opacity = .35 + p * .5; }
-      if (B.t <= 0) { B.y = 0; soClearTele(); soBoom(B.x, B.z, '#ff6b3d', 3.4); soDust(B.x, B.z, 2); SO.shake = .75; soSnd('g_boom', B, { gap: 100, vol: 1.2 }); if (soDist(B, M) < SO_MV.leap.r) soHurtBy({ ...SO_MV.leap, k: 'leap' }); B.stuck = 1.3; B.state = 'recover'; B.t = SO_MV.leap.open / sp; soBossFence(); }
+      if (B.t <= 0) { B.y = 0; soClearTele(); soBoom(B.x, B.z, '#ff6b3d', 3.4); soDust(B.x, B.z, 2); SO.shake = .75; soSnd('g_boom', B, { gap: 100, vol: 1.2 }); if (soDist(B, M) < SO_MV.leap.r) soHurtBy({ ...SO_MV.leap, k: 'leap' }); B.stuck = 1.3; B.state = 'recover'; B.guard = false; B.t = SO_MV.leap.open / sp; soBossFence(); }
       break;
     }
     case 'recover': {
@@ -557,44 +678,63 @@ function soBossStep(dt) {
       if (B.t <= 0) soBossAfter(ph);
       break;
     }
+    case 'tired': { // 2.88: after a long combo it pants for a moment: the biggest opening it gives
+      if (B.t <= 0) { B.state = 'idle'; B.t = .05; }
+      break;
+    }
   }
 }
 function soBossFence() { const B = SO.B, r = Math.hypot(B.x, B.z), m = SO_ARENA - 1.5; if (r > m) { B.x *= m / r; B.z *= m / r; } }
-// what it does next: combos queued up first, then by distance and phase
+// what it does next. 2.88: a weighted pick by distance and phase that avoids what it just did, combos built
+// at random from what each move can lead into, and a different tempo for every swing
 function soBossPick(dist, ph) {
-  const B = SO.B, c = B.cool, now = SO.time, can = k => !(c[k] > now) && ph >= (SO_MV[k].ph || 0), rnd = Math.random;
+  const B = SO.B, c = B.cool, now = SO.time, M = SO.me, rnd = Math.random, can = k => !(c[k] > now) && ph >= (SO_MV[k].ph || 0);
+  const behind = Math.abs(soAng(Math.atan2(M.x - B.x, M.z - B.z) - B.face)) > 1.9;
   let k, chain = false;
-  if (B.queue.length) { k = B.queue.shift(); chain = true; }
-  else if (can('alarm') && rnd() < .22) k = 'alarm';
-  else if (can('leap') && dist > 5 && rnd() < .5) k = 'leap';
-  else if (dist > 7.5 && can('roll')) k = 'roll';
-  else if (can('wave') && rnd() < .16) k = 'wave';
-  else if (dist < 4.6) {
-    const r = rnd();
-    if (can('march') && r < .25) { k = 'march'; }
-    else if (r < .45) { k = 'punch'; if (ph >= 1 && rnd() < .6) B.queue.push(rnd() < .5 ? 'punch' : 'slam'); if (ph >= 2 && rnd() < .4) B.queue.push('sweep'); }
-    else if (r < .7) { k = 'sweep'; if (ph >= 1 && rnd() < .5) B.queue.push('slam'); }
-    else k = 'slam';
+  B.guard = false;
+  if (B.queue.length) { k = B.queue.shift(); chain = true; B.chainN = (B.chainN || 0) + 1; }
+  else {
+    const w = {}, add = (m, x) => { if (can(m)) w[m] = (w[m] || 0) + x; };
+    if (dist < 5.6) { add('punch', 3); add('sweep', 2.4); add('slam', 2); add('stomp', 1.8); add('march', 1.3); add('spin', behind ? 5 : .5); add('quake', .8); }
+    else if (dist < 8) { add('sweep', 1.2); add('charge', 2.2); add('leap', 2); add('march', 1.2); add('throw', 1.4); add('wave', 1); add('quake', 1.4); add('stomp', .6); }
+    else { add('roll', 2); add('throw', 2.6); add('charge', 2.4); add('leap', 2.4); add('wave', 1); }
+    add('alarm', .8); add('wave', .35);
+    // what it did lately is much less likely, and never the same opener three times
+    for (const m in w) { const n = B.hist.filter(x => x === m).length; w[m] *= Math.pow(.38, n); if (B.hist[B.hist.length - 1] === m) w[m] *= .3; }
+    const tot = Object.values(w).reduce((a, b) => a + b, 0);
+    if (!tot) { B.t = .08; return; }
+    let r = rnd() * tot; for (const m in w) { r -= w[m]; if (r <= 0) { k = m; break; } } k = k || Object.keys(w)[0];
+    // sometimes a combo follows: longer and more likely each phase
+    B.chainN = 0;
+    if (SO_FOL[k] && rnd() < [.4, .55, .7, .82][ph]) {
+      const n = 1 + Math.floor(rnd() * (ph + 1.6)); let prev = k;
+      for (let i = 0; i < Math.min(n, 4); i++) { const opts = (SO_FOL[prev] || SO_FOL.punch).filter(m => ph >= (SO_MV[m].ph || 0)); prev = opts[Math.floor(rnd() * opts.length)]; B.queue.push(prev); }
+    }
   }
-  else if (dist < 6 && can('sweep') && rnd() < .4) k = 'sweep';
-  else { B.t = .1; return; }
-  const M = SO_MV[k], sp = soSpeed();
-  c[k] = now + ({ punch: .6, slam: 2, sweep: 1.6, wave: 7, roll: 5, alarm: 8.5, march: 8, leap: 7, shrug: 2.4 }[k] || 2) / sp;
-  // wind-ups vary every time, combo follow-ups come quicker
-  const w = M.w * (.75 + rnd() * .5) * (chain ? .72 : 1) / sp;
-  const a = B.atk = { k, w, n: M.n };
-  if (['punch', 'slam', 'sweep'].includes(k) && !chain) { if (rnd() < [.08, .16, .22, .3][ph]) a.feint = .55 + rnd() * .15; else if (rnd() < [.4, .5, .6, .7][ph]) a.delay = 1; }
-  if (k === 'march') a.steps = 3;
+  B.hist.push(k); if (B.hist.length > 4) B.hist.shift();
+  const mv = SO_MV[k], sp = soSpeed();
+  c[k] = now + ({ punch: .5, slam: 1.6, sweep: 1.3, stomp: 2.2, spin: 2.4, wave: 7, roll: 5, alarm: 8, march: 7, leap: 6, shrug: 2.4, throw: 4.5, charge: 4.5, quake: 9 }[k] || 2) * (.7 + rnd() * .6) / sp;
+  // 2.88: the tempo changes all the time: a follow-up can come at once, or late after a pause
+  const tempo = chain ? [.42, .62, .85, 1.15, 1.4][Math.floor(rnd() * 5)] : .65 + rnd() * .75;
+  const w = Math.max(.16, mv.w * tempo / sp);
+  const a = B.atk = { k, w, n: mv.n };
+  if (['punch', 'slam', 'sweep', 'stomp', 'spin'].includes(k)) {
+    if (!chain && rnd() < [.1, .18, .25, .32][ph]) a.feint = .5 + rnd() * .2;
+    else if (rnd() < [.45, .55, .65, .75][ph]) a.delay = 1;
+    if (rnd() < [.12, .16, .22, .26][ph]) a.wait = .22 + rnd() * .45; // a held swing you have to wait out
+  }
+  if (k === 'march') a.steps = 2 + Math.floor(rnd() * (ph >= 3 ? 3 : 2));
   B.state = 'wind'; B.t = w; SO.atkId++;
   soTeleMake(a);
   // stone grinding as it winds up; a growl before the big ones
-  soSnd(['slam', 'leap', 'march', 'alarm', 'roll'].includes(k) ? 'g_growl' : 'g_grind', B, { gap: 120, vol: k === 'punch' ? .7 : 1 });
+  soSnd(['slam', 'leap', 'march', 'alarm', 'roll', 'quake', 'charge', 'throw'].includes(k) ? 'g_growl' : 'g_grind', B, { gap: 120, vol: k === 'punch' ? .7 : 1, rate: .9 + rnd() * .25 });
 }
 // a fake-out: the wind-up stops short, it shakes, and something quicker comes instead
 function soFeint(a) {
   const B = SO.B; soClearTele();
-  const k = a.k === 'punch' ? (Math.random() < .5 ? 'sweep' : 'slam') : a.k === 'slam' ? 'punch' : 'punch', M = SO_MV[k];
-  const w = M.w * .6 / soSpeed();
+  const opts = { punch: ['sweep', 'slam', 'stomp'], slam: ['punch', 'spin'], sweep: ['punch', 'stomp'], stomp: ['punch', 'sweep'], spin: ['slam', 'punch'] }[a.k] || ['punch'];
+  const k = opts[Math.floor(Math.random() * opts.length)], M = SO_MV[k];
+  const w = M.w * (.5 + Math.random() * .25) / soSpeed();
   B.atk = { k, w, n: M.n, faked: 1 }; B.t = w; soTeleMake(B.atk); SO.atkId++;
   soSnd('g_grind', B, { gap: 80, rate: 1.3 });
 }
@@ -607,60 +747,92 @@ function soTeleMake(a) {
   else if (a.k === 'punch') { a.tm = add(new THREE.CircleGeometry(R, 24, -1.1, 2.2), '#ff8f3b', B.x, B.z); a.cone = 1; }
   else if (a.k === 'sweep') { a.tm = add(new THREE.RingGeometry(1.4, R, 40, 1, -1.9, 3.8), '#ffd43b', B.x, B.z); a.cone = 1; }
   else if (a.k === 'shrug') { a.tm = add(new THREE.CircleGeometry(R, 32), '#e8590c', B.x, B.z); }
-  else if (a.k === 'march') { a.tm = add(new THREE.CircleGeometry(R, 32), '#ff3b3b', B.x + Math.sin(B.face) * 2, B.z + Math.cos(B.face) * 2); a.ahead = 1; }
+  else if (a.k === 'stomp') { a.tm = add(new THREE.RingGeometry(R - .5, R, 48), '#74c0fc', B.x, B.z); a.edge = a.tm; }
+  else if (a.k === 'spin') { a.tm = add(new THREE.RingGeometry(1.2, R, 48), '#ff6b3d', B.x, B.z); a.edge = a.tm; }
+  else if (a.k === 'march') { a.tm = add(new THREE.CircleGeometry(R, 32), '#ff3b3b', B.x + Math.sin(B.face) * 2.2, B.z + Math.cos(B.face) * 2.2); a.ahead = 1; }
   else if (a.k === 'leap') { a.tx = M.x; a.tz = M.z; a.tm = add(new THREE.CircleGeometry(SO_MV.leap.r, 40), '#ff3b3b', M.x, M.z); }
-  else if (a.k === 'roll') { const ang = Math.atan2(M.x - B.x, M.z - B.z), L = 16; a.dx = Math.sin(ang); a.dz = Math.cos(ang); a.go = L; const g = new THREE.PlaneGeometry(3.4, L); g.translate(0, L / 2, 0); a.tm = add(g, '#ff8f3b', B.x, B.z, ang + Math.PI); }
+  else if (a.k === 'throw') { a.tx = M.x; a.tz = M.z; a.tm = add(new THREE.CircleGeometry(SO_MV.throw.r, 32), '#ff8f3b', M.x, M.z); }
+  else if (a.k === 'roll' || a.k === 'charge') { const L = a.k === 'charge' ? 12 : 16, g = new THREE.PlaneGeometry(a.k === 'charge' ? 4 : 3.4, L); g.translate(0, L / 2, 0); a.go = L; a.tm = add(g, '#ff8f3b', B.x, B.z, 0); a.lane = 1; soLaneAim(a); }
+  else if (a.k === 'quake') { // three fissures towards you and either side
+    a.fis = [-.6, 0, .6].map(o => { const L = 17, g = new THREE.PlaneGeometry(1.7, L); g.translate(0, L / 2, 0); const m = add(g, '#ff3b3b', B.x, B.z); return { o, m }; }); a.tm = a.fis[1].m; soQuakeAim(a);
+  }
   else if (a.k === 'wave') { a.tm = add(new THREE.RingGeometry(1.6, 2.2, 40), '#74c0fc', B.x, B.z); }
   else if (a.k === 'alarm') {
-    const n = soPhase() >= 3 ? 6 : 5;
-    for (let i = 0; i < n; i++) { const x = M.x + (i ? (Math.random() - .5) * 8 : 0), z = M.z + (i ? (Math.random() - .5) * 8 : 0), m = new THREE.Mesh(new THREE.CircleGeometry(SO_MV.alarm.r, 24), mat('#ffd43b')); m.rotation.x = -Math.PI / 2; m.position.set(x, .05, z); SO.S.add(m); const w = a.w + .35 + i * .22; SO.drops.push({ m, x, z, t: w, w }); }
+    const n = soPhase() >= 3 ? 7 : 5;
+    for (let i = 0; i < n; i++) { const x = M.x + (i ? (Math.random() - .5) * 9 : 0), z = M.z + (i ? (Math.random() - .5) * 9 : 0), m = new THREE.Mesh(new THREE.CircleGeometry(SO_MV.alarm.r, 24), mat('#ffd43b')); m.rotation.x = -Math.PI / 2; m.position.set(x, .05, z); SO.S.add(m); const w = a.w + .3 + Math.random() * .9; SO.drops.push({ m, x, z, t: w, w }); }
   }
 }
 function soTeleStep(a, p) {
   if (!a.tm) return; a.tm.material.opacity = .25 + p * .55;
   const B = SO.B;
   if (a.cone) { a.tm.position.set(B.x, .04, B.z); a.tm.rotation.z = B.face - Math.PI / 2; }
-  if (a.ahead) a.tm.position.set(B.x + Math.sin(B.face) * 2, .04, B.z + Math.cos(B.face) * 2);
+  if (a.ahead) a.tm.position.set(B.x + Math.sin(B.face) * 2.2, .04, B.z + Math.cos(B.face) * 2.2);
   if (a.edge) a.edge.position.set(B.x, .04, B.z);
+  if (a.lane) soLaneAim(a);
+  if (a.fis) { soQuakeAim(a); a.fis.forEach(f => { f.m.material.opacity = .2 + p * .5; }); }
 }
+// a charge or roll aims down a lane at you until the very end of its wind-up
+function soLaneAim(a) { const B = SO.B, M = SO.me; if (!(SO.B.state === 'wind' && SO.B.t < .12)) { const ang = Math.atan2(M.x - B.x, M.z - B.z); a.dx = Math.sin(ang); a.dz = Math.cos(ang); a.ang = ang; } a.tm.position.set(B.x, .04, B.z); a.tm.rotation.z = a.ang + Math.PI; }
+function soQuakeAim(a) { const B = SO.B, M = SO.me; if (!(B.state === 'wind' && B.t < .2)) a.ang = Math.atan2(M.x - B.x, M.z - B.z); a.fis.forEach(f => { f.m.position.set(B.x, .04, B.z); f.m.rotation.z = a.ang + f.o + Math.PI; }); }
 // the leap's target follows you until just before it jumps
-function soLeapAim(a, dt) { const M = SO.me; if (SO.B.t > .45) { a.tx += (M.x - a.tx) * Math.min(1, dt * 5); a.tz += (M.z - a.tz) * Math.min(1, dt * 5); } if (a.tm) a.tm.position.set(a.tx, .04, a.tz); }
+function soLeapAim(a, dt) { const M = SO.me; if (SO.B.t > .4) { a.tx += (M.x - a.tx) * Math.min(1, dt * 5); a.tz += (M.z - a.tz) * Math.min(1, dt * 5); } if (a.tm) a.tm.position.set(a.tx, .04, a.tz); }
+// a thrown boulder aims where you're running to, not where you are
+function soThrowAim(a, dt) { const M = SO.me; if (SO.B.t > .15 || SO.B.state === 'hold') { const lx = M.x + M.vx * .55, lz = M.z + M.vz * .55; a.tx += (lx - a.tx) * Math.min(1, dt * 7); a.tz += (lz - a.tz) * Math.min(1, dt * 7); } if (a.tm) a.tm.position.set(a.tx, .04, a.tz); }
 function soClearTele() { SO.tele.forEach(t => { SO.S.remove(t.m); t.m.geometry.dispose(); }); SO.tele = []; }
 function soBossStrike(a, ph) {
   const B = SO.B, M = SO.me, mv = SO_MV[a.k], sp = soSpeed(), d = soDist(B, M), toP = Math.atan2(M.x - B.x, M.z - B.z), front = Math.abs(soAng(toP - B.face));
-  const open = t => { B.state = 'recover'; B.t = t / sp; };
-  if (a.k !== 'leap' && a.k !== 'march') soClearTele();
+  // after the last hit of a combo it's open; between the hits of a combo it stays guarded
+  const open = t => { B.state = 'recover'; B.guard = B.queue.length > 0; B.t = t * (B.guard ? 1 : .85 + Math.random() * .4) / sp; if (!B.guard && (B.chainN || 0) >= 2) { B.tiredNext = 1; } };
+  if (!['leap', 'march', 'quake', 'throw'].includes(a.k)) soClearTele();
   if (a.k === 'punch') { if (d < mv.r && front < mv.arc) soHurtBy({ ...mv, k: a.k }); open(B.queue.length ? .1 : mv.open); SO.shake = .2; soSnd('g_whoosh', B, { gap: 60, rate: 1.2 }); }
-  else if (a.k === 'sweep') { if (d < mv.r && front < mv.arc) soHurtBy({ ...mv, k: a.k }); open(B.queue.length ? .12 : mv.open); soSnd('g_whoosh', B, { gap: 60 }); soDust(B.x + Math.sin(B.face) * 2.5, B.z + Math.cos(B.face) * 2.5, .8); }
+  else if (a.k === 'sweep') { if (d < mv.r && front < mv.arc) soHurtBy({ ...mv, k: a.k }); open(B.queue.length ? .12 : mv.open); soSnd('g_whoosh', B, { gap: 60 }); soDust(B.x + Math.sin(B.face) * 2.8, B.z + Math.cos(B.face) * 2.8, .8); }
   else if (a.k === 'shrug') { if (d < mv.r) soHurtBy({ ...mv, k: a.k }); soBoom(B.x, B.z, '#e8590c', 2); B.greed = []; open(mv.open); soSnd('g_step', B, { gap: 60 }); }
+  else if (a.k === 'stomp') { // a quick stamp: a fast ring along the floor (jump it)
+    SO.rings.push({ x: B.x, z: B.z, r: 1, v: 15, max: mv.r + 2, mv, m: soRing('#74c0fc') }); soDust(B.x, B.z, 1.3); SO.shake = .5; soSnd('g_boom', B, { gap: 80, vol: .9, rate: 1.15 });
+    open(B.queue.length ? .12 : mv.open);
+  }
+  else if (a.k === 'spin') { // a whirling backhand that hits all the way round: no hiding behind it
+    if (d < mv.r) soHurtBy({ ...mv, k: a.k }); B.spinT = .42; soSnd('g_whoosh', B, { gap: 60, rate: .8 }); soDust(B.x, B.z, 1); SO.shake = .3; open(B.queue.length ? .15 : mv.open);
+  }
   else if (a.k === 'slam') {
     if (d < mv.r) soHurtBy({ ...mv, k: a.k });
-    soBoom(B.x, B.z, '#ff6b3d', 3); soDust(B.x + Math.sin(B.face) * 2.2, B.z + Math.cos(B.face) * 2.2, 1.6); SO.shake = .65; soSnd('g_boom', B, { gap: 100 });
+    soBoom(B.x, B.z, '#ff6b3d', 3); soDust(B.x + Math.sin(B.face) * 2.5, B.z + Math.cos(B.face) * 2.5, 1.6); SO.shake = .65; soSnd('g_boom', B, { gap: 100 });
     if (ph >= 3) SO.rings.push({ x: B.x, z: B.z, r: 1, v: 8, mv: SO_MV.shock, m: soRing('#ff6b3d') });
     if (B.queue.length) open(.2); else { B.stuck = 1.2; open(mv.open); }
   }
-  else if (a.k === 'march') { // three slams on the march, each a step closer
-    const cx = B.x + Math.sin(B.face) * 2, cz = B.z + Math.cos(B.face) * 2;
+  else if (a.k === 'march') { // slams on the march, each a step closer, each on its own beat
+    const cx = B.x + Math.sin(B.face) * 2.2, cz = B.z + Math.cos(B.face) * 2.2;
     if (Math.hypot(M.x - cx, M.z - cz) < mv.r) soHurtBy({ ...mv, k: a.k });
     soBoom(cx, cz, '#ff6b3d', 2.4); soDust(cx, cz, 1.1); SO.shake = .45; soSnd('g_boom', { x: cx, z: cz }, { gap: 60, vol: .8 });
-    B.x += Math.sin(B.face) * 1.8; B.z += Math.cos(B.face) * 1.8; soBossFence();
+    B.x += Math.sin(B.face) * 1.9; B.z += Math.cos(B.face) * 1.9; soBossFence();
     a.steps--;
-    if (a.steps > 0) { a.held = 0; B.state = 'wind'; B.t = a.w = (.24 + Math.random() * .16) / sp; a.delay = a.steps === 1 && Math.random() < .5 ? 1 : 0; SO.atkId++; }
+    if (a.steps > 0) { a.held = 0; B.state = 'wind'; B.t = a.w = (.16 + Math.random() * .34) / sp; a.delay = Math.random() < .4 ? 1 : 0; SO.atkId++; }
     else { soClearTele(); B.stuck = 1.3; open(mv.open); }
+  }
+  else if (a.k === 'quake') { // Earthbreaker: three fissures tear along the floor (roll out of their line)
+    soClearTele(); soBoom(B.x, B.z, '#ff6b3d', 3.2); soDust(B.x, B.z, 2); SO.shake = .9; soSnd('g_boom', B, { gap: 100, vol: 1.2 }); soSnd('g_quake', B, { gap: 100 });
+    a.fis.forEach(f => { const ang = a.ang + f.o; SO.fis.push({ x: B.x + Math.sin(ang) * 1.5, z: B.z + Math.cos(ang) * 1.5, dx: Math.sin(ang), dz: Math.cos(ang), go: 15.5, v: 14, mv, st: 0 }); });
+    B.stuck = 1.1; open(mv.open);
+  }
+  else if (a.k === 'throw') { // a boulder torn from the floor, thrown in an arc at where you'll be
+    const at = new THREE.Vector3(B.x + Math.sin(B.face) * 1.2, 5.5, B.z + Math.cos(B.face) * 1.2), rk = is3mesh(is3rock(new THREE.DodecahedronGeometry(.9, 0), Math.random, .3), '#4f4a58', at.x, at.y, at.z, SO.S);
+    SO.rocks.push({ m: rk, fx: at.x, fz: at.z, fy: at.y, tx: a.tx, tz: a.tz, t: 0, T: .75 / Math.sqrt(sp), mv, tm: a.tm }); a.tm = null; SO.tele = SO.tele.filter(t => t.a !== a);
+    soSnd('g_whoosh', B, { gap: 60, rate: .7 }); open(B.queue.length ? .2 : mv.open);
   }
   else if (a.k === 'wave') { SO.rings.push({ x: B.x, z: B.z, r: 1, v: 8, mv, m: soRing('#74c0fc'), drowsy: 1 }); open(mv.open); soSnd('g_roar2', B, { gap: 100, vol: .6, rate: 1.2 }); }
   else if (a.k === 'roll') { B.state = 'roll'; soSnd('g_grind', B, { gap: 100, rate: .8 }); }
+  else if (a.k === 'charge') { B.state = 'charge'; B.face = a.ang; soSnd('g_roar2', B, { gap: 100, vol: .8, rate: 1.1 }); }
   else if (a.k === 'leap') { a.fx = B.x; a.fz = B.z; a.air = .62 / sp; B.state = 'air'; B.t = a.air; soSnd('g_whoosh', B, { gap: 100, rate: .7 }); }
   else if (a.k === 'alarm') { open(mv.open); soSnd('g_whoosh', B, { gap: 100 }); }
   else open(.25);
 }
-// rings along the floor (jump them) and alarm clocks landing on their own timers
+// rings along the floor (jump them), falling stones on their own timers, thrown boulders and fissures
 function soHazStep(dt) {
   const M = SO.me;
   SO.rings = SO.rings.filter(w => {
-    w.r += w.v * soSpeed() * dt; w.m.scale.setScalar(w.r); w.m.material.opacity = Math.max(0, .6 - w.r / 40);
+    w.r += w.v * soSpeed() * dt; w.m.scale.setScalar(w.r); w.m.material.opacity = Math.max(0, .6 - w.r / (w.max ? w.max * 1.6 : 40));
     const dp = soDist(w, M); if (!w.hit && Math.abs(dp - w.r) < .6) { w.hit = 1; if (soHurtBy(w.mv) && w.drowsy) { M.drowsy = 3; soPop('😴 Drowsy: slower, half stamina', 'bad'); } }
-    if (w.r > 22) { SO.S.remove(w.m); w.m.geometry.dispose(); return false; }
+    if (w.r > (w.max || 22)) { SO.S.remove(w.m); w.m.geometry.dispose(); return false; }
     return true;
   });
   SO.drops = SO.drops.filter(t => {
@@ -668,12 +840,31 @@ function soHazStep(dt) {
     if (Math.hypot(t.x - M.x, t.z - M.z) < SO_MV.alarm.r) soHurtBy(SO_MV.alarm);
     soBoom(t.x, t.z, '#adb5bd'); soDust(t.x, t.z, .7); soSnd('g_rocks', t, { gap: 50 }); SO.S.remove(t.m); t.m.geometry.dispose(); return false;
   });
+  SO.rocks = SO.rocks.filter(r => {
+    r.t += dt; const p = Math.min(1, r.t / r.T);
+    r.m.position.set(r.fx + (r.tx - r.fx) * p, r.fy * (1 - p) + Math.sin(p * Math.PI) * 4, r.fz + (r.tz - r.fz) * p); r.m.rotation.x += dt * 7; r.m.rotation.z += dt * 4;
+    if (r.tm) r.tm.material.opacity = .3 + p * .55;
+    if (p < 1) return true;
+    if (Math.hypot(r.tx - M.x, r.tz - M.z) < r.mv.r && M.y < 1.2) soHurtBy({ ...r.mv, k: 'throw' });
+    soBoom(r.tx, r.tz, '#8a8398', 2.2); soDust(r.tx, r.tz, 1.3); soSnd('g_rocks', { x: r.tx, z: r.tz }, { gap: 50, vol: 1.2 }); SO.shake = Math.max(SO.shake || 0, .35);
+    SO.S.remove(r.m); r.m.geometry.dispose(); if (r.tm) { SO.S.remove(r.tm); r.tm.geometry.dispose(); } return false;
+  });
+  SO.fis = SO.fis.filter(f => {
+    const v = f.v * soSpeed() * dt; f.x += f.dx * v; f.z += f.dz * v; f.go -= v; f.st += v;
+    if (f.st > .9) { f.st = 0; soBurst(new THREE.Vector3(f.x, .2, f.z), { tex: 'dirt_02', col: '#5d5766', n: 3, size: .55, life: .7, speed: 5, grav: 16, up: 1.4, add: false, op: .95 }); soBurst(new THREE.Vector3(f.x, .15, f.z), { tex: 'flame_03', col: '#ff6b3d', n: 1, size: 1.2, life: .35, speed: 0, grow: .6 }); }
+    if (!f.hit && Math.hypot(f.x - M.x, f.z - M.z) < 1.3 && M.y < 1) { f.hit = 1; soHurtBy({ ...f.mv, k: 'quake' }); }
+    return f.go > 0 && Math.hypot(f.x, f.z) < SO_ARENA + 1;
+  });
 }
 function soRing(col) { const m = new THREE.Mesh(new THREE.TorusGeometry(1, .07, 6, 64), new THREE.MeshBasicMaterial({ color: col, transparent: true, opacity: .6, depthWrite: false })); m.rotation.x = Math.PI / 2; m.position.set(SO.B.x, .3, SO.B.z); SO.S.add(m); return m; }
 function soBossAfter(ph) {
   const B = SO.B;
-  if (B.queue.length) { B.state = 'idle'; B.t = .05; return; }
-  B.state = 'idle'; B.t = (.15 + Math.random() * .35) / soSpeed() * (ph >= 3 ? .7 : 1);
+  if (B.queue.length) { B.state = 'idle'; B.t = .02; return; }
+  // after a long combo it pants: the biggest opening it gives
+  if (B.tiredNext) { B.tiredNext = 0; B.state = 'tired'; B.t = (1.1 + Math.random() * .7) / Math.sqrt(soSpeed()); soSnd('g_growl', B, { gap: 100, vol: .6, rate: .8 }); return; }
+  // 2.88: the pause before its next move changes every time: none at all, a beat, or a long stare
+  const r = Math.random();
+  B.state = 'idle'; B.t = (r < .3 ? .02 : r < .85 ? .12 + Math.random() * .35 : .55 + Math.random() * .45) / soSpeed() * (ph >= 3 ? .7 : 1);
 }
 // a hit coming at you: jumped, rolled through, blocked, or taken. Returns true if it landed.
 function soHurtBy(mv) {
@@ -697,9 +888,12 @@ function soHurtBy(mv) {
   const sh = Math.min(P.shield || 0, n); P.shield = (P.shield || 0) - sh; n -= sh;
   P.hp = Math.max(0, P.hp - n); SO.hurtT = .35; soNum(n, 'me'); SO.stats.hurt++;
   M.combo = 0; M.comboT = 0;
-  if (M.block) { if (typeof sfx === 'function') sfx('clank', { gap: 60 }); } else { soSnd('g_pain', M, { gap: 250 }); if (typeof sfx === 'function') sfx('hurt', { gap: 60 }); }
+  if (M.block) { if (typeof sfx === 'function') sfx('clank', { gap: 60 }); }
+  else if (P.hp > 0) soGrunt(n / P.max); // 2.88: no more yell; a grunt that gets heavier with the damage (the fall has its own)
   return true;
 }
+// your hurt grunt: a light breath, a solid grunt with a thump, or a winded groan under a crushing hit
+function soGrunt(share) { soSnd(share < .2 ? 'g_hurt' : share < .42 ? 'g_hurtm' : 'g_hurth', SO.me, { gap: 220, rate: .96 + Math.random() * .08 }); }
 // ---------- hit feel: sparks, spell sprites (Kenney Particle Pack, CC0), swing trails, hit-stop, camera kick ----------
 const SO_SCHOOL = {
   staff: { core: '#e3fafc', col: '#3bc9db', tex: 'magic_05', trail: 'twirl_02' },
@@ -742,6 +936,10 @@ function soImpact(pow = 1, at = null, magic = false) {
   if (!at) { // the Golem's side that faces you, at the weapon's height
     const d = Math.max(.01, soDist(M, B)), r = SO_BR - .5, tip = SO.H?.tip('r');
     at = new THREE.Vector3(B.x + (M.x - B.x) / d * r, Math.max(1, Math.min(3.4, tip ? tip.y : 1.8)), B.z + (M.z - B.z) / d * r);
+  }
+  if (SO.lastArm) { // 2.88: bounced off the stone: a quick blue-grey glint, hardly a pause
+    SO.stop = .02; SO.kick = .15; if (magic) return;
+    soBurst(at, { tex: 'spark_01', col: '#a5b4c8', n: 4, size: .2, life: .22, speed: 5, grav: 8, up: .3 }); return;
   }
   if (magic) return;
   soBurst(at, { tex: 'flare_01', col: '#fff4e6', n: 1, size: 1.1 * pow, life: .14, speed: 0, grow: .6 });
@@ -811,15 +1009,24 @@ const SO_CINE = { eyes: 3.2, stand: 3.7, roar: 5, title: 5.6, bar: 7.6, back: 8.
 function soCineDraw() {
   const ov = document.getElementById('soov'); if (!ov) return;
   ov.classList.add('cine');
-  ov.insertAdjacentHTML('beforeend', `<div class="so-cine"><div class="so-fade"></div><div class="so-title"><b>${esc(SO_TITLE)}</b><i></i></div>${SO.cine.skip ? '<small class="so-skip">Press any key to skip</small>' : ''}</div>`);
+  ov.insertAdjacentHTML('beforeend', `<div class="so-cine"><div class="so-fade"></div><div class="so-flash"></div><div class="so-title"><b>${esc(SO_TITLE)}</b><i></i></div>${SO.cine.skip ? '<small class="so-skip">Press any key to skip</small>' : ''}</div>`);
 }
 function soCineStep(dt) {
   const C = SO.cine, B = SO.B, G = SO.gs, T = SO_CINE, was = C.t; C.t += dt;
   const at = k => was < k && C.t >= k;
   if (at(.3) || at(1.9)) soSnd('g_snore', B);
-  if (at(T.eyes)) { soSnd('g_grind', B, { rate: .7 }); }
-  if (at(T.stand)) { B.state = 'wake'; soSnd('g_step', B); soDust(B.x - 1, B.z, .8); soDust(B.x + 1, B.z, .8); }
-  if (at(T.roar)) { B.state = 'roar'; SO.shake = 1.4; soSnd('g_roar', B); soDust(B.x, B.z + 1.5, 2); SO.rings.push({ x: B.x, z: B.z, r: 1, v: 12, mv: SO_MV.roar, m: soRing('#ffd8a8'), cine: 1 }); }
+  // 2.88: the torches round the hall flare up one by one as the camera passes, then the braziers by its bed
+  (SO.torches || []).forEach((tc, i) => { if (!tc.big && at(.45 + i * .28)) soTorchLight(tc); if (tc.big && at(T.eyes - .45 + (i % 2) * .12)) soTorchLight(tc, 1.4); });
+  if (at(2.3)) soSnd('g_rise', B);
+  if (at(T.eyes)) { soSnd('g_grind', B, { rate: .7 }); soSnd('g_crack', B, { vol: .8, rate: .7 }); if (G) G.eyes.forEach(e => { const v = new THREE.Vector3().setFromMatrixPosition(e.matrixWorld); soBurst(v, { tex: 'flare_01', col: '#9ff3ff', n: 1, size: 1.6, life: .5, speed: 0, grow: 1.2 }); }); soTorchFlare(.5); }
+  if (at(T.stand)) {
+    B.state = 'wake'; soSnd('g_step', B); soSnd('g_quake', B); SO.shake = .6; soDust(B.x - 1.4, B.z, 1); soDust(B.x + 1.4, B.z, 1);
+    // the roof of the hall trickles stone and dust as it rises
+    for (let i = 0; i < 9; i++) { const v = new THREE.Vector3(B.x + (Math.random() - .5) * 14, 9 + Math.random() * 3, B.z + (Math.random() - .5) * 12); soBurst(v, { tex: 'dirt_02', col: '#6e6680', n: 3, size: .4, life: 1.6, speed: .5, grav: 9, add: false, op: .9 }); soBurst(v, { tex: 'smoke_03', col: '#4a4458', n: 1, size: 2.2, life: 1.8, speed: .3, grav: 2, grow: 1, add: false, op: .25 }); }
+  }
+  if (at(T.stand + .6)) soSnd('g_step', B, { vol: 1.2 });
+  if (at(T.roar)) { B.state = 'roar'; SO.shake = 1.6; soSnd('g_roar', B); soSnd('g_quake', B); soDust(B.x, B.z + 1.5, 2); soTorchFlare(1.6); SO.rings.push({ x: B.x, z: B.z, r: 1, v: 12, mv: SO_MV.roar, m: soRing('#ffd8a8'), cine: 1 }); }
+  if (at(T.title)) { soSnd('g_title', null); SO.shake = Math.max(SO.shake, .35); }
   if (at(T.roar + 1.6)) B.state = 'wake';
   if (G) { const k = Math.max(0, Math.min(1, (C.t - T.eyes) / .6)); G.eyes.forEach(e => e.material.emissiveIntensity = 1.4 * k); }
   // the roar's ring only shows; it can't hurt you in the intro
@@ -827,6 +1034,8 @@ function soCineStep(dt) {
   const ov = document.getElementById('soov');
   if (ov) {
     ov.querySelector('.so-fade')?.style.setProperty('opacity', String(Math.max(0, 1 - C.t / .9)));
+    const fl = C.t >= T.roar ? Math.max(0, 1 - (C.t - T.roar) / .7) * .55 : C.t >= T.eyes ? Math.max(0, 1 - (C.t - T.eyes) / .4) * .2 : 0;
+    ov.querySelector('.so-flash')?.style.setProperty('opacity', String(fl));
     const ti = ov.querySelector('.so-title'); if (ti) ti.classList.toggle('on', C.t >= T.title && C.t < T.end - .2);
     if (C.t >= T.bar) ov.classList.add('bar-in');
   }
@@ -835,6 +1044,7 @@ function soCineStep(dt) {
 function soCineEnd() {
   if (!SO?.cine) return;
   SO.cine = null; SO.B.state = 'idle'; SO.B.t = .8; SO.shake = 0;
+  (SO.torches || []).forEach(tc => { tc.lit = 1; });
   if (SO.gs) SO.gs.eyes.forEach(e => e.material.emissiveIntensity = 1.4);
   SO.rings = SO.rings.filter(w => { if (w.cine) { SO.S.remove(w.m); w.m.geometry.dispose(); } return !w.cine; });
   const ov = document.getElementById('soov'); ov?.querySelector('.so-cine')?.remove(); ov?.classList.remove('cine'); ov?.classList.add('bar-in');
@@ -872,6 +1082,10 @@ function sgAnim(dt, t) {
   }
   else if (st === 'air') S.play('Jump_Loop', { fade: .15 });
   else if (st === 'roll') S.play('Roll', { speed: 1.7 });
+  else if (st === 'charge') S.play('Sprint_Loop', { fade: .12, speed: 1.5 });
+  else if (st === 'back') S.play('Jump_Start', { loop: false, fade: .1, speed: 1.6 });
+  else if (st === 'tired') S.play('Crouch_Idle_Loop', { fade: .25, speed: 1.6 });
+  else if (st === 'stalk') S.play('Walk_Loop', { fade: .3, speed: 2.4 * soSpeed() / 4.2 });
   else if (st === 'recover' && mv && S.cur === mv.c && S.struck !== SO.atkId) {
     // the strike: snap through the rest of the swing
     S.struck = SO.atkId; const A = S.act; A.timeScale = mv.after; A.paused = false; A.time = Math.max(A.time, mv.hit * A.getClip().duration);
@@ -891,6 +1105,12 @@ function sgAnim(dt, t) {
   if (S.phCol !== col) { S.phCol = col; S.eyes.forEach(e => { e.material.color.set(col); e.material.emissive.set(col); }); S.cm.color.set(col); S.cm.emissive.set(col); S.glow.color.set(col); }
   S.cm.emissiveIntensity = 1.2 + ph * .5 + Math.sin(t * (3 + ph * 2)) * .4; S.glow.intensity = 1 + ph * .6;
   S.crystal.rotation.y += dt * (.5 + ph * .5);
+  // 2.88: its veins smoulder while it's armoured and blaze white-hot when it's open to hits
+  const open = !SO.cine && SO.B.state !== 'sleep' && soOpenNow();
+  S.veinK = (S.veinK || 0) + ((open ? 1 : 0) - (S.veinK || 0)) * Math.min(1, dt * (open ? 18 : 6));
+  S.veinM.emissiveIntensity = (SO.cine && SO.cine.t < SO_CINE.eyes ? .25 : 1.4 + ph * .2 + Math.sin(t * 2.2) * .15) + S.veinK * (3.2 + Math.sin(t * 16) * .5);
+  S.veinM.emissive.setRGB(1, .45 + S.veinK * .45, .15 + S.veinK * .55); S.veinM.color.copy(S.veinM.emissive);
+  S.eyeLight.color.set(col); S.eyeLight.intensity = (SO.cine ? (SO.cine.t > SO_CINE.eyes ? 1.6 : 0) : .9) + ph * .3;
   if (!SO.cine && B.state !== 'down') S.crumble(1 - soLeft());
   if (S.flash > 0) { S.flash -= dt; S.plates.forEach(p => { if (p.material.emissive && p.material !== S.cm) p.material.emissive.set(S.flash > 0 ? '#3a2a22' : '#000000'); }); }
   S.update(dt);
@@ -927,7 +1147,7 @@ function soDraw(t, dt) {
   SO.blob.position.set(M.x, .02, M.z); SO.blob.scale.setScalar(1 - Math.min(.5, M.y / 4));
   soFxStep(dt);
   // the Golem
-  const R = G.root; R.position.set(B.x, B.y, B.z); R.rotation.y = B.face;
+  const R = G.root; R.position.set(B.x, B.y, B.z); R.rotation.y = B.face + (B.spinT > 0 ? (1 - B.spinT / .42) * Math.PI * 2 : 0);
   if (SO.gs) sgAnim(dt, t); else {
   const b = G.body, arms = G.arms, wb = Math.sin(t * 3);
   b.rotation.set(0, 0, 0); b.position.y = 2.6; G.head.rotation.set(0, 0, 0);
@@ -958,6 +1178,7 @@ function soDraw(t, dt) {
   if (G.flash > 0) { G.flash -= .016; G.root.traverse(o => { if (o.isMesh && !o.userData.glow && !G.arms.some(A => A.fist === o)) o.material.emissive.set(G.flash > 0 ? '#664433' : '#000000'); }); }
   }
   SO.fx = SO.fx.filter(e => { e.t += .016; const p = e.t / .6; if (p >= 1) { SO.S.remove(e.m); e.m.geometry.dispose(); return false; } e.m.position.set(e.x + Math.cos(e.a) * p * e.s * 1.6, .4 + Math.sin(p * 3) * 1.2, e.z + Math.sin(e.a) * p * e.s * 1.6); e.m.material.opacity = 1 - p; return true; });
+  soTorchStep(dt, t); soAmbStep(dt);
   if (SO.cine) { soCineCam(cam); SO.R.render(SO.S, cam); soHudTick(); return; }
   // the camera over your shoulder, free (no lock-on); it pulls in rather than going through the Golem or the wall
   // 2.87: holding right click aims: closer over the shoulder and zoomed in a little
@@ -966,8 +1187,10 @@ function soDraw(t, dt) {
   const tx = M.x, ty = 1.55 + M.y * .6 + ak * .15, tz = M.z, cp = C.cp, d = C.cd + (3.9 - C.cd) * ak;
   let px = tx + Math.sin(C.cy) * Math.cos(cp) * d, py = ty + Math.sin(cp) * d, pz = tz + Math.cos(C.cy) * Math.cos(cp) * d;
   const side = .9 + .3 * ak; px += Math.cos(C.cy) * side; pz -= Math.sin(C.cy) * side;
-  for (let f = .1; f <= 1; f += .05) { const x = tx + (px - tx) * f, z = tz + (pz - tz) * f; if (B.state !== 'down' && Math.hypot(x - B.x, z - B.z) < 3.1 && ty + (py - ty) * f < 6 + B.y) { const k = Math.max(.35, f - .1); px = tx + (px - tx) * k; py = ty + (py - ty) * k + (1 - k) * 2.2; pz = tz + (pz - tz) * k; break; } }
+  for (let f = .1; f <= 1; f += .05) { const x = tx + (px - tx) * f, z = tz + (pz - tz) * f; if (B.state !== 'down' && Math.hypot(x - B.x, z - B.z) < 3.6 && ty + (py - ty) * f < 7 + B.y) { const k = Math.max(.35, f - .1); px = tx + (px - tx) * k; py = ty + (py - ty) * k + (1 - k) * 2.2; pz = tz + (pz - tz) * k; break; } }
   for (let f = .2; f <= 1; f += .05) { const x = tx + (px - tx) * f, z = tz + (pz - tz) * f; if (Math.hypot(x, z) > 14.5) { const k = f - .05; px = tx + (px - tx) * k; py = ty + (py - ty) * k; pz = tz + (pz - tz) * k; break; } }
+  // 2.88: the bigger body: if the camera would still end up inside it (it's right behind you), rise over its shoulders
+  { const dc = Math.hypot(px - B.x, pz - B.z); if (B.state !== 'down' && dc < 3.6) { const k = 1 - dc / 3.6; py = Math.max(py, py + (7.2 + B.y - py) * Math.min(1, k * 1.6)); px += (tx - px) * k * .5; pz += (tz - pz) * k * .5; } }
   if (SO.shake > 0) { SO.shake -= .016; px += (Math.random() - .5) * SO.shake; py += (Math.random() - .5) * SO.shake; }
   if (SO.kick > 0) { const k = SO.kick * SO.kick * .5; px += (tx - px) * k * .25; py += SO.kickY * k; pz += (tz - pz) * k * .25; SO.kick = Math.max(0, SO.kick - dt * 6); }
   cam.position.set(px, Math.max(.6, py), pz);
@@ -1011,7 +1234,7 @@ function soHudDraw() {
   const ov = soOverlay(); if (!SO || SO.intro) return;
   ov.querySelector('.so-hud')?.remove(); ov.querySelector('.so-end')?.remove();
   const hud = document.createElement('div'); hud.className = 'so-hud';
-  hud.innerHTML = `<div class="so-boss"><div class="so-bn">${esc(SO_TITLE)} <span class="so-ph"></span></div><div class="so-bar"><i class="so-bhp"></i></div><div class="so-bsub"></div></div>
+  hud.innerHTML = `<div class="so-boss"><div class="so-bn">${esc(SO_TITLE)} <span class="so-ph"></span><b class="so-open">EXPOSED</b></div><div class="so-bar"><i class="so-bhp"></i></div><div class="so-bsub"></div></div>
     <div class="so-dmg"><small>Your damage</small><b>0</b><span class="so-combo"></span></div>
     <div class="so-ptime"></div><div class="so-cross ${SO.aim ? 'aim' : ''}"><i></i><i></i><i></i><i></i></div><div class="so-pops"></div>
     <div class="so-me"><div class="so-hp"><i></i><span></span></div><div class="so-st"><i></i></div><div class="so-chips"></div></div>
@@ -1042,7 +1265,8 @@ function soHudTick() {
   const pct = soPct(), ph = soPhase(), left = soLeft();
   // the big bar is this fight's own (phases at 70/40/15%); the house's weekly bar is the small line under it
   if (q('.so-bhp')) q('.so-bhp').style.width = (left * 100) + '%';
-  const tag = B.stuck > 0 ? ' · fists stuck: weak point' : B.state === 'wind' || B.state === 'hold' || B.state === 'roll' || B.state === 'roar' ? ' · armoured' : B.state === 'recover' ? ' · open' : '';
+  const open = soOpenNow(), tag = B.stuck > 0 ? ' · fists stuck: weak point' : B.state === 'tired' ? ' · exhausted: hit it now' : open ? ' · exposed' : ' · armoured';
+  q('.so-boss')?.classList.toggle('open', open);
   if (q('.so-bsub')) q('.so-bsub').textContent = (SO.shared ? `House bar ${Math.round(pct * 100)}%` : 'Test fight') + tag;
   if (q('.so-ph')) q('.so-ph').textContent = ph ? '· ' + SO_PH[ph].n : '';
   if (q('.so-dmg b')) q('.so-dmg b').textContent = Math.round(SO.dealt).toLocaleString();
@@ -1128,15 +1352,20 @@ document.addEventListener('click', e => {
 });
 
 // ---------- the boss island: the weekly boss breathes, sways and looks around ----------
-function biIdle(m) {
-  BI_IDLE.m = m; BI_IDLE.y = m.position.y; if (BI_IDLE.raf) return;
+// 2.88: or, in Somnus's week, its real rigged body sleeping (o.gs) and the braziers' fires (o.fires)
+function biIdle(m, o = {}) {
+  BI_IDLE.m = m; BI_IDLE.y = m ? m.position.y : 0; BI_IDLE.gs = o.gs || null; BI_IDLE.fires = o.fires || []; BI_IDLE.last = 0;
+  const node = () => BI_IDLE.m || BI_IDLE.gs?.root || BI_IDLE.fires[0]?.fl;
+  if (BI_IDLE.raf) return;
   const tick = now => {
     BI_IDLE.raf = 0;
-    if (IS3.house !== 'boss' || view !== 'islands' || !IS3.canvas?.isConnected || !BI_IDLE.m?.parent || hxLow()) return;
-    const t = now / 1000, o = BI_IDLE.m;
-    o.position.y = BI_IDLE.y + Math.sin(t * 1.6) * .08; o.rotation.y = Math.sin(t * .5) * .25; o.rotation.z = Math.sin(t * .8) * .03;
+    if (IS3.house !== 'boss' || view !== 'islands' || !IS3.canvas?.isConnected || !node()?.parent || hxLow()) return;
+    const t = now / 1000, dt = BI_IDLE.last ? Math.min(.1, t - BI_IDLE.last) : 0, o = BI_IDLE.m; BI_IDLE.last = t;
+    if (o) { o.position.y = BI_IDLE.y + Math.sin(t * 1.6) * .08; o.rotation.y = Math.sin(t * .5) * .25; o.rotation.z = Math.sin(t * .8) * .03; }
+    if (BI_IDLE.gs) { const G = BI_IDLE.gs; G.update(dt); G.cm.emissiveIntensity = 1 + Math.sin(t * 1.3) * .5; G.eyes.forEach(e => { e.material.emissiveIntensity = .3 + Math.max(0, Math.sin(t * .7)) * .25; }); }
+    for (const f of BI_IDLE.fires) { const n = Math.sin(t * 9 + f.ph) * .5 + Math.sin(t * 23 + f.ph) * .3; f.fl.scale.set(1 + n * .08, 1 + n * .22, 1 + n * .08); f.fl2.scale.setScalar(1 + n * .15); if (f.L) f.L.intensity = 2.2 * (1 + n * .18); }
     is3draw(); BI_IDLE.raf = requestAnimationFrame(tick);
   };
   BI_IDLE.raf = requestAnimationFrame(tick);
 }
-const BI_IDLE = { m: null, y: 0, raf: 0 };
+const BI_IDLE = { m: null, y: 0, raf: 0, gs: null, fires: [] };
