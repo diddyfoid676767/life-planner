@@ -333,15 +333,11 @@ function is3base(W, S, top, rnd, big = 1, pal = {}) {
   is3mesh(new THREE.BoxGeometry(S + .14, .16, S + .14), P.lip, 0, top - .42, 0, W); // a slightly wider turf lip, so the edge reads
   is3mesh(new THREE.BoxGeometry(S - .1, .7, S - .1), P.dirt, 0, top - .85, 0, W);
   is3mesh(new THREE.BoxGeometry(S - .3, .6, S - .3), P.dirt2, 0, top - 1.45, 0, W);
-  // the underside: a square craggy point whose top stays flat under the earth (no gaps where they meet)
-  const H = S * .75, und = is3mesh(is3rock(new THREE.ConeGeometry(S * .69, H, 4, 6), rnd, .26, .12), P.rock, 0, top - 1.7 - H / 2, 0, W); und.rotation.set(Math.PI, Math.PI / 4, 0);
-  for (let i = 0; i < Math.round(8 * big); i++) { const a = rnd() * 6.28, r = S * (.12 + rnd() * .26), s = .8 + rnd() * 1.6; const k = is3mesh(is3rock(new THREE.DodecahedronGeometry(s, 0), rnd, .35), rnd() < .5 ? P.rock2 : P.rock3, Math.cos(a) * r, top - 2.2 - rnd() * S * .38, Math.sin(a) * r, W); k.scale.y = 1.6; }
-  for (let i = 0; i < Math.round(7 * big); i++) { const a = rnd() * 6.28, r = S * (.1 + rnd() * .22), h = .8 + rnd() * 1.8; const cr = is3mesh(new THREE.ConeGeometry(.25 + rnd() * .25, h, 5), P.crys[i % P.crys.length], Math.cos(a) * r, top - 2.6 - rnd() * S * .3, Math.sin(a) * r, W, true); cr.rotation.z = Math.PI; }
-  // roots and vines hanging over the edge
-  for (let i = 0; i < Math.round(14 * big); i++) {
-    const sd = i % 4, t = (rnd() - .5) * (S - 1), d = S / 2 - .12, h = .6 + rnd() * 1.6, x = sd === 0 ? t : sd === 1 ? t : sd === 2 ? d : -d, z = sd === 0 ? d : sd === 1 ? -d : t;
-    const v = is3mesh(new THREE.BoxGeometry(sd > 1 ? .08 : .12, h, sd > 1 ? .12 : .08), P.root, x, top - .4 - h / 2, z, W); v.rotation[sd > 1 ? 'x' : 'z'] = (rnd() - .5) * .3;
-  }
+  // 2.89: the underside is shared with the hex islands and the far islands (undersides.js). The boss island
+  // passes a stone palette with no trees; its crystals tell whether the boss is beaten (blue) or not.
+  const boss = P.tree === false, us = [];
+  usBuild(W, { kind: boss ? 'boss' : big > 1.2 ? 'house' : 'home', dead: boss && P.crys[0] === '#4ee6ff', n: 4, rot: Math.PI / 4, R: S * .69, y0: top - 1.7, D: S * .75, rimY: top - .4, rimR: S * .71, glow: P.crys, q: usQ(), anim: us, seed: 'base' + S + P.rock });
+  if (us.length && usQ() !== 'low') usLoop(us);
   // little rocks drifting around the island
   const n = Math.round(6 * big);
   for (let i = 0; i < n; i++) {

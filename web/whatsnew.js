@@ -10,6 +10,12 @@
 // version since the last one they saw (up to 3). D.settings.seenVersion remembers what was last shown,
 // D.settings.guidesSeen which guides have played. A brand-new install never sees either.
 const CHANGELOG = [
+  { v: '2.89.0', notes: [
+    { t: 'Islands have proper undersides now: chunky layered rock, roots and vines that sway, glowing crystals and drifting motes in the season\'s colours', k: 'new' },
+    { t: 'Waterfalls pour off the edge of your island where the river (or a pond) meets it', k: 'new' },
+    { t: 'Each island has its own look underneath: trailing roots under yours, stone spikes and a lantern on a chain under the house fortress (darker and spikier with the Stone fortress look), cracks and dripping lava under the boss island', k: 'new' },
+    { t: 'The islands in the distance look like the real thing: your buildings in miniature, the fortress with its walls, and housemates\' islands in their own look', k: 'new' },
+  ] },
   { v: '2.88.0', guide: 'fortify', notes: [
     { t: 'Get the house island ready for sieges: the Architect and Warlord can shape the land with ⛰️ Shape. Forest slows attackers, cliffs and moats stop them, and towers on raised ground shoot further', k: 'new' },
     { t: 'Moats and cliffs cost more and are limited by house level, and there must always be one way in to the great hall', k: 'new' },
