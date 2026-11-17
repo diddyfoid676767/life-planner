@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Solis privacy</title>
+<link rel="icon" href="../icon.svg">
+<style>
+  :root { --bg: #0e0b1a; --card: #1d1838; --line: #2e2752; --text: #f1eefc; --muted: #a9a2c8; --sky: #6fd0ff; }
+  body { margin: 0; font: 16px/1.6 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; color: var(--text); background: var(--bg); }
+  a { color: var(--sky); }
+  .wrap { max-width: 720px; margin: 0 auto; padding: 40px 16px 60px; }
+  h1 { margin: 0 0 6px; } h2 { margin-top: 34px; font-size: 1.25rem; }
+  .muted { color: var(--muted); }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 4px 20px; margin-top: 14px; }
+  li { margin-bottom: 6px; }
+</style>
+</head>
+<body><div class="wrap">
+  <p><a href="./">← Get Solis</a></p>
+  <h1>Privacy, and info for parents and teachers</h1>
+  <p class="muted">Plain English, no small print. Last updated November 2026.</p>
+
+  <h2>What Solis is</h2>
+  <p>A free study and life planner for Windows, built by a student. It keeps to-dos, classes, SACs and tests, a study timer, workouts and a calendar in one place, with a light game layer (an island you build with points from studying and exercise, and school houses that work together on a weekly "boss"). There are no ads and no in-app purchases.</p>
+
+  <h2>What stays on your computer</h2>
+  <div class="card"><ul>
+    <li>Your whole planner: tasks, classes, timetable, SACs and scores, study sessions, workouts, notes and calendar links.</li>
+    <li>It's saved in the <b>data</b> folder next to Solis.exe, with automatic backups.</li>
+    <li>If you add your own email or Claude API key for the optional email sorting, those stay on your computer too.</li>
+  </ul></div>
+
+  <h2>What goes online, only if you make an account</h2>
+  <div class="card"><ul>
+    <li><b>Your email</b> and a password (stored by Google Firebase, which we use for sign-in). We email you a link once to confirm the address.</li>
+    <li><b>For Westbourne students:</b> your name from the school's year list, your house, and that you're a verified student. The year list itself is never stored in readable form: only a scrambled (salted hash) version, used to check that an address is on it.</li>
+    <li><b>What friends see:</b> your name, avatar, badges and leaderboard numbers (like study minutes this week), and your house's weekly totals.</li>
+    <li><b>A copy of your planner</b>, private to you, so it can sync between your devices.</li>
+    <li><b>Chats</b> you send to friends, and feedback you send to the developer.</li>
+  </ul></div>
+
+  <h2>What we never do</h2>
+  <div class="card"><ul>
+    <li>Sell or share your data with anyone. No ads, no tracking, no analytics companies.</li>
+    <li>Show your email to other students. Friends can find you by your name, or by typing your exact school email, but they never see the address.</li>
+  </ul></div>
+
+  <h2>Deleting your account</h2>
+  <p>In Solis, open <b>Settings, Account</b> and press <b>Delete account</b>. Your profile, synced planner and username are removed from the server straight away. Your planner on your own computer stays until you delete the Solis folder.</p>
+
+  <h2>Questions</h2>
+  <p>Use the 💬 <b>Feedback</b> button inside Solis, which goes straight to the developer.</p>
+</div></body>
+</html>

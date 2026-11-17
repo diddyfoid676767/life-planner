@@ -1,0 +1,285 @@
+'use strict';
+/* Sound effects, made on the fly with Web Audio: soft ticks, pops, chimes, garden and
+   walking sounds. 2.80 added real recordings (web/sfx, Kenney's RPG, Impact and Interface
+   packs, CC0); since 2.83 they play only inside the Souls boss fight and load the first time
+   one starts. Settings → Sound sets the volume or turns any of it off. */
+
+const sndCfg = () => Object.assign({ on: true, vol: .6, ui: true, garden: true, arena: true, ambience: true, walk: true }, ((typeof D !== 'undefined' && D) && D.settings && D.settings.sound) || {});
+const SND = { ctx: null, out: null, last: {}, noise: null, hoverEl: null };
+function sndCtx() {
+  if (SND.ctx) { if (SND.ctx.state === 'suspended') SND.ctx.resume(); return SND.ctx; }
+  const AC = window.AudioContext || window.webkitAudioContext; if (!AC) return null;
+  const c = SND.ctx = new AC();
+  // the volume sits after the compressor: before it, the compressor's makeup gain undid the slider
+  const comp = c.createDynamicsCompressor(); comp.threshold.value = -18; comp.ratio.value = 4; SND.master = c.createGain(); comp.connect(SND.master); SND.master.connect(c.destination);
+  SND.out = c.createGain(); SND.out.connect(comp); SND.dry = c.createGain(); SND.dry.connect(comp); // recordings skip the echo
+  // a short soft echo shared by everything, so sounds feel less dry
+  const dl = c.createDelay(); dl.delayTime.value = .09; const fb = c.createGain(); fb.gain.value = .22; const wet = c.createGain(); wet.gain.value = .18; const lp = c.createBiquadFilter(); lp.frequency.value = 2400;
+  SND.out.connect(dl); dl.connect(lp); lp.connect(fb); fb.connect(dl); lp.connect(wet); wet.connect(comp);
+  const n = c.createBuffer(1, c.sampleRate, c.sampleRate), d = n.getChannelData(0); for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1; SND.noise = n;
+  return c;
+}
+// one note: oscillator type, start and end frequency, length, loudness, delay
+function tone(c, { type = 'sine', f = 440, f2, dur = .12, vol = .2, at = 0, attack = .005, q, filter } = {}) {
+  const t = c.currentTime + at, o = c.createOscillator(), g = c.createGain(); vol *= SND.k || 1;
+  o.type = type; o.frequency.setValueAtTime(f, t); if (f2) o.frequency.exponentialRampToValueAtTime(Math.max(20, f2), t + dur);
+  g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(vol, t + attack); g.gain.exponentialRampToValueAtTime(.0001, t + dur);
+  let node = o; if (filter) { const fl = c.createBiquadFilter(); fl.type = filter; fl.frequency.value = q || 1200; o.connect(fl); node = fl; }
+  node.connect(g); g.connect(SND.out); o.start(t); o.stop(t + dur + .05);
+}
+// a burst of filtered noise: rustles, swishes, hits
+function hiss(c, { dur = .15, vol = .2, at = 0, type = 'bandpass', f = 2000, f2, q = 1, attack = .004 } = {}) {
+  const t = c.currentTime + at, s = c.createBufferSource(), fl = c.createBiquadFilter(), g = c.createGain(); vol *= SND.k || 1;
+  s.buffer = SND.noise; s.playbackRate.value = .8 + Math.random() * .4; fl.type = type; fl.Q.value = q; fl.frequency.setValueAtTime(f, t); if (f2) fl.frequency.exponentialRampToValueAtTime(f2, t + dur);
+  g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(vol, t + attack); g.gain.exponentialRampToValueAtTime(.0001, t + dur);
+  s.connect(fl); fl.connect(g); g.connect(SND.out); s.start(t, Math.random() * .5); s.stop(t + dur + .05);
+}
+const SFX_GROUP = { hover: 'ui', hxtick: 'hover', click: 'ui', tab: 'ui', toggle: 'ui', untoggle: 'ui', open: 'ui', close: 'ui', notify: 'ui', coin: 'ui', buy: 'ui', deny: 'ui', levelup: 'ui', box: 'ui', success: 'ui', undo: 'ui', nav: 'ui', check: 'ui', uncheck: 'ui', add: 'ui', trash: 'ui', sheet: 'ui', sheetclose: 'ui', start: 'ui', whoosh: 'ui', select: 'ui', error: 'ui', save: 'ui',
+  pop: 'garden', rustle: 'garden', water: 'garden', plant: 'garden', pickup: 'garden', chirp: 'garden', cricket: 'garden',
+  step: 'walk', jump: 'walk', land: 'walk', roll: 'walk', splash: 'walk', swim: 'walk', door: 'walk',
+  swing: 'arena', hit: 'arena', hithard: 'arena', clank: 'arena', slam: 'arena', hurt: 'arena', cast: 'arena' };
+// 2.80 recorded sounds: name -> files in web/sfx (one picked at random each time, so repeats don't sound robotic), loudness
+const SFX_REC = {
+  click: [['click1', 'click2', 'click3'], .5], hover: [['hover'], .18], hxtick: [['tick'], .35], tab: [['tab1', 'tab2'], .45], select: [['select'], .5], nav: [['nav'], .45],
+  open: [['open'], .45], close: [['close'], .45], sheet: [['sheet'], .4], sheetclose: [['sheetclose'], .4], toggle: [['toggle'], .5], untoggle: [['untoggle'], .5],
+  check: [['check'], .6], uncheck: [['uncheck'], .45], add: [['add'], .55], trash: [['trash'], .5], error: [['error'], .5], deny: [['deny'], .45], notify: [['notify'], .45],
+  save: [['save'], .5], success: [['success'], .55], levelup: [['levelup'], .6], start: [['start'], .5], undo: [['undo'], .5], pop: [['pop'], .5], ding: [['notify'], .6],
+  coin: [['coin'], .55], buy: [['buy'], .6], door: [['door'], .5],
+  step: [['grass0', 'grass1', 'grass2', 'grass3', 'grass4'], .55], jump: [['jump'], .5], land: [['land'], .55], roll: [['roll'], .6],
+  swing: [['swing1', 'swing2', 'swing3'], .55], hit: [['hit0', 'hit1', 'hit2'], .7], hithard: [['heavy0', 'heavy1', 'heavy2'], .8], clank: [['clank0', 'clank1', 'clank2'], .6],
+  slam: [['slam'], .9], hurt: [['hurt'], .8], cast: [['cast'], .5],
+  // 2.87: the boss-fight set (Golem 2.0): only ever played inside a boss fight
+  g_roar: [['g_roar'], 1], g_roar2: [['g_roar2'], .95], g_growl: [['g_growl0', 'g_growl1', 'g_growl2'], .8], g_snore: [['g_snore'], .55],
+  g_step: [['g_step0', 'g_step1', 'g_step2'], .75], g_boom: [['g_boom0', 'g_boom1', 'g_boom2'], 1], g_grind: [['g_grind0', 'g_grind1'], .55],
+  g_whoosh: [['g_whoosh'], .7], g_crumble: [['g_crumble0', 'g_crumble1', 'g_crumble2'], .7], g_rocks: [['g_rocks0', 'g_rocks1'], .7],
+  g_clang: [['g_clang0', 'g_clang1', 'g_clang2'], .6], g_swish: [['g_swish0', 'g_swish1', 'g_swish2'], .5], g_grunt: [['g_grunt0', 'g_grunt1', 'g_grunt2'], .45],
+  g_pain: [['g_pain0', 'g_pain1'], .6], g_armour: [['g_armour0', 'g_armour1', 'g_armour2'], .4], g_crack: [['g_crack0', 'g_crack1'], .8],
+  // 2.88: your hurt grunts by how hard you were hit (no more yell), torches flaring, the intro's riser and title hit, the hall shaking
+  g_hurt: [['g_hurt0', 'g_hurt1'], .5], g_hurtm: [['g_hurtm0', 'g_hurtm1'], .6], g_hurth: [['g_hurth0', 'g_hurth1'], .7],
+  g_fire: [['g_fire0', 'g_fire1'], .55], g_title: [['g_title'], .95], g_quake: [['g_quake'], .75],
+  // 2.95: the intro's waking growl, deep breath and great roar
+  g_wake: [['g_wake'], .85], g_breath: [['g_breath'], .7], g_roarbig: [['g_roarbig'], 1.1],
+  // 2.97: Morrow, the Ever-Waiting (tools/fight-sfx-pack-297.sh): the great bell, the clock, its whispering voice, its blades
+  m_toll: [['m_toll'], 1], m_bell: [['m_bell0', 'm_bell1'], .7], m_tick: [['m_tick0', 'm_tick1'], .45], m_whisper: [['m_whisper0', 'm_whisper1'], .7],
+  m_roar: [['m_roar'], .95], m_blade: [['m_blade0', 'm_blade1', 'm_blade2'], .7], m_scrape: [['m_scrape'], .6], m_freeze: [['m_freeze'], .75],
+  m_sand: [['m_sand'], .55], m_blink: [['m_blink'], .7], m_crash: [['m_crash0', 'm_crash1'], .8],
+};
+const SFX_SURF = { grass: ['grass0', 'grass1', 'grass2', 'grass3', 'grass4'], stone: ['stone0', 'stone1', 'stone2', 'stone3', 'stone4'], wood: ['wood0', 'wood1', 'wood2', 'wood3', 'wood4'] };
+const SND_BUF = {}; let sndBufLoad = null;
+// loads every recording once (about 480 KB), the first time a sound can play
+function sndLoad(c) {
+  if (sndBufLoad) return;
+  const names = new Set(); for (const [f] of Object.values(SFX_REC)) f.forEach(n => names.add(n)); for (const f of Object.values(SFX_SURF)) f.forEach(n => names.add(n));
+  sndBufLoad = Promise.all([...names].map(n => fetch('sfx/' + n + '.ogg').then(r => r.ok ? r.arrayBuffer() : Promise.reject()).then(b => new Promise((ok, no) => c.decodeAudioData(b, ok, no))).then(b => { SND_BUF[n] = b; }).catch(() => { })));
+}
+// plays one recording; false if it isn't loaded yet (the caller falls back to the made-up sound)
+function sndPlay(c, files, vol, rate = 1, pan = 0) {
+  const n = files[Math.floor(Math.random() * files.length)], b = SND_BUF[n]; if (!b) return false;
+  const s = c.createBufferSource(), g = c.createGain(); s.buffer = b; s.playbackRate.value = rate * (.94 + Math.random() * .12);
+  g.gain.value = vol * (SND.k || 1); s.connect(g);
+  // 2.87: boss-fight sounds come from where they happen (left or right of you)
+  if (pan && c.createStereoPanner) { const p = c.createStereoPanner(); p.pan.value = Math.max(-1, Math.min(1, pan)); g.connect(p); p.connect(SND.dry || SND.out); } else g.connect(SND.dry || SND.out);
+  s.start(); return true;
+}
+const PENT = [523, 587, 659, 784, 880, 988, 1175];
+const SFX = {
+  // 2.60 softer, rounder menu sounds, each a little different so repeats don't sound identical
+  hxtick: (c, o) => tone(c, { f: o.f || 600, f2: (o.f || 600) * .94, dur: .07, vol: .035, type: 'triangle' }),
+  hover: c => tone(c, { f: 1700 + Math.random() * 500, f2: 1560, dur: .045, vol: .016, type: 'sine' }),
+  click: c => { const f = PENT[Math.floor(Math.random() * 4)] * .5; tone(c, { f, f2: f * .62, dur: .08, vol: .08, type: 'triangle' }); tone(c, { f: f * 2, dur: .05, vol: .025, at: .004 }); hiss(c, { f: 3200, dur: .02, vol: .018 }); },
+  tab: c => { const i = Math.floor(Math.random() * 3); tone(c, { f: PENT[i], dur: .09, vol: .05, type: 'triangle' }); tone(c, { f: PENT[i + 2], dur: .12, vol: .045, type: 'sine', at: .05 }); },
+  nav: c => { hiss(c, { f: 500, f2: 2600, dur: .16, vol: .03, q: .8, attack: .04 }); tone(c, { f: PENT[1], dur: .1, vol: .05, type: 'triangle', at: .02 }); tone(c, { f: PENT[4], dur: .16, vol: .045, type: 'sine', at: .08 }); },
+  check: c => { const f = PENT[Math.floor(Math.random() * 5)]; tone(c, { f, dur: .28, vol: .07, type: 'sine' }); tone(c, { f: f * 2, dur: .16, vol: .03, type: 'sine' }); tone(c, { f: f * 3, dur: .08, vol: .012, type: 'sine' }); },
+  uncheck: c => { tone(c, { f: 600, f2: 420, dur: .1, vol: .05, type: 'triangle' }); },
+  add: c => { tone(c, { f: 330, f2: 660, dur: .09, vol: .07, type: 'sine' }); tone(c, { f: 990, dur: .12, vol: .035, type: 'triangle', at: .07 }); },
+  trash: c => { hiss(c, { f: 3000, f2: 500, dur: .22, vol: .045, q: .8 }); tone(c, { f: 260, f2: 110, dur: .16, vol: .05, type: 'triangle' }); },
+  sheet: c => { hiss(c, { f: 400, f2: 3000, dur: .2, vol: .028, q: .7, attack: .06 }); tone(c, { f: 440, f2: 880, dur: .14, vol: .045, type: 'sine' }); tone(c, { f: 1320, dur: .12, vol: .02, type: 'triangle', at: .08 }); },
+  sheetclose: c => { hiss(c, { f: 2600, f2: 400, dur: .16, vol: .022, q: .7 }); tone(c, { f: 760, f2: 420, dur: .12, vol: .04, type: 'sine' }); },
+  start: c => { [262, 392, 523].forEach((f, i) => tone(c, { f, dur: .5, vol: .045, type: 'triangle', at: i * .09, attack: .03 })); hiss(c, { f: 300, f2: 2400, dur: .4, vol: .02, attack: .2 }); },
+  whoosh: c => { hiss(c, { f: 300, f2: 3200, dur: .22, vol: .04, q: .7, attack: .08 }); },
+  select: c => { tone(c, { f: PENT[3], dur: .07, vol: .055, type: 'triangle' }); tone(c, { f: PENT[5], dur: .09, vol: .04, type: 'sine', at: .035 }); },
+  error: c => { tone(c, { f: 196, f2: 150, dur: .2, vol: .06, type: 'sawtooth', filter: 'lowpass', q: 700 }); },
+  save: c => { tone(c, { f: PENT[2], dur: .1, vol: .04, type: 'sine' }); tone(c, { f: PENT[5], dur: .18, vol: .04, type: 'sine', at: .07 }); },
+  toggle: c => { tone(c, { f: 880, f2: 1320, dur: .08, vol: .07, type: 'triangle' }); },
+  untoggle: c => { tone(c, { f: 900, f2: 540, dur: .08, vol: .06, type: 'triangle' }); },
+  open: c => { tone(c, { f: 420, f2: 840, dur: .12, vol: .045, type: 'triangle' }); hiss(c, { f: 1200, f2: 4000, dur: .12, vol: .018 }); },
+  close: c => { tone(c, { f: 700, f2: 380, dur: .1, vol: .045 }); },
+  notify: c => { tone(c, { f: 1046, dur: .14, vol: .06, type: 'triangle' }); tone(c, { f: 1568, dur: .2, vol: .05, type: 'triangle', at: .08 }); },
+  coin: c => { tone(c, { f: 1319, dur: .08, vol: .07, type: 'square', filter: 'lowpass', q: 3000 }); tone(c, { f: 1976, dur: .22, vol: .07, type: 'square', filter: 'lowpass', q: 3500, at: .07 }); },
+  buy: c => { [523, 659, 784, 1047].forEach((f, i) => tone(c, { f, dur: .25, vol: .07, type: 'triangle', at: i * .06 })); hiss(c, { f: 6000, dur: .3, vol: .02, at: .2, type: 'highpass' }); },
+  success: c => { [392, 523, 659, 784].forEach((f, i) => tone(c, { f, dur: .3, vol: .07, type: 'triangle', at: i * .08 })); },
+  levelup: c => { [523, 659, 784, 1047, 1319].forEach((f, i) => tone(c, { f, dur: .35, vol: .07, type: 'triangle', at: i * .07 })); tone(c, { f: 2093, dur: .6, vol: .03, at: .35 }); },
+  box: c => { hiss(c, { f: 400, f2: 5000, dur: .5, vol: .05 }); [784, 988, 1175, 1568].forEach((f, i) => tone(c, { f, dur: .3, vol: .05, type: 'triangle', at: .35 + i * .05 })); },
+  deny: c => { tone(c, { f: 300, f2: 220, dur: .14, vol: .07, type: 'triangle' }); tone(c, { f: 220, f2: 160, dur: .16, vol: .06, type: 'triangle', at: .1 }); },
+  undo: c => { tone(c, { f: 900, f2: 500, dur: .12, vol: .05 }); },
+  // 2.83 walking sounds made on the fly (the recordings are for the Souls fight only)
+  step: (c, o) => { const v = (o.vol || 1) * .5; hiss(c, { f: o.surf === 'stone' ? 2200 : o.surf === 'wood' ? 900 : 1100, dur: .07, vol: .05 * v, q: .9, attack: .004, type: 'lowpass' }); tone(c, { f: o.surf === 'wood' ? 150 : 100, f2: 70, dur: .06, vol: .03 * v, type: 'sine' }); },
+  jump: c => { tone(c, { f: 280, f2: 520, dur: .14, vol: .04, type: 'triangle' }); },
+  land: c => { hiss(c, { f: 700, f2: 300, dur: .12, vol: .06, type: 'lowpass', attack: .004 }); tone(c, { f: 110, f2: 60, dur: .1, vol: .05 }); },
+  roll: c => { hiss(c, { f: 600, f2: 1800, dur: .28, vol: .05, q: .7, attack: .1 }); },
+  door: c => { tone(c, { f: 180, f2: 120, dur: .12, vol: .06, type: 'triangle' }); tone(c, { f: 260, f2: 200, dur: .1, vol: .04, type: 'triangle', at: .08 }); },
+  ding: c => { tone(c, { f: 1175, dur: .3, vol: .06, type: 'triangle' }); tone(c, { f: 1568, dur: .35, vol: .04, type: 'triangle', at: .08 }); },
+  // 2.80 walking: no recordings of water in the packs, so these stay made up
+  splash: c => { hiss(c, { f: 1800, f2: 500, dur: .45, vol: .09, type: 'lowpass', attack: .01 }); for (let i = 0; i < 5; i++) tone(c, { f: 700 + Math.random() * 900, f2: 1600 + Math.random() * 800, dur: .05, vol: .025, at: .05 + i * .06 }); },
+  swim: c => { hiss(c, { f: 900, f2: 500, dur: .3, vol: .04, type: 'lowpass', attack: .08 }); },
+  // garden
+  pop: c => { for (let i = 0; i < 3; i++) tone(c, { f: 380 + i * 160, f2: 1400 + i * 300, dur: .09, vol: .07, at: i * .06 }); hiss(c, { f: 4000, dur: .2, vol: .03, at: .05 }); tone(c, { f: 1568, dur: .25, vol: .04, type: 'triangle', at: .2 }); },
+  rustle: c => { hiss(c, { f: 2600 + Math.random() * 1500, dur: .18 + Math.random() * .12, vol: .035, q: .8, attack: .03 }); hiss(c, { f: 5000, dur: .12, vol: .015, at: .05, type: 'highpass' }); },
+  water: c => { hiss(c, { f: 1500, f2: 700, dur: .7, vol: .05, type: 'lowpass', attack: .08 }); for (let i = 0; i < 6; i++) tone(c, { f: 900 + Math.random() * 900, f2: 1800 + Math.random() * 900, dur: .05, vol: .03, at: .1 + i * .09 }); },
+  plant: c => { tone(c, { f: 180, f2: 70, dur: .18, vol: .12 }); hiss(c, { f: 800, dur: .15, vol: .05, type: 'lowpass' }); tone(c, { f: 1175, dur: .12, vol: .025, type: 'triangle', at: .08 }); },
+  pickup: c => { tone(c, { f: 300, f2: 600, dur: .09, vol: .06 }); hiss(c, { f: 2000, dur: .08, vol: .02 }); },
+  chirp: c => { const b = 2600 + Math.random() * 1600, n = 2 + Math.floor(Math.random() * 3); for (let i = 0; i < n; i++) tone(c, { f: b, f2: b * (1.25 + Math.random() * .3), dur: .07, vol: .018, at: i * .11 }); },
+  cricket: c => { for (let i = 0; i < 4; i++) tone(c, { f: 4400, dur: .025, vol: .012, type: 'square', filter: 'bandpass', q: 4400, at: i * .045 }); },
+};
+// battle sounds: each kind of move has its own flavour on top of a hit
+const TYPE_SND = {
+  fire: c => { hiss(c, { f: 900, f2: 300, dur: .6, vol: .1, type: 'lowpass', attack: .03 }); hiss(c, { f: 500, f2: 1600, dur: .35, vol: .05, q: 1.2, attack: .05 }); for (let i = 0; i < 16; i++) hiss(c, { f: 2500 + Math.random() * 4000, dur: .02 + Math.random() * .02, vol: .05 + Math.random() * .05, at: Math.random() * .6, type: 'highpass', attack: .001 }); },
+  water: c => { hiss(c, { f: 1200, f2: 500, dur: .4, vol: .09, type: 'lowpass' }); for (let i = 0; i < 4; i++) tone(c, { f: 500 + i * 120, f2: 1100, dur: .06, vol: .04, at: i * .06 }); },
+  spark: c => { for (let i = 0; i < 6; i++) tone(c, { f: 600 + Math.random() * 1600, dur: .03, vol: .05, type: 'square', at: i * .03 }); hiss(c, { f: 5000, dur: .2, vol: .05, type: 'highpass' }); },
+  nature: c => { hiss(c, { f: 3000, dur: .35, vol: .06, attack: .05 }); tone(c, { f: 660, f2: 990, dur: .2, vol: .03, type: 'triangle' }); },
+  frost: c => { [2093, 2637, 3136].forEach((f, i) => tone(c, { f, dur: .3, vol: .03, type: 'triangle', at: i * .05 })); hiss(c, { f: 7000, dur: .3, vol: .03, type: 'highpass' }); },
+  combat: c => { tone(c, { f: 160, f2: 60, dur: .12, vol: .14 }); hiss(c, { f: 2200, dur: .05, vol: .1, at: .01 }); tone(c, { f: 110, f2: 50, dur: .1, vol: .1, at: .09 }); },
+  toxic: c => { for (let i = 0; i < 5; i++) tone(c, { f: 200 + Math.random() * 300, f2: 120, dur: .1, vol: .04, at: i * .05 }); },
+  earth: c => { tone(c, { f: 70, f2: 40, dur: .5, vol: .16 }); hiss(c, { f: 300, dur: .5, vol: .08, type: 'lowpass' }); },
+  air: c => { hiss(c, { f: 600, f2: 3000, dur: .4, vol: .07, q: 2, attack: .08 }); hiss(c, { f: 3000, f2: 700, dur: .35, vol: .05, q: 2, at: .3 }); },
+  mind: c => { tone(c, { f: 440, f2: 880, dur: .4, vol: .04, type: 'sine' }); tone(c, { f: 446, f2: 870, dur: .4, vol: .04, type: 'sine' }); },
+  swarm: c => { for (let i = 0; i < 8; i++) tone(c, { f: 180 + Math.random() * 60, dur: .05, vol: .03, type: 'sawtooth', filter: 'lowpass', q: 900, at: i * .03 }); },
+  stone: c => { for (let i = 0; i < 3; i++) { tone(c, { f: 120 - i * 15, f2: 50, dur: .15, vol: .1, at: i * .08 }); hiss(c, { f: 500, dur: .1, vol: .05, type: 'lowpass', at: i * .08 }); } },
+  spirit: c => { tone(c, { f: 300, f2: 150, dur: .5, vol: .05, type: 'triangle' }); tone(c, { f: 305, f2: 148, dur: .5, vol: .04, type: 'triangle' }); },
+  legend: c => { [262, 392, 523, 784].forEach((f, i) => tone(c, { f, dur: .5, vol: .05, type: 'sawtooth', filter: 'lowpass', q: 1800, at: i * .03 })); },
+  normal: c => { hiss(c, { f: 1000, dur: .08, vol: .05 }); tone(c, { f: 220, f2: 90, dur: .08, vol: .08 }); },
+};
+// a different sound for each tree stage, growing richer and deeper as the tree gets older
+const STAGE_SND = [
+  c => tone(c, { f: 880, f2: 1320, dur: .15, vol: .05, type: 'triangle' }),
+  c => [784, 1175].forEach((f, i) => tone(c, { f, dur: .22, vol: .05, type: 'triangle', at: i * .09 })),
+  c => [659, 784, 988].forEach((f, i) => tone(c, { f, dur: .28, vol: .055, type: 'triangle', at: i * .08 })),
+  c => { tone(c, { f: 220, f2: 180, dur: .18, vol: .08 }); [523, 659, 784, 1047].forEach((f, i) => tone(c, { f, dur: .32, vol: .05, type: 'triangle', at: .08 + i * .07 })); },
+  c => { [1047, 1319, 1568, 2093].forEach((f, i) => tone(c, { f, dur: .9, vol: .035, type: 'sine', at: i * .05 })); hiss(c, { f: 6000, dur: .5, vol: .02, type: 'highpass', at: .1 }); },
+  c => { tone(c, { f: 131, dur: 1.1, vol: .06, type: 'sawtooth', filter: 'lowpass', q: 700, attack: .12 }); [392, 523, 659].forEach((f, i) => tone(c, { f, dur: .7, vol: .04, type: 'triangle', at: .25 + i * .12 })); },
+  c => { hiss(c, { f: 500, f2: 1400, dur: 1.4, vol: .05, type: 'bandpass', q: .6, attack: .4 }); [196, 294, 392, 494].forEach((f, i) => tone(c, { f, dur: 1.4, vol: .03, type: 'sine', at: i * .15, attack: .3 })); },
+  c => { [98, 147, 196, 294, 392, 587, 784].forEach((f, i) => tone(c, { f, dur: 2.2, vol: .035, type: i < 3 ? 'sawtooth' : 'sine', filter: i < 3 ? 'lowpass' : undefined, q: 900, at: i * .12, attack: .35 })); [1568, 2093, 2637, 3136].forEach((f, i) => tone(c, { f, dur: .5, vol: .02, type: 'triangle', at: 1 + i * .1 })); },
+];
+// unboxing: a rising build-up that gets longer and richer with rarity, then the burst
+function boxBuildSfx(tier, secs) {
+  try {
+    const c = sfxReady('ui'); if (!c) return;
+    const n = 4 + tier * 4;
+    for (let i = 0; i < n; i++) { const at = (i / n) * secs * .95; tone(c, { f: 300 + i * (40 + tier * 15), dur: .06, vol: .03 + i * .004, type: 'triangle', at }); if (tier >= 1) hiss(c, { f: 900 + i * 200, dur: .05, vol: .015, at }); }
+    if (tier >= 2) tone(c, { f: 110, f2: 220 + tier * 60, dur: secs, vol: .05, type: 'sawtooth', filter: 'lowpass', q: 600, attack: secs * .8 });
+    if (tier === 3) hiss(c, { f: 200, f2: 6000, dur: secs, vol: .05, attack: secs * .9 });
+  } catch (e) { }
+}
+function boxBurstSfx(tier) {
+  try {
+    const c = sfxReady('ui'); if (!c) return;
+    tone(c, { f: 160 - tier * 20, f2: 50, dur: .25 + tier * .1, vol: .1 + tier * .03 }); hiss(c, { f: 3000, f2: 500, dur: .3 + tier * .15, vol: .05 + tier * .02, type: 'lowpass' });
+    const chord = [[784, 988], [659, 784, 988], [523, 659, 784, 1047], [392, 523, 659, 784, 1047, 1319]][tier];
+    chord.forEach((f, i) => tone(c, { f, dur: .4 + tier * .25, vol: .05, type: 'triangle', at: .05 + i * .06 }));
+    if (tier === 3) [1568, 2093, 2637, 3136, 2637, 3136].forEach((f, i) => tone(c, { f, dur: .3, vol: .025, type: 'sine', at: .5 + i * .09 }));
+  } catch (e) { }
+}
+function stageSfx(stage) { try { const c = sfxReady('garden'); if (c) STAGE_SND[Math.max(0, Math.min(STAGE_SND.length - 1, stage))](c); } catch (e) { } }
+// a stadium crowd: a roar that swells, a few whoops and scattered claps (big = a long, loud cheer)
+function crowdSfx(c, big) {
+  const dur = big ? 2.4 : 1.1, v = big ? .09 : .05;
+  hiss(c, { f: 900, f2: 1800, dur, vol: v, q: .5, attack: dur * .3 }); hiss(c, { f: 2600, dur, vol: v * .5, q: .6, attack: dur * .3 });
+  for (let i = 0; i < (big ? 4 : 2); i++) tone(c, { f: 380 + Math.random() * 220, f2: 520 + Math.random() * 300, dur: .35, vol: .02, type: 'sawtooth', filter: 'lowpass', q: 1400, at: .1 + Math.random() * dur * .6, attack: .08 });
+  for (let i = 0; i < (big ? 26 : 9); i++) hiss(c, { f: 1800 + Math.random() * 2500, dur: .03, vol: .035, at: .2 + Math.random() * dur, q: 1.5, attack: .001 });
+}
+function sfxReady(group) {
+  const cfg = sndCfg(); if (!cfg.on || !cfg.vol || (group && cfg[group] === false)) return null;
+  const c = sndCtx(); if (!c || c.state !== 'running') return null;
+  SND.master.gain.value = Math.pow(cfg.vol, 2.2) * .8;
+  return c;
+}
+function sfx(name, { gap = 0 } = {}) {
+  try {
+    const now = performance.now(); if (gap && now - (SND.last[name] || 0) < gap) return; SND.last[name] = now;
+    const g = SFX_GROUP[name], c = sfxReady(g), o = arguments[1] || {};
+    if (!c) return;
+    if (document.body.classList.contains('souls-on')) sndLoad(c);
+    // 2.78: clicks, tabs and hover ticks are softer
+    SND.k = g === 'ui' || g === 'hover' ? .55 : 1;
+    try {
+      // 2.83: recordings play only inside the Souls fight; everywhere else the old made-up sounds are back
+      const R = document.body.classList.contains('souls-on') ? SFX_REC[name] : null, files = name === 'step' && SFX_SURF[o.surf] || R?.[0];
+      if (R && sndPlay(c, files, R[1] * (o.vol ?? 1), name === 'hxtick' ? (o.f || 600) / 600 : o.rate || 1, o.pan || 0)) return;
+      if (name.startsWith('g_') || name.startsWith('m_')) return; // fight-only recordings have no made-up stand-in
+      if (SFX[name]) SFX[name](c, o);
+    } finally { SND.k = 1; }
+  } catch (e) { /* sound is never worth breaking the app for */ }
+}
+
+// ---------- hooking sounds onto the whole app ----------
+const SND_TARGET = 'button, .btn, a[href], [data-act], summary, select, .stab, .dpill, input[type=checkbox], label.toggle';
+document.addEventListener('pointerdown', () => sndCtx(), { capture: true, once: true });
+document.addEventListener('keydown', () => sndCtx(), { capture: true, once: true });
+document.addEventListener('pointerover', e => {
+  if (e.pointerType === 'touch') return;
+  const el = e.target.closest?.(SND_TARGET); if (!el || el === SND.hoverEl || SND.hoverEl?.contains(el)) return;
+  // the same button redrawn under a still mouse (or one nested in it) doesn't tick again
+  const key = el.nodeName + (el.dataset.act || '') + (el.dataset.id || '') + el.textContent.slice(0, 40);
+  const same = key === SND.hoverKey && Math.abs(e.clientX - (SND.hx || 0)) + Math.abs(e.clientY - (SND.hy || 0)) < 40;
+  SND.hoverEl = el; SND.hoverKey = key; SND.hx = e.clientX; SND.hy = e.clientY; if (same) return;
+  if (el.disabled || el.closest('#battlefx .gbtext')) return;
+  if (sndCfg().hover !== false) sfx('hover', { gap: 45 });
+});
+document.addEventListener('pointerout', e => { if (SND.hoverEl && !SND.hoverEl.contains(e.relatedTarget)) SND.hoverEl = null; });
+document.addEventListener('click', e => {
+  const el = e.target.closest?.(SND_TARGET); if (!el) return;
+  if (el.disabled || el.matches('[disabled]')) { sfx('deny', { gap: 200 }); return; }
+  if (el.matches('input[type=checkbox]')) { if (el.closest('[data-toggle], .item, li, .todo-list')) sfx(el.checked ? 'check' : 'uncheck'); else sfx(el.checked ? 'toggle' : 'untoggle'); return; }
+  const act = el.dataset?.act || '';
+  if (/^(del|remove|clear|drop|scrap|holDel)/i.test(act) || /^(del|remove|scrap)/i.test(el.dataset?.pf || el.dataset?.ft || '')) { sfx('trash', { gap: 120 }); return; }
+  if (/^(new|add|quick|log|save)/i.test(act)) { sfx('add', { gap: 120 }); return; }
+  if (/^(focusNew|focusStart|start)$/i.test(act) || el.dataset?.cls === 'start') { sfx('start', { gap: 300 }); return; }
+  if (/^(buyUpg|buyLeafUpg|storeBuy)$/.test(act)) return; // these play "buy" when they go through
+  if (act === 'openBox') return; // the unboxing plays its own build-up
+  if (act === 'gift') { sfx('box'); return; }
+  if (el.closest('#places, #subnav')) { sfx('nav', { gap: 120 }); return; }
+  if (el.closest('.seg, .stabs, #tabs, .forest-tabs, .shoptabs, .revseg') || /Tab$|Page$|^goto$|^studyTab$/.test(act)) { sfx('tab'); return; }
+  if (el.matches('summary')) { sfx(el.parentElement?.open ? 'close' : 'open'); return; }
+  sfx('click', { gap: 30 });
+}, true);
+// dialogs: a soft sheet sound when one opens or closes
+try { const md = document.getElementById('modal'); if (md) new MutationObserver(() => sfx(md.open ? 'sheet' : 'sheetclose', { gap: 150 })).observe(md, { attributes: true, attributeFilter: ['open'] }); } catch (e) { }
+// coins going up, levels, purchases and toasts are checked after each page draw
+let sndCoins = null, sndLevel = null;
+function soundFeedback() {
+  try {
+    if (!(typeof D !== 'undefined' && D) || !D.game) return;
+    const c = typeof cdWallet === 'function' ? (w => w.lumen + w.ember)(cdWallet()) : 0, lv = typeof solisLevel === 'function' ? solisLevel().n : null;
+    if (sndCoins != null && c > sndCoins) sfx('coin', { gap: 120 });
+    if (sndLevel != null && lv != null && lv > sndLevel) setTimeout(() => sfx('levelup'), 250);
+    sndCoins = c; sndLevel = lv;
+    if (ui.justBought) sfx('buy');
+  } catch (e) { }
+}
+new MutationObserver(ms => { for (const m of ms) for (const n of m.addedNodes) if (n.nodeType === 1 && n.classList?.contains('toast')) sfx('notify', { gap: 400 }); }).observe(document.body, { childList: true, subtree: false });
+
+// ---------- garden ambience: birds by day, crickets at night ----------
+setInterval(() => {
+  if (document.hidden || typeof view === 'undefined' || view !== 'forest' || !document.getElementById('g3host') || !sndCfg().ambience) return;
+  const hr = new Date().getHours(), night = hr >= 20 || hr < 6;
+  if (Math.random() < (night ? .5 : .35)) sfx(night ? 'cricket' : 'chirp');
+}, 2600);
+
+// ---------- Settings → Sound ----------
+function soundCard() {
+  const c = sndCfg(), row = (k, l, d) => `<label class="sndrow"><input type="checkbox" data-snd="${k}" ${c[k] !== false ? 'checked' : ''}><span><b>${l}</b><span class="muted small-text">${d}</span></span></label>`;
+  return `<div class="card sndcard" data-sec="sound"><div class="card-head"><h2>🔊 Sound effects</h2></div>
+    ${row('on', 'Sound on', 'Every sound in the app')}
+    <div class="sndvol"><span>🔈</span><input type="range" min="0" max="1" step="0.01" value="${c.vol}" data-snd="vol" ${c.on ? '' : 'disabled'}><span>🔊</span><b>${Math.round(c.vol * 100)}%</b></div>
+    <div class="sndgroups ${c.on ? '' : 'off'}">${row('ui', 'Buttons and menus', 'Clicks, tabs, coins and purchases')}${row('hover', 'Hover ticks', 'A tiny tick when your mouse moves over a button')}${row('garden', 'Garden', 'Rustling trees, popping bubbles, watering and planting')}${row('ambience', 'Garden ambience', 'Birds by day, crickets at night, while the garden is open')}${row('walk', 'Walking', 'Footsteps, jumps, rolls and splashes in walk mode')}${row('arena', 'Fights', 'Sword swings, hits, clanks and slams')}</div>
+    <button class="btn small" data-snd-test="1">▶ Play a test sound</button></div>`;
+}
+document.addEventListener('input', e => {
+  const k = e.target.dataset?.snd; if (!k) return;
+  D.settings.sound = { ...sndCfg(), [k]: k === 'vol' ? +e.target.value : e.target.checked };
+  if (k === 'vol') { const b = e.target.parentNode.querySelector('b'); if (b) b.textContent = Math.round(+e.target.value * 100) + '%'; if (SND.master) SND.master.gain.value = Math.pow(+e.target.value, 2.2) * .8; sfx('coin', { gap: 90 }); save(); return; }
+  save(); render();
+});
+document.addEventListener('click', e => { if (e.target.closest?.('[data-snd-test]')) { sndCtx(); setTimeout(() => sfx('buy'), 30); } });
+// the 🔊 button on the garden toolbar mutes or unmutes everything
+document.addEventListener('click', e => { const b = e.target.closest?.('[data-snd-toggle]'); if (!b) return; D.settings.sound = { ...sndCfg(), on: !sndCfg().on }; save(); b.textContent = sndCfg().on ? '🔊' : '🔇'; b.classList.toggle('on', !sndCfg().on); if (sndCfg().on) { sndCtx(); setTimeout(() => sfx('toggle'), 20); } });

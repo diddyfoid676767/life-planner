@@ -1,0 +1,10 @@
+Characters (2.84): Quaternius (quaternius.com), all CC0 1.0 Universal (public domain):
+  - Universal Animation Library 1 and 2 (the rig and every animation)
+  - Ultimate Modular Men / Women and Superhero base bodies (heads, eyes, hair, beard)
+  - Medieval Fantasy outfits: Peasant and Ranger (clothes, boots, hood, belts, pauldrons, bracers)
+  - Weapons: dagger, axe, heater shield
+Fetched from the GitHub mirrors Dallolz/moorfall-assets and Mesh2Motion/mesh2motion-assets
+(whose License_Standard.txt carries Quaternius's CC0 note), packed by tools/qhero-pack.mjs.
+Sword, staff and spellbook: KayKit Adventurers Character Pack 1.0 by Kay Lousberg
+(www.kaylousberg.com), CC0 1.0 Universal.
+https://creativecommons.org/publicdomain/zero/1.0/
