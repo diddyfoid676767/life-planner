@@ -10,6 +10,9 @@
 // version since the last one they saw (up to 3). D.settings.seenVersion remembers what was last shown,
 // D.settings.guidesSeen which guides have played. A brand-new install never sees either.
 const CHANGELOG = [
+  { v: '2.101.0', notes: [
+    { t: 'Every house\'s great hall has its own look now, different from the Hall on your own island: a timber longhall on a stone plinth with a roof in your house\'s colour, two turrets, banners by the door and a bell tower with a floating house crystal on top', k: 'new' },
+  ] },
   { v: '2.100.0', notes: [
     { t: 'The house island has one 🏰 House button now, in your house\'s colour. It opens a list like the main Menu: projects, the War room, votes, the pool and more', k: 'new' },
     { t: 'Building on the house island looks different: a house-coloured bar says 🏰 House build, and Projects shows it\'s paid from the house pool', k: 'new' },

@@ -678,8 +678,13 @@ function hxBuild() {
   // page buildings (the house island has only its great hall)
   W0.free.forEach((f, i) => {
     if (!f.at) return;
-    const g = add(f.m, f.at, f.rot ?? 0, 0, f.s || 1); g.userData.hk = f.at;
-    const [x, z] = hxPos(...hxQR(f.at)); IS3.marks[f.at] = [x, f.at === '0,0' ? 5.2 * (f.s || 1) : 2.4, z];
+    let g;
+    if (f.make) { // 2.101: a hand-built model (the house island's great hall)
+      const [mx, mz] = hxPos(...hxQR(f.at)); g = f.make(); g.position.set(mx, hxHt(f.at, st), mz); g.rotation.y = -(f.rot ?? 0) * Math.PI / 3; g.scale.setScalar(f.s || 1); W.add(g);
+      for (const a of g.userData.anim || []) HX3.anim.push(a);
+    } else g = add(f.m, f.at, f.rot ?? 0, 0, f.s || 1);
+    g.userData.hk = f.at;
+    const [x, z] = hxPos(...hxQR(f.at)); IS3.marks[f.at] = [x, g.userData.top ? (g.userData.top + .3) * (f.s || 1) : f.at === '0,0' ? 5.2 * (f.s || 1) : 2.4, z];
     if (f.ac) hxAccent(W, f, x, z);
     if (f.id === 'hall') { const o = is3mesh(new THREE.IcosahedronGeometry(.42, 1), '#ffb347', 0, 4.65, 0, g, true); HX3.anim.push({ o, orb: 1 }); const ring = is3mesh(new THREE.TorusGeometry(.7, .04, 4, 20), '#ffe8a3', 0, 4.65, 0, g, true); HX3.anim.push({ o: ring, ring: 1 }); }
   });
