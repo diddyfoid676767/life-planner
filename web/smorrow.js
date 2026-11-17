@@ -6,44 +6,51 @@
    on the hero's animation rig like Somnus, sgolem.js), its arena (the Hall of Hours: a dusty cathedral
    of stopped clocks, a frozen sunset burning in its stained glass), its brain, its intro, and its place
    on the boss island.
-   - Moves: Hour Hand (a high sweep: roll it), Minute Hand (a low sweep: jump it), Second Hand (a lunging
-     stab down a lane, sometimes twice), Pendulum (an overhead slam; the blade sticks in the floor),
-     Stillness (a cone that freezes you in time), Sands of Time (a slow ring of sand: jump it), Rewind
-     (it goes back to where it stood 3 seconds ago and strikes from there), Lost Moment (it vanishes and
-     steps out behind you). Phases at 70/40/15%: Toll of the Bells (clock faces crash down on marked
-     circles), No Time to Rest (faster, Midnight: the floor clock's hands sweep the hall, jump them),
-     The Last Hour (its big hits slow you in time, longer chains).
+   2.102: a time mage, not a second brawler. Somnus fights up close with fists and stone; Morrow keeps
+   its distance and fights with time. It has one melee swing (the Hour Hand, when you crowd it); the rest
+   is ranged and magic:
+   - Clock Hands (it throws a fan of spinning bronze clock hands down marked lanes: step out or roll),
+     Stillness (a cone that freezes you in time), Empty Promises (it plants hourglasses round you that
+     burst when their sand runs out, each on its own timer), Rewind (it goes back to where it stood
+     3 seconds ago and strikes from there), Not Now (crowd it and it vanishes and reappears far away,
+     throwing). Flipped from Somnus: it's exposed while it casts (it's busy putting things off: hit it
+     now), and guarded while it swings.
+   - Phases at 70/40/15% change what it does. Toll of the Bells: giant pendulums swing through the hall
+     down marked lanes (get out of the lane), and Echoes, sand ghosts of itself, throw clock hands from
+     where it used to be. No Time to Rest: it stops walking and steps through the sand instead, throws
+     two waves that aim where you're going, two Echoes at once, Midnight (the floor clock's hands sweep
+     the hall: jump them), and every Rewind leaves an Echo behind. The Last Hour: Deadline (the hall
+     fills with sand and only three circles of light are safe; it stands exposed in the middle while
+     it counts down), its big hits slow you in time, and it chains longer.
    - Act now: everything you land in the first 20 seconds does double damage. Waiting makes it stronger:
      every 10 seconds without a hit in an opening it gets 6% faster (up to +30%).
-   - Like Somnus it's guarded outside its openings; the clock in its back (from behind) and its hourglass
-     face (a spell to the head) are weak points, and so is everything while its blade is stuck. */
+   - Hits only really count when it's exposed; the clock in its back (from behind) and its hourglass
+     face (a spell to the head) are weak points. */
 
 const MR_KEY = 'The Procrastinator', MR_SCALE = 3.5;
 // moves: wind-up (s), damage (share of your health), reach, arc, low (jump it), open (s), ph (first phase)
 const MR_MV = {
-  hand: { n: 'Hour Hand', w: .5, d: .38, r: 6.6, arc: 1.65, open: .8 },
-  low: { n: 'Minute Hand', w: .44, d: .3, r: 6.8, arc: 1.85, low: 1, open: .7 },
-  thrust: { n: 'Second Hand', w: .32, d: .3, r: 8.5, wid: .85, open: .55 },
-  pend: { n: 'Pendulum', w: .62, d: .58, r: 2.8, at: 3.7, open: 1.4, weak: 1 },
+  hand: { n: 'Hour Hand', w: .5, d: .4, r: 6.6, arc: 1.65, open: .85 },
+  hands: { n: 'Clock Hands', w: .55, d: .24, open: .9 },
   still: { n: 'Stillness', w: .55, d: .1, r: 10, arc: .5, open: .3 },
-  sands: { n: 'Sands of Time', w: .6, d: .16, low: 1, open: .45 },
+  promise: { n: 'Empty Promises', w: .4, d: .32, r: 2.2, open: .5 },
   rewind: { n: 'Rewind', w: .62, d: 0, open: 0 },
-  blink: { n: 'Lost Moment', w: .22, d: .34, r: 4.8, open: .8 },
-  whirl: { n: 'Lost Moment', w: .4, d: .34, r: 4.8, open: .8 },
-  toll: { n: 'Toll of the Bells', w: .6, d: .3, r: 2.1, open: .4, ph: 1 },
+  away: { n: 'Not Now', w: .2, d: 0, open: 0 },
+  echo: { n: 'Echoes', w: .5, d: .22, open: .5, ph: 1 },
+  pendulum: { n: 'Pendulums', w: .6, d: .42, wid: 1.3, open: .45, ph: 1 },
   midnight: { n: 'Midnight', w: .7, d: .45, low: 1, open: 1.7, ph: 2 },
+  deadline: { n: 'Deadline', w: .5, d: .55, r: 2.4, open: 1.2, ph: 3 },
   roar: { n: 'Toll', d: .12, r: 5 },
 };
-const MR_PH = [{ at: 1, n: 'The Waiting Hour', sp: 1.05 }, { at: .7, n: 'Toll of the Bells', sp: 1.18 }, { at: .4, n: 'No Time to Rest', sp: 1.36 }, { at: .15, n: 'The Last Hour', sp: 1.52 }];
+const MR_PH = [{ at: 1, n: 'The Waiting Hour', sp: 1.05 }, { at: .7, n: 'Toll of the Bells', sp: 1.15 }, { at: .4, n: 'No Time to Rest', sp: 1.28 }, { at: .15, n: 'The Last Hour', sp: 1.4 }];
 // what each move can lead into when it chains
-const MR_FOL = { hand: ['thrust', 'low', 'pend', 'hand'], low: ['hand', 'thrust', 'pend'], thrust: ['thrust', 'hand', 'low', 'pend'], pend: ['low', 'thrust', 'hand'],
-  still: ['pend', 'thrust', 'hand'], whirl: ['hand', 'thrust', 'low'], sands: ['thrust', 'blink', 'still'] };
+const MR_FOL = { hand: ['away', 'still', 'hands', 'promise'], hands: ['hands', 'promise', 'still'], still: ['hand', 'hands', 'promise'], promise: ['hands', 'still', 'hands'] };
 // the clip each move plays on the rig, where in it the blow lands, and how fast the follow-through goes
 const MR_ANIM = {
-  hand: { c: 'Sword_Regular_B', hit: .42, after: 1.3 }, low: { c: 'Melee_Hook', hit: .42, after: 1.4 }, thrust: { c: 'Punch_Jab', hit: .32, after: 1.2 },
-  pend: { c: 'Sword_Attack', hit: .44, after: 1.1 }, still: { c: 'Spell_Simple_Shoot', hit: .42, after: 1 }, sands: { c: 'Spell_Simple_Enter', hit: .5, after: .8 },
-  toll: { c: 'OverhandThrow', hit: .5, after: 1 }, rewind: { c: 'Spell_Simple_Enter', hit: .5, after: 1 }, blink: { c: 'Spell_Simple_Shoot', hit: .42, after: 1 },
-  whirl: { c: 'Sword_Regular_C', hit: .42, after: 1.4 }, midnight: { c: 'Spell_Simple_Enter', hit: .5, after: .6 },
+  hand: { c: 'Sword_Regular_B', hit: .42, after: 1.3 }, hands: { c: 'OverhandThrow', hit: .5, after: 1.1 }, still: { c: 'Spell_Simple_Shoot', hit: .42, after: 1 },
+  promise: { c: 'Spell_Simple_Enter', hit: .5, after: .8 }, rewind: { c: 'Spell_Simple_Enter', hit: .5, after: 1 }, away: { c: 'Spell_Simple_Shoot', hit: .42, after: 1 },
+  echo: { c: 'Spell_Simple_Shoot', hit: .42, after: 1 }, pendulum: { c: 'Spell_Simple_Enter', hit: .5, after: .8 }, midnight: { c: 'Spell_Simple_Enter', hit: .5, after: .6 },
+  deadline: { c: 'Spell_Simple_Enter', hit: .5, after: .6 },
 };
 // the body as spheres round its bones (for aimed spells): the robe is wide, so the legs are too
 const MR_HITB = [['pelvis', 1.45], ['spine_01', 1.1], ['spine_02', 1.15], ['spine_03', 1.25], ['Head', .9], ['upperarm_l', .6], ['upperarm_r', .6], ['lowerarm_l', .55], ['lowerarm_r', .55], ['hand_l', .55], ['hand_r', .65], ['thigh_l', 1.05], ['thigh_r', 1.05], ['calf_l', 1.15], ['calf_r', 1.15]];
@@ -322,18 +329,26 @@ function mrCandles(W, rnd, gfx, low) {
 // ---------- the fight: its brain ----------
 function mrStart() {
   Object.assign(SO.B, { x: 0, z: -5.5, face: 0, state: 'sleep', trail: [], trT: 0, idleT: 0, tick: 0, tock: 0 });
-  SO.spX = 1; SO.mrHands = []; SO.mrDrops = []; SO.mrGhost = null;
+  SO.spX = 1; SO.mrHands = []; SO.mrBlades = []; SO.mrProm = []; SO.mrEchoes = []; SO.mrPend = []; SO.mrDoom = null; SO.mrWave = null; SO.mrVid = 0; SO.mrHitV = {};
+  // the things it throws and plants share these
+  const bronze = new THREE.MeshStandardMaterial({ color: '#c49a58', metalness: .6, roughness: .35, emissive: '#6a4410', emissiveIntensity: .7 });
+  const glass = new THREE.MeshPhysicalMaterial({ color: '#e8f0ff', transparent: true, opacity: .3, roughness: .05, depthWrite: false });
+  const sand = new THREE.MeshStandardMaterial({ color: '#ffcf7a', emissive: '#ffb347', emissiveIntensity: 1.8, roughness: .5 });
+  const blade = mrHandShape(.42, .03, bronze); blade.geometry.translate(0, -.42 * MR_SCALE * .5, 0);
+  SO.mrMats = { bronze, glass, sand, bladeGeo: blade.geometry };
 }
 function mrStep(dt) {
   const B = SO.B, M = SO.me, ph = soPhase(), sp = soSpeed();
   // a new phase: the great bell tolls, the hourglass in its face turns over, and the shock knocks you back
   if (ph !== SO.lastPh) {
-    if (SO.lastPh != null && ph > SO.lastPh && !['air', 'dash', 'chan'].includes(B.state)) {
+    const busy = ['air', 'dash', 'chan', 'doom'].includes(B.state);
+    if (SO.lastPh != null && ph > SO.lastPh && !busy) {
       soPop(`Morrow: ${MR_PH[ph].n}`, 'phase'); mrClear(); B.queue = []; B.atk = { k: 'roar', w: 1.6, n: 'Toll' }; B.state = 'roar'; B.t = 1.6; B.stuck = 0; SO.atkId++;
       soSnd('m_toll', B); soSnd('m_roar', B, { gap: 200 }); SO.shake = .8; SO.rings.push({ x: B.x, z: B.z, r: 1, v: 9, mv: MR_MV.roar, m: soRing('#ffe0a0') }); soTorchFlare(1);
       if (SO.gs) SO.gs.flip = 1; if (SO.mrFloor) SO.mrFloor.glow = 1;
+      setTimeout(() => { if (SO && !SO.over) soPop(['', '🔔 Pendulums swing and its Echoes throw', '⏩ It steps through the sand now, and aims where you\'re going', '⌛ Deadline: when the sand comes, get into the light'][ph], 'bad'); }, 1200);
       SO.lastPh = ph;
-    } else if (SO.lastPh == null || ph < SO.lastPh || !['air', 'dash', 'chan'].includes(B.state)) SO.lastPh = ph;
+    } else if (SO.lastPh == null || ph < SO.lastPh || !busy) SO.lastPh = ph;
   }
   if (B.mark > 0) B.mark -= dt; if (B.stuck > 0) B.stuck -= dt;
   for (const d of B.dot) { d.t -= dt; if (d.t <= 0 && d.left > 0) { d.t = 1; d.left--; soHit(d.n, { dot: true }); } } B.dot = B.dot.filter(d => d.left > 0);
@@ -347,28 +362,30 @@ function mrStep(dt) {
   mrHaz(dt);
   if (B.stag > 0) { B.stag -= dt; return; }
   const dist = soDist(B, M), toP = Math.atan2(M.x - B.x, M.z - B.z);
-  B.t -= dt;
+  B.t -= dt; B.back = 0;
   switch (B.state) {
     case 'roar': { if (B.t <= 0) { B.state = 'idle'; B.t = .1 + Math.random() * .4; } break; }
     case 'idle': case 'chase': {
-      // it drifts towards you, slow and patient
+      // it keeps its distance: it drifts in when you're far, and backs away, slow and patient, when you crowd it
       B.face += soAng(toP - B.face) * Math.min(1, dt * 3.2 * sp);
-      if (dist > 5.8) { const v = 1.9 * sp; B.x += Math.sin(B.face) * v * dt; B.z += Math.cos(B.face) * v * dt; B.state = 'chase'; } else B.state = 'idle';
+      if (dist > 10.5 && ph < 2) { const v = 1.9 * sp; B.x += Math.sin(B.face) * v * dt; B.z += Math.cos(B.face) * v * dt; B.state = 'chase'; }
+      else if (dist < 4.6) { const v = 1.4 * sp; B.x -= Math.sin(B.face) * v * dt; B.z -= Math.cos(B.face) * v * dt; B.back = 1; B.state = 'idle'; }
+      else B.state = 'idle';
       soBossFence();
-      // hit it too greedily and it isn't there any more
-      if (B.greed.length >= 4 && dist < 5.5 && !(B.cool.blink > SO.time)) { B.queue = ['blink']; B.t = 0; }
+      // crowd it and hit it too greedily and it isn't there any more
+      if (B.greed.length >= 4 && dist < 5.5 && !(B.cool.away > SO.time)) { B.queue = ['away']; B.t = 0; }
       if (B.t <= 0) {
         const r = Math.random();
-        // then, suddenly, very fast: it closes the gap in a blink and strikes before you've moved
-        if (!B.queue.length && dist > 7.5 && r < .45 && B.lastMove !== 'dash') { mrDash(M, B); break; }
-        if (!B.queue.length && dist < 9 && r < [.18, .2, .14, .14][ph] && B.lastMove !== 'stalk') { B.state = 'stalk'; B.t = .6 + Math.random() * 1.1; B.side = Math.random() < .5 ? -1 : 1; B.lastMove = 'stalk'; break; }
+        // then, suddenly, very fast: it closes to throwing range in a blink (in the third phase it steps through the sand)
+        if (!B.queue.length && dist > 11 && r < .5 && B.lastMove !== 'dash') { if (ph >= 2) mrStepSand(M, B); else mrDash(M, B); break; }
+        if (!B.queue.length && dist < 11 && dist > 5 && r < [.18, .2, .14, .12][ph] && B.lastMove !== 'stalk') { B.state = 'stalk'; B.t = .6 + Math.random() * 1.1; B.side = Math.random() < .5 ? -1 : 1; B.lastMove = 'stalk'; break; }
         B.lastMove = ''; mrPick(dist, ph);
       }
       break;
     }
-    case 'stalk': { // circling, watching, waiting
+    case 'stalk': { // circling at a distance, watching, waiting
       B.face += soAng(toP - B.face) * Math.min(1, dt * 6);
-      const v = 1.3 * sp, sx = Math.cos(B.face) * B.side, sz = -Math.sin(B.face) * B.side, close = dist > 6.5 ? .6 : dist < 3.8 ? -.6 : 0;
+      const v = 1.3 * sp, sx = Math.cos(B.face) * B.side, sz = -Math.sin(B.face) * B.side, close = dist > 9.5 ? .6 : dist < 7 ? -.6 : 0;
       B.x += (sx + Math.sin(B.face) * close) * v * dt; B.z += (sz + Math.cos(B.face) * close) * v * dt; soBossFence();
       if (B.t <= 0 || (dist < 5 && Math.random() < dt * 1.2)) mrPick(dist, ph);
       break;
@@ -382,129 +399,147 @@ function mrStep(dt) {
       break;
     }
     case 'wind': {
-      const a = B.atk, turn = { hand: 2.6, low: 2.6, thrust: 6, pend: 3.2, still: 3.6, whirl: 0, sands: 0, toll: 0, rewind: 0, blink: 0, midnight: 0 }[a.k];
-      if (turn && !(a.k === 'thrust' && B.t < .12)) B.face += soAng(toP - B.face) * Math.min(1, dt * turn);
+      const a = B.atk, turn = { hand: 2.6, hands: 4, still: 3.6 }[a.k] || 0;
+      if (turn && !(a.k === 'hands' && B.t < .1)) B.face += soAng(toP - B.face) * Math.min(1, dt * turn);
       mrTeleStep(a, 1 - B.t / a.w);
       if (a.feint && B.t <= a.w * (1 - a.feint)) { mrFeint(a); break; }
       if (B.t <= 0) {
+        // it waits for your roll to end before it throws or swings
         if (a.delay && !a.held && soRolling() && SO.time < M.iTo + .1) { a.held = 1; B.t = Math.max(0, M.iTo - SO.time) + .1 + Math.random() * .16; B.state = 'hold'; break; }
         if (a.wait && !a.held) { a.held = 1; B.t = a.wait; B.state = 'hold'; break; }
         mrStrike(a, ph);
       }
       break;
     }
-    case 'hold': { const a = B.atk; mrTeleStep(a, 1); if (a.k === 'thrust' || a.k === 'still') B.face += soAng(toP - B.face) * Math.min(1, dt * 2.5); if (B.t <= 0) mrStrike(a, ph); break; }
+    case 'hold': { const a = B.atk; mrTeleStep(a, 1); if (a.k === 'hands' || a.k === 'still') B.face += soAng(toP - B.face) * Math.min(1, dt * 2.5); if (B.t <= 0) mrStrike(a, ph); break; }
     case 'air': { // gone: a swirl of sand where it will step out
       const a = B.atk;
       if (a.sw && (a.swT = (a.swT || 0) + dt) > .06) { a.swT = 0; soBurst(new THREE.Vector3(a.ax + (Math.random() - .5), .3 + Math.random() * 2.5, a.az + (Math.random() - .5)), { tex: 'smoke_03', col: '#d8b070', n: 1, size: .9, life: .45, speed: 1.5, grow: .6, add: false, op: .45 }); }
       if (B.t <= 0) mrAppear(a, ph);
       break;
     }
+    case 'cast': { // busy with its spell: exposed. It turns to watch you
+      B.face += soAng(toP - B.face) * Math.min(1, dt * 2);
+      if (B.t <= 0) { B.state = 'recover'; B.guard = false; B.t = (MR_MV[B.atk?.k]?.open || .4) / sp; }
+      break;
+    }
+    case 'doom': break; // Deadline counts down in mrHaz, and lets it go
     case 'chan': { // Midnight: the hands sweep the hall; it stands at the centre, hands raised, guarded
       if (!SO.mrHands.length && B.t <= 0) { B.state = 'recover'; B.guard = false; B.t = MR_MV.midnight.open / Math.sqrt(sp); soSnd('m_scrape', B, { gap: 100 }); }
       break;
     }
     case 'recover': {
-      if (B.greed.length >= 5 && B.t > .25 && !(B.cool.blink > SO.time)) { B.t = .05; B.queue.unshift('blink'); }
+      if (B.greed.length >= 5 && B.t > .25 && dist < 5.5 && !(B.cool.away > SO.time)) { B.t = .05; B.queue.unshift('away'); }
       if (B.t <= 0) mrAfter(ph);
       break;
     }
     case 'tired': { if (B.t <= 0) { B.state = 'idle'; B.t = .05; } break; }
   }
 }
+// a sudden rush to throwing range: to a spot off to one side of you, never straight in a line you could read
 function mrDash(M, B) {
-  // to a spot beside you, a few metres off, never straight in a line you could read
-  const side = Math.random() < .5 ? -1 : 1, ang = Math.atan2(B.x - M.x, B.z - M.z) + side * (.5 + Math.random() * .7), r = 3.6 + Math.random() * 1.2;
+  const side = Math.random() < .5 ? -1 : 1, ang = Math.atan2(B.x - M.x, B.z - M.z) + side * (.4 + Math.random() * .6), r = 6.5 + Math.random() * 2;
   B.dash = { tx: M.x + Math.sin(ang) * r, tz: M.z + Math.cos(ang) * r }; B.state = 'dash'; B.t = .9;
   soSnd('m_blink', B, { gap: 120, vol: .7, rate: 1.2 }); soSnd('g_whoosh', B, { gap: 80, rate: 1.3 });
 }
+// No Time to Rest: it doesn't walk any more, it steps through the sand
+function mrStepSand(M, B) {
+  const ang = Math.atan2(B.x - M.x, B.z - M.z) + (Math.random() - .5) * 2.2, r = 7 + Math.random() * 2.5;
+  let x = M.x + Math.sin(ang) * r, z = M.z + Math.cos(ang) * r; const l = Math.hypot(x, z), m = SO_ARENA - 1.6; if (l > m) { x *= m / l; z *= m / l; }
+  B.lastMove = 'dash'; B.atk = { k: 'away', w: .2, n: 'Not Now' }; SO.atkId++; mrVanish(B.atk, x, z, .3, 'pick');
+}
 // what it does next: weighted by distance and phase, avoiding what it just did, chaining at random with a tempo that never settles
 function mrPick(dist, ph, o = {}) {
-  const B = SO.B, c = B.cool, now = SO.time, M = SO.me, rnd = Math.random, can = k => !(c[k] > now) && ph >= (MR_MV[k].ph || 0);
-  const behind = Math.abs(soAng(Math.atan2(M.x - B.x, M.z - B.z) - B.face)) > 1.9;
+  const B = SO.B, c = B.cool, now = SO.time, rnd = Math.random, can = k => !(c[k] > now) && ph >= (MR_MV[k].ph || 0);
   let k, chain = false;
   B.guard = false;
   if (B.queue.length) { k = B.queue.shift(); chain = true; B.chainN = (B.chainN || 0) + 1; }
   else {
     const w = {}, add = (m, x) => { if (can(m)) w[m] = (w[m] || 0) + x; };
     const back = B.trail.find(p => p.t >= now - 3.1), rw = back && Math.hypot(back.x - B.x, back.z - B.z) > 4;
-    if (dist < 6.6) { add('hand', 3); add('low', 2.4); add('thrust', 1.6); add('pend', 2.2); add('still', 1); add('blink', behind ? 4 : .5); add('sands', .4); }
-    else if (dist < 10.5) { add('thrust', 2.8); add('still', 2); add('sands', 1.2); add('toll', 1.4); add('midnight', 1.2); if (rw) add('rewind', 2); add('pend', .5); }
-    else { add('sands', 1.6); add('toll', 2); add('still', 1.6); add('midnight', 1.4); if (rw) add('rewind', 1.4); add('thrust', 1); }
-    if (o.fast) { delete w.toll; delete w.midnight; delete w.rewind; delete w.sands; }
+    if (dist < 6.6) { add('hand', 3); add('still', 1.3); add('promise', 1.4); add('away', ph ? 1.4 : .5); add('hands', .7); }
+    else if (dist < 11) { add('hands', 3); add('promise', 2); add('still', 1.5); add('echo', 1.6); add('pendulum', 1.5); add('midnight', 1.2); add('deadline', 2.5); if (rw) add('rewind', 1.6); }
+    else { add('hands', 2.4); add('promise', 1.4); add('echo', 1.8); add('pendulum', 1.6); add('midnight', 1.4); add('deadline', 2.5); add('still', .4); if (rw) add('rewind', 1.4); }
+    // the first time in the Last Hour, the Deadline comes soon
+    if (ph >= 3 && w.deadline && !B.doomed) w.deadline *= 3;
+    if (o.fast) { delete w.pendulum; delete w.midnight; delete w.rewind; delete w.echo; delete w.deadline; delete w.away; }
     for (const m in w) { const n = B.hist.filter(x => x === m).length; w[m] *= Math.pow(.38, n); if (B.hist[B.hist.length - 1] === m) w[m] *= .25; }
     const tot = Object.values(w).reduce((a, b) => a + b, 0);
     if (!tot) { B.t = .08; B.state = 'idle'; return; }
     let r = rnd() * tot; for (const m in w) { r -= w[m]; if (r <= 0) { k = m; break; } } k = k || Object.keys(w)[0];
     B.chainN = 0;
-    if (MR_FOL[k] && rnd() < [.38, .52, .66, .82][ph]) {
-      const n = 1 + Math.floor(rnd() * (ph + 1.4)) + (ph >= 3 ? 1 : 0); let prev = k;
-      for (let i = 0; i < Math.min(n, 4); i++) { const opts = MR_FOL[prev] || MR_FOL.hand; prev = opts[Math.floor(rnd() * opts.length)]; B.queue.push(prev); }
+    if (MR_FOL[k] && rnd() < [.32, .45, .58, .74][ph]) {
+      const n = 1 + Math.floor(rnd() * (ph + 1.2)) + (ph >= 3 ? 1 : 0); let prev = k;
+      for (let i = 0; i < Math.min(n, 4); i++) { const opts = MR_FOL[prev] || MR_FOL.hands; prev = opts[Math.floor(rnd() * opts.length)]; if (prev === 'away' && ph < 1) prev = 'still'; B.queue.push(prev); if (prev === 'away') break; }
     }
   }
+  if (k === 'deadline') B.doomed = 1;
   B.hist.push(k); if (B.hist.length > 4) B.hist.shift();
   const sp = soSpeed();
-  c[k] = now + ({ hand: .8, low: 1.2, thrust: .6, pend: 2, still: 4, sands: 7, rewind: 8, blink: 4, toll: 9, midnight: 16 }[k] || 2) * (.7 + rnd() * .6) / sp;
+  c[k] = now + ({ hand: .8, hands: 1.6, still: 4, promise: 6, rewind: 8, away: 6, echo: 9, pendulum: 10, midnight: 16, deadline: 22 }[k] || 2) * (.7 + rnd() * .6) / sp;
   // slow, then sudden: a wind-up can drag on, or snap out of a dash or a chain almost at once
-  const prev = B.atk?.k, tempo = o.fast ? .45 + rnd() * .25 : chain ? [.42, .62, .85, 1.2, 1.5][Math.floor(rnd() * 5)] : .7 + rnd() * .9;
-  let w = Math.max(.16, MR_MV[k].w * tempo / sp);
+  const prev = B.atk?.k, tempo = o.fast ? .5 + rnd() * .25 : chain ? [.5, .65, .85, 1.1, 1.4][Math.floor(rnd() * 5)] : .7 + rnd() * .9;
+  let w = Math.max(.2, MR_MV[k].w * tempo / sp);
   if (chain && prev === 'still') w = Math.max(w, 1.05); // after a Stillness you get just long enough to break free first
   mrBegin(k, w, chain);
 }
 function mrBegin(k, w, chain) {
   const B = SO.B, ph = soPhase(), rnd = Math.random, mv = MR_MV[k];
   const a = B.atk = { k, w, n: mv.n };
-  if (['hand', 'low', 'thrust', 'pend'].includes(k)) {
+  if (k === 'hand') {
     if (!chain && rnd() < [.12, .18, .24, .3][ph]) a.feint = .5 + rnd() * .2;
     else if (rnd() < [.45, .55, .65, .75][ph]) a.delay = 1;
-    if (rnd() < [.2, .24, .28, .32][ph]) a.wait = .25 + rnd() * .7; // it holds, trembling, for as long as it likes
   }
+  if (k === 'hands' && rnd() < [.3, .45, .6, .7][ph]) a.delay = 1;
+  if ((k === 'hand' || k === 'hands') && rnd() < [.2, .24, .28, .32][ph]) a.wait = .25 + rnd() * .7; // it holds, trembling, for as long as it likes
   B.state = 'wind'; B.t = w; SO.atkId++;
   mrTele(a);
-  soSnd({ still: 'm_whisper', sands: 'm_sand', rewind: 'm_whisper', toll: 'm_whisper', midnight: 'm_whisper', blink: 'm_blink' }[k] || 'm_scrape', B, { gap: 120, vol: k === 'thrust' ? .5 : .8, rate: .9 + rnd() * .2 });
+  soSnd({ still: 'm_whisper', promise: 'm_sand', rewind: 'm_whisper', echo: 'm_whisper', pendulum: 'm_whisper', midnight: 'm_whisper', deadline: 'm_whisper', away: 'm_blink' }[k] || 'm_scrape', B, { gap: 120, vol: k === 'hands' ? .6 : .8, rate: .9 + rnd() * .2 });
 }
-// a fake-out: the swing stops short and something quicker comes from the other side
+// a fake-out: the Hour Hand stops short and a throw or a freeze comes instead
 function mrFeint(a) {
   const B = SO.B; soClearTele();
-  const opts = { hand: ['low', 'thrust'], low: ['hand', 'thrust'], thrust: ['hand', 'low'], pend: ['thrust', 'low'] }[a.k] || ['thrust'];
-  const k = opts[Math.floor(Math.random() * opts.length)], w = MR_MV[k].w * (.45 + Math.random() * .25) / soSpeed();
+  const k = Math.random() < .5 ? 'hands' : 'still', w = MR_MV[k].w * (.45 + Math.random() * .25) / soSpeed();
   B.atk = { k, w, n: MR_MV[k].n, faked: 1 }; B.t = w; mrTele(B.atk); SO.atkId++;
   soSnd('m_scrape', B, { gap: 80, rate: 1.3 });
 }
+// the fan of clock hands it throws: how many, and how wide, by phase
+const mrFan = ph => ph ? [-.36, -.18, 0, .18, .36] : [-.22, 0, .22];
 // ---------- the warnings on the floor ----------
+const mrMat = (c, o = .3) => new THREE.MeshBasicMaterial({ color: c, transparent: true, opacity: o, depthWrite: false, side: THREE.DoubleSide });
+function mrFloorMesh(geo, c, x, z, rot = 0, o = .3) { const m = new THREE.Mesh(geo, mrMat(c, o)); m.rotation.set(-Math.PI / 2, 0, rot); m.position.set(x, .06, z); m.renderOrder = 2; SO.S.add(m); return m; }
+function mrKill(m) { if (!m) return; SO.S.remove(m); m.traverse?.(o => { if (!o.isSprite) o.geometry?.dispose(); if (o.material && !o.material.shared) o.material.dispose?.(); }); }
 function mrTele(a) {
-  const B = SO.B, M = SO.me, mat = (c, o = .3) => new THREE.MeshBasicMaterial({ color: c, transparent: true, opacity: o, depthWrite: false, side: THREE.DoubleSide });
-  const add = (geo, c, x, z, rot = 0) => { const m = new THREE.Mesh(geo, mat(c)); m.rotation.set(-Math.PI / 2, 0, rot); m.position.set(x, .06, z); m.renderOrder = 2; SO.S.add(m); SO.tele.push({ m, a }); return m; };
-  const mv = MR_MV[a.k];
+  const B = SO.B, M = SO.me;
+  const add = (geo, c, x, z, rot = 0) => { const m = mrFloorMesh(geo, c, x, z, rot); SO.tele.push({ m, a }); return m; };
+  const mv = MR_MV[a.k], ph = soPhase();
   if (a.k === 'hand') { a.tm = add(new THREE.RingGeometry(1.2, mv.r, 44, 1, -mv.arc, mv.arc * 2), '#ff7b3b', B.x, B.z); a.cone = 1; }
-  else if (a.k === 'low') { a.tm = add(new THREE.RingGeometry(1.2, mv.r, 44, 1, -mv.arc, mv.arc * 2), '#ffd43b', B.x, B.z); a.cone = 1; const e = add(new THREE.RingGeometry(mv.r - .18, mv.r, 44, 1, -mv.arc, mv.arc * 2), '#fff3bf', B.x, B.z); e.material.opacity = .85; a.cone2 = e; }
-  else if (a.k === 'thrust') { const g = new THREE.PlaneGeometry(mv.wid * 2, mv.r); g.translate(0, mv.r / 2, 0); a.tm = add(g, '#ff8f3b', B.x, B.z); a.lane = 1; }
-  else if (a.k === 'pend') { a.tm = add(new THREE.CircleGeometry(mv.r, 36), '#ff3b3b', B.x, B.z); a.edge = add(new THREE.RingGeometry(mv.r - .15, mv.r, 44), '#ff8080', B.x, B.z); a.edge.material.opacity = .9; a.ahead = mv.at; }
-  else if (a.k === 'still') { a.tm = add(new THREE.CircleGeometry(mv.r, 28, -mv.arc, mv.arc * 2), '#74c0fc', B.x, B.z); a.cone = 1; }
-  else if (a.k === 'whirl') { a.tm = add(new THREE.RingGeometry(1, mv.r, 48), '#ff6b3d', B.x, B.z); a.edge = a.tm; }
-  else if (a.k === 'sands') { a.tm = add(new THREE.RingGeometry(1.6, 2.3, 40), '#ffd8a0', B.x, B.z); }
+  else if (a.k === 'hands') { // a lane down the floor for each hand it will throw
+    a.offs = mrFan(ph); a.lanes = a.offs.map(o => { const g = new THREE.PlaneGeometry(.55, 19); g.translate(0, 19 / 2 + 1, 0); return { o, m: add(g, '#ffb347', B.x, B.z) }; });
+  }
+  else if (a.k === 'still') { a.arc = ph >= 2 ? .8 : mv.arc; a.tm = add(new THREE.CircleGeometry(mv.r, 28, -a.arc, a.arc * 2), '#74c0fc', B.x, B.z); a.cone = 1; }
+  else if (a.k === 'promise' || a.k === 'echo' || a.k === 'deadline') { a.tm = add(new THREE.RingGeometry(1.6, 2.3, 40), '#ffd8a0', B.x, B.z); }
   else if (a.k === 'rewind') { // where it stood 3 seconds ago: a ghost of sand
     const back = B.trail.find(p => p.t >= SO.time - 3.1) || { x: B.x, z: B.z }; a.gx = back.x; a.gz = back.z;
     a.tm = add(new THREE.RingGeometry(1.2, 1.6, 36), '#ffd8a0', a.gx, a.gz);
     const col = new THREE.Mesh(new THREE.CylinderGeometry(1, 1.4, 7, 18, 1, true), new THREE.MeshBasicMaterial({ color: '#ffc870', transparent: true, opacity: 0, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide, fog: false }));
     col.position.set(a.gx, 3.5, a.gz); SO.S.add(col); SO.tele.push({ m: col, a }); a.col = col;
   }
-  else if (a.k === 'toll') {
-    const n = soPhase() >= 3 ? 7 : 5;
-    for (let i = 0; i < n; i++) {
-      const x = M.x + (i ? (Math.random() - .5) * 10 : M.vx * .4), z = M.z + (i ? (Math.random() - .5) * 10 : M.vz * .4), r = Math.hypot(x, z), k = r > SO_ARENA ? SO_ARENA / r : 1;
-      const mk = new THREE.Mesh(new THREE.CircleGeometry(mv.r, 28), mat('#ffd43b')); mk.rotation.x = -Math.PI / 2; mk.position.set(x * k, .07, z * k); SO.S.add(mk);
-      const w = a.w + .5 + Math.random() * 1.1; SO.mrDrops.push({ mk, x: x * k, z: z * k, t: w, w, c: null });
-    }
+  else if (a.k === 'pendulum') { // Toll of the Bells: lanes across the hall, one through you; giant pendulums swing down them
+    const n = ph >= 2 ? 3 : 2, ang = Math.random() * Math.PI, nx = Math.cos(ang), nz = -Math.sin(ang), mine = M.x * nx + M.z * nz;
+    const offs = [mine]; for (let i = 1; i < n; i++) offs.push(mine + (i % 2 ? 1 : -1) * (5 + Math.random() * 2) * Math.ceil(i / 2));
+    offs.forEach((off, i) => {
+      const tm = mrFloorMesh(new THREE.PlaneGeometry(mv.wid * 2, 30), '#ff8f3b', nx * off, nz * off, ang + Math.PI, .2);
+      const w = a.w + .9 + i * (.3 + Math.random() * .4); SO.mrPend.push({ ang, off, nx, nz, t: w, w, tm, dir: Math.random() < .5 ? 1 : -1 });
+    });
   }
 }
 function mrTeleStep(a, p) {
   const B = SO.B; if (a.col) a.col.material.opacity = .05 + p * .18;
+  if (a.lanes) a.lanes.forEach(l => { l.m.material.opacity = .14 + p * .4; l.m.position.set(B.x, .06, B.z); l.m.rotation.z = B.face + l.o + Math.PI; });
   if (!a.tm) return; a.tm.material.opacity = .22 + p * .55;
-  if (a.cone) { a.tm.position.set(B.x, .06, B.z); a.tm.rotation.z = B.face - Math.PI / 2; if (a.cone2) { a.cone2.position.set(B.x, .06, B.z); a.cone2.rotation.z = B.face - Math.PI / 2; } }
-  if (a.lane) { a.tm.position.set(B.x, .06, B.z); a.tm.rotation.z = B.face + Math.PI; }
-  if (a.ahead) { const x = B.x + Math.sin(B.face) * a.ahead, z = B.z + Math.cos(B.face) * a.ahead; a.tm.position.set(x, .06, z); a.edge.position.set(x, .06, z); }
-  else if (a.edge) a.edge.position.set(B.x, .06, B.z);
+  if (a.cone) { a.tm.position.set(B.x, .06, B.z); a.tm.rotation.z = B.face - Math.PI / 2; }
+  else if (a.k !== 'rewind') a.tm.position.set(B.x, .06, B.z);
 }
 function mrClear() { soClearTele(); }
 // a big blade sweep you can see: a fading arc of light at the height it swung
@@ -512,51 +547,62 @@ function mrArc(r, arc, low, col) {
   const B = SO.B, m = new THREE.Mesh(new THREE.RingGeometry(r * .35, r, 40, 1, -arc, arc * 2), new THREE.MeshBasicMaterial({ color: col, transparent: true, opacity: .55, depthWrite: false, side: THREE.DoubleSide, blending: THREE.AdditiveBlending, fog: false }));
   m.rotation.set(-Math.PI / 2, 0, B.face - Math.PI / 2); m.position.set(B.x, low ? .5 : 2.6, B.z); SO.S.add(m); SO.fx.push({ m, a: 0, x: B.x, z: B.z, t: .3, s: 0, arc: 1 });
 }
+// throw a fan of spinning clock hands from (x, z) towards ang
+function mrVolley(x, z, ang, offs, mv) {
+  const vid = ++SO.mrVid, v = 15 * Math.sqrt(soSpeed());
+  for (const o of offs) {
+    const g = new THREE.Group(), b = new THREE.Mesh(SO.mrMats.bladeGeo, SO.mrMats.bronze); b.rotation.x = -Math.PI / 2; b.castShadow = true; g.add(b);
+    const gl = soSprite('flare_01', '#ffcf7a', 1.3, .45); g.add(gl); g.position.set(x, 1.3, z); SO.S.add(g);
+    SO.mrBlades.push({ g, gl, x, z, dx: Math.sin(ang + o), dz: Math.cos(ang + o), v, vid, mv, life: 2.4 });
+  }
+  soSnd('g_whoosh', { x, z }, { gap: 60, rate: 1.4 }); soSnd('m_blade', { x, z }, { gap: 60, rate: 1.5, vol: .7 });
+}
+// where to throw at you: straight at you, or (from the third phase) where you're going
+function mrAim(x, z, lead) {
+  const M = SO.me, d = Math.hypot(M.x - x, M.z - z), t = lead ? d / 15 : 0;
+  return Math.atan2(M.x + M.vx * t - x, M.z + M.vz * t - z);
+}
 function mrStrike(a, ph) {
   const B = SO.B, M = SO.me, mv = MR_MV[a.k], sp = soSpeed(), d = soDist(B, M), toP = Math.atan2(M.x - B.x, M.z - B.z), front = Math.abs(soAng(toP - B.face));
   const open = t => { B.state = 'recover'; B.guard = B.queue.length > 0; B.t = t * (B.guard ? 1 : .85 + Math.random() * .4) / sp; if (!B.guard && (B.chainN || 0) >= 2) B.tiredNext = 1; };
-  if (!['toll', 'rewind'].includes(a.k)) soClearTele();
-  if (a.k === 'hand' || a.k === 'low') {
+  const cast = t => { B.state = 'cast'; B.guard = false; B.t = t / Math.sqrt(sp); if (!SO.mrCastSeen) { SO.mrCastSeen = 1; soPop('✨ Casting: it\'s exposed, hit it now', 'good'); } };
+  if (a.k !== 'rewind') soClearTele();
+  if (a.k === 'hand') { // its one big swing, for when you crowd it
     if (d < mv.r && front < mv.arc) soHurtBy({ ...mv, k: a.k });
-    mrArc(mv.r, mv.arc, a.k === 'low', a.k === 'low' ? '#ffe08a' : '#ffb070'); soSnd('m_blade', B, { gap: 60, rate: a.k === 'low' ? 1.1 : .95 }); SO.shake = .2;
-    if (a.k === 'low') soDust(B.x + Math.sin(B.face) * 3.5, B.z + Math.cos(B.face) * 3.5, .7);
+    mrArc(mv.r, mv.arc, false, '#ffb070'); soSnd('m_blade', B, { gap: 60, rate: .95 }); SO.shake = .2;
     open(B.queue.length ? .12 : mv.open);
   }
-  else if (a.k === 'thrust') { // it lunges down the lane
-    const lx = Math.sin(B.face), lz = Math.cos(B.face), rx = M.x - B.x, rz = M.z - B.z, along = rx * lx + rz * lz, across = Math.abs(rx * lz - rz * lx);
-    if (along > -1 && along < mv.r && across < mv.wid + .4) soHurtBy({ ...mv, k: a.k });
-    const go = Math.min(3.4, Math.max(0, along - 2)); B.x += lx * go; B.z += lz * go; soBossFence();
-    soBurst(new THREE.Vector3(B.x + lx * 4, 2.2, B.z + lz * 4), { tex: 'trace_02', col: '#ffd08a', n: 1, size: 3, life: .2, speed: 0 }); soSnd('m_blade', B, { gap: 60, rate: 1.35, vol: .8 });
-    open(B.queue.length ? .1 : mv.open);
+  else if (a.k === 'hands') { // Clock Hands: a fan down the lanes (from No Time to Rest it leads you, and a second wave follows)
+    const ang = ph >= 2 ? mrAim(B.x, B.z, 1) : B.face;
+    mrVolley(B.x + Math.sin(B.face) * 1.5, B.z + Math.cos(B.face) * 1.5, ang, a.offs || mrFan(ph), mv);
+    if (ph >= 2) SO.mrWave = { t: .45 / Math.sqrt(sp) };
+    open(B.queue.length ? .15 : mv.open);
   }
-  else if (a.k === 'pend') { // the overhead slam; the blade bites into the floor and sticks
-    const x = B.x + Math.sin(B.face) * mv.at, z = B.z + Math.cos(B.face) * mv.at;
-    if (Math.hypot(M.x - x, M.z - z) < mv.r) soHurtBy({ ...mv, k: a.k });
-    soBoom(x, z, '#ffb347', 2.6); soDust(x, z, 1.4); SO.shake = .6; soSnd('g_boom', { x, z }, { gap: 100, vol: .9 }); soSnd('m_scrape', { x, z }, { gap: 100 });
-    soBurst(new THREE.Vector3(x, .3, z), { tex: 'spark_01', col: '#ffd08a', n: 12, size: .25, life: .5, speed: 7, grav: 10, up: .6 });
-    if (B.queue.length) open(.2); else { B.stuck = 1.3; open(mv.open); }
-  }
-  else if (a.k === 'still') { // Stillness: a cone of frozen time
-    if (d < mv.r && front < mv.arc + .08 && soHurtBy({ ...mv, k: a.k })) {
+  else if (a.k === 'still') { // Stillness: a cone of frozen time (wider from No Time to Rest)
+    const arc = a.arc || mv.arc;
+    if (d < mv.r && front < arc + .08 && soHurtBy({ ...mv, k: a.k })) {
       M.frozen = M.block ? .35 : .8; soPop('⏳ Stillness: frozen in time', 'bad'); soSnd('m_freeze', M, { gap: 100 });
       soBurst(new THREE.Vector3(M.x, 1.2 + M.y, M.z), { tex: 'star_04', col: '#a5d8ff', n: 8, size: .5, life: .8, speed: 2, grav: -1 }); soBurst(new THREE.Vector3(M.x, 1.2, M.z), { tex: 'circle_05', col: '#a5d8ff', n: 1, size: 1, life: .5, speed: 0, grow: 2.5 });
     }
-    const g = new THREE.Mesh(new THREE.CircleGeometry(mv.r, 28, -mv.arc, mv.arc * 2), new THREE.MeshBasicMaterial({ color: '#d0ebff', transparent: true, opacity: .5, depthWrite: false, side: THREE.DoubleSide, blending: THREE.AdditiveBlending, fog: false }));
+    const g = new THREE.Mesh(new THREE.CircleGeometry(mv.r, 28, -arc, arc * 2), new THREE.MeshBasicMaterial({ color: '#d0ebff', transparent: true, opacity: .5, depthWrite: false, side: THREE.DoubleSide, blending: THREE.AdditiveBlending, fog: false }));
     g.rotation.set(-Math.PI / 2, 0, B.face - Math.PI / 2); g.position.set(B.x, 1, B.z); SO.S.add(g); SO.fx.push({ m: g, t: .35, arc: 1 });
     soSnd('m_freeze', B, { gap: 200, vol: .6 });
     open(B.queue.length ? .15 : mv.open);
   }
-  else if (a.k === 'sands') { SO.rings.push({ x: B.x, z: B.z, r: 1, v: 5.5, mv, m: soRing('#ffcf7a'), drowsy: 1 }); soSnd('m_sand', B, { gap: 100 }); soDust(B.x, B.z, 1.2); open(mv.open); }
-  else if (a.k === 'toll') { soSnd('m_toll', B, { gap: 300, vol: .7 }); open(mv.open); }
-  else if (a.k === 'rewind') { // into sand, and out again where it stood
-    mrVanish(a, a.gx, a.gz, .28, ['hand', 'thrust', 'pend'][Math.floor(Math.random() * 3)]);
+  else if (a.k === 'promise') { mrPromise(ph); cast(1); }
+  else if (a.k === 'echo') { mrEchoes(ph >= 2 ? 2 : 1); cast(.85); }
+  else if (a.k === 'pendulum') { soSnd('m_toll', B, { gap: 300, vol: .8 }); if (SO.mrFloor) SO.mrFloor.glow = .7; soPop('🔔 Pendulums: get out of the lanes', 'bad'); open(mv.open); }
+  else if (a.k === 'rewind') { // into sand, and out again where it stood (from No Time to Rest it leaves an Echo where it was)
+    if (ph >= 2) mrEchoAt(B.x, B.z);
+    mrVanish(a, a.gx, a.gz, .28, Math.hypot(M.x - a.gx, M.z - a.gz) < 6.4 ? 'hand' : 'hands');
   }
-  else if (a.k === 'blink') { // Lost Moment: it steps out behind you
-    const bx = M.x - B.x, bz = M.z - B.z, l = Math.hypot(bx, bz) || 1, r = 3.3, x = M.x + bx / l * r, z = M.z + bz / l * r, k = Math.hypot(x, z) > SO_ARENA - 1.5 ? (SO_ARENA - 1.5) / Math.hypot(x, z) : 1;
-    B.greed = []; mrVanish(a, x * k, z * k, .38, 'whirl');
+  else if (a.k === 'away') { // Not Now: it vanishes and reappears far from you, throwing
+    const ang = Math.atan2(B.x - M.x, B.z - M.z) + (Math.random() - .5) * 1.6, r = 9.5 + Math.random() * 1.5;
+    let x = M.x + Math.sin(ang) * r, z = M.z + Math.cos(ang) * r; const l = Math.hypot(x, z), m = SO_ARENA - 1.6; if (l > m) { x *= m / l; z *= m / l; }
+    B.greed = []; soPop('⌛ Not now…', 'bad'); mrVanish(a, x, z, .35, 'hands');
   }
-  else if (a.k === 'whirl') { if (d < mv.r) soHurtBy({ ...mv, k: a.k }); B.spinT = .42; soSnd('m_blade', B, { gap: 60, rate: .8 }); soDust(B.x, B.z, 1); SO.shake = .3; open(B.queue.length ? .15 : mv.open); }
   else if (a.k === 'midnight') { mrVanish(a, 0, 0, .3, 'chan'); }
+  else if (a.k === 'deadline') { mrVanish(a, 0, 0, .3, 'doom'); }
   else open(.25);
 }
 // vanish into sand and step out at (x, z) after t seconds, then do `then`
@@ -572,8 +618,49 @@ function mrAppear(a, ph) {
   soBurst(new THREE.Vector3(B.x, 2.5, B.z), { tex: 'smoke_03', col: '#d8b070', n: 6, size: 1.6, life: .6, speed: 2.5, grow: .8, add: false, op: .5 });
   soSnd('m_blink', B, { gap: 60, rate: .85 });
   if (a.then === 'chan') { mrMidnight(ph); return; }
-  const k = a.then, w = Math.max(.2, MR_MV[k].w * (.55 + Math.random() * .35) / soSpeed());
+  if (a.then === 'doom') { mrDeadline(ph); return; }
+  if (a.then === 'pick') { B.state = 'idle'; B.t = .05 + Math.random() * .3; return; }
+  const k = a.then, w = Math.max(.22, MR_MV[k].w * (.6 + Math.random() * .35) / soSpeed());
   mrBegin(k, w, true);
+}
+// Empty Promises: hourglasses planted round you, each bursting when its sand runs out, on its own timer
+function mrPromise(ph) {
+  const M = SO.me, n = [3, 4, 5, 5][ph], mv = MR_MV.promise, base = Math.random() * Math.PI * 2;
+  for (let i = 0; i < n; i++) {
+    const a = base + i / (n - 1 || 1) * Math.PI * 2 * (n - 1) / n, r = i ? 2.6 + Math.random() * 2.2 : 0;
+    let x = M.x + M.vx * .3 + Math.sin(a) * r, z = M.z + M.vz * .3 + Math.cos(a) * r; const l = Math.hypot(x, z); if (l > SO_ARENA - .5) { x *= (SO_ARENA - .5) / l; z *= (SO_ARENA - .5) / l; }
+    const T = (1.5 + Math.random() * 1.6) / Math.sqrt(soSpeed());
+    const fill = mrFloorMesh(new THREE.CircleGeometry(mv.r, 32), '#ffb347', x, z, 0, .32), edge = mrFloorMesh(new THREE.RingGeometry(mv.r - .14, mv.r, 40), '#ffe0a0', x, z, 0, .8);
+    fill.scale.setScalar(.01);
+    const hg = mrHourglass(MR_SCALE * 1.4, SO.mrMats.bronze, SO.mrMats.glass, SO.mrMats.sand); hg.position.set(x, -.6, z); SO.S.add(hg);
+    SO.mrProm.push({ x, z, t: T, T, fill, edge, hg });
+  }
+  soSnd('m_sand', M, { gap: 100 }); soSnd('m_tick', M, { gap: 100, rate: 1.4 });
+  if (!SO.mrPromSeen) { SO.mrPromSeen = 1; soPop('⏳ Empty Promises: leave before the sand runs out', 'bad'); }
+}
+// a sand ghost of itself: it fades in, aims, throws a fan of clock hands, and crumbles
+function mrGhost() {
+  const g = new THREE.Group(), mat = new THREE.MeshBasicMaterial({ color: '#f0c070', transparent: true, opacity: 0, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide, fog: false });
+  const robe = new THREE.Mesh(new THREE.ConeGeometry(1.3, 5.4, 14, 1, true), mat); robe.position.y = 2.7; g.add(robe);
+  const hood = new THREE.Mesh(new THREE.SphereGeometry(.7, 12, 8), mat); hood.position.y = 5.6; g.add(hood);
+  const arm = new THREE.Mesh(new THREE.CylinderGeometry(.18, .26, 2.4, 6), mat); arm.position.set(.9, 4, .5); arm.rotation.x = -1; g.add(arm);
+  const eye = soSprite('flare_01', '#ffcf7a', 1.6, 0); eye.position.y = 5.6; g.add(eye);
+  return { g, mat, eye };
+}
+function mrEchoAt(x, z) {
+  const o = mrGhost(); o.g.position.set(x, 0, z); SO.S.add(o.g);
+  SO.mrEchoes.push({ ...o, x, z, t: 1.15 / Math.sqrt(soSpeed()), out: 0, lanes: mrFan(0).map(off => { const g = new THREE.PlaneGeometry(.5, 17); g.translate(0, 17 / 2 + 1, 0); return { o: off, m: mrFloorMesh(g, '#ffd8a0', x, z, 0, .15) }; }) });
+  soBurst(new THREE.Vector3(x, 2.5, z), { tex: 'smoke_03', col: '#d8b070', n: 5, size: 1.4, life: .6, speed: 2, grow: .8, add: false, op: .45 });
+}
+function mrEchoes(n) {
+  const M = SO.me, B = SO.B, away = Math.atan2(B.x - M.x, B.z - M.z);
+  for (let i = 0; i < n; i++) {
+    const ang = away + Math.PI + (n > 1 ? (i ? 1 : -1) * (.9 + Math.random() * .5) : (Math.random() - .5) * 1.6), r = 8 + Math.random() * 1.5;
+    let x = M.x + Math.sin(ang) * r, z = M.z + Math.cos(ang) * r; const l = Math.hypot(x, z), m = SO_ARENA - 1.2; if (l > m) { x *= m / l; z *= m / l; }
+    mrEchoAt(x, z);
+  }
+  soSnd('m_whisper', B, { gap: 100 });
+  if (!SO.mrEchoSeen) { SO.mrEchoSeen = 1; soPop('👻 Echoes: they throw where the lanes point', 'bad'); }
 }
 // Midnight: from the centre, one (two in the last hour) of the floor clock's hands sweeps all the way round. Jump it.
 function mrMidnight(ph) {
@@ -590,22 +677,87 @@ function mrMidnight(ph) {
   soSnd('m_toll', B, { gap: 300, vol: .8 }); soSnd('m_roar', B, { gap: 300, vol: .5, rate: 1.2 });
   soPop('🕛 Midnight: jump the hands', 'bad');
 }
-// hazards that are only Morrow's: the falling clock faces, and Midnight's hands
+// Deadline: the hall fills with sand and only three circles of light are safe. It stands in the middle, exposed, counting down.
+function mrDeadline(ph) {
+  const B = SO.B, M = SO.me, mv = MR_MV.deadline, T = 3.4, base = Math.random() * Math.PI * 2, safes = [];
+  for (let i = 0; i < 3; i++) {
+    const a = base + i * Math.PI * 2 / 3 + (Math.random() - .5) * .5, r = 6.5 + Math.random() * 3, x = Math.sin(a) * r, z = Math.cos(a) * r;
+    const fl = mrFloorMesh(new THREE.CircleGeometry(mv.r, 36), '#fff0c0', x, z, 0, .35), edge = mrFloorMesh(new THREE.RingGeometry(mv.r - .15, mv.r, 44), '#ffffff', x, z, 0, .9);
+    const col = new THREE.Mesh(new THREE.CylinderGeometry(mv.r, mv.r, 14, 24, 1, true), new THREE.MeshBasicMaterial({ color: '#ffe8b0', transparent: true, opacity: .14, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide, fog: false }));
+    col.position.set(x, 7, z); SO.S.add(col);
+    safes.push({ x, z, fl, edge, col });
+  }
+  SO.mrDoom = { t: T, T, safes, n: 4, fog: SO.S.fog?.density || .022 };
+  B.state = 'doom'; B.t = T; B.guard = false;
+  if (SO.mrFloor) SO.mrFloor.glow = 1;
+  soSnd('m_toll', B, { gap: 300 }); soSnd('m_sand', B, { gap: 100, vol: 1.2 }); soSnd('m_roar', B, { gap: 300, vol: .6, rate: .8 });
+  soPop('⌛ Deadline: get into the light (it\'s exposed)', 'bad');
+}
+// hazards that are only Morrow's: thrown clock hands, Promises, Echoes, Pendulums, Midnight's hands, the Deadline
 function mrHaz(dt) {
-  const M = SO.me;
-  SO.mrDrops = SO.mrDrops.filter(d => {
-    d.t -= dt; d.mk.material.opacity = .25 + (1 - d.t / d.w) * .5;
-    if (d.t < .55 && !d.c) { // the clock face appears high up and falls
-      d.c = new THREE.Group(); const f = new THREE.Mesh(new THREE.CylinderGeometry(1.6, 1.6, .22, 24), new THREE.MeshStandardMaterial({ color: '#e9dcbc', map: mrDialTex('drop' + Math.floor(d.x * 7)), roughness: .7 })); d.c.add(f);
-      const rim = is3mesh(new THREE.TorusGeometry(1.6, .12, 6, 24), '#8a6a3c', 0, 0, 0, d.c); rim.rotation.x = Math.PI / 2;
-      d.c.position.set(d.x, 16, d.z); d.c.rotation.set(.4 * (Math.random() - .5), Math.random() * 6, .4 * (Math.random() - .5)); SO.S.add(d.c); soSnd('m_bell', d, { gap: 120, vol: .6, rate: .9 + Math.random() * .3 });
+  const M = SO.me, B = SO.B, sp = soSpeed();
+  // the second wave of Clock Hands
+  if (SO.mrWave && (SO.mrWave.t -= dt) <= 0) { SO.mrWave = null; if (B.state !== 'air' && B.state !== 'down' && !SO.over) mrVolley(B.x, B.z, mrAim(B.x, B.z, 1), mrFan(0), MR_MV.hands); }
+  SO.mrBlades = SO.mrBlades.filter(b => {
+    const s = b.v * dt; b.x += b.dx * s; b.z += b.dz * s; b.life -= dt;
+    b.g.position.set(b.x, 1.3, b.z); b.g.rotation.y += dt * 16;
+    if (!SO.mrHitV[b.vid] && Math.hypot(b.x - M.x, b.z - M.z) < .95 && M.y < 2.2 && soHurtBy({ ...b.mv, k: 'hands', x: b.x, z: b.z })) {
+      SO.mrHitV[b.vid] = 1; soBurst(new THREE.Vector3(M.x, 1.3, M.z), { tex: 'spark_01', col: '#ffd08a', n: 8, size: .25, life: .4, speed: 5, grav: 8 });
     }
-    if (d.c) { const p = Math.max(0, d.t / .55); d.c.position.y = .15 + 16 * p * p; d.c.rotation.y += dt * 3; }
-    if (d.t > 0) return true;
-    if (Math.hypot(d.x - M.x, d.z - M.z) < MR_MV.toll.r && M.y < 1.2) soHurtBy({ ...MR_MV.toll, k: 'toll' });
-    soBoom(d.x, d.z, '#e9dcbc', 2); soDust(d.x, d.z, 1); soSnd('m_crash', d, { gap: 50 }); SO.shake = Math.max(SO.shake || 0, .3);
-    soBurst(new THREE.Vector3(d.x, .4, d.z), { tex: 'spark_01', col: '#ffe0a0', n: 8, size: .2, life: .5, speed: 6, grav: 12, up: .5 });
-    SO.S.remove(d.mk); d.mk.geometry.dispose(); if (d.c) { SO.S.remove(d.c); d.c.traverse(o => o.geometry?.dispose()); } return false;
+    if (b.life > 0 && Math.hypot(b.x, b.z) < 16.5 && !SO.over) return true;
+    SO.S.remove(b.g); b.gl.material.dispose(); return false;
+  });
+  SO.mrProm = SO.mrProm.filter(p => {
+    p.t -= dt; const k = 1 - Math.max(0, p.t / p.T);
+    p.fill.scale.setScalar(Math.max(.01, k)); p.fill.material.opacity = .2 + k * .3; p.edge.material.opacity = .5 + Math.sin(SO.time * (8 + k * 20)) * .3;
+    p.hg.position.y = Math.min(.05, p.hg.position.y + dt * 3); p.hg.rotation.y += dt * .8;
+    if (p.t > 0 && !SO.over) return true;
+    if (!SO.over) {
+      if (Math.hypot(p.x - M.x, p.z - M.z) < MR_MV.promise.r && M.y < 1.4) soHurtBy({ ...MR_MV.promise, k: 'promise' });
+      soBoom(p.x, p.z, '#ffcf7a', 2.2); soDust(p.x, p.z, .9); soSnd('m_crash', p, { gap: 50, vol: .8, rate: 1.2 });
+      soBurst(new THREE.Vector3(p.x, .8, p.z), { tex: 'spark_01', col: '#ffe0a0', n: 10, size: .22, life: .5, speed: 6, grav: 10, up: .6 });
+      soBurst(new THREE.Vector3(p.x, .6, p.z), { tex: 'smoke_03', col: '#d8b070', n: 3, size: 2, life: .7, speed: 2, grow: 1, add: false, op: .5 });
+    }
+    mrKill(p.fill); mrKill(p.edge); SO.S.remove(p.hg); p.hg.traverse(o => o.geometry?.dispose()); return false;
+  });
+  SO.mrEchoes = SO.mrEchoes.filter(e => {
+    e.t -= dt;
+    if (e.t > 0) { // fading in, turning to you, its lanes following you
+      const ang = Math.atan2(M.x - e.x, M.z - e.z); if (e.t > .15) e.ang = ang;
+      e.g.rotation.y = e.ang; e.mat.opacity = Math.min(.42, e.mat.opacity + dt * 1.2); e.eye.material.opacity = e.mat.opacity * 2;
+      e.lanes.forEach(l => { l.m.rotation.z = e.ang + l.o + Math.PI; l.m.material.opacity = .1 + (1 - e.t) * .35; });
+      return true;
+    }
+    if (!e.thrown) { e.thrown = 1; e.lanes.forEach(l => mrKill(l.m)); e.lanes = []; mrVolley(e.x, e.z, e.ang, mrFan(0), MR_MV.echo); }
+    e.out += dt; e.mat.opacity = Math.max(0, .42 - e.out * .7); e.eye.material.opacity = e.mat.opacity; e.g.position.y = -e.out * 1.5;
+    if ((e.sT = (e.sT || 0) + dt) > .07) { e.sT = 0; soBurst(new THREE.Vector3(e.x + (Math.random() - .5) * 2, Math.random() * 4, e.z + (Math.random() - .5) * 2), { tex: 'smoke_03', col: '#d8b070', n: 1, size: 1, life: .5, speed: .5, grav: 2, add: false, op: .4 }); }
+    if (e.out < .65 && !SO.over) return true;
+    e.lanes.forEach(l => mrKill(l.m)); mrKill(e.g); return false;
+  });
+  SO.mrPend = SO.mrPend.filter(p => {
+    p.t -= dt;
+    if (p.t > 0) { p.tm.material.opacity = .14 + (1 - p.t / p.w) * .4 * (p.t < .5 ? (Math.sin(SO.time * 30) * .3 + .7) : 1); return true; }
+    const dx = Math.sin(p.ang), dz = Math.cos(p.ang), cx = p.nx * p.off, cz = p.nz * p.off;
+    if (!p.g) { // a giant pendulum blade drops out of the dark and swings down the lane
+      const g = p.g = new THREE.Group(), bronze = SO.mrMats.bronze;
+      const disc = new THREE.Mesh(new THREE.CylinderGeometry(1.7, 1.7, .14, 32), bronze); disc.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), new THREE.Vector3(p.nx, 0, p.nz)); g.add(disc);
+      const rim = new THREE.Mesh(new THREE.TorusGeometry(1.7, .08, 6, 32), new THREE.MeshBasicMaterial({ color: '#ffd08a', transparent: true, opacity: .8, blending: THREE.AdditiveBlending, depthWrite: false, fog: false })); rim.quaternion.copy(disc.quaternion); g.add(rim);
+      const rod = p.rod = new THREE.Mesh(new THREE.CylinderGeometry(.08, .08, 1, 6), bronze); SO.S.add(rod);
+      SO.S.add(g); p.s = -15 * p.dir; p.prev = null; soSnd('m_bell', { x: cx, z: cz }, { gap: 80, vol: .8, rate: .8 + Math.random() * .3 });
+    }
+    const v = 30 * Math.sqrt(sp) * dt; p.s += p.dir * v;
+    const u = p.s / 15, y = 1.4 + u * u * 1.6, x = cx + dx * p.s, z = cz + dz * p.s;
+    p.g.position.set(x, y, z);
+    const top = new THREE.Vector3(cx, 19, cz), bob = new THREE.Vector3(x, y + 1.6, z), len = top.distanceTo(bob);
+    p.rod.position.copy(top).lerp(bob, .5); p.rod.scale.y = len; p.rod.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), top.clone().sub(bob).normalize());
+    // you: in the lane, and did it pass where you stand?
+    const rx = M.x - cx, rz = M.z - cz, along = rx * dx + rz * dz, across = Math.abs(rx * p.nx + rz * p.nz);
+    if (!p.hit && across < MR_MV.pendulum.wid + .35 && p.prev != null && (along - p.prev) * (along - p.s) <= 0) { if (soHurtBy({ ...MR_MV.pendulum, k: 'pendulum', x, z })) p.hit = 1; }
+    if (p.prev != null && Math.abs(along - p.s) < 3 && !p.whoosh) { p.whoosh = 1; soSnd('g_whoosh', { x, z }, { gap: 60, rate: .7, vol: 1.2 }); }
+    p.prev = p.s; p.tm.material.opacity = Math.max(0, p.tm.material.opacity - dt * .6);
+    if ((p.sT = (p.sT || 0) + dt) > .04) { p.sT = 0; soBurst(new THREE.Vector3(x, y - 1, z), { tex: 'spark_01', col: '#ffd08a', n: 1, size: .25, life: .4, speed: 2, grav: 4, up: 1 }); }
+    if (Math.abs(p.s) < 15.5 && !SO.over) return true;
+    mrKill(p.tm); SO.S.remove(p.g); p.g.traverse(o => { if (o.geometry) o.geometry.dispose(); }); SO.S.remove(p.rod); p.rod.geometry.dispose(); return false;
   });
   SO.mrHands = SO.mrHands.filter(h => {
     h.t += dt;
@@ -618,6 +770,26 @@ function mrHaz(dt) {
     if (h.left > 0 && !SO.over) return true;
     SO.S.remove(h.m); h.m.geometry.dispose(); h.m.material.dispose(); return false;
   });
+  const D = SO.mrDoom;
+  if (D) {
+    D.t -= dt; const k = 1 - Math.max(0, D.t / D.T);
+    if (Math.ceil(D.t) < D.n && D.t > 0) { D.n = Math.ceil(D.t); soPop(`⌛ ${D.n}…`, 'bad'); soSnd('m_tick', null, { gap: 50, vol: 1, rate: .8 }); }
+    if (SO.S.fog) SO.S.fog.density = D.fog + k * .03;
+    D.safes.forEach(s => { s.col.material.opacity = .1 + k * .2; s.fl.material.opacity = .25 + k * .35; });
+    // the sand rising everywhere but the light
+    for (let i = 0; i < 2; i++) { const a = Math.random() * 6.28, r = Math.random() * 13, x = Math.sin(a) * r, z = Math.cos(a) * r; if (D.safes.some(s => Math.hypot(s.x - x, s.z - z) < 2.8)) continue; soBurst(new THREE.Vector3(x, .3 + k * 1.5, z), { tex: 'smoke_03', col: '#c8a060', n: 1, size: 2 + k * 2, life: .9, speed: .5, grow: 1, add: false, op: .25 + k * .25 }); }
+    if (D.t <= 0 || SO.over) {
+      const safe = D.safes.some(s => Math.hypot(s.x - M.x, s.z - M.z) < MR_MV.deadline.r);
+      if (!SO.over) {
+        if (safe) soPop('☀️ Safe in the light', 'good'); else soHurtBy({ ...MR_MV.deadline, k: 'deadline' });
+        SO.shake = 1; soSnd('m_crash', B, { gap: 50 }); soSnd('m_sand', B, { gap: 50, vol: 1.3 });
+        for (let i = 0; i < 18; i++) { const a = i / 18 * 6.28, r = 3 + Math.random() * 9; soBurst(new THREE.Vector3(Math.sin(a) * r, 1, Math.cos(a) * r), { tex: 'smoke_03', col: '#d8b070', n: 1, size: 3.5, life: .9, speed: 3, grow: 1.2, add: false, op: .55 }); }
+        if (B.state === 'doom') { B.state = 'recover'; B.guard = false; B.t = MR_MV.deadline.open / Math.sqrt(sp); }
+      }
+      if (SO.S.fog) SO.S.fog.density = D.fog;
+      D.safes.forEach(s => { mrKill(s.fl); mrKill(s.edge); mrKill(s.col); }); SO.mrDoom = null;
+    }
+  }
 }
 function mrAfter(ph) {
   const B = SO.B;
@@ -625,7 +797,7 @@ function mrAfter(ph) {
   if (B.tiredNext) { B.tiredNext = 0; B.state = 'tired'; B.t = (1.1 + Math.random() * .7) / Math.sqrt(soSpeed()); soSnd('m_whisper', B, { gap: 100, vol: .5, rate: .8 }); return; }
   // in the third phase it barely rests at all
   const r = Math.random();
-  B.state = 'idle'; B.t = (r < .3 ? .02 : r < .8 ? .15 + Math.random() * .4 : .7 + Math.random() * .7) / soSpeed() * (ph >= 2 ? .45 : 1);
+  B.state = 'idle'; B.t = (r < .3 ? .02 : r < .8 ? .15 + Math.random() * .4 : .7 + Math.random() * .7) / soSpeed() * (ph >= 2 ? .5 : 1);
 }
 
 // ---------- its body follows the fight ----------
@@ -644,13 +816,15 @@ function mrAnim(dt, t) {
     S.pose(mv.hit * (.08 + .88 * sgEase(wp)) + (st === 'hold' ? Math.sin(t * 50) * .006 : 0));
   }
   else if (st === 'chan') S.play('Spell_Simple_Idle_Loop', { fade: .2, speed: 1.4 });
+  else if (st === 'cast') S.play('Spell_Simple_Idle_Loop', { fade: .15, speed: 1.1 });
+  else if (st === 'doom') S.play('Spell_Simple_Idle_Loop', { fade: .2, speed: 2 });
   else if (st === 'dash') S.play('Sprint_Loop', { fade: .08, speed: 1.4 });
   else if (st === 'tired') S.play('Crouch_Idle_Loop', { fade: .25, speed: 1.2 });
   else if (st === 'stalk') S.play('Walk_Formal_Loop', { fade: .3, speed: .7 * soSpeed() });
   else if (st === 'recover' && mv && S.cur === mv.c && S.struck !== SO.atkId) { S.struck = SO.atkId; const A = S.act; A.timeScale = mv.after; A.paused = false; A.time = Math.max(A.time, mv.hit * A.getClip().duration); }
-  else if (st === 'recover' && B.stuck > 0 && a?.k === 'pend' && S.done()) { /* the blade stuck in the floor: it stays bent over it */ }
   else if (st === 'recover' && mv && S.cur === mv.c && !S.done()) { /* the swing plays out */ }
   else if (st === 'chase') S.play('Walk_Formal_Loop', { fade: .3, speed: .85 * soSpeed() });
+  else if (st === 'idle' && B.back) S.play('Walk_Formal_Loop', { fade: .3, speed: -.6 * soSpeed() });
   else if (st === 'idle' || st === 'recover') S.play('Idle_Loop', { fade: .3, speed: ph >= 3 ? .9 : .55 });
   // the sand in its face burns hotter each phase, and the hourglass turns over when the phase changes
   if (S.phCol !== MR_SAND[ph]) { S.phCol = MR_SAND[ph]; S.sandM.color.set(S.phCol); S.sandM.emissive.set(S.phCol); S.face.color.set(S.phCol); }
@@ -672,7 +846,7 @@ function mrAnim(dt, t) {
   const F = SO.mrFloor;
   if (F) {
     F.minH.rotation.y = Math.PI - (SO.cine ? 0 : SO.time / SO_TIME) * Math.PI * 2;
-    F.glow = Math.max(st === 'chan' ? .8 : 0, F.glow - dt * .8); F.glowRing.material.opacity = F.glow * .8;
+    F.glow = Math.max(st === 'chan' || st === 'doom' ? .8 : 0, F.glow - dt * .8); F.glowRing.material.opacity = F.glow * .8;
   }
   for (const T of SO.torches || []) for (const s of T.sides || []) { s.visible = T.lit > 0; s.scale.setScalar(.32 * T.lit * (1 + Math.sin(t * 11 + T.ph + s.position.x) * .12)); }
   for (const mo of SO.motes || []) { mo.sp.position.y = mo.y + Math.sin(t * .3 + mo.ph) * .6; mo.sp.material.opacity = .25 + Math.sin(t * .8 + mo.ph) * .2; }
@@ -716,20 +890,26 @@ function mrCineEnd() {
 }
 function mrEnd() {
   (SO.mrHands || []).forEach(h => SO.S.remove(h.m)); SO.mrHands = [];
-  (SO.mrDrops || []).forEach(d => { SO.S.remove(d.mk); if (d.c) SO.S.remove(d.c); }); SO.mrDrops = [];
+  (SO.mrBlades || []).forEach(b => SO.S.remove(b.g)); SO.mrBlades = []; SO.mrWave = null;
+  (SO.mrProm || []).forEach(p => { SO.S.remove(p.fill, p.edge, p.hg); }); SO.mrProm = [];
+  (SO.mrEchoes || []).forEach(e => { SO.S.remove(e.g); e.lanes.forEach(l => SO.S.remove(l.m)); }); SO.mrEchoes = [];
+  (SO.mrPend || []).forEach(p => { SO.S.remove(p.tm); if (p.g) SO.S.remove(p.g, p.rod); }); SO.mrPend = [];
+  if (SO.mrDoom) { SO.mrDoom.safes.forEach(s => SO.S.remove(s.fl, s.edge, s.col)); if (SO.S.fog) SO.S.fog.density = SO.mrDoom.fog; SO.mrDoom = null; }
 }
 
 SO_DEFS[MR_KEY] = {
   key: MR_KEY, name: 'Morrow', title: 'Morrow, the Ever-Waiting', lore: 'It promises tomorrow, and tomorrow never comes', felled: 'MORROW FELLED',
   ph: MR_PH, br: 2.3, numY: 5.6, hitb: MR_HITB, snd: { die: 'm_roar' },
-  tips: 'It moves slowly, then very fast, and it hits hard. Act now: everything you land in the first 20 seconds does double damage, and every 10 seconds you go without a real hit it gets faster. Strike in the openings after its attacks; the clock in its back and the hourglass in its face are weak points. Orange sweeps go high (roll them), yellow ones go low (jump them), and a blue cone freezes you in time. Esc shows the controls.',
+  tips: 'It keeps its distance and fights with time: it throws clock hands down the orange lanes (step out or roll), plants hourglasses that burst when their sand runs out, and a blue cone freezes you in time. Crowd it and it swings its blade or vanishes. It\'s exposed while it casts and in the openings after its attacks. Act now: everything you land in the first 20 seconds does double damage, and every 10 seconds you go without a real hit it gets faster. Esc shows the controls.',
   armTxt: '⌛ Guarded: hits barely touch it. Strike when the clock on its back burns, after its attacks',
   scene: mrScene, start: mrStart, step: mrStep, anim: mrAnim, cine: mrCine, cineT: MR_CINE, cineCam: mrCineCam, cineEnd: mrCineEnd, end: mrEnd,
   weakBone: n => n === 'Head',
+  // 2.102: exposed while it casts (Promises, Echoes, the Deadline) as well as in the openings after its attacks
+  open: () => { const B = SO.B; return B.state === 'down' || B.stag > 0 || B.state === 'tired' || B.state === 'cast' || B.state === 'doom' || (B.state === 'recover' && !B.guard); },
   mult: (o, armour) => !o.dot && SO.time < 20 ? 2 : 1,
   onHit: (armour, o) => { if (!armour && !o.dot) SO.B.idleT = 0; },
   onHurt: (mv) => { if (soPhase() >= 3 && mv.d >= .3 && !SO.over) { SO.me.slow = 2; soPop('🐢 The Last Hour: time slows for you', 'bad'); } },
-  tag: open => { const B = SO.B, act = SO.time < 20 ? ` · ACT NOW ×2 (${Math.ceil(20 - SO.time)}s)` : ''; return (B.stuck > 0 ? ' · blade stuck: strike now' : B.state === 'tired' ? ' · winded: hit it now' : B.state === 'chan' ? ' · Midnight: jump the hands' : B.state === 'air' ? ' · gone…' : open ? ' · exposed' : ' · guarded') + act; },
+  tag: open => { const B = SO.B, act = SO.time < 20 ? ` · ACT NOW ×2 (${Math.ceil(20 - SO.time)}s)` : ''; return (B.state === 'cast' ? ' · casting: hit it now' : B.state === 'doom' ? ' · Deadline: get into the light' : B.state === 'tired' ? ' · winded: hit it now' : B.state === 'chan' ? ' · Midnight: jump the hands' : B.state === 'air' ? ' · gone…' : open ? ' · exposed' : ' · guarded') + act; },
   chips: () => [SO.spX > 1 && `⏳ +${Math.round((SO.spX - 1) * 100)}% faster`],
 };
 
