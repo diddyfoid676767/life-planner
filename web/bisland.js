@@ -214,7 +214,48 @@ function is3bossBuild() {
     else is3mesh(new THREE.ConeGeometry(.15, .5 + rnd() * .5, 5), dead ? '#4ee6ff' : '#ff6b3d', x, top + .3, z, W, true); }
   // the boss on its dais; beaten bosses turn to stone, topple over and get your house's banner
   const g = new THREE.Group(); g.position.set(0, top + .53, 0); g.rotation.y = Math.PI / 4; // faces the camera's starting spot W.add(g);
+  // 2.88: Somnus's week: the island is its hall, as in the fight, and the real rigged Golem sleeps on its stone bed
+  if (b.n === 'Snooze Golem' && typeof sgMake === 'function' && biSomnus(W, g, top, rnd, dead)) { IS3.marks = { boss: [0, top + 5, 0] }; return; }
   const m = new THREE.Group(); g.add(m); is3bossModel(m, b.n, dead ? 'dead' : 'live'); m.scale.setScalar(hurt && !dead ? .95 : 1.05); if (!dead && typeof biIdle === 'function') biIdle(m); // 2.76: the boss breathes and looks around
   if (dead) { m.rotation.z = .5; m.position.set(.7, -.15, 0); const h = hsHouse(hsState().id); is3mesh(new THREE.CylinderGeometry(.05, .05, 2.6, 5), '#dee2e6', -1.3, 1.3, .9, g); is3mesh(new THREE.BoxGeometry(.9, .6, .04), h?.col || '#ffd43b', -.85, 2.2, .9, g); }
   IS3.marks = { boss: [0, top + 5, 0] };
+}
+
+// ---------- 2.88: Somnus's hall on the boss island: the fight's arena in small, with the real Golem asleep in it ----------
+// Mossy dark stone, its bed under a broken arch, braziers burning either side with real light, and the
+// same rigged stone body as the fight (sgolem.js), breathing slowly in its sleep. Beaten, it lies still and grey.
+// The animated model needs the hero rig: until that has loaded the old model stands in, then the island rebuilds.
+function biSomnus(W, g, top, rnd, dead) {
+  if (typeof HERO === 'undefined' || !HERO.gltf) {
+    if (typeof heroLoad === 'function' && !HERO.fail && !BI_IDLE.wait) { BI_IDLE.wait = 1; heroLoad().then(() => { BI_IDLE.wait = 0; if (HERO.gltf && IS3.house === 'boss' && view === 'islands') { is3bossBuild(); is3draw(); } }); }
+    return false;
+  }
+  const M = (geo, col, x, y, z, p = W, gl) => is3mesh(geo, col, x, y, z, p, gl);
+  // moss over the floor ring and the stone bed with its broken arch behind the Golem
+  for (let i = 0; i < 7; i++) { const a = rnd() * 6.28, r = 1.5 + rnd() * 3.5, c = M(new THREE.CircleGeometry(.5 + rnd() * .8, 8), '#3f5232', Math.cos(a) * r, top + .245 + i * .001, Math.sin(a) * r); c.rotation.x = -Math.PI / 2; c.castShadow = false; }
+  const bed = new THREE.Group(); bed.position.set(0, top, 0); bed.rotation.y = Math.PI / 4; W.add(bed);
+  M(is3rock(new THREE.BoxGeometry(4.6, .55, 2.6, 3, 1, 2), rnd, .06), '#5d566b', 0, .5, -.5, bed); M(new THREE.BoxGeometry(4.3, .1, 2.3), '#4f6b3e', 0, .8, -.4, bed);
+  for (const x of [-2.4, 2.4]) M(new THREE.CylinderGeometry(.32, .38, x < 0 ? 4.4 : 2.6, 8), '#5a5368', x, x < 0 ? 2.4 : 1.5, -1.7, bed);
+  const lin = M(new THREE.BoxGeometry(3.2, .5, .65), '#5a5368', -1, 4.6, -1.7, bed); lin.rotation.z = -.14;
+  M(is3rock(new THREE.DodecahedronGeometry(.45, 0), rnd, .3), '#5a5368', 2.9, .55, -.9, bed); M(is3rock(new THREE.DodecahedronGeometry(.3, 0), rnd, .3), '#4f6b3e', 2.6, .4, -.2, bed);
+  // two braziers either side of the bed, with real fire light
+  const fires = [];
+  for (const sx of [-1, 1]) {
+    const x = sx * 3.1, z = .9; M(new THREE.CylinderGeometry(.32, .4, .55, 7), '#4a4454', x, .55, z, bed); const bowl = M(new THREE.CylinderGeometry(.48, .22, .32, 8, 1, true), '#2b2830', x, .98, z, bed); bowl.material.side = THREE.DoubleSide;
+    const fl = M(new THREE.ConeGeometry(.3, .75, 6), dead ? '#74c0fc' : '#ff8a2a', x, 1.45, z, bed, true), fl2 = M(new THREE.ConeGeometry(.18, .5, 5), dead ? '#d0ebff' : '#ffd28a', x, 1.38, z, bed, true);
+    let L = null; if (!hxLow()) { L = new THREE.PointLight(dead ? '#74c0fc' : '#ff8a3a', 2.2, 9, 1.6); L.position.set(x, 1.9, z); bed.add(L); }
+    fires.push({ fl, fl2, L, ph: rnd() * 9 });
+  }
+  // the Golem itself, scaled to the island, asleep sitting on its bed (or toppled and grey once beaten)
+  const S = sgMake(); if (!S) return false;
+  const k = .5; S.root.scale.multiplyScalar(k); S.root.position.set(0, .82, -.55); bed.add(S.root);
+  S.root.traverse(o => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } });
+  S.eyes.forEach(e => { e.material.emissiveIntensity = dead ? 0 : .35; }); S.veinM.emissiveIntensity = dead ? 0 : .5; S.eyeLight.intensity = 0; S.glow.intensity = dead ? 0 : .5; S.glow.distance = 3;
+  if (dead) {
+    S.play('Death01', { loop: false, fade: 0 }); S.act.time = S.act.getClip().duration - .01; S.update(0);
+    S.plates.forEach(p => { if (p.material.color) p.material.color.lerp(new THREE.Color('#8d8a94'), .6); }); S.cm.emissiveIntensity = 0;
+    const h = hsHouse(hsState().id); M(new THREE.CylinderGeometry(.05, .05, 2.6, 5), '#dee2e6', -2.2, 1.3, 1, bed); M(new THREE.BoxGeometry(.9, .6, .04), h?.col || '#ffd43b', -1.75, 2.2, 1, bed);
+  } else { S.play('Sitting_Idle_Loop', { speed: .35 }); S.update(0); }
+  if (typeof biIdle === 'function') biIdle(null, { gs: dead ? null : S, fires });
+  return true;
 }

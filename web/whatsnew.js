@@ -10,6 +10,12 @@
 // version since the last one they saw (up to 3). D.settings.seenVersion remembers what was last shown,
 // D.settings.guidesSeen which guides have played. A brand-new install never sees either.
 const CHANGELOG = [
+  { v: '2.89.0', notes: [
+    { t: 'Somnus is far bigger and scarier: wider, spiked and horned, with glowing cracks. It is faster and has five new moves (Quake Stomp, Ruin Spin, Boulder Throw, Rampage, Earthbreaker), and its combos and timing change every time', k: 'new' },
+    { t: 'Your hits barely scratch it unless it\'s open. Strike after its attacks, when its cracks blaze and the bar says EXPOSED. After a long combo it pants: your best chance', k: 'new' },
+    { t: 'The arena is lit by real fire: flickering torches and braziers that cast shadows, embers, mist and a rumbling hall. The intro lights them one by one, with new sounds', k: 'new' },
+    { t: 'No more yell when you get hit: you grunt harder the bigger the hit. The boss island now shows Somnus asleep in its hall', k: 'tweak' },
+  ] },
   { v: '2.88.0', guide: 'fortify', notes: [
     { t: 'Get the house island ready for sieges: the Architect and Warlord can shape the land with ⛰️ Shape. Forest slows attackers, cliffs and moats stop them, and towers on raised ground shoot further', k: 'new' },
     { t: 'Moats and cliffs cost more and are limited by house level, and there must always be one way in to the great hall', k: 'new' },

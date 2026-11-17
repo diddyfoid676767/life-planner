@@ -54,6 +54,9 @@ const SFX_REC = {
   g_whoosh: [['g_whoosh'], .7], g_crumble: [['g_crumble0', 'g_crumble1', 'g_crumble2'], .7], g_rocks: [['g_rocks0', 'g_rocks1'], .7],
   g_clang: [['g_clang0', 'g_clang1', 'g_clang2'], .6], g_swish: [['g_swish0', 'g_swish1', 'g_swish2'], .5], g_grunt: [['g_grunt0', 'g_grunt1', 'g_grunt2'], .45],
   g_pain: [['g_pain0', 'g_pain1'], .6], g_armour: [['g_armour0', 'g_armour1', 'g_armour2'], .4], g_crack: [['g_crack0', 'g_crack1'], .8],
+  // 2.88: your hurt grunts by how hard you were hit (no more yell), torches flaring, the intro's riser and title hit, the hall shaking
+  g_hurt: [['g_hurt0', 'g_hurt1'], .5], g_hurtm: [['g_hurtm0', 'g_hurtm1'], .6], g_hurth: [['g_hurth0', 'g_hurth1'], .7],
+  g_fire: [['g_fire0', 'g_fire1'], .55], g_rise: [['g_rise'], .7], g_title: [['g_title'], .95], g_quake: [['g_quake'], .75],
 };
 const SFX_SURF = { grass: ['grass0', 'grass1', 'grass2', 'grass3', 'grass4'], stone: ['stone0', 'stone1', 'stone2', 'stone3', 'stone4'], wood: ['wood0', 'wood1', 'wood2', 'wood3', 'wood4'] };
 const SND_BUF = {}; let sndBufLoad = null;
