@@ -10,6 +10,10 @@
 // version since the last one they saw (up to 3). D.settings.seenVersion remembers what was last shown,
 // D.settings.guidesSeen which guides have played. A brand-new install never sees either.
 const CHANGELOG = [
+  { v: '2.95.0', notes: [
+    { t: 'Six new house island looks: 🌸 Cherry blossom, 🍂 Harvest, ❄️ Frost keep, 🏜️ Sandstone citadel, 🌋 Obsidian forge and 🌴 Emerald jungle. Preview any of them for free', k: 'new' },
+    { t: 'The house island buttons are all on the right now, and 🎨 Island look is in the 🏰 House menu', k: 'fix' },
+  ] },
   { v: '2.94.0', notes: [
     { t: 'The house island has far fewer buttons: 🏰 House, ⚔️ War, 🔨 Build and 🛒 Projects. Each one opens a short menu with the rest', k: 'fix' },
   ] },

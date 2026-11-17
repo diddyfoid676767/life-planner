@@ -57,12 +57,27 @@ const SG_PRIO = [
 ];
 const SG_WHEN = [['early', '⚡', 'Early'], ['hurt', '❤️‍🩹', 'When hurt'], ['hall', '🏰', 'At the hall']];
 const SG_FORT_LOOK = { n: 'Stone fortress', gr: '#bcb7a8', gs: .96, lf: '#46624a', ls: .5, tuft: ['#8d9a7a', '#a3a28c', '#76866a'], fl: ['#e9ecef', '#ced4da', '#ffe066'], flN: .6 };
+// 2.95: house island looks, bought once from the house pool. crag = rocks round the coast, keep = the fortress keep, base = the island's rock
+const SG_HLOOKS = {
+  natural: { n: 'Natural', e: '🍃', d: 'Grass and woods that follow the real season' },
+  fortress: Object.assign(SG_FORT_LOOK, { e: '🏯', d: 'Stone ground, rocky crags round the coast and a keep for a great hall', l: 250, x: 250, crag: ['#8a857c', '#9c968c', '#77726b'], keep: 1, base: ['#8f8a80', '#504b56'] }),
+  blossom: { n: 'Cherry blossom', e: '🌸', d: 'Pink blossom trees and petals on bright spring grass', l: 250, x: 250, gr: '#8fd66a', gs: .5, lf: '#f4a6c6', ls: .85, tuft: ['#7fcf5a', '#9be27a', '#ffc2d8'], fl: ['#ff8fab', '#ffd6e0', '#ffffff', '#fcc2d7'], flN: 2.2 },
+  harvest: { n: 'Harvest', e: '🍂', d: 'Golden fields and red and orange trees that drop their leaves', l: 250, x: 250, gr: '#c9b24c', gs: .6, lf: '#d9601f', ls: .85, tuft: ['#c9762c', '#a8552a', '#d9a441'], fl: ['#ffd43b', '#ff922b', '#e8590c'], leaves: 1 },
+  frost: { n: 'Frost keep', e: '❄️', d: 'Snow, frosted pines, icy crags and falling snow', l: 250, x: 250, gr: '#eef4ff', gs: .9, lf: '#cfe0ee', ls: .65, tuft: ['#e7eefb', '#d3def0', '#ffffff'], fl: ['#ffffff', '#d0ebff'], snow: 1, crag: ['#dbe7f3', '#c3d4e6', '#eef4fb'], base: ['#c9d6e4', '#5f6f86'] },
+  sands: { n: 'Sandstone citadel', e: '🏜️', d: 'Warm sand, dry grass and sandstone cliffs', l: 250, x: 250, gr: '#dcc27e', gs: .85, lf: '#7f9a48', ls: .5, tuft: ['#b9a35a', '#cdb46b', '#a08a45'], fl: ['#ffa94d', '#ffe066'], crag: ['#d9b98a', '#c8a370', '#e3c79a'], base: ['#d4b283', '#8a6a48'] },
+  ember: { n: 'Obsidian forge', e: '🌋', d: 'Black volcanic rock, ash-grey trees and glowing embers', l: 250, x: 250, gr: '#7a7280', gs: .8, lf: '#55504a', ls: .7, tuft: ['#6b6470', '#4f4954', '#7a3b2a'], fl: ['#ff6b2b', '#ffa94d', '#ffd43b'], flN: 1.2, crag: ['#2e2a33', '#3b3540', '#4a2a22'], base: ['#3b3540', '#1e1a22'] },
+  jungle: { n: 'Emerald jungle', e: '🌴', d: 'Deep green jungle with bright tropical flowers', l: 250, x: 250, gr: '#3fbf55', gs: .6, lf: '#1f8a45', ls: .6, tuft: ['#2fa84a', '#55c96a', '#1f8a3a'], fl: ['#ff6b6b', '#ffd43b', '#da77f2', '#ff922b'], flN: 1.8 },
+};
 
 // ---------- the house document's siege bits (b._sg) ----------
 const sgDoc = (d = HI.doc) => d?.b?._sg || {};
 const sgTfOf = d => (d?.b?._sg?.tf) || {};
-const sgFortOwned = (d = HI.doc) => !!sgDoc(d).lk?.own;
-const sgFortOn = (d = HI.doc) => !!(ui.sgFortPv || (sgDoc(d).lk?.own && sgDoc(d).lk?.on));
+// lk: { own: 1 (the fortress, from 2.88), ow: [other looks owned], on, cur: the look in use (none = the fortress) }
+const sgLkOwned = (id, d = HI.doc) => { const lk = sgDoc(d).lk || {}; return id === 'natural' || (id === 'fortress' ? !!lk.own : (lk.ow || []).includes(id)); };
+const sgLkId = (d = HI.doc) => { if (ui.sgLkPv && SG_HLOOKS[ui.sgLkPv]) return ui.sgLkPv; const lk = sgDoc(d).lk || {}, id = lk.cur || 'fortress'; return lk.on && SG_HLOOKS[id] && sgLkOwned(id, d) ? id : 'natural'; };
+const sgHLook = (d = HI.doc) => { const id = sgLkId(d); return id === 'natural' ? null : SG_HLOOKS[id]; };
+const sgFortOwned = (d = HI.doc) => sgLkOwned('fortress', d);
+const sgFortOn = (d = HI.doc) => sgLkId(d) === 'fortress';
 const sgStrongN = tf => Object.values(tf || {}).filter(v => v.t === 'water' || (v.h || 0) >= 2).length;
 const sgStrongMax = (lv = hiLevel()) => SG.strong[Math.min(lv, SG.strong.length - 1)];
 
@@ -157,49 +172,54 @@ document.addEventListener('click', e => {
 });
 
 
-// ---------- the Fortress look ----------
+// ---------- house island looks (the Stone fortress and more) ----------
 function sgFortHtml(d) {
-  const own = sgFortOwned(d), on = sgFortOn(d), can = hhCanEdit(), p = hiPool(d), afford = p.l >= SG.fort.l && p.e >= SG.fort.x;
-  const card = (id, e, n, desc, isOn, act) => `<div class="isitem ${isOn ? 'owned' : ''}"><div class="isitem-e">${e}</div><b>${n}</b><div class="muted small-text">${desc}</div>${act}</div>`;
-  const natAct = !on || ui.sgFortPv ? (ui.sgFortPv ? `<button class="btn small" data-sg="fortpv" data-v="0">✖ Stop preview</button>` : '<span class="tag">In use</span>') : can ? '<button class="btn small" data-sg="fort" data-v="0">Use</button>' : '<span class="muted small-text">Architect or Warlord</span>';
-  const fortAct = on && !ui.sgFortPv ? '<span class="tag">In use</span>' : own ? (can ? '<button class="btn small primary" data-sg="fort" data-v="1">Use</button>' : '<span class="muted small-text">Architect or Warlord</span>')
-    : `${can ? `<button class="btn small ${afford ? 'primary' : ''}" data-sg="fortbuy" ${afford ? '' : 'disabled'}>${hxCost(SG.fort.l, SG.fort.x)}</button>` : `<span class="muted small-text">${hxCost(SG.fort.l, SG.fort.x)} · Architect or Warlord</span>`}${ui.sgFortPv ? '' : '<button class="btn small ghost" data-sg="fortpv" data-v="1" title="See it on the island for free">👁 Preview</button>'}`;
-  return `<p class="muted small-text">A look for the whole house island. It changes how it looks, not how it defends: walls, towers, traps and terrain work the same either way.</p>
-    <div class="isshop">${card('natural', '🍃', 'Natural', 'Grass and woods that follow the real season', !on, natAct)}${card('fortress', '🏯', 'Stone fortress', 'Stone ground, rocky crags round the coast and a keep for a great hall', on && !ui.sgFortPv, fortAct)}</div>
-    ${ui.sgFortPv ? '<p class="small-text"><b>👁 Previewing the Stone fortress</b> · only you can see it, nothing is paid.</p>' : ''}`;
+  const cur = sgLkId(d), pv = ui.sgLkPv, can = hhCanEdit(), p = hiPool(d);
+  const cards = Object.entries(SG_HLOOKS).map(([id, t]) => {
+    const has = sgLkOwned(id, d), on = id === cur && !pv, afford = p.l >= (t.l || 0) && p.e >= (t.x || 0);
+    let act;
+    if (on) act = '<span class="tag">In use</span>';
+    else if (pv === id) act = `<button class="btn small" data-sg="lkpv" data-v="">✖ Stop preview</button>${!has && can ? `<button class="btn small ${afford ? 'primary' : ''}" data-sg="lkbuy" data-v="${id}" ${afford ? '' : 'disabled'}>✔ Keep · ${hxCost(t.l, t.x)}</button>` : ''}`;
+    else if (has) act = can ? `<button class="btn small primary" data-sg="lkuse" data-v="${id}">Use</button>` : '<span class="muted small-text">Architect or Warlord</span>';
+    else act = `${can ? `<button class="btn small ${afford ? 'primary' : ''}" data-sg="lkbuy" data-v="${id}" ${afford ? '' : 'disabled'}>${hxCost(t.l, t.x)}</button>` : `<span class="muted small-text">${hxCost(t.l, t.x)} · Architect or Warlord</span>`}<button class="btn small ghost" data-sg="lkpv" data-v="${id}" title="See it on the island for free">👁 Preview</button>`;
+    return `<div class="isitem ${on ? 'owned' : ''}"><div class="isitem-e">${t.e}</div><b>${t.n}</b><div class="muted small-text">${t.d}</div>${act}</div>`;
+  }).join('');
+  return `<p class="muted small-text">A look for the whole house island, bought once from the house pool. It changes how it looks, not how it defends: walls, towers, traps and terrain work the same either way. Switching to a look the house owns is free.</p>
+    <div class="isshop">${cards}</div>
+    ${pv ? `<p class="small-text"><b>👁 Previewing ${SG_HLOOKS[pv].e} ${SG_HLOOKS[pv].n}</b> · only you can see it, nothing is paid.</p>` : ''}`;
 }
 document.addEventListener('click', async e => {
-  const el = e.target.closest('[data-sg="fort"],[data-sg="fortbuy"],[data-sg="fortpv"]'); if (!el) return;
-  const a = el.dataset.sg;
-  if (a === 'fortpv') { ui.sgFortPv = el.dataset.v === '1'; HX3.sig = ''; render(); return; }
-  if (!hhCanEdit()) return;
-  if (a === 'fortbuy') {
-    if (!confirm(`Buy the Stone fortress look for the house island for ${hxCost(SG.fort.l, SG.fort.x)} from the house pool? The house keeps it and can switch back any time for free.`)) return;
-    const ok = await hiWrite(d => { const p = hiPool(d); if (sgFortOwned(d) || p.l < SG.fort.l || p.e < SG.fort.x) return false; d.b = d.b || {}; const g = d.b._sg = d.b._sg || {}; g.lk = { own: 1, on: 1, by: HI.user, at: today() }; d.sp = { l: (+d.sp?.l || 0) + SG.fort.l, e: (+d.sp?.e || 0) + SG.fort.x }; });
-    if (ok) { ui.sgFortPv = false; if (typeof sfx === 'function') sfx('coin'); toast('🏯 Stone fortress', 'The house island is a fortress now.'); }
+  const el = e.target.closest('[data-sg="lkuse"],[data-sg="lkbuy"],[data-sg="lkpv"]'); if (!el) return;
+  const a = el.dataset.sg, id = el.dataset.v, t = SG_HLOOKS[id];
+  if (a === 'lkpv') { ui.sgLkPv = id && id !== 'natural' ? id : null; HX3.sig = ''; render(); return; }
+  if (!hhCanEdit() || !t) return;
+  if (a === 'lkbuy') {
+    if (!confirm(`Buy the ${t.n} look for the house island for ${hxCost(t.l, t.x)} from the house pool? The house keeps it and can switch looks any time for free.`)) return;
+    const ok = await hiWrite(d => { const p = hiPool(d); if (sgLkOwned(id, d) || p.l < t.l || p.e < t.x) return false; d.b = d.b || {}; const g = d.b._sg = d.b._sg || {}, lk = g.lk = { ...(g.lk || {}) }; if (id === 'fortress') lk.own = 1; else lk.ow = [...(lk.ow || []), id]; lk.on = 1; lk.cur = id; lk.by = HI.user; lk.at = today(); d.sp = { l: (+d.sp?.l || 0) + t.l, e: (+d.sp?.e || 0) + t.x }; });
+    if (ok) { ui.sgLkPv = null; if (typeof sfx === 'function') sfx('coin'); toast(`${t.e} ${t.n}`, 'The house island has a new look.'); }
   } else {
-    const on = el.dataset.v === '1';
-    await hiWrite(d => { if (!sgFortOwned(d)) return false; d.b._sg.lk.on = on ? 1 : 0; });
-    ui.sgFortPv = false;
+    await hiWrite(d => { if (!sgLkOwned(id, d)) return false; const g = d.b._sg = d.b._sg || {}, lk = g.lk = { ...(g.lk || {}) }; if (id === 'natural') lk.on = 0; else { lk.on = 1; lk.cur = id; } });
+    ui.sgLkPv = null;
   }
   HX3.sig = ''; render();
 });
 // extra pieces on the island when it's a fortress (called from hhDress): crags round the coast and a keep
 function sgFortDress(W, add, rnd, col) {
-  if (!sgFortOn()) return;
+  const LK = sgHLook(); if (!LK?.crag) return;
   const L = hhLand(), R = HH_R + 1, low = hxLow(), r2 = seeded('sg-fort');
   // a ring of grey crags along the shore
   for (const [k, h] of L) {
     const [q, r] = hxQR(k); if (h.t !== 'water' || hxDist(q, r) !== R) continue;
-    if (r2() < .42) { const [x, z] = hxPos(q, r), ht = 1.4 + r2() * 2.4; const m = is3mesh(is3rock(new THREE.ConeGeometry(.9 + r2() * .6, ht, 5, 2), r2, .25, .2), ['#8a857c', '#9c968c', '#77726b'][Math.floor(r2() * 3)], x + (r2() - .5) * .8, ht / 2 - .4, z + (r2() - .5) * .8, W); m.rotation.y = r2() * 6; }
+    if (r2() < .42) { const [x, z] = hxPos(q, r), ht = 1.4 + r2() * 2.4; const m = is3mesh(is3rock(new THREE.ConeGeometry(.9 + r2() * .6, ht, 5, 2), r2, .25, .2), LK.crag[Math.floor(r2() * 3)], x + (r2() - .5) * .8, ht / 2 - .4, z + (r2() - .5) * .8, W); m.rotation.y = r2() * 6; }
     else if (!low && r2() < .5) { const g = add('rock_single_' + 'ABCDE'[Math.floor(r2() * 5)], k, 0, -.1, 1.8 + r2()); g.rotation.y = r2() * 6.28; }
   }
+  if (!LK.keep) return;
   // the keep: a stone plinth under the great hall, small towers at three corners and banners
   is3mesh(new THREE.CylinderGeometry(1.55, 1.7, .3, 6), '#9a958b', 0, .15, 0, W).rotation.y = Math.PI / 6;
   for (let i = 0; i < 3; i++) { const a = i / 3 * Math.PI * 2 + Math.PI / 6, t = hxModel('building_tower_A', col); t.position.set(Math.cos(a) * 1.35, .25, Math.sin(a) * 1.35); t.scale.setScalar(.5); W.add(t); }
   for (let i = 0; i < 3; i++) { const a = i / 3 * Math.PI * 2 + Math.PI / 2, f = hxModel('flag_' + col, col); f.position.set(Math.cos(a) * 1.5, .3, Math.sin(a) * 1.5); f.scale.setScalar(2.6); f.rotation.y = -a; W.add(f); }
 }
-const sgFortBase = () => sgFortOn() ? ['#8f8a80', '#504b56'] : null;
+const sgFortBase = () => sgHLook()?.base || null;
 
 // ---------- the sim ----------
 // the island as the sim sees it: structures (walls, towers, guard posts, buildings, the hall) and traps
@@ -610,7 +630,7 @@ if (typeof GUIDES === 'object') GUIDES.fortify = {
     { title: 'Get your fortress ready ⚔️', text: 'Sieges are coming: one day another house will try to take your island. Now you can shape the land to defend it, and test it.', go: sgGuideHome, wait: 600 },
     { title: 'Shape the land', go: sgGuideHome, text: 'The Architect and Warlord open 🔨 <b>Build</b> and press ⛰️ <b>Shape the land</b>: forest slows attackers, cliffs and moats stop them, and towers on raised ground shoot further. Moats and cliffs cost more and are limited by house level. There\'s always one way in.', sel: '#isfull [data-hm="build"]' },
     { title: 'Test your defences', go: sgGuideHome, text: 'Open ⚔️ <b>War</b> and press 🎯 <b>Test your defences</b> to watch your own character try to take the island from any side. Nothing is damaged. Try different sides and see where it\'s weak.', sel: '#isfull [data-hm="war"]' },
-    { title: 'A fortress look', go: sgGuideHome, text: 'Open 🔨 <b>Build</b> (or <b>Looks</b>) and press 🎨 <b>Island look</b> for the Stone fortress look: stone ground, rocky crags and a keep. It\'s just a look: defences work the same either way.', sel: '#isfull [data-hm="build"]' },
+    { title: 'A fortress look', go: sgGuideHome, text: 'Open 🏰 <b>House</b> and press 🎨 <b>Island look</b> for the Stone fortress look: stone ground, rocky crags and a keep. It\'s just a look: defences work the same either way.', sel: '#isfull [data-hm="house"]' },
   ],
 };
 // closing the result (or the briefing) ends the replay and takes the landing ring away
