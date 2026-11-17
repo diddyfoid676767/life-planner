@@ -1005,7 +1005,7 @@ function soDust(x, z, k = 1) {
 }
 
 // ---------- 2.87: the intro, like a Souls boss: it sleeps, wakes, stands, roars, then its name ----------
-const SO_CINE = { eyes: 3.2, stand: 3.7, roar: 5, title: 5.6, bar: 7.6, back: 8.3, end: 9.2 };
+const SO_CINE = { eyes: 3.2, stand: 3.7, roar: 5, title: 6.2, bar: 8.4, back: 8.9, end: 9.8 }; // 2.95: a longer roar
 function soCineDraw() {
   const ov = document.getElementById('soov'); if (!ov) return;
   ov.classList.add('cine');
@@ -1017,17 +1017,18 @@ function soCineStep(dt) {
   if (at(.3) || at(1.9)) soSnd('g_snore', B);
   // 2.88: the torches round the hall flare up one by one as the camera passes, then the braziers by its bed
   (SO.torches || []).forEach((tc, i) => { if (!tc.big && at(.45 + i * .28)) soTorchLight(tc); if (tc.big && at(T.eyes - .45 + (i % 2) * .12)) soTorchLight(tc, 1.4); });
-  if (at(2.3)) soSnd('g_rise', B);
-  if (at(T.eyes)) { soSnd('g_grind', B, { rate: .7 }); soSnd('g_crack', B, { vol: .8, rate: .7 }); if (G) G.eyes.forEach(e => { const v = new THREE.Vector3().setFromMatrixPosition(e.matrixWorld); soBurst(v, { tex: 'flare_01', col: '#9ff3ff', n: 1, size: 1.6, life: .5, speed: 0, grow: 1.2 }); }); soTorchFlare(.5); }
+  if (at(T.eyes)) { soSnd('g_wake', B); soSnd('g_grind', B, { rate: .7, vol: .7 }); soSnd('g_crack', B, { vol: .8, rate: .7 }); if (G) G.eyes.forEach(e => { const v = new THREE.Vector3().setFromMatrixPosition(e.matrixWorld); soBurst(v, { tex: 'flare_01', col: '#9ff3ff', n: 1, size: 1.6, life: .5, speed: 0, grow: 1.2 }); }); soTorchFlare(.5); }
   if (at(T.stand)) {
     B.state = 'wake'; soSnd('g_step', B); soSnd('g_quake', B); SO.shake = .6; soDust(B.x - 1.4, B.z, 1); soDust(B.x + 1.4, B.z, 1);
     // the roof of the hall trickles stone and dust as it rises
     for (let i = 0; i < 9; i++) { const v = new THREE.Vector3(B.x + (Math.random() - .5) * 14, 9 + Math.random() * 3, B.z + (Math.random() - .5) * 12); soBurst(v, { tex: 'dirt_02', col: '#6e6680', n: 3, size: .4, life: 1.6, speed: .5, grav: 9, add: false, op: .9 }); soBurst(v, { tex: 'smoke_03', col: '#4a4458', n: 1, size: 2.2, life: 1.8, speed: .3, grav: 2, grow: 1, add: false, op: .25 }); }
   }
   if (at(T.stand + .6)) soSnd('g_step', B, { vol: 1.2 });
-  if (at(T.roar)) { B.state = 'roar'; SO.shake = 1.6; soSnd('g_roar', B); soSnd('g_quake', B); soDust(B.x, B.z + 1.5, 2); soTorchFlare(1.6); SO.rings.push({ x: B.x, z: B.z, r: 1, v: 12, mv: SO_MV.roar, m: soRing('#ffd8a8'), cine: 1 }); }
+  // 2.95: it draws a long, deep breath, then the great waking roar (no more rising tone)
+  if (at(T.roar - 1)) soSnd('g_breath', B);
+  if (at(T.roar)) { B.state = 'roar'; SO.shake = 1.6; soSnd('g_roarbig', B); soSnd('g_quake', B); soDust(B.x, B.z + 1.5, 2); soTorchFlare(1.6); SO.rings.push({ x: B.x, z: B.z, r: 1, v: 12, mv: SO_MV.roar, m: soRing('#ffd8a8'), cine: 1 }); }
   if (at(T.title)) { soSnd('g_title', null); SO.shake = Math.max(SO.shake, .35); }
-  if (at(T.roar + 1.6)) B.state = 'wake';
+  if (at(T.roar + 3)) B.state = 'wake';
   if (G) { const k = Math.max(0, Math.min(1, (C.t - T.eyes) / .6)); G.eyes.forEach(e => e.material.emissiveIntensity = 1.4 * k); }
   // the roar's ring only shows; it can't hurt you in the intro
   SO.rings = SO.rings.filter(w => { if (!w.cine) return true; w.r += w.v * dt; w.m.scale.setScalar(w.r); w.m.material.opacity = Math.max(0, .6 - w.r / 30); if (w.r > 20) { SO.S.remove(w.m); w.m.geometry.dispose(); return false; } return true; });

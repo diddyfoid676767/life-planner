@@ -28,6 +28,7 @@ const S = process.argv[2]; const sleep = ms => new Promise(r => setTimeout(r, ms
     // 2. the intro card, then the cinematic
     await p.click('.is-br [data-so="house"]'); await sleep(400);
     ok(await ev(() => SO?.intro && /Somnus/.test(document.querySelector('.so-intro').textContent) && !document.querySelector('.so-intro .so-keys')), '2. intro card: Somnus, controls moved to the pause menu');
+    await ev(() => { window._snd = []; const o = soSnd; soSnd = (n, ...a) => { _snd.push(n); return o(n, ...a); }; });
     await p.click('[data-so="go"]');
     ok(await until(() => SO && SO.cine && SO.R && SO.gs), '2b. the fight opens on the intro with the rigged Golem');
     ok(await ev(() => SO.gs.plates.length > 25 && !!SO.gs.bone('hand_r') && SO.gs.cur === 'Crouch_Idle_Loop'), '2c. Somnus is stone plates on the animation rig, asleep (' + await ev(() => SO.gs.plates.length) + ' plates)');
@@ -39,6 +40,8 @@ const S = process.argv[2]; const sleep = ms => new Promise(r => setTimeout(r, ms
     ok(await until(() => SO.B.state === 'roar' && SO.gs.cur === 'Sword_Attack', null, 80), '2f. it stands and roars'); await shot('g-cine-roar');
     ok(await until(() => document.querySelector('.so-title.on')?.textContent.includes('Somnus'), null, 60), '2g. its name across the screen'); await sleep(500); await shot('g-cine-title');
     ok(await until(() => !SO.cine, null, 60), '2h. the intro ends and the fight begins'); await sleep(800); await shot('g-start');
+    const isnd = await ev(() => _snd.join());
+    ok(/g_wake/.test(isnd) && /g_breath.*g_roarbig/.test(isnd) && !/g_rise/.test(isnd), '2h2. intro: waking growl, deep breath, the great roar, no rising tone (' + isnd + ')');
     ok(await ev(() => ftState().soIntroSeen === 1 && document.getElementById('soov').classList.contains('bar-in')), '2i. intro marked seen, boss bar slid in');
     // the test hero can't die while we look at things
     await ev(() => { window._soEnd = soEnd; soEnd = how => { if (how === 'dead') { SO.P.hp = SO.P.max; return; } _soEnd(how); }; });
@@ -89,11 +92,11 @@ const S = process.argv[2]; const sleep = ms => new Promise(r => setTimeout(r, ms
     }
     ok(clips >= 10, '7a. each move plays its own animation (' + clips + '/13; a feint can swap one for another)');
     ok(await ev(() => SO.stats.hurt >= 7 && !SO.over), '7. the Golem lands hits (' + await ev(() => SO.stats.hurt) + ')');
-    const dmg = await ev(() => { soEnd = _soEnd; SO.P.hp = SO.P.max; const P = SO.P, M = SO.me; M.act = null; M.iTo = -1; M.block = false; P.shield = 0; P.hp = P.max; SO.dealt = 0; soHurtBy({ ...SO_MV.slam, k: 'slam' }); const a = 1 - P.hp / P.max; P.hp = P.max; M.act = null; soHurtBy({ ...SO_MV.punch, k: 'punch' }); const b2 = 1 - P.hp / P.max; P.hp = P.max; return [a, b2]; });
+    const dmg = await ev(() => { SO.P.hp = SO.P.max; const P = SO.P, M = SO.me; M.act = null; M.iTo = -1; M.block = false; P.shield = 0; P.hp = P.max; SO.dealt = 0; soHurtBy({ ...SO_MV.slam, k: 'slam' }); const a = 1 - P.hp / P.max; P.hp = P.max; M.act = null; soHurtBy({ ...SO_MV.punch, k: 'punch' }); const b2 = 1 - P.hp / P.max; P.hp = P.max; return [a, b2]; });
     ok(dmg[0] > .4 && dmg[1] > .2, '7b. a slam takes ' + Math.round(dmg[0] * 100) + '%, a punch ' + Math.round(dmg[1] * 100) + '% of your health');
     // 8. sounds: the recorded fight set loads and plays
-    const snd = await ev(async () => { sndCtx(); await SND.ctx.resume(); sndLoad(SND.ctx); await sndBufLoad; return ['g_roar', 'g_boom0', 'g_step0', 'g_clang0', 'g_crumble0', 'g_hurt0', 'g_hurtm1', 'g_hurth0', 'g_fire0', 'g_rise', 'g_title', 'g_quake'].filter(n => SND_BUF[n]).length; });
-    ok(snd === 12, '8. the fight sound set loads, with the new grunts and intro sounds (' + snd + '/12)');
+    const snd = await ev(async () => { sndCtx(); await SND.ctx.resume(); sndLoad(SND.ctx); await sndBufLoad; return ['g_roar', 'g_boom0', 'g_step0', 'g_clang0', 'g_crumble0', 'g_hurt0', 'g_hurtm1', 'g_hurth0', 'g_fire0', 'g_roarbig', 'g_title', 'g_quake', 'g_breath', 'g_wake'].filter(n => SND_BUF[n]).length; });
+    ok(snd === 14, '8. the fight sound set loads, with the new grunts and intro sounds (' + snd + '/14)');
     // 8b. no more yell when you're hit: a grunt by how hard
     const gr = await ev(() => { const got = []; const o = soSnd; soSnd = (n, a, x) => { got.push(n); }; const P = SO.P, M = SO.me; for (const d of [.1, .3, .6]) { P.hp = P.max; M.act = null; M.iTo = -1; M.block = false; soHurtBy({ d, k: 'x' }); } soSnd = o; P.hp = P.max; return got; });
     ok(gr.join() === 'g_hurt,g_hurtm,g_hurth' && !gr.includes('g_pain'), '8b. hurt grunts get heavier with the damage: ' + gr);
@@ -110,9 +113,9 @@ const S = process.argv[2]; const sleep = ms => new Promise(r => setTimeout(r, ms
     const fell = await ev(() => { SO.dealt = SO.fhp * .8; sgAnim(1 / 60, 1); return SO.gs.fallen; });
     ok(fell >= 6, '9. stone plates fall off as it weakens (' + fell + ')');
     await shot('g-hurt');
-    await ev(() => { SO.rocks.forEach(r => SO.S.remove(r.m)); SO.rocks = []; SO.fis = []; SO.dealt = SO.fhp + 1; SO.P.hp = SO.P.max; }); await sleep(3200);
-    const res = await ev(() => document.querySelector('.so-end')?.textContent || '');
-    ok(/COLOSSUS FELLED/.test(res) && await ev(() => SO.gs.cur === 'Death01'), '9b. bringing the bar down fells it');
+    await ev(() => { soEnd = _soEnd; SO.rocks.forEach(r => SO.S.remove(r.m)); SO.rocks = []; SO.fis = []; SO.dealt = SO.fhp + 1; SO.P.hp = SO.P.max; }); await sleep(3200);
+    await until(() => /COLOSSUS FELLED/.test(document.querySelector('.so-end')?.textContent || ''), null, 30); const res = await ev(() => document.querySelector('.so-end')?.textContent || '');
+    const cur9 = await ev(() => SO.gs.cur + '/' + SO.B.state); ok(/COLOSSUS FELLED/.test(res) && /^Death01/.test(cur9), '9b. bringing the bar down fells it (' + cur9 + ')');
     await shot('g-felled');
     await p.click('[data-so="close"]'); await sleep(400);
     // 10. the second time, the intro can be skipped
