@@ -4303,3 +4303,12 @@ body.walking #fatag, body.souls-on #fatag { display: none; }
 .himi:hover { background: rgba(255, 255, 255, .1); }
 .himi.ping::after { content: ''; position: absolute; top: 50%; right: 10px; width: 8px; height: 8px; margin-top: -4px; border-radius: 50%; background: #ff6b6b; }
 .isbtn.on { background: rgba(60, 66, 120, .9); }
+
+/* 2.98: the owner's boss list on the boss island */
+.bitest { display: flex; flex-direction: column; gap: 6px; }
+.bitest-row { display: flex; align-items: center; gap: 8px; padding: 6px 8px; border-radius: 10px; background: rgba(0, 0, 0, .05); }
+.bitest-row.on { outline: 2px solid var(--accent, #e8590c); }
+.bitest-row > b { font-size: 1.4rem; } .bitest-row > div { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.bitest-row small { color: var(--muted, #868e96); font-size: .72rem; }
+.bipv { padding: 8px 14px; border-radius: 12px; background: rgba(40, 24, 80, .85); border: 1px solid rgba(190, 160, 255, .45); color: #f3eeff; font-size: .82rem; font-weight: 600; max-width: min(560px, 80%); text-align: center; backdrop-filter: blur(8px); }
+.bipv .btn { margin-left: 8px; color: #fff !important; background: rgba(255, 255, 255, .16) !important; border: 1px solid rgba(255, 255, 255, .45) !important; }
