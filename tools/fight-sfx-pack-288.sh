@@ -22,8 +22,7 @@ i=0; for f in 3grunt1:hit20 3grunt6:hit26; do g=${f%%:*}; h=${f##*:}
   enc -i $G/$g.m4a -i $H/$h-mp3.m4a -i $R/impact-deep.wav -filter_complex "[0]atrim=0:0.8,$(pt .82),aecho=0.8:0.5:60:0.2[a];[1]atrim=0:0.5,volume=.9[b];[2]volume=.55,atrim=0:0.6[c];[a][b][c]amix=3:normalize=0,$NORM,afade=t=out:st=0.7:d=0.25" -t 0.95 $OUT/g_hurth$i.ogg; i=$((i+1)); done
 # a torch flaring up (the intro lights them one by one)
 i=0; for f in thruster-fire-000 thruster-fire-002; do enc -i $K/$f.m4a -af "atrim=0:1.4,$(pt .5),lowpass=f=1800,$NORM,afade=t=in:d=0.05,afade=t=out:st=0.9:d=0.5" -t 1.4 $OUT/g_fire$i.ogg; i=$((i+1)); done
-# the intro: a low riser as it wakes, a deep hit under the title
-enc -i $R/riser-long.wav -i $R/swell.wav -filter_complex "[0]$(pt .55)[a];[1]$(pt .6),adelay=900|900,volume=.8[b];[a][b]amix=2:normalize=0,lowpass=f=2400,$HALL,$NORM,afade=t=out:st=3.4:d=0.8" -t 4.2 $OUT/g_rise.ogg
+# the intro: a deep hit under the title (2.95 dropped the riser that used to come before it)
 enc -i $R/impact-deep.wav -i $R/sub-drop.wav -i $R/tail.wav -filter_complex "[0]$(pt .8)[a];[1]$(pt .7),volume=.9[b];[2]$(pt .6),adelay=120|120,volume=.6[c];[a][b][c]amix=3:normalize=0,$HALL,$NORM,afade=t=out:st=2.2:d=0.8" -t 3 $OUT/g_title.ogg
 # the hall shaking: rock trickling down from the roof
 enc -i $B/bfh1-rock-falling-03.m4a -i $R/sub-drop.wav -filter_complex "[0]$(pt .6),lowpass=f=2000[a];[1]$(pt .6),volume=.7[b];[a][b]amix=2:normalize=0,$HALL,$NORM,afade=t=out:st=1.4:d=0.5" -t 1.9 $OUT/g_quake.ogg
