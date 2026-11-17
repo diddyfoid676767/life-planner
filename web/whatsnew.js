@@ -10,6 +10,9 @@
 // version since the last one they saw (up to 3). D.settings.seenVersion remembers what was last shown,
 // D.settings.guidesSeen which guides have played. A brand-new install never sees either.
 const CHANGELOG = [
+  { v: '2.95.0', notes: [
+    { t: 'Somnus wakes up louder: a low growl as its eyes open, a deep breath, then a huge, long roar that shakes the hall. The rising tone in the intro is gone', k: 'tweak' },
+  ] },
   { v: '2.94.0', notes: [
     { t: 'The house island has far fewer buttons: 🏰 House, ⚔️ War, 🔨 Build and 🛒 Projects. Each one opens a short menu with the rest', k: 'fix' },
   ] },
