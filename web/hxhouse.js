@@ -95,7 +95,10 @@ const hiKeys = d => Object.keys(d?.b || {}).filter(k => k[0] !== '_' && hiItem(h
 
 // ---------- the land: seeded per house, grass in the middle, woods and hills towards the coast ----------
 const HH_LAND = {};
-function hhLand(h = hsState().id) {
+// 2.89: whose island is showing (sieges visit other houses' islands, siege2.js)
+let SG_VIS = null;
+const hhHid = () => (SG_VIS && SG_VIS.h) || hsState().id;
+function hhLand(h = hhHid()) {
   // piers built on the old coast keep a little inlet of water, so they still work
   const piers = HI.doc ? hiKeys(HI.doc).filter(k => hiBase(k) === 'pier').map(k => HI.doc.b[k].at).filter(a => typeof a === 'string').sort().join(';') : '', ck = h + '|' + piers;
   if (HH_LAND[ck]) return HH_LAND[ck];
@@ -121,7 +124,7 @@ function hhLand(h = hsState().id) {
 const hhMigrated = d => Array.isArray(d?.b?._rd);
 let HH_W = null;
 function hhWorld() {
-  const h = hsState().id, hl = HI.doc ? hiLevel() : 1, key = h + hl;
+  const h = hhHid(), hl = HI.doc ? hiLevel() : 1, key = h + hl;
   if (HH_W?.key === key) return HH_W;
   const H = hsHouse(h) || { e: '🏰', name: 'House' };
   return (HH_W = {
@@ -151,7 +154,7 @@ function hhStOf(d, ops = []) {
 }
 let HH_C = {};
 function hhSt() {
-  const P = ui.hxP, key = [HI.ut, hsState().id, HI.doc ? hiLevel() : 0, JSON.stringify(P?.ops || [])].join('|');
+  const P = ui.hxP, key = [HI.ut, hhHid(), HI.doc ? hiLevel() : 0, JSON.stringify(P?.ops || [])].join('|');
   if (HH_C.key !== key || HH_C.doc !== HI.doc) HH_C = { key, doc: HI.doc, st: hhStOf(HI.doc || {}, P?.ops || []) };
   return HH_C.st;
 }
@@ -171,7 +174,8 @@ function hhLinkedKeys(d = HI.doc) {
 const hhRingOf = d => !!d && hhMigrated(d) && hxRingClosed(hhSaved(d));
 // condition, level and build progress of a house building, for the 3D island
 function hhLook(k, s, st) {
-  const d = st.__d || HI.doc || {}, ds = d.b?.[s.key] || {}, c = hiCond(s.key, today(), d) || 'build';
+  const d = st.__d || HI.doc || {}, ds = d.b?.[s.key] || {}, sd = ds.sd?.n || 0; let c = hiCond(s.key, today(), d) || 'build';
+  if (sd >= 3 && c !== 'build') c = 'broken'; else if (sd && c === 'ok') c = 'worn'; // 2.89: siege damage shows
   const t0 = new Date(ds.s + 'T00:00').getTime(), t1 = new Date(ds.r + 'T00:00').getTime();
   return { c, lv: hiLvOn(ds), up: !!(ds.up && today() < ds.up.r), p: (Date.now() - t0) / Math.max(1, t1 - t0) };
 }
@@ -237,7 +241,7 @@ function hhBankTick(d) {
   for (const [key, cur] of [['lbank', 'l'], ['ebank', 'e']]) {
     const s = d.b?.[key]; if (!s || today() < s.r) continue;
     const from = s.d || s.r; if (from >= today()) continue;
-    const c = hiCond(key, today(), d), m = (c === 'ok' ? 1 : c === 'worn' ? .5 : 0) * (!lk || lk.has(key) ? 1 : 0);
+    const c = hiCond(key, today(), d), m = (c === 'ok' ? 1 : c === 'worn' ? .5 : 0) * (!lk || lk.has(key) ? 1 : 0) * (typeof sgDmgM === 'function' ? sgDmgM(key, d) : 1);
     if (m) s.i = (+s.i || 0) + Math.round(Math.min(HH_BANK.cap * hiLvOn(s), hiPool(d)[cur]) * HH_BANK.rate * m * diffDays(from, today()));
     s.d = today();
   }
@@ -315,11 +319,11 @@ async function hhPaintDone() {
     for (const [t, k, id] of ops) {
       const st = hhStOf(d), a = hxAt(k, st);
       if (t === 'tf') { // 2.88: the shape of the land, checked again against what's saved
-        const pl = sgTfPlan(k, id, st); if (!pl.nx || sgWarLock(d)) continue;
+        const pl = sgTfPlan(k, id, st), wk = typeof sgWarK === 'function' ? sgWarK() : 1; if (!pl.nx || sgWarLock(d)) continue;
         const tf = { ...st.tf, [k]: pl.nx }; if (!Object.keys(pl.nx).length) delete tf[k];
         if (sgStrongN(tf) > sgStrongN(st.tf) && sgStrongN(tf) > sgStrongMax(hiLevel(d))) continue;
         if (!sgRouteOk({ ...st, tf })) continue;
-        const g = d.b._sg = d.b._sg || {}; g.tf = tf; l += pl.l; x += pl.x; n++; continue;
+        const g = d.b._sg = d.b._sg || {}; g.tf = tf; l += pl.l * wk; x += pl.x * wk; n++; if (wk > 1) sgWarUse(d); continue;
       }
       if (t === 'x') { if (a.kind === 'road') d.b._rd = d.b._rd.filter(r => r !== k); else if (a.kind === 'b' && a.it?.wall) d.b._wl = d.b._wl.filter(w => w !== k && w !== 'g' + k); else continue; n++; continue; }
       if (!hxCheck(t === 'road' ? 'road' : 'wall', k, st).ok) continue;

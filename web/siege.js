@@ -128,9 +128,10 @@ function sgRouteOk(st) {
 // ---------- painting house terrain (hxhouse.js calls these for the 'htf' tool) ----------
 function sgTfPaint(P, k) {
   if (!hhCanEdit()) return 'Only the Architect or Warlord can shape the island';
-  const lock = sgWarLock(); if (lock) return lock;
+  const lock = sgWarLock(HI.doc, (P.ops || []).filter(o => o[0] === 'tf').length); if (lock) return lock;
   const st = hhSt(), id = P.brush || 'forest', pl = sgTfPlan(k, id, st);
   if (pl.why) return pl.why;
+  const wk = sgWarK(); pl.l *= wk; pl.x *= wk; // 2.89: the war lock triples the price
   const ops = P.ops || (P.ops = []), p = hiPool();
   const sp = ops.reduce((t, o) => o[0] === 'tf' ? [t[0] + (o[3] || 0), t[1] + (o[4] || 0)] : (() => { const c = hhOpCost(o[0], o[1], st); return [t[0] + c.l, t[1] + c.x]; })(), [0, 0]);
   if (p.l - sp[0] < pl.l || p.e - sp[1] < pl.x) return 'Not enough in the house pool';
@@ -148,15 +149,13 @@ function sgTfBar(P) {
   return `<div class="ishud is-bc isplace hxbar tfbar sgbar">
     <div class="tfitems">${SG.tfOrder.map(btn).join('')}</div>
     <div class="tfrow"><span id="tfhint"><b>${SG.tf[id].e} ${esc(SG.tf[id].n)}</b> · ${esc(SG.tf[id].d)}. Drag over the island, paid from the house pool.${P.n ? ` <b class="tfstroke">${P.n} done${spent[0] || spent[1] ? ' · ' + hxCost(spent[0], spent[1]) : ''}</b>` : ''} ${P.why ? `<b class="hxwhy bad">${esc(P.why)}</b>` : ''}</span>
-    <span class="tag" title="Moats and anything raised 2+ steps">🧗 Strong terrain ${n}/${mx}</span><button class="btn small primary" data-hx="cancel">✔ Done</button></div></div>`;
+    ${sgWarLeft() != null ? `<span class="tag hxbad" title="A war has been declared on the house">🔒 War lock: ${Math.max(0, sgWarLeft() - (P.ops || []).filter(o => o[0] === 'tf').length)}/${SGW.lock.n} changes left, ${SGW.lock.k}× price</span>` : ''}<span class="tag" title="Moats and anything raised 2+ steps">🧗 Strong terrain ${n}/${mx}</span><button class="btn small primary" data-hx="cancel">✔ Done</button></div></div>`;
 }
 document.addEventListener('click', e => {
   const el = e.target.closest('[data-sg="brush"]'); if (!el || ui.hxP?.id !== 'htf') return;
   ui.hxP.brush = ui.sgBrush = el.dataset.v; ui.hxP.why = ''; if (typeof sfx === 'function') sfx('select'); render();
 });
 
-// ---------- war lock (stage 2 fills this in) ----------
-function sgWarLock() { return ''; }
 
 // ---------- the Fortress look ----------
 function sgFortHtml(d) {
@@ -205,7 +204,7 @@ const sgFortBase = () => sgFortOn() ? ['#8f8a80', '#504b56'] : null;
 // ---------- the sim ----------
 // the island as the sim sees it: structures (walls, towers, guard posts, buildings, the hall) and traps
 function sgWorld(d = HI.doc) {
-  const st = hhStOf(d || {}), S = [], own = {}, traps = {}, W = hxW(st);
+  const st = hhStOf(d || {}), S = [], own = {}, traps = {}, W = hxW(st), day = d?.__day || today();
   const lvm = lv => SG.lvm[Math.max(0, Math.min(2, (lv || 1) - 1))];
   const push = s => { s.i = S.length; S.push(s); for (const k of s.hexes) own[k] = s.i; return s; };
   const [hx, hz] = hxPos(0, 0);
@@ -213,8 +212,8 @@ function sgWorld(d = HI.doc) {
   for (const [k, s] of Object.entries(st.b)) {
     const it = W.item(s.id); if (!it) continue;
     if (it.wall) { push({ id: k, kind: it.gate ? 'gate' : 'wall', n: it.gate ? 'Gate' : 'Wall', e: it.gate ? '🚪' : '🧱', hexes: [k], k, x: hxPos(...hxQR(k))[0], z: hxPos(...hxQR(k))[1], hp: SG.hp[it.gate ? 'gate' : 'wall'], lv: 1 }); continue; }
-    const c = hiCond(s.key, today(), st.__d || d || {}); if (!c || c === 'build' || c === 'broken') continue;
-    const lv = hiLvOn(st.__d?.b?.[s.key] || d?.b?.[s.key]), m = lvm(lv) * (c === 'worn' ? .75 : 1), [x, z] = hxMid(it, k), base = hiBase(s.key);
+    const c = hiCond(s.key, day, st.__d || d || {}); if (!c || c === 'build' || c === 'broken') continue;
+    const lv = hiLvOn(st.__d?.b?.[s.key] || d?.b?.[s.key], day), m = lvm(lv) * (c === 'worn' ? .75 : 1) * Math.max(.4, typeof sgDmgM === 'function' ? sgDmgM(s.key, st.__d || d) : 1), [x, z] = hxMid(it, k), base = hiBase(s.key);
     if (it.slot === 'trap') { traps[k] = { id: s.key, kind: base, n: it.n, e: it.e, k, x, z, lvm: lvm(lv) }; continue; }
     const kind = it.slot === 'tower' ? 'tower' : it.slot === 'guard' ? 'guard' : 'bld';
     const hp = (kind === 'tower' ? SG.hp.tower : kind === 'guard' ? SG.hp.guard : it.hz > 1 ? SG.hp.big : SG.hp.bld) * m;
@@ -222,6 +221,7 @@ function sgWorld(d = HI.doc) {
     if (kind === 'guard') { const fo = sgTerr(k, st).forest || hxNb(k).some(n => sgTerr(n, st).forest); o.guard = { hp: SG.guardU.hp * m, max: SG.guardU.hp * m, dps: SG.guardU.dps * m, forest: fo, out: false, x, z }; }
   }
   for (const s of S) s.max = s.hp;
+  if (typeof sgGuardsFor === 'function') sgGuardsFor(d || {}, S, day); // 2.89: housemates standing guard
   return { st, S, own, traps };
 }
 // the attacker, from a character: stats, class, power (level and gear) and gear buffs
@@ -458,7 +458,7 @@ function sgTestGo() {
 }
 // a ring on the coast where the attacker will land (while the briefing is open)
 function sgSideMark() {
-  const want = ui.isPanel === 'sgtest' && window.THREE && IS3.scene && IS3.house === 'hexh' && HI.doc ? sgSpawn(hhSaved(), sgBrief().side) : null;
+  const want = (ui.isPanel === 'sgtest' || ui.isPanel === 'sgmarch') && window.THREE && IS3.scene && IS3.house === 'hexh' && HI.doc ? sgSpawn(hhSaved(), sgBrief().side) : null;
   if (HX3.sgMark && want && HX3.sgMark.userData.k === want) { if (!IS3.scene.children.includes(HX3.sgMark)) IS3.scene.add(HX3.sgMark); return; }
   if (HX3.sgMark) { HX3.sgMark.parent?.remove(HX3.sgMark); HX3.sgMark = null; }
   if (!want) return;
@@ -517,7 +517,7 @@ function sgReplayStep(R, dt) {
   const seen = new Set();
   for (const [gi, gx, gz, ghp, gact] of f[6] || []) {
     seen.add(gi); let G = SGR.gs[gi];
-    if (!G) { let gh = null; try { if (heroReady()) gh = heroMake({ outfit: 'Knight', cls: hsHouse(hsState().id)?.col, scale: .5, spec: { ...avatarSpec(), hair: 'h_short' } }); } catch (e) { } if (!gh) { const w = new THREE.Group(); is3mesh(new THREE.CylinderGeometry(.28, .28, 1.1, 8), '#4dabf7', 0, .55, 0, w); gh = { root: w, play() { }, update() { } }; } SGR.g.add(gh.root); G = SGR.gs[gi] = { H: gh }; }
+    if (!G) { let gh = null; try { if (heroReady()) gh = heroMake({ outfit: 'Knight', cls: hsHouse(hhHid())?.col, scale: .5, spec: { ...avatarSpec(), hair: 'h_short' } }); } catch (e) { } if (!gh) { const w = new THREE.Group(); is3mesh(new THREE.CylinderGeometry(.28, .28, 1.1, 8), '#4dabf7', 0, .55, 0, w); gh = { root: w, play() { }, update() { } }; } SGR.g.add(gh.root); G = SGR.gs[gi] = { H: gh }; }
     G.H.root.position.set(gx, hxHt(hxFromXZ(gx, gz), hhSaved()), gz); G.H.root.rotation.y = Math.atan2(x - gx, z - gz); G.H.root.visible = ghp > 0;
     G.H.play(ghp <= 0 ? 'Death_A' : gact === 'hit' ? '1H_Melee_Attack_Slice_Diagonal' : 'Running_A', { loop: ghp > 0 }); G.H.speed?.(sp * .6); G.H.update(dt);
   }
@@ -581,19 +581,20 @@ function sgRunHtml() {
     <div class="ishud is-bc sgctl"><button class="btn small ${R.follow ? 'on' : ''}" data-sg="follow" title="The camera follows the attacker">🎥 Follow</button><button class="btn small" data-sg="speed">⏩ ${R.speed}×</button><button class="btn small primary" data-sg="skip">⏭ Skip</button></div>`;
   const res = R.res, by = Object.entries(res.sum.dmgBy).sort((a, b) => b[1] - a[1]).slice(0, 4);
   const verdict = res.stars >= 3 ? 'The island fell completely.' : res.stars === 2 ? 'The attacker would have won this siege.' : res.stars === 1 ? 'A close one: one star isn\'t a win (a siege needs an average of 1.5).' : 'The island held!';
-  return isPanel(`${res.stars >= 2 ? '🏳️' : '🛡️'} Test result: ${'★'.repeat(res.stars)}${'☆'.repeat(3 - res.stars)}`, `<p><b>${verdict}</b> ${esc(R.A.n)} ${res.dead ? `fell after ${Math.round(res.t)} seconds` : res.pct >= 100 ? `destroyed everything in ${Math.round(res.t)} seconds` : 'ran out of time'}, with ${res.pct}% of the island destroyed${res.sum.walls ? ` and ${res.sum.walls} wall hex${res.sum.walls === 1 ? '' : 'es'} broken` : ''}.</p>
+  return isPanel(`${res.stars >= 2 ? '🏳️' : '🛡️'} ${R.real ? 'Siege run' : R.watch ? 'Replay' : 'Test result'}: ${'★'.repeat(res.stars)}${'☆'.repeat(3 - res.stars)}`, `<p><b>${verdict}</b> ${esc(R.A.n)} ${res.dead ? `fell after ${Math.round(res.t)} seconds` : res.pct >= 100 ? `destroyed everything in ${Math.round(res.t)} seconds` : 'ran out of time'}, with ${res.pct}% of the island destroyed${res.sum.walls ? ` and ${res.sum.walls} wall hex${res.sum.walls === 1 ? '' : 'es'} broken` : ''}.</p>
     <p class="small-text">Landed on the ${SG_SIDES[R.B.side].toLowerCase()} side · went for ${SG_PRIO.find(p => p[0] === R.B.prio)[2].toLowerCase()}.</p>
     ${by.length ? `<div class="ftlbl">What hurt them most</div><p class="small-text">${by.map(([n, v]) => `${esc(n)}: ${Math.round(v)}`).join(' · ')} (of ${res.max} health)</p>` : '<p class="small-text">Nothing on the island hurt them. Towers, traps and guard posts fight back.</p>'}
     <p class="small-text">🪤 Traps sprung: ${res.sum.trapsHit} · spotted and disarmed: ${res.sum.trapsSpot} · 🛡️ guards beaten: ${res.sum.guardsBeat}</p>
     <p class="muted small-text">Ideas: towers on raised ground reach further, moats and cliffs force attackers round to where your towers are, forest slows them and hides guards, and traps on the only way in are hard to avoid.</p>
-    <div class="row" style="gap:8px"><button class="btn primary" data-sg="again">⚔️ Try another</button><button class="btn" data-sg="go">↻ Same again</button><button class="btn ghost" data-sg="close">Done</button></div>`).replace('class="ispanel"', 'class="ispanel sgres"');
+    ${(R.real || R.watch) && typeof sgRunBtns === 'function' ? sgRunBtns(R) : '<div class="row" style="gap:8px"><button class="btn primary" data-sg="again">⚔️ Try another</button><button class="btn" data-sg="go">↻ Same again</button><button class="btn ghost" data-sg="close">Done</button></div>'}`).replace('class="ispanel"', 'class="ispanel sgres"');
 }
 
 // ---------- the house island HUD buttons and panels (hisland.js calls these) ----------
-function sgHudBtns(lead) { return `${lead ? '<button class="isbtn" data-sg="shape" title="Shape the land: forest, hills, cliffs, moats">⛰️<span>Shape</span></button>' : ''}<button class="isbtn" data-hi="panel" data-v="sglooks" title="The island\'s look">🎨<span>Looks</span></button><button class="isbtn" data-hi="panel" data-v="sgtest" title="Watch an attacker try to take the island">⚔️<span>Test</span></button>`; }
+function sgHudBtns(lead) { return `<button class="isbtn ${typeof sgPing === 'function' && sgPing() ? 'ping' : ''}" data-hi="panel" data-v="sgwar" title="Sieges: votes, wars and the war log">⚔️<span>War</span></button>${lead ? '<button class="isbtn" data-sg="shape" title="Shape the land: forest, hills, cliffs, moats">⛰️<span>Shape</span></button>' : ''}<button class="isbtn" data-hi="panel" data-v="sglooks" title="The island\'s look">🎨<span>Looks</span></button><button class="isbtn" data-hi="panel" data-v="sgtest" title="Watch an attacker try to take the island">🎯<span>Test</span></button>`; }
 function sgPanel(pn, d) {
   if (pn === 'sglooks') return isPanel('🎨 House island looks', sgFortHtml(d));
   if (pn === 'sgtest') return isPanel('⚔️ Test your defences', sgTestHtml(d));
+  if (pn === 'sgwar' && typeof sgWarHtml === 'function') return isPanel('⚔️ War room', sgWarHtml(d)).replace('class="ispanel"', 'class="ispanel iswide"');
   return '';
 }
 document.addEventListener('click', e => {

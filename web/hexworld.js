@@ -178,7 +178,7 @@ const hxCan = (l, x) => { const w = cdWallet(); return w.lumen >= Math.round(l) 
 const hxOwned = (id, st = hxState()) => Object.values(st.b).filter(s => s.id === id).length;
 // your house colour picks the KayKit roof colour
 function hxCol() {
-  const h = typeof hsState === 'function' && hsState().id;
+  const h = typeof hhHid === 'function' ? hhHid() : typeof hsState === 'function' && hsState().id;
   return { pascoe: 'yellow', molland: 'red', flinders: 'blue', derrimut: 'red', strathmore: 'blue', hudson: 'green' }[h] || 'blue';
 }
 

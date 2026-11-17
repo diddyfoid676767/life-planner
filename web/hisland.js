@@ -53,7 +53,7 @@ function hiMine() { const w = cdWallet(), d = hiLocal().don; return { l: w.hl + 
 let HI = { doc: null, ut: '', uid: '', user: '', at: 0, busy: false, err: '' };
 async function hiLoad(force) {
   const h = hsState().id;
-  if (!h || HI.busy || (!force && HI.h === h && Date.now() - HI.at < 60000)) return;
+  if (!h || HI.busy || SG_VIS || (!force && HI.h === h && Date.now() - HI.at < 60000)) return;
   HI.busy = true;
   try {
     if (!acctLoaded) await loadAccount();
@@ -70,6 +70,7 @@ async function hiLoad(force) {
 }
 // change the document and save it; if someone else saved first, reload and try once more
 async function hiWrite(fn, again = true, quiet = false) {
+  if (SG_VIS) return false; // 2.89: never write while showing another house's island
   const doc = JSON.parse(JSON.stringify(HI.doc || {}));
   if (fn(doc) === false) return false;
   const r = await fetch('/api/account/house', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ h: HI.h, ut: HI.ut, doc }) });
@@ -83,10 +84,12 @@ async function hiTidy() {
   const needC = !c || mine.l > (c.l || 0) || mine.e > (c.e || 0) || c.n !== HI.user;
   const t = hiTerm(), lock = today() >= t.voteEnd && d.ld?.t !== t.id;
   const mig = typeof hhMigrated === 'function' && !hhMigrated(d), bank = typeof hhBankDue === 'function' && hhBankDue(d);
-  if (!needC && !lock && !mig && !bank) return;
+  const sg = typeof sgTidyDue === 'function' && sgTidyDue(d);
+  if (!needC && !lock && !mig && !bank && !sg) return;
   await hiWrite(doc => {
     if (mig && !hhMigrated(doc)) hhMigrate(doc); // 2.66: the island moves onto hexes, once
     if (bank) hhBankTick(doc);
+    if (sg) sgTidy(doc); // 2.89: who's active, for sieges
     if (needC) { const o = doc.c?.[HI.uid] || {}; doc.c = doc.c || {}; doc.c[HI.uid] = { n: HI.user, l: Math.max(mine.l, o.l || 0), e: Math.max(mine.e, o.e || 0) }; }
     if (lock) { const r = hiTally(doc, t.id); doc.ld = { t: t.id, u: [...new Set(Object.values(r))], r }; }
   }, true, true);
@@ -96,6 +99,7 @@ async function hiTidy() {
 function hiPool(d = HI.doc || {}) {
   let l = 0, e = 0; for (const x of Object.values(d.c || {})) { l += +x.l || 0; e += +x.e || 0; }
   l += +d.b?.lbank?.i || 0; e += +d.b?.ebank?.i || 0; // 2.66: bank interest
+  l += +d.b?._sg?.cr?.l || 0; e += +d.b?._sg?.cr?.e || 0; // 2.89: siege loot, rewards and refunds
   return { l: Math.max(0, Math.round(l - (+d.sp?.l || 0))), e: Math.max(0, Math.round(e - (+d.sp?.e || 0))), n: Object.keys(d.c || {}).length };
 }
 function hiTerm(d = today()) {
@@ -170,9 +174,9 @@ function hiCond(id, d = today(), doc = HI.doc || {}) {
 }
 function hiActDays(id) { const s = HI.doc?.b?.[id]; if (!s) return 0; const reps = new Set(hiRepsOn(s)), p = isPaused(); let a = 0; for (let x = s.r; x <= today(); x = addDays(x, 1)) { if (reps.has(x)) a = 0; if (!p(x)) a++; } return a; }
 function hiPerks() {
-  if (!HI.doc) return hiLocal().perks || {};
+  if (!HI.doc || SG_VIS) return hiLocal().perks || {};
   const g = {}, add = (b, m) => { for (const [k, v] of Object.entries(b)) g[k] = (g[k] || 0) + (k === 'hp' || k === 'rg' || k === 'at' ? Math.round(v * m) : v * m); };
-  const lk = typeof hhLinkedKeys === 'function' ? hhLinkedKeys(HI.doc) : null, on = id => isMult(hiCond(id)) * (!lk || lk.has(id) ? 1 : 0); // 2.66: roads link perks
+  const lk = typeof hhLinkedKeys === 'function' ? hhLinkedKeys(HI.doc) : null, on = id => isMult(hiCond(id)) * (!lk || lk.has(id) ? 1 : 0) * (typeof sgDmgM === 'function' ? sgDmgM(id) : 1); // 2.66: roads link perks
   for (const it of HI_ITEMS) { const m = on(it.id) * IS_LVM[Math.max(0, hiLvOn(HI.doc.b?.[it.id]) - 1)]; if (!m) continue; if (it.b) add(it.b, m); if (it.alone) add(it.alone, m); }
   for (const [cid, ch] of Object.entries(HI_CHAINS)) { const ms = HI_ITEMS.filter(x => x.ch === cid).map(x => on(x.id)); if (ms.every(m => m)) add(ch.b, Math.min(...ms)); }
   return g;
@@ -202,7 +206,9 @@ function viewHouseIsland() {
   if (!hs.id) return isFrame('house', '', `<div class="ispanel iscentre iswide"><div class="ispanel-b">${hsPicker()}</div></div>`);
   const hsBtn = `<div class="ishud is-bl"><button class="isbtn" data-hi="panel" data-v="house">🏰<span>House</span></button></div>`;
   if (ui.isPanel === 'house') return isFrame('house', '', isPanel('🏰 Your house this week', viewHouse()).replace('class="ispanel"', 'class="ispanel iswide"'));
+  if (SG_VIS?.home && typeof sgVisitView === 'function') return sgVisitView(); // 2.89: on another island (a siege or a replay)
   hiLoad();
+  if (typeof sgSync === 'function') sgSync();
   const h = hsHouse(hs.id);
   if (!HI.doc) return isFrame('house', hsBtn, `<div class="ispanel iscentre"><div class="ispanel-h"><h3>${h.e} ${h.name} island</h3></div><div class="ispanel-b">${`<p class="muted">${HI.err === 'signin' ? 'The house island is shared, so you need to be signed in. Sign in on the Friends page.' : HI.err ? 'Couldn\'t reach the house island: ' + esc(HI.err) : 'Loading the house island…'}</p>${HI.err ? `<button class="btn" data-hi="reload">Try again</button>` : ''}`}</div></div>`);
   const d = HI.doc, pool = hiPool(), L = hiRoles(), lead = hiAmLeader(), pr = hiProp(), hl = hiLevel(), busy = hiBusy(d);
@@ -220,7 +226,7 @@ function viewHouseIsland() {
     ${P ? '' : `<div class="ishud is-br hxtools">${typeof sgHudBtns === 'function' ? sgHudBtns(lead) : ''}${lead ? `<button class="isbtn" data-hi="tool" data-v="road" title="Lay roads by dragging">🛣️<span>Roads</span></button>${hl >= HH_WALL_LV ? '<button class="isbtn" data-hi="tool" data-v="wall" title="Lay walls by dragging">🧱<span>Walls</span></button><button class="isbtn" data-hi="tool" data-v="gate" title="Lay gates by dragging">🚪<span>Gates</span></button>' : ''}` : ''}<button class="isbtn big" data-hi="panel" data-v="shop">🛒<span>Projects</span></button></div>`}`;
   // 2.88: watching a Test your defences replay (siege.js): just the replay's own HUD
   if (ui.sgRun && typeof sgRunHtml === 'function') return isFrame('house', `<div class="ishud is-tl"><div class="islvl house" style="--hc:${h.col}"><b>${hl}</b><div><span>${typeof hsCrest === 'function' ? hsCrest(h, 20) : h.e} ${esc(h.name)} · test siege</span></div></div></div>`, sgRunHtml());
-  let extra = `<div class="isbubs">${bubs}</div>`, pn = ui.isPanel;
+  let extra = `<div class="isbubs">${bubs}</div>${!P && typeof sgBanner === 'function' ? sgBanner() : ''}`, pn = ui.isPanel;
   if (P) extra += hhPlaceBar(P, P.mode === 'tool');
   else if (pn === 'shop') extra += isPanel(`🛒 House projects · level ${hl}`, hiShopHtml(d, pool, lead, pr, hl, busy));
   else if (pn === 'pool') extra += isPanel(`🏦 ${h.name} house pool`, hiPoolHtml(pool));
@@ -271,6 +277,7 @@ function hiPopHtml(key, d, pool, lead, hl, busy) {
       acts += hl < need ? `<span class="tag">🔒 House level ${need} to upgrade</span>` : lead ? `<button class="btn small ${ok ? 'primary' : ''}" data-hi="upgrade" data-id="${key}" ${ok ? '' : 'disabled'}>⬆️ Level ${nx} · ${hiCost(it, f)} · ${hiUpDays(it, nx)}d</button>` : `<span class="muted small-text">Leaders can upgrade (${hiCost(it, f)})</span>`;
     } else acts += '<span class="tag">⭐ Max level</span>';
   }
+  if (typeof sgRepairHtml === 'function') acts = sgRepairHtml(key, d, pool) + acts; // 2.89: siege damage
   if (lead) acts += `<button class="btn small ghost" data-hi="move" data-id="${key}">✥ Move</button>`;
   const hh = hhItem(key.split('.')[0]), off = lk && !lk.has(key) && c !== 'build';
   const info = it.bank ? ` · earned so far: ${it.bank === 'l' ? LUMEN : EMBER} ${Math.round(+s.i || 0).toLocaleString()} · interest on up to ${hhBankCap(s).toLocaleString()}` : it.id === 'vault' ? ` · space now: ${hhVaultSpace(d).toLocaleString()}${hhVaultSpace(d) ? '' : ' (build a Treasury)'}` : it.id === 'treasury' ? ` · Vault space ${(HH_VAULT * cur).toLocaleString()}` : '';
