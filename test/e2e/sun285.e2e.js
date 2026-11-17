@@ -48,7 +48,7 @@ const S = process.argv[2]; const sleep = ms => new Promise(r => setTimeout(r, ms
   await p.evaluate(() => document.querySelectorAll('.ispanel,.hxpanel').forEach(e => e.style.display = 'none')); await sleep(300);
   await p.screenshot({ path: S + '/sun-night.png' });
   // 5. Medium: simpler
-  await p.evaluate(() => { D.settings.gfxMed = true; HX_SUN.fakeH = 13.2; ui.isPanel = 'looks'; render(); hxSkyApply(); }); await sleep(900);
+  await p.evaluate(() => { D.settings.gfxMed = true; HX_SUN.fakeH = 13.2; ui.isPanel = 'looks'; render(); hxSkyApply(); }); await sleep(2500);
   const med = await p.evaluate(() => ({ g: hxGfx(), size: IS3.sun.shadow.mapSize.x, glow: HX_SUN.glow.visible, rip: HX_SUN.rip.value, n: HX_SUN.cubeN, env: !!HX3.kit.matW.envMap, vis: HX_SUN.g.visible }));
   ok(med.g === 'medium' && med.size === 1024 && !med.glow && med.rip === 0 && med.n === 64 && med.env, `10. Medium: smaller shadows, no glow or ripples, sky-only reflections (${JSON.stringify(med)})`);
   // 6. Low: none of it

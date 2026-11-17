@@ -10,6 +10,7 @@
 // version since the last one they saw (up to 3). D.settings.seenVersion remembers what was last shown,
 // D.settings.guidesSeen which guides have played. A brand-new install never sees either.
 const CHANGELOG = [
+  { v: '2.98.0', notes: [{ t: 'New buttons in Looks, "Look at the sun" and "Look at the moon", turn the view to face them.', k: 'new' }] },
   { v: '2.97.0', notes: [
     { t: '⌛ A new Souls boss: Morrow, the Ever-Waiting, a towering hooded figure with an hourglass for a face. It fights in its own arena, the Hall of Hours, a cathedral of stopped clocks lit by candles and a frozen sunset', k: 'new' },
     { t: 'It moves slowly, then very fast: clock-hand blades (roll the high sweeps, jump the low ones), Stillness freezes you in time, Rewind takes it back to where it stood, and it steps out of the sand behind you', k: 'new' },

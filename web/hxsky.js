@@ -409,7 +409,8 @@ function hxSunHtml() {
   const where = sp.alt > 0 ? `☀️ The sun is in the ${hxCompass(sp.az)}, ${deg(sp.alt)}° up.` : mp.alt > 0 ? `🌙 The moon is in the ${hxCompass(mp.az)}, ${deg(mp.alt)}° up, ${Math.round(mp.lit * 100)}% lit.` : '🌌 The sun and moon are both down.';
   const h = HX_SUN.fakeH ?? (n.getHours() + n.getMinutes() / 60), hm = h => { const H = Math.floor(h) % 24, M = Math.floor((h - Math.floor(h)) * 60); return `${(H + 11) % 12 + 1}:${String(M).padStart(2, '0')}${H < 12 ? 'am' : 'pm'}`; };
   return `<div class="hxsun"><p class="small-text">${where} ${g === 'low' ? 'Switch Graphics to Medium or High in Settings to see it, with moving shadows and water that reflects.' : 'Turn the view to find it, and watch the shadows move through the day.'}</p>
-    ${g === 'low' ? '' : `<label class="row small-text" style="gap:8px">See a time of day <input type="range" min="0" max="23.75" step=".25" value="${h.toFixed(2)}" data-sky="time" style="flex:1"> <b data-sky-t>${hm(h)}</b>${HX_SUN.fakeH != null ? ' <button class="btn small ghost" data-sky="now">Back to now</button>' : ''}</label>`}</div>`;
+    ${g === 'low' ? '' : `<label class="row small-text" style="gap:8px">See a time of day <input type="range" min="0" max="23.75" step=".25" value="${h.toFixed(2)}" data-sky="time" style="flex:1"> <b data-sky-t>${hm(h)}</b>${HX_SUN.fakeH != null ? ' <button class="btn small ghost" data-sky="now">Back to now</button>' : ''}</label>
+    <div class="row" style="gap:8px;margin-top:6px"><button class="btn small ghost" data-sky="find" data-v="sun">☀️ Look at the sun</button><button class="btn small ghost" data-sky="find" data-v="moon">🌙 Look at the moon</button></div>`}</div>`;
 }
 // 2.77: look a look over on your island for free; it never survives leaving the panel or a restart
 function hxPvStop(quiet) {
@@ -441,6 +442,11 @@ document.addEventListener('input', e => {
   const el = e.target.closest?.('[data-sky="time"]'); if (!el) return;
   HX_SUN.fakeH = +el.value; const t = el.parentNode.querySelector('[data-sky-t]'); if (t) { const H = Math.floor(HX_SUN.fakeH), M = Math.round((HX_SUN.fakeH - H) * 60); t.textContent = `${(H + 11) % 12 + 1}:${String(M).padStart(2, '0')}${H < 12 ? 'am' : 'pm'}`; }
   hxSkyApply(); is3draw();
+});
+// 2.93: turns the view to face the sun or moon, tilted up so it shows over the island
+document.addEventListener('click', e => {
+  const f = e.target.closest?.('[data-sky="find"]'); if (!f || !HX_SUN.sp || typeof hxTweenTo !== 'function') return;
+  const o = f.dataset.v === 'moon' ? HX_SUN.mp : HX_SUN.sp; hxTweenTo({ yaw: -o.az, pitch: .3 });
 });
 document.addEventListener('click', e => { if (e.target.closest?.('[data-sky="now"]')) { HX_SUN.fakeH = null; hxSkyApply(); render(); } });
 document.addEventListener('change', e => {
