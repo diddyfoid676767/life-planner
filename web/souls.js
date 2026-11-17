@@ -91,7 +91,7 @@ const SO_COMBO = {
 };
 const soCombo = () => SO_COMBO[SO.outfit] || SO_COMBO.Knight;
 let SO = null;
-// 2.95: more than one Souls boss. Each is a definition; Somnus's (the code in this file) is the default, and
+// 2.97: more than one Souls boss. Each is a definition; Somnus's (the code in this file) is the default, and
 // a boss in its own file (smorrow.js: Morrow, the Ever-Waiting) adds hooks that replace the Golem's parts:
 // scene (arena + model), step (its brain), anim, open (is it exposed?), weak, cine (its intro), tag, mult, onHurt.
 const SO_DEFS = {
@@ -590,7 +590,7 @@ function soProjStep(dt) {
       if (b.crystal && near(b.crystal)) { hitPart = b.crystal; weak = true; }
       else hitPart = b.parts.find(near) || null;
       if (hitPart && !weak && B.stuck > 0 && /hand/.test(hitPart.n)) weak = true; // its fists stuck in the floor
-      if (hitPart && !weak && soD().weakBone?.(hitPart.n)) weak = true; // 2.95: a boss's own weak part (Morrow's hourglass)
+      if (hitPart && !weak && soD().weakBone?.(hitPart.n)) weak = true; // 2.97: a boss's own weak part (Morrow's hourglass)
     }
     const gone = p.t > 1.6 || p.y < 0 || Math.hypot(p.x, p.z) > 17;
     if (hitPart || gone) {
@@ -1030,7 +1030,7 @@ function soDust(x, z, k = 1) {
 }
 
 // ---------- 2.87: the intro, like a Souls boss: it sleeps, wakes, stands, roars, then its name ----------
-const SO_CINE = { eyes: 3.2, stand: 3.7, roar: 5, title: 5.6, bar: 7.6, back: 8.3, end: 9.2 };
+const SO_CINE = { eyes: 3.2, stand: 3.7, roar: 5, title: 6.2, bar: 8.4, back: 8.9, end: 9.8 }; // 2.95: a longer roar
 function soCineDraw() {
   const ov = document.getElementById('soov'); if (!ov) return;
   ov.classList.add('cine');
@@ -1039,21 +1039,22 @@ function soCineDraw() {
 function soCineStep(dt) {
   const C = SO.cine, B = SO.B, G = SO.gs, D = soD(), T = D.cineT || SO_CINE, was = C.t; C.t += dt;
   const at = k => was < k && C.t >= k;
-  if (D.cine) D.cine(C, at, dt); else { // 2.95: a boss with its own intro runs its own events; the overlay below is shared
+  if (D.cine) D.cine(C, at, dt); else { // 2.97: a boss with its own intro runs its own events; the overlay below is shared
   if (at(.3) || at(1.9)) soSnd('g_snore', B);
   // 2.88: the torches round the hall flare up one by one as the camera passes, then the braziers by its bed
   (SO.torches || []).forEach((tc, i) => { if (!tc.big && at(.45 + i * .28)) soTorchLight(tc); if (tc.big && at(T.eyes - .45 + (i % 2) * .12)) soTorchLight(tc, 1.4); });
-  if (at(2.3)) soSnd('g_rise', B);
-  if (at(T.eyes)) { soSnd('g_grind', B, { rate: .7 }); soSnd('g_crack', B, { vol: .8, rate: .7 }); if (G) G.eyes.forEach(e => { const v = new THREE.Vector3().setFromMatrixPosition(e.matrixWorld); soBurst(v, { tex: 'flare_01', col: '#9ff3ff', n: 1, size: 1.6, life: .5, speed: 0, grow: 1.2 }); }); soTorchFlare(.5); }
+  if (at(T.eyes)) { soSnd('g_wake', B); soSnd('g_grind', B, { rate: .7, vol: .7 }); soSnd('g_crack', B, { vol: .8, rate: .7 }); if (G) G.eyes.forEach(e => { const v = new THREE.Vector3().setFromMatrixPosition(e.matrixWorld); soBurst(v, { tex: 'flare_01', col: '#9ff3ff', n: 1, size: 1.6, life: .5, speed: 0, grow: 1.2 }); }); soTorchFlare(.5); }
   if (at(T.stand)) {
     B.state = 'wake'; soSnd('g_step', B); soSnd('g_quake', B); SO.shake = .6; soDust(B.x - 1.4, B.z, 1); soDust(B.x + 1.4, B.z, 1);
     // the roof of the hall trickles stone and dust as it rises
     for (let i = 0; i < 9; i++) { const v = new THREE.Vector3(B.x + (Math.random() - .5) * 14, 9 + Math.random() * 3, B.z + (Math.random() - .5) * 12); soBurst(v, { tex: 'dirt_02', col: '#6e6680', n: 3, size: .4, life: 1.6, speed: .5, grav: 9, add: false, op: .9 }); soBurst(v, { tex: 'smoke_03', col: '#4a4458', n: 1, size: 2.2, life: 1.8, speed: .3, grav: 2, grow: 1, add: false, op: .25 }); }
   }
   if (at(T.stand + .6)) soSnd('g_step', B, { vol: 1.2 });
-  if (at(T.roar)) { B.state = 'roar'; SO.shake = 1.6; soSnd('g_roar', B); soSnd('g_quake', B); soDust(B.x, B.z + 1.5, 2); soTorchFlare(1.6); SO.rings.push({ x: B.x, z: B.z, r: 1, v: 12, mv: SO_MV.roar, m: soRing('#ffd8a8'), cine: 1 }); }
+  // 2.95: it draws a long, deep breath, then the great waking roar (no more rising tone)
+  if (at(T.roar - 1)) soSnd('g_breath', B);
+  if (at(T.roar)) { B.state = 'roar'; SO.shake = 1.6; soSnd('g_roarbig', B); soSnd('g_quake', B); soDust(B.x, B.z + 1.5, 2); soTorchFlare(1.6); SO.rings.push({ x: B.x, z: B.z, r: 1, v: 12, mv: SO_MV.roar, m: soRing('#ffd8a8'), cine: 1 }); }
   if (at(T.title)) { soSnd('g_title', null); SO.shake = Math.max(SO.shake, .35); }
-  if (at(T.roar + 1.6)) B.state = 'wake';
+  if (at(T.roar + 3)) B.state = 'wake';
   if (G) { const k = Math.max(0, Math.min(1, (C.t - T.eyes) / .6)); G.eyes.forEach(e => e.material.emissiveIntensity = 1.4 * k); }
   }
   // the roar's ring only shows; it can't hurt you in the intro
@@ -1165,7 +1166,7 @@ function soAnim(dt) {
   else if (M.sp < 2.2) H.play('Walking_A', { speed: Math.max(.7, M.sp / 1.7) });
   else if (M.sp < (SO_C.jog + SO_C.sprint) / 2) H.play('Running_A', { speed: M.sp / SO_C.jog });
   else H.play('Running_B', { speed: M.sp / SO_C.sprint * 1.05 });
-  H.update(dt * (M.frozen > 0 ? .02 : M.slow > 0 ? .55 : 1)); // 2.95: frozen or slowed in time (Morrow)
+  H.update(dt * (M.frozen > 0 ? .02 : M.slow > 0 ? .55 : 1)); // 2.97: frozen or slowed in time (Morrow)
 }
 function soDraw(t, dt) {
   if (!SO.R || !SO.S) return;

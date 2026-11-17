@@ -56,8 +56,10 @@ const SFX_REC = {
   g_pain: [['g_pain0', 'g_pain1'], .6], g_armour: [['g_armour0', 'g_armour1', 'g_armour2'], .4], g_crack: [['g_crack0', 'g_crack1'], .8],
   // 2.88: your hurt grunts by how hard you were hit (no more yell), torches flaring, the intro's riser and title hit, the hall shaking
   g_hurt: [['g_hurt0', 'g_hurt1'], .5], g_hurtm: [['g_hurtm0', 'g_hurtm1'], .6], g_hurth: [['g_hurth0', 'g_hurth1'], .7],
-  g_fire: [['g_fire0', 'g_fire1'], .55], g_rise: [['g_rise'], .7], g_title: [['g_title'], .95], g_quake: [['g_quake'], .75],
-  // 2.95: Morrow, the Ever-Waiting (tools/fight-sfx-pack-295.sh): the great bell, the clock, its whispering voice, its blades
+  g_fire: [['g_fire0', 'g_fire1'], .55], g_title: [['g_title'], .95], g_quake: [['g_quake'], .75],
+  // 2.95: the intro's waking growl, deep breath and great roar
+  g_wake: [['g_wake'], .85], g_breath: [['g_breath'], .7], g_roarbig: [['g_roarbig'], 1.1],
+  // 2.97: Morrow, the Ever-Waiting (tools/fight-sfx-pack-297.sh): the great bell, the clock, its whispering voice, its blades
   m_toll: [['m_toll'], 1], m_bell: [['m_bell0', 'm_bell1'], .7], m_tick: [['m_tick0', 'm_tick1'], .45], m_whisper: [['m_whisper0', 'm_whisper1'], .7],
   m_roar: [['m_roar'], .95], m_blade: [['m_blade0', 'm_blade1', 'm_blade2'], .7], m_scrape: [['m_scrape'], .6], m_freeze: [['m_freeze'], .75],
   m_sand: [['m_sand'], .55], m_blink: [['m_blink'], .7], m_crash: [['m_crash0', 'm_crash1'], .8],

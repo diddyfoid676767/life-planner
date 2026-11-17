@@ -1,4 +1,4 @@
-// 2.95: Morrow, the Ever-Waiting: the second Souls boss, in the Hall of Hours.
+// 2.97: Morrow, the Ever-Waiting: the second Souls boss, in the Hall of Hours.
 // Usage: build into DIR/LifePlanner (go build -tags noseed) with DIR/data, then: node test/e2e/morrow295.e2e.js DIR
 
 const { chromium } = require('playwright'); const { spawn } = require('child_process'); const fs = require('fs');
@@ -65,7 +65,6 @@ const S = process.argv[2]; const sleep = ms => new Promise(r => setTimeout(r, ms
     ok(ph.join() === '1,2,3', '5. phases ' + ph);
     const roar = await ev(() => { SO.lastPh = 0; SO.dealt = SO.fhp * .35; SO.B.state = 'idle'; SO.B.stag = 0; mrStep(1 / 60); const r = SO.B.state; SO.dealt = 0; SO.lastPh = 0; SO.B.state = 'idle'; return r; });
     ok(roar === 'roar', '5b. a new phase starts with the bell');
-    console.log('  dbg over=' + await ev(() => SO.over + ' ' + JSON.stringify(window._ends) + ' seen=' + JSON.stringify([ftState().soSeen, ftState().soIntroSeen])));
     // 6. every move: its own clip and floor warning, and it lands hits
     await ev(() => { SO.shared = null; SO.time = 30; });
     let clips = 0;

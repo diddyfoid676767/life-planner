@@ -69,15 +69,30 @@ const S = process.argv[2]; const sleep = ms => new Promise(r => setTimeout(r, ms
   // 5. the Fortress look: preview, buy, it shows
   await ev(() => { ui.isPanel = 'sglooks'; render(); }); await sleep(300);
   ok(await ev(() => /Stone fortress/.test(document.querySelector('#isfull .ispanel').innerText)), '5. the Looks panel offers the Stone fortress');
-  await p.click('#isfull [data-sg="fortpv"][data-v="1"]'); await sleep(1500);
+  await p.click('#isfull [data-sg="lkpv"][data-v="fortress"]'); await sleep(1500);
   ok(await ev(() => sgFortOn() && !sgFortOwned() && hxLook(false) === SG_FORT_LOOK), '5b. preview shows it without buying');
   p.once('dialog', d => d.accept());
   const spF = await ev(() => ({ ...HI.doc.sp }));
-  await p.click('#isfull [data-sg="fortbuy"]'); await sleep(1500);
-  ok(await ev(() => sgFortOwned() && HI.doc.b._sg.lk.on === 1 && !ui.sgFortPv) && (await ev(() => HI.doc.sp.l)) - spF.l === 250, '5c. bought from the house pool and switched on');
+  await p.click('#isfull [data-sg="lkbuy"][data-v="fortress"]'); await sleep(1500);
+  ok(await ev(() => sgFortOwned() && HI.doc.b._sg.lk.on === 1 && !ui.sgLkPv) && (await ev(() => HI.doc.sp.l)) - spF.l === 250, '5c. bought from the house pool and switched on');
   await ev(() => { ui.isPanel = null; render(); }); await sleep(2000);
   await p.screenshot({ path: S + '/siege-fortress.png' });
   ok(await ev(() => { let n = 0; IS3.world.traverse(o => { if (o.material?.color?.getHexString?.() === '8f8a80') n++; }); return n > 0; }), '5d. the island sits on grey fortress rock');
+  // 5e. 2.95: more house looks, and Island look sits in the House menu
+  ok(await ev(() => !!document.querySelector('#isfull .himw [data-hm="house"]') && !!document.querySelector('#isfull [data-hm="house"] ~ .himenu [data-v="sglooks"]') && !!document.querySelector('#isfull .ishud.is-br [data-hm="house"]') && !document.querySelector('#isfull .ishud.is-bl')), '5e. the House menu is on the right, with Island look in it');
+  await ev(() => { ui.isPanel = 'sglooks'; render(); }); await sleep(300);
+  ok(await ev(() => document.querySelectorAll('#isfull .ispanel .isitem').length >= 8), '5f. eight house looks to choose from');
+  const spE = await ev(() => HI.doc.sp.l);
+  p.once('dialog', d => d.accept()); await p.click('#isfull [data-sg="lkbuy"][data-v="ember"]'); await sleep(1500);
+  ok(await ev(() => sgLkId() === 'ember' && hxLook(false) === SG_HLOOKS.ember && !sgFortOn() && sgFortOwned()) && (await ev(() => HI.doc.sp.l)) - spE === 250, '5g. buying Obsidian forge switches to it');
+  await ev(() => { ui.isPanel = null; render(); }); await sleep(2000);
+  await p.screenshot({ path: S + '/house-look-ember.png' });
+  ok(await ev(() => { let n = 0; IS3.world.traverse(o => { if (o.material?.color?.getHexString?.() === '3b3540') n++; }); return n > 0; }), '5h. on black volcanic rock');
+  await ev(() => { ui.isPanel = 'sglooks'; render(); }); await sleep(300);
+  const spF2 = await ev(() => HI.doc.sp.l);
+  await p.click('#isfull [data-sg="lkuse"][data-v="fortress"]'); await sleep(1200);
+  ok(await ev(() => sgFortOn()) && (await ev(() => HI.doc.sp.l)) === spF2, '5i. switching back to an owned look is free');
+  await ev(() => { ui.isPanel = null; render(); }); await sleep(800);
   // 6. the sim: deterministic, terrain and defences matter
   const sim = await ev(() => {
     const A = sgAttacker({ stats: { str: 50, end: 50, spd: 50, agi: 50, foc: 50, log: 50, kno: 50, exp: 50 }, cls: 'striker', power: 1.5, g: {} });

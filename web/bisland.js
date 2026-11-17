@@ -216,7 +216,7 @@ function is3bossBuild() {
   const g = new THREE.Group(); g.position.set(0, top + .53, 0); g.rotation.y = Math.PI / 4; // faces the camera's starting spot W.add(g);
   // 2.88: Somnus's week: the island is its hall, as in the fight, and the real rigged Golem sleeps on its stone bed
   if (b.n === 'Snooze Golem' && typeof sgMake === 'function' && biSomnus(W, g, top, rnd, dead)) { IS3.marks = { boss: [0, top + 5, 0] }; return; }
-  // 2.95: Morrow's week: the Hall of Hours in small, with the real Morrow waiting in it, arms folded
+  // 2.97: Morrow's week: the Hall of Hours in small, with the real Morrow waiting in it, arms folded
   if (b.n === 'The Procrastinator' && typeof mrIsland === 'function' && mrIsland(W, g, top, rnd, dead)) { IS3.marks = { boss: [0, top + 5, 0] }; return; }
   const m = new THREE.Group(); g.add(m); is3bossModel(m, b.n, dead ? 'dead' : 'live'); m.scale.setScalar(hurt && !dead ? .95 : 1.05); if (!dead && typeof biIdle === 'function') biIdle(m); // 2.76: the boss breathes and looks around
   if (dead) { m.rotation.z = .5; m.position.set(.7, -.15, 0); const h = hsHouse(hsState().id); is3mesh(new THREE.CylinderGeometry(.05, .05, 2.6, 5), '#dee2e6', -1.3, 1.3, .9, g); is3mesh(new THREE.BoxGeometry(.9, .6, .04), h?.col || '#ffd43b', -.85, 2.2, .9, g); }

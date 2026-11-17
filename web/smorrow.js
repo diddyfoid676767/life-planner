@@ -1,5 +1,5 @@
 'use strict';
-/* Morrow, the Ever-Waiting (2.95: the second Souls boss, was the Procrastinator).
+/* Morrow, the Ever-Waiting (2.97: the second Souls boss, was the Procrastinator).
    A towering hooded figure in a long grey robe with an hourglass where its face should be, a great
    clock-hand blade in its right hand and clock-hand claws on its left. It moves slowly, then very fast.
    The fight runs on the same engine as Somnus (souls.js); this file is its definition: the body (built
@@ -690,7 +690,7 @@ function mrCine(C, at) {
   for (const k of [.2, 1.2, 2.2, 3.2, 4.2]) if (at(k)) soSnd('m_tick', B, { vol: .8, rate: .9 });
   (SO.torches || []).forEach((tc, i) => { if (!tc.big && at(.4 + i * .3)) soTorchLight(tc); if (tc.big && at(MR_CINE.eyes - .5 + (i % 2) * .15)) soTorchLight(tc, 1.4); });
   if (at(1.6)) soSnd('m_whisper', B, { vol: .8 });
-  if (at(2.4)) soSnd('g_rise', B);
+  if (at(2.4)) soSnd('m_whisper', B);
   if (at(MR_CINE.eyes)) { if (S) { S.flip = 1; const v = new THREE.Vector3().setFromMatrixPosition(S.hg.matrixWorld); soBurst(v, { tex: 'flare_01', col: '#ffd08a', n: 1, size: 2.2, life: .6, speed: 0, grow: 1.2 }); } soSnd('m_freeze', B, { vol: .5, rate: .7 }); soTorchFlare(.5); }
   if (at(MR_CINE.stand)) { B.state = 'wake'; soSnd('m_scrape', B); SO.shake = .3; soDust(B.x, B.z, .8); }
   if (at(MR_CINE.roar)) { B.state = 'roar'; SO.shake = 1.3; soSnd('m_toll', B); soSnd('m_roar', B); soTorchFlare(1.6); if (SO.mrFloor) SO.mrFloor.glow = 1; SO.rings.push({ x: B.x, z: B.z, r: 1, v: 12, mv: MR_MV.roar, m: soRing('#ffe0a0'), cine: 1 }); }
