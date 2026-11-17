@@ -59,8 +59,8 @@ const S = process.argv[2]; const sleep = ms => new Promise(r => setTimeout(r, ms
     ok(await ev(() => WK.roll <= 0), '5b. right click does not roll');
     await until(() => WK.ground, null, 30);
     console.log('INFO state', JSON.stringify(await ev(() => ({ g: WK.ground, sw: WK.swim, st: WK.stam, r: WK.roll }))));
-    await p.keyboard.press('Control'); await sleep(100);
-    ok(await ev(() => WK.roll > 0), '5c. Ctrl still rolls'); await sleep(900);
+    await ev(() => { ROLL_SHIFT.tap = 5; }); await p.keyboard.press('Shift'); await sleep(100);
+    ok(await ev(() => WK.roll > 0 || WK.rollBuf > 0), '5c. a tap of Shift rolls (2.103)'); await sleep(900);
     // find a river channel crossing: put the hero on the bank facing the channel
     const rv = await ev(() => {
       const L = hxW(hxState()).land();

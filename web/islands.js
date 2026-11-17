@@ -155,8 +155,15 @@ function is3resize() {
 }
 function is3draw() {
   if (!IS3.R || !IS3.canvas.isConnected || IS3.queued) return;
-  IS3.queued = requestAnimationFrame(() => {
-    IS3.queued = 0; const { cam, yaw, pitch } = IS3, dist = IS3.dist * (IS3.distK || 1) * (IS3.fly || 1), [tx, tz] = IS3.hexMode && IS3.house !== 'boss' && IS3.tgt || [0, 0];
+  // 2.103: while you walk, the walk loop draws every frame itself (straight after moving you, not a frame later),
+  // and during a Souls fight the island under it isn't drawn at all
+  if (typeof WK === 'object' && WK.on && WK.raf) return;
+  if (typeof SO !== 'undefined' && SO && SO.R) return;
+  IS3.queued = requestAnimationFrame(is3render);
+}
+function is3render() {
+  if (!IS3.R || !IS3.canvas.isConnected) return;
+  { if (IS3.queued) { cancelAnimationFrame(IS3.queued); IS3.queued = 0; } const { cam, yaw, pitch } = IS3, dist = IS3.dist * (IS3.distK || 1) * (IS3.fly || 1), [tx, tz] = IS3.hexMode && IS3.house !== 'boss' && IS3.tgt || [0, 0];
     // 2.78: while a window is open on the right, the view shifts so the island sits in the space left of it
     const host0 = IS3.canvas.parentNode, W0 = host0.clientWidth, H0 = host0.clientHeight, offT = IS3.offT || 0;
     IS3.off = IS3.off == null ? offT : IS3.off + (offT - IS3.off) * .22; if (Math.abs(offT - IS3.off) < .6) IS3.off = offT; else setTimeout(is3draw, 16);
@@ -173,7 +180,7 @@ function is3draw() {
       b.style.transform = `translate(${(v.x + 1) / 2 * W}px, ${(1 - v.y) / 2 * H}px) translate(-50%, -100%)`;
     });
     if (typeof hxTagPos === 'function') hxTagPos(cam, W, H);
-  });
+  }
 }
 function is3view(v) {
   if ((v === 'lock' || v === 'saveview' || v === 'reset') && (IS3.house === 'hex' || IS3.house === 'hexh') && typeof hxViewAct === 'function') { hxViewAct(v); return; }

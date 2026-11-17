@@ -6,8 +6,8 @@
      in 3 minutes. One life: dying just ends the attempt early. No practice trials and no
      Easy setting for players; the owner's test mode can start a free test fight.
    - Your character is the KayKit hero (hero.js) with real animations. WASD move, Shift
-     sprint, Space jump (clears the low attacks: sweeps, rings and shockwaves), Ctrl or the
-     right mouse button roll (i-frames), F block (a block just before a hit is a perfect
+     sprint, Space jump (clears the low attacks: sweeps, rings and shockwaves), tap Shift to
+     roll (2.103; was Ctrl; Settings can change it, a mouse side button rolls too) (i-frames), F block (a block just before a hit is a perfect
      guard), left click light attack (three-hit chain), hold left for a heavy, 1-9 skills,
      R drinks a potion (3 a fight), Esc pauses. No lock-on: the camera is free and every
      attack has a floor warning you can read from any angle. Stamina pays for everything.
@@ -40,7 +40,7 @@ const SO_C = {
   st: { max: 100, regen: 20, wait: .9, sprint: 18, light: 13, heavy: 28, roll: 35, skill: 12, jump: 8 },
   // a somersault: about 3 m, untouchable for only 0.2 s, then a get-up you can only cancel into an attack.
   // tired: a roll within `tired` s of the last one costs 30% more and goes 20% shorter, stacking up to 3 times
-  roll: { speed: 5.3, time: .78, iFrom: .05, iTo: .25, free: .66, tired: .9 }, hold: .28, chain: .55, perfect: .2, guard: .2,
+  roll: { speed: 5.5, time: .74, iFrom: .03, iTo: .23, free: .64, tired: .9 }, hold: .28, chain: .55, perfect: .2, guard: .2,
 };
 // the Golem's moves: wind-up (s, before speed and variation), damage as a share of your health, reach,
 // arc (radians either side), low = a jump clears it, ph = first phase it appears in
@@ -350,7 +350,7 @@ function soLoop() {
     // hit-stop: a landed hit freezes the fight for a few frames so it feels solid
     const frozen = SO.stop > 0; if (frozen) SO.stop -= dt;
     if (SO.cine) soCineStep(dt);
-    else if (!SO.paused && !SO.intro && !frozen) { SO.acc += dt; while (SO.acc >= 1 / 60) { SO.acc -= 1 / 60; if (!SO.over) soStep(1 / 60); else soStepDead(1 / 60); } }
+    else if (!SO.paused && !SO.intro && !frozen) { SO.acc += dt; while (SO.acc >= 1 / 60) { SO.acc -= 1 / 60; soPrev(); if (!SO.over) soStep(1 / 60); else soStepDead(1 / 60); } }
     soDraw(now / 1000, SO.paused ? 0 : frozen ? dt * .04 : dt);
     SO.raf = requestAnimationFrame(tick);
   };
@@ -387,12 +387,14 @@ function soStep(dt) {
   let mx = 0, mz = 0;
   if (fw || stf) { const c = Math.cos(cy), s = Math.sin(cy); mx = -s * fw + c * stf; mz = -c * fw - s * stf; const l = Math.hypot(mx, mz); mx /= l; mz /= l; }
   const moving = !!(fw || stf), busy = M.act && M.act.k !== 'roll';
-  const sprint = moving && K.shift && !M.block && !busy && !SO.aim && M.st > 1 && M.ground;
+  const sprint = moving && sprintHeld(K.shift) && !M.block && !busy && !SO.aim && M.st > 1 && M.ground;
   const top = (M.block ? 1.8 : sprint ? C.sprint : SO.aim ? C.jog * .55 : C.jog) * (M.drowsy > 0 ? .65 : 1) * (M.slow > 0 ? .55 : 1) * (M.frozen > 0 ? 0 : 1) * (busy ? (M.act.k === 'potion' ? .2 : .15) : 1);
   if (sprint) { M.st -= C.st.sprint * dt; M.rest = C.st.wait; }
   M.rest = Math.max(0, M.rest - dt);
   if (M.rest <= 0 && !M.block && !M.act) M.st = Math.min(C.st.max, M.st + C.st.regen * (M.drowsy > 0 ? .5 : 1) * dt);
-  if (M.act?.k === 'roll') { const p = M.actT / C.roll.time, v = C.roll.speed * (M.act.far || 1) * (p < .5 ? 1 : Math.max(0, 1 - (p - .5) / .3)); M.vx = M.act.dx * v; M.vz = M.act.dz * v; }
+  if (M.act?.k === 'roll' && moving && M.actT >= C.roll.free) M.act = null; // 2.103: run straight out of the get-up
+  if (M.rollBuf > 0) { M.rollBuf -= dt; soAct('roll', true); } // a roll pressed a moment too early still comes out
+  if (M.act?.k === 'roll') { const p = M.actT / C.roll.time, v = C.roll.speed * (M.act.far || 1) * rollEase(p); M.vx = M.act.dx * v; M.vz = M.act.dz * v; }
   else {
     const k = !M.ground ? C.air : moving ? C.acc : C.dec, tx = mx * top, tz = mz * top;
     M.vx += (tx - M.vx) * Math.min(1, dt * k); M.vz += (tz - M.vz) * Math.min(1, dt * k);
@@ -425,14 +427,16 @@ const SO_ACTS = {
   roll: { st: SO_C.st.roll, dur: SO_C.roll.time },
   potion: { dur: 1.3 }, // you stand still and drink: a hit before it goes down spills it
 };
-function soAct(k) {
+function soAct(k, buffered) {
   const M = SO.me, A = SO_ACTS[k]; if (!SO || SO.over || SO.paused || !A || M.frozen > 0) return;
+  if (k === 'roll' && !buffered) M.rollBuf = 0;
   // you can roll out of an attack's tail, and attack or roll again from a roll's get-up
   // 2.87: a roll's get-up can only turn into an attack, not straight into another roll
   const cancel = M.act && ((k === 'roll' && M.act.k !== 'roll' && M.act.k !== 'stagger' && M.act.k !== 'potion' && M.actT > .12) || (M.act.k === 'roll' && k !== 'potion' && k !== 'roll' && M.actT > SO_C.roll.free));
-  if (M.act && !cancel) return;
-  if (k !== 'potion' && M.st <= 0) { soPop('😮‍💨 No stamina', 'bad'); return; }
-  if (k === 'roll' && !M.ground) return;
+  // 2.103: a roll pressed while you can't yet (mid-swing, landing) waits a moment for its chance
+  if ((M.act && !cancel) || (k === 'roll' && !M.ground)) { if (k === 'roll' && !buffered) M.rollBuf = .2; return; }
+  if (k !== 'potion' && M.st <= 0) { if (!buffered) soPop('😮‍💨 No stamina', 'bad'); M.rollBuf = 0; return; }
+  if (k === 'roll') M.rollBuf = 0;
   const CB = soCombo(), def = k === 'light' ? CB.light[M.chain % CB.light.length] : k === 'heavy' ? CB.heavy : null;
   // rolling again straight after a roll gets tired: dearer, shorter, a shorter safe window
   const tired = k === 'roll' && SO.time - (M.rollAt + SO_C.roll.time) < SO_C.roll.tired ? Math.min(3, (M.tired || 0) + 1) : 0;
@@ -447,6 +451,8 @@ function soAct(k) {
     M.tired = tired; M.act.far = 1 - .2 * tired;
     M.act.dx = dx; M.act.dz = dz; M.face = Math.atan2(dx, dz); M.rollAt = SO.time; M.iFrom = SO.time + SO_C.roll.iFrom; M.iTo = SO.time + SO_C.roll.iFrom + (SO_C.roll.iTo - SO_C.roll.iFrom) * (1 - .25 * tired);
     if (tired && !SO.tiredSeen) { SO.tiredSeen = 1; soPop('😮‍💨 Rolling again so soon tires you: shorter and dearer', 'bad'); }
+    M.vx = dx * C_ROLL0(); M.vz = dz * C_ROLL0(); // full speed from the first frame
+    soDust(M.x, M.z, .45); SO.ifrK = 1;
     if (typeof sfx === 'function') sfx('roll', { gap: 60 }); soSnd('g_armour', M, { gap: 60 });
   } else if (k === 'light' || k === 'heavy') {
     if (k === 'light') { const L = CB.light.length; M.act.n = M.chain % L; M.chain++; M.chainT = M.act.n === L - 1 ? 0 : def.dur + SO_C.chain; if (M.act.n === L - 1) M.chain = 0; }
@@ -455,6 +461,13 @@ function soAct(k) {
     SO.trail?.reset();
   }
   else if (k === 'potion') M.act.healed = 0;
+}
+const C_ROLL0 = () => SO_C.roll.speed * (SO.me.act?.far || 1);
+// 2.103: while you're untouchable in a roll you shimmer pale blue, so the safe window is easy to see and learn
+function soIfrGlow(dt) {
+  const on = soIfr(), mats = SO.H.mats; SO.ifrK = Math.max(on ? .9 : 0, (SO.ifrK || 0) - dt * 5);
+  if (!SO.ifrK && !SO.ifrWas) return; SO.ifrWas = SO.ifrK > 0;
+  for (const m of mats) if (m.emissive) { m.emissive.setRGB(.06 * SO.ifrK, .16 * SO.ifrK, .3 * SO.ifrK); }
 }
 function soPotion() {
   const M = SO.me; if (!soLive() || SO.paused || M.act || !M.ground) return;
@@ -1147,12 +1160,22 @@ function sgAnim(dt, t) {
 }
 
 // ---------- drawing ----------
+// 2.103: the fight steps 60 times a second but screens draw at 75, 120, 144 Hz or an uneven rate, which made
+// you, the boss and the camera judder. Each frame now draws you and the boss part way between the last two steps.
+function soPrev() { const M = SO.me, B = SO.B; SO.pv = { mx: M.x, my: M.y, mz: M.z, mf: M.face, bx: B.x, by: B.y, bz: B.z, bf: B.face }; }
+function soLerp() {
+  const M = SO.me, B = SO.B, v = SO.pv, a = SO.paused || SO.over || SO.cine ? 1 : Math.max(0, Math.min(1, SO.acc * 60));
+  const L = (p, c) => v ? p + (c - p) * a : c, A = (p, c) => v ? p + soAng(c - p) * a : c;
+  // a jump in place (a teleport, a rewind, stepping out of the sand) isn't smoothed
+  const mj = v && Math.hypot(M.x - v.mx, M.z - v.mz) > 1.5, bj = v && Math.hypot(B.x - v.bx, B.z - v.bz) > 1.5;
+  return { mx: mj ? M.x : L(v?.mx, M.x), my: mj ? M.y : L(v?.my, M.y), mz: mj ? M.z : L(v?.mz, M.z), mf: A(v?.mf, M.face), bx: bj ? B.x : L(v?.bx, B.x), by: bj ? B.y : L(v?.by, B.y), bz: bj ? B.z : L(v?.bz, B.z), bf: A(v?.bf, B.face) };
+}
 const soClipLen = n => HERO.gltf?.animations.find(a => a.name === n)?.duration || 1;
 function soAnim(dt) {
   const H = SO.H, M = SO.me, a = M.act; if (!H) return;
   const one = (n, dur, o = {}) => H.play(n, { loop: false, fade: .08, speed: soClipLen(n) / dur, ...o });
   if (SO.over) { /* soEnd picked Death or Cheer */ }
-  else if (a?.k === 'roll') one('Roll', SO_C.roll.time);
+  else if (a?.k === 'roll') { if (a.started !== 1) { a.started = 1; H.play('Roll', { loop: false, fade: .05, speed: rollClipSpeed(SO_C.roll.time), restart: true, from: ROLL_FROM }); } }
   else if ((a?.k === 'light' || a?.k === 'heavy') && a.def?.c) { const D = a.def, sp = D.span || [0, 1]; one(D.c, D.dur / (sp[1] - sp[0]), { restart: a.started !== 1, from: sp[0] }); a.started = 1; }
   else if (a?.k === 'skill') { one('1H_Melee_Attack_Stab', .6, { restart: a.started !== 1 }); a.started = 1; }
   else if (a?.k === 'cast') { one(a.raise ? 'Spellcast_Raise' : 'Spellcast_Shoot', .5, { restart: a.started !== 1 }); a.started = 1; }
@@ -1160,23 +1183,20 @@ function soAnim(dt) {
   else if (a?.k === 'stagger') { one(a.def.dur > .6 ? 'Hit_B' : 'Hit_A', a.def.dur, { restart: a.started !== 1 }); a.started = 1; }
   else if (a?.k === 'blockhit') { one('Block_Hit', .3, { restart: a.started !== 1 }); a.started = 1; }
   else if (M.block) H.play('Blocking', { fade: .1 });
-  else if (!M.ground) { if (H.cur !== 'Jump_Start' && H.cur !== 'Jump_Idle') H.play('Jump_Start', { loop: false, fade: .08 }); else if (H.cur === 'Jump_Start' && H.done()) H.play('Jump_Idle', { fade: .12 }); }
-  else if (M.land > 0 && M.sp < 1) H.play('Jump_Land', { loop: false, fade: .06, speed: 1.6 });
-  else if (M.sp < .3) H.play(soCombo().idle, { fade: .2 });
-  else if (M.sp < 2.2) H.play('Walking_A', { speed: Math.max(.7, M.sp / 1.7) });
-  else if (M.sp < (SO_C.jog + SO_C.sprint) / 2) H.play('Running_A', { speed: M.sp / SO_C.jog });
-  else H.play('Running_B', { speed: M.sp / SO_C.sprint * 1.05 });
+  else if (!M.ground) { if (H.cur !== 'Jump_Start' && H.cur !== 'Jump_Idle') H.play('Jump_Start', { loop: false, fade: .08, speed: 1.6, from: .3 }); else if (H.cur === 'Jump_Start' && (H.done() || M.vy < -1)) H.play('Jump_Idle', { fade: .18 }); }
+  else if (M.land > 0 && M.sp < 1) H.play('Jump_Land', { loop: false, fade: .06, speed: 1.7, from: .15 });
+  else H.loco(M.sp, { refs: [1.7, SO_C.jog, SO_C.sprint], idle: soCombo().idle, fade: H.cur === 'Roll' ? .25 : .18 }); // 2.103: one blended walk, jog and sprint
   H.update(dt * (M.frozen > 0 ? .02 : M.slow > 0 ? .55 : 1)); // 2.97: frozen or slowed in time (Morrow)
 }
 function soDraw(t, dt) {
   if (!SO.R || !SO.S) return;
-  const M = SO.me, B = SO.B, G = SO.gol, cam = SO.cam3, C = SO.cam;
-  if (SO.H) { SO.H.root.position.set(M.x, M.y, M.z); SO.H.root.rotation.y = M.face; soAnim(dt); }
-  else if (SO.fig) { SO.fig.position.set(M.x, M.y, M.z); SO.fig.rotation.y = M.face; }
-  SO.blob.position.set(M.x, .02, M.z); SO.blob.scale.setScalar(1 - Math.min(.5, M.y / 4));
+  const M = SO.me, B = SO.B, G = SO.gol, cam = SO.cam3, C = SO.cam, I = soLerp();
+  if (SO.H) { SO.H.root.position.set(I.mx, I.my, I.mz); SO.H.root.rotation.y = I.mf; soAnim(dt); soIfrGlow(dt); }
+  else if (SO.fig) { SO.fig.position.set(I.mx, I.my, I.mz); SO.fig.rotation.y = I.mf; }
+  SO.blob.position.set(I.mx, .02, I.mz); SO.blob.scale.setScalar(1 - Math.min(.5, I.my / 4));
   soFxStep(dt);
   // the Golem
-  const R = G.root; R.position.set(B.x, B.y, B.z); R.rotation.y = B.face + (B.spinT > 0 ? (1 - B.spinT / .42) * Math.PI * 2 : 0);
+  const R = G.root; R.position.set(I.bx, I.by, I.bz); R.rotation.y = I.bf + (B.spinT > 0 ? (1 - B.spinT / .42) * Math.PI * 2 : 0);
   if (soD().anim) soD().anim(dt, t); else if (SO.gs) sgAnim(dt, t); else {
   const b = G.body, arms = G.arms, wb = Math.sin(t * 3);
   b.rotation.set(0, 0, 0); b.position.y = 2.6; G.head.rotation.set(0, 0, 0);
@@ -1213,7 +1233,9 @@ function soDraw(t, dt) {
   // 2.87: holding right click aims: closer over the shoulder and zoomed in a little
   SO.aimK += ((SO.aim ? 1 : 0) - SO.aimK) * Math.min(1, dt * 12); const ak = SO.aimK;
   const fov = 58 - 14 * ak; if (Math.abs(cam.fov - fov) > .05) { cam.fov = fov; cam.updateProjectionMatrix(); }
-  const tx = M.x, ty = 1.55 + M.y * .6 + ak * .15, tz = M.z, cp = C.cp, d = C.cd + (3.9 - C.cd) * ak;
+  // 2.103: the camera follows the smoothed you, and rises and falls gently with jumps
+  SO.camY = SO.camY == null ? I.my : SO.camY + (I.my - SO.camY) * Math.min(1, dt * 7);
+  const tx = I.mx, ty = 1.55 + SO.camY * .6 + ak * .15, tz = I.mz, cp = C.cp, d = C.cd + (3.9 - C.cd) * ak;
   let px = tx + Math.sin(C.cy) * Math.cos(cp) * d, py = ty + Math.sin(cp) * d, pz = tz + Math.cos(C.cy) * Math.cos(cp) * d;
   const side = .9 + .3 * ak; px += Math.cos(C.cy) * side; pz -= Math.sin(C.cy) * side;
   for (let f = .1; f <= 1; f += .05) { const x = tx + (px - tx) * f, z = tz + (pz - tz) * f; if (B.state !== 'down' && Math.hypot(x - B.x, z - B.z) < 3.6 && ty + (py - ty) * f < 7 + B.y) { const k = Math.max(.35, f - .1); px = tx + (px - tx) * k; py = ty + (py - ty) * k + (1 - k) * 2.2; pz = tz + (pz - tz) * k; break; } }
@@ -1248,7 +1270,7 @@ function soOverlay() {
   ov = document.createElement('div'); ov.id = 'soov'; document.body.appendChild(ov); document.body.classList.add('souls-on');
   return ov;
 }
-const SO_KEYS = '<span><kbd>W A S D</kbd> move</span><span><kbd>Mouse</kbd> look</span><span>hold <kbd>Right click</kbd> aim</span><span><kbd>Shift</kbd> sprint</span><span><kbd>Space</kbd> jump</span><span><kbd>Ctrl</kbd> roll</span><span><kbd>F</kbd> block</span><span><kbd>Left click</kbd> attack</span><span>hold <kbd>Left</kbd> heavy</span><span><kbd>1-9</kbd> skills</span><span><kbd>R</kbd> potion</span><span><kbd>Esc</kbd> pause</span>';
+const SO_KEYS = () => '<span><kbd>W A S D</kbd> move</span><span><kbd>Mouse</kbd> look</span><span>hold <kbd>Right click</kbd> aim</span><span>hold <kbd>Shift</kbd> sprint</span><span><kbd>Space</kbd> jump</span><span>' + rollKbd() + ' roll</span><span><kbd>F</kbd> block</span><span><kbd>Left click</kbd> attack</span><span>hold <kbd>Left</kbd> heavy</span><span><kbd>1-9</kbd> skills</span><span><kbd>R</kbd> potion</span><span><kbd>Esc</kbd> pause</span>';
 function soIntroDraw() {
   const ov = soOverlay(), k = SO.kind, st = ftState(), pb = (st.soPb || {})[soD().key] || 0, D = soD(), keys = Object.keys(SO_DEFS);
   ov.innerHTML = `<div class="so-intro"><div class="so-card">
@@ -1271,7 +1293,7 @@ function soHudDraw() {
     <div class="so-bar2"><div class="so-sk so-pot"><kbd>R</kbd><span>🧪</span><small class="so-potn"></small></div>${SO.P.sk.slice(0, 9).map((s, i) => `<div class="so-sk ${s.k === 'spell' ? 'so-spl' : 'so-mvl'}" data-i="${i}" title="${esc(s.n)}: ${esc(s.d)}"><kbd>${i + 1}</kbd><span>${s.e}</span><small>${esc(s.n)}</small><i></i></div>`).join('')}</div>
     <div class="so-help">${document.pointerLockElement ? '' : 'Click to steer with the mouse'}</div>`;
   ov.appendChild(hud);
-  if (SO.paused && !SO.over) { const p = document.createElement('div'); p.className = 'so-end'; p.innerHTML = `<div class="so-card"><h2>Paused</h2><p class="muted">The clock is stopped.</p><div class="so-keys">${SO_KEYS}</div><div class="so-btns"><button class="btn primary" data-so="resume">Resume</button><button class="btn ghost" data-so="quit">End the fight</button></div></div>`; ov.appendChild(p); }
+  if (SO.paused && !SO.over) { const p = document.createElement('div'); p.className = 'so-end'; p.innerHTML = `<div class="so-card"><h2>Paused</h2><p class="muted">The clock is stopped.</p><div class="so-keys">${SO_KEYS()}</div><div class="so-btns"><button class="btn primary" data-so="resume">Resume</button><button class="btn ghost" data-so="quit">End the fight</button></div></div>`; ov.appendChild(p); }
   if (SO.over && SO.res) { const p = document.createElement('div'); p.className = 'so-end'; p.innerHTML = soResultHtml(); ov.appendChild(p); }
 }
 // after a fight: your damage, your best, the house's top hitters
@@ -1337,7 +1359,6 @@ addEventListener('keydown', e => {
   const map = { arrowup: 'w', arrowdown: 's', arrowleft: 'a', arrowright: 'd' };
   if (['w', 'a', 's', 'd', 'shift', 'f'].includes(k) || map[k]) SO.keys[map[k] || k] = true;
   else if (k === ' ' && !e.repeat) SO.me.jumpBuf = SO_C.buffer;
-  else if (k === 'control' && !e.repeat) soAct('roll');
   else if (k === 'r' && !e.repeat) soPotion();
   else if (/^[1-9]$/.test(k) && !e.repeat) soSkill(+k - 1);
 }, true);

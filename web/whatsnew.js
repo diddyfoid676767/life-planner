@@ -10,6 +10,12 @@
 // version since the last one they saw (up to 3). D.settings.seenVersion remembers what was last shown,
 // D.settings.guidesSeen which guides have played. A brand-new install never sees either.
 const CHANGELOG = [
+  { v: '2.103.0', notes: [
+    { t: 'Roll is now a quick tap of Shift instead of Ctrl (hold Shift to sprint, as before). You can pick another roll key in Settings, and a mouse side button rolls too', k: 'new' },
+    { t: 'Better rolls: you roll the way you\'re pressing, at full speed from the start, you can run straight out of the get-up, and a roll pressed a moment early still happens. In boss fights you glow blue while you can\'t be hit', k: 'tweak' },
+    { t: 'Smoother movement: walking, jogging and sprinting blend into each other, boss fights no longer judder on fast screens, and the island isn\'t drawn behind a fight any more, so fights run faster', k: 'fix' },
+    { t: 'Cliffs and the island\'s edge now stop you exactly where the hexes are, so you slide along them smoothly', k: 'fix' },
+  ] },
   { v: '2.102.0', notes: [
     { t: '⌛ Morrow fights like a time mage now, not a second Somnus: it keeps its distance and throws spinning clock hands down marked lanes, plants hourglasses round you that burst when their sand runs out, and vanishes if you crowd it', k: 'new' },
     { t: 'It\'s exposed while it casts, so rush it then. Its one blade swing is only for when you get close', k: 'tweak' },
