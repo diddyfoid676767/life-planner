@@ -198,11 +198,11 @@ function hxSkyCam(cam) {
   const on = !!IS3.hexMode && (IS3.house === 'hex' || IS3.house === 'hexh') && hxGfx() !== 'low' && !!HX_SUN.sp;
   g.visible = on; if (!on) return;
   // 2.90: they sit at a fixed place in the world (the real compass direction, with the height squeezed into
-  // a band just below the horizon so they show up behind the island from the usual looking-down view). They
+  // a band just below the horizon, so they show in the sky behind the island when the view is tilted up enough). They
   // no longer follow the camera: turning the view moves them across the screen like anything else out there.
   const c0 = HX_SUN.v1 || (HX_SUN.v1 = new THREE.Vector3()); c0.set(IS3.tgt?.[0] || 0, 0, IS3.tgt?.[1] || 0);
   const put = (alt, az, objs, size) => {
-    const a = (-34 + 30 * Math.min(1, Math.max(-.2, alt) / .9)) * HX_RAD, v = hxDir(a, az, HX_SUN.v2 || (HX_SUN.v2 = new THREE.Vector3()));
+    const a = (-22 + 12 * Math.min(1, Math.max(-.2, alt) / .9)) * HX_RAD, v = hxDir(a, az, HX_SUN.v2 || (HX_SUN.v2 = new THREE.Vector3()));
     objs.forEach(([o, s]) => { o.position.copy(c0).addScaledVector(v, 250); o.scale.setScalar(size * s); });
     return v;
   };
