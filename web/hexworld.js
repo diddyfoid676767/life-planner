@@ -619,7 +619,7 @@ function mountHex3D(mode = 'hex') {
   IS3.layout = null; IS3.hexMode = true;
   if (IS3.house !== mode) { IS3.house = mode; HX3.sig = ''; HX3.hk = null; Object.assign(IS3, is3home(mode), { tgt: [0, 0] }, typeof hxLocked === 'function' && hxLocked() ? hxLockAngle() : {}); if (HX3.ghost) { IS3.scene.remove(HX3.ghost); HX3.ghost = null; HX3.ghostModel = null; } }
   const st = hxCur(), W0 = hxW(st);
-  const sig = [mode, W0.col || hxCol(), hxGfx(), W0.sig ? W0.sig(st) : [JSON.stringify(st.b), st.road.join(';'), st.clr.join(';'), JSON.stringify(st.tf || {}), Object.keys(st.b).map(k => hxCond(k) + hxLvOn(st.b[k])).join()].join('|'), Math.floor(Date.now() / 36e5), ui.hxP?.mode === 'move' || ui.hxP?.mode === 'deco' ? ui.hxP.mode + ui.hxP.from : '', hxSkySig()].join('|');
+  const sig = [mode, W0.col || hxCol(), hxGfx(), W0.sig ? W0.sig(st) : [JSON.stringify(st.b), st.road.join(';'), st.clr.join(';'), JSON.stringify(st.tf || {}), Object.keys(st.b).map(k => hxCond(k) + hxLvOn(st.b[k])).join()].join('|'), Math.floor(Date.now() / 36e5), typeof usFort === 'function' && usFort() ? 'fort' : '', ui.hxP?.mode === 'move' || ui.hxP?.mode === 'deco' ? ui.hxP.mode + ui.hxP.from : '', hxSkySig()].join('|');
   if (sig !== HX3.sig) { HX3.sig = sig; hxBuild(); }
   hxSkyApply();
   if (HX3.glow && !IS3.scene.children.includes(HX3.glow)) IS3.scene.add(HX3.glow);
@@ -653,8 +653,8 @@ function hxBuild() {
   // the rock under the island: a craggy hexagonal point with glowing crystals, like the other islands
   const bc = W0.base && W0.base(); // 2.88: the Stone fortress look has grey rock under the house island
   const base = is3mesh(is3rock(new THREE.CylinderGeometry(15.4 * S, 15.6 * S, 1.2, 6, 1), seeded('hxb'), .02), bc ? bc[0] : '#c9b48a', 0, -1.6, 0, W); base.rotation.y = Math.PI / 6;
-  const und = is3mesh(is3rock(new THREE.ConeGeometry(15 * S, 13 * S, 6, 6), seeded('hxu'), .22, .1), bc ? bc[1] : '#6d5f73', 0, -2.2 - 6.5 * S, 0, W); und.rotation.set(Math.PI, Math.PI / 6, 0);
-  for (let i = 0; i < 7; i++) { const a = rnd() * 6.28, r = (4 + rnd() * 6) * S, h = 1 + rnd() * 2; const cr = is3mesh(new THREE.ConeGeometry(.35 + rnd() * .3, h, 5), ['#4ee6ff', '#ffb347'][i % 2], Math.cos(a) * r, -3 - rnd() * 5 * S - h / 2, Math.sin(a) * r, W, true); cr.rotation.set(Math.PI + (rnd() - .5) * .5, 0, (rnd() - .5) * .5); }
+  // 2.89: the underside is shared with the other islands and the far islands (undersides.js); the fortress look makes it darker and spikier
+  if (typeof usBuild === 'function') { const kd = W0.house ? 'house' : W0.visit ? 'mate' : 'home'; usBuild(W, { kind: kd, fort: W0.house && usFort(), n: 6, rot: Math.PI / 6, R: 15.2 * S, y0: -2.2, D: 13 * S, rimY: -1.05, rimR: 15.4 * S, fallY: -.12, fallR: 15.6 * S, glow: W0.house ? [W0.ac || '#ffd43b', '#ffe8a3'] : usGlowFor(st.theme), falls: usHexFalls(L, st, R), q: hxGfx(), anim: HX3.anim, seed: 'hx' + (W0.seed || '') }); }
   for (let i = 0; i < 6; i++) { const a = i / 6 * 6.28 + rnd(), r = (22 + rnd() * 6) * S, s = .7 + rnd() * .8, g = new THREE.Group(); g.position.set(Math.cos(a) * r, -3 + rnd() * 6, Math.sin(a) * r); g.add(hxModel(rnd() < .5 ? 'hex_grass' : 'hex_grass_bottom', col)); if (rnd() < .6) { const t = hxModel(rnd() < .5 ? 'trees_A_small' : 'tree_single_B', col); g.add(t); } g.scale.setScalar(s); W.add(g); HX3.anim.push({ o: g, bob: rnd() * 6, y: g.position.y }); }
   // ground tiles
   for (const [k, h] of L) {

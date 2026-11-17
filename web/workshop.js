@@ -85,44 +85,108 @@ function faList() {
   // housemates' islands, further out (only what's already been fetched; the Tavern's House tab fetches the list)
   if (typeof hxIsleOn === 'function' && hxIsleOn()) {
     hxIsleList();
-    for (const r of (HX_ISLE.list || []).filter(r => !r.me).slice(0, 12)) if (ui.hxVisit?.uid !== r.uid) out.push({ id: 'mate:' + r.uid, kind: 'mate', uid: r.uid, e: '🏝️', n: `${r.n || 'Housemate'}'s island`, hint: 'A housemate · click to visit (look only)', ac: '#a5d8ff' });
+    for (const r of (HX_ISLE.list || []).filter(r => !r.me).slice(0, 12)) if (ui.hxVisit?.uid !== r.uid) out.push({ id: 'mate:' + r.uid, kind: 'mate', uid: r.uid, th: faMateTheme(r), e: '🏝️', n: `${r.n || 'Housemate'}'s island`, hint: 'A housemate · click to visit (look only)', ac: '#a5d8ff' });
   }
   return out;
 }
-// one small floating island
+// a housemate's island look, read from their shared island (once per update)
+const FA_TH = {};
+function faMateTheme(r) { const k = r.uid + '|' + r.ut; if (!(k in FA_TH)) { let t = ''; try { t = JSON.parse(r.d).th || ''; } catch (e) { } FA_TH[k] = t; } return FA_TH[k]; }
+// one floating island in the distance (2.89): a light impression of the real one, by island type, on the
+// same underside as the real islands (undersides.js). Your island and the house fortress show their real
+// buildings in miniature (already on this computer, so nothing extra is fetched); housemates' islands are
+// cheaper: a cottage and trees in their island look. Low graphics keeps the plain shapes.
 function faIsle(f, low) {
-  const g = new THREE.Group(), big = f.kind !== 'mate', r = big ? 4.6 : 2, rnd = seeded('fa-' + f.id);
-  const pal = f.kind === 'house' ? ['#8b8d98', '#6c6e7a', '#5a5c68'] : f.kind === 'boss' ? ['#4b4458', '#3f3650', '#2f283b'] : ['#6dbb4f', '#8a6744', '#6d5f73'];
-  const cap = is3mesh(new THREE.CylinderGeometry(r, r * .96, .5, 6), pal[0], 0, -.25, 0, g); cap.rotation.y = rnd() * 6.28;
-  const und = is3mesh(is3rock(new THREE.ConeGeometry(r * .95, r * 1.7, 6, 3), rnd, .3, .15), pal[2], 0, -.5 - r * .85, 0, g); und.rotation.set(Math.PI, rnd() * 6.28, 0);
-  is3mesh(new THREE.CylinderGeometry(r * .9, r * .95, .4, 6), pal[1], 0, -.65, 0, g).rotation.y = cap.rotation.y;
-  // a glowing crystal underneath, in the island's colour, so it reads from far away
-  is3mesh(new THREE.ConeGeometry(r * .18, r * .7, 5), f.ac, 0, -r * 1.2, 0, g, true).rotation.z = Math.PI;
+  const g = new THREE.Group(), big = f.kind !== 'mate', r = big ? 4.6 : 2, rnd = seeded('fa-' + f.id), gfx = hxGfx();
+  const boss = f.kind === 'boss', house = f.kind === 'house', fort = house && usFort();
   const kit = !low && typeof HX3 === 'object' && HX3.kit;
-  const M = (name, col, x, z, s = 1, ry = 0) => { if (!kit) return null; const m = hxModel(name, col || hxCol(), undefined, false); m.position.set(x, 0, z); m.scale.setScalar(s); m.rotation.y = ry; g.add(m); return m; };
+  // the top: grass inside a ring of sea on a sand slab, like the real hex islands (stone on the fortress look, dark rock on the boss island)
+  const look = f.kind === 'home' ? faLook(hxState().theme) : f.kind === 'mate' ? faLook(f.th) : null;
+  const grass = fort ? '#8a8692' : boss ? '#4b4458' : look?.gr ? is3shade(look.gr, .92) : '#7cc95a';
+  if (boss) {
+    is3mesh(new THREE.BoxGeometry(r * 1.4, .5, r * 1.4), '#4b4458', 0, -.25, 0, g);
+    is3mesh(new THREE.BoxGeometry(r * 1.38, .45, r * 1.38), '#3d3649', 0, -.7, 0, g);
+  } else {
+    const ry = Math.PI / 6;
+    is3mesh(new THREE.CylinderGeometry(r * .9, r * .9, .5, 6), grass, 0, -.2, 0, g).rotation.y = ry;
+    if (!fort) is3mesh(new THREE.CylinderGeometry(r * .99, r * .99, .36, 6), '#4aa3df', 0, -.33, 0, g).rotation.y = ry; // the sea round the edge
+    is3mesh(new THREE.CylinderGeometry(r * 1.02, r, .4, 6), fort ? '#6e6a75' : '#c9b48a', 0, -.7, 0, g).rotation.y = ry;
+  }
+  // the underside, the same as the real island's but with fewer parts (and still)
+  const hs = typeof hsState === 'function' ? hsState() : {}, hh = house && hs.id && typeof hsHouse === 'function' ? hsHouse(hs.id) : null;
+  const glow = boss ? (f.dead ? ['#4ee6ff', '#74c0fc'] : ['#ff6b3d', '#c2255c']) : house ? [hh?.col || f.ac, '#ffe8a3'] : usGlowFor(f.kind === 'home' ? hxState().theme : f.th);
+  usBuild(g, { kind: boss ? 'boss' : house ? 'house' : f.kind === 'mate' ? 'mate' : 'home', fort, dead: f.dead, n: boss ? 4 : 6, rot: boss ? Math.PI / 4 : Math.PI / 6, R: boss ? r * .98 : r, y0: -.9, D: r * 1.75, rimY: -.5, rimR: boss ? r : r * 1.02, fallY: -.2, fallR: r * 1.02, glow, falls: f.kind === 'home' ? [-.5 + rnd()] : [], q: low || !big ? 'tiny' : 'far', seed: 'fa' + f.id });
+  const M = (name, col, x, z, s = 1, ry = 0, mat) => { if (!kit) return null; const m = hxModel(name, col || hxCol(), mat, false); m.position.set(x, 0, z); m.scale.setScalar(s); m.rotation.y = ry; g.add(m); return m; };
+  const max = gfx === 'high' ? 14 : 7;
   if (f.kind === 'home') {
-    if (!M('building_castle', null, 0, 0, .9)) is3mesh(new THREE.ConeGeometry(1, 2, 4), '#ffd43b', 0, 1, 0, g);
-    M('trees_A_medium', null, 2.6, 1.2, 1); M('tree_single_B', null, -2.4, 1.6); M('building_home_A', null, -1.8, -2.1, .8, 1);
+    const st = hxState(), hall = HX_HOME_W.free.find(x => x.at === '0,0');
+    if (!M(hall?.m || 'building_castle', null, 0, 0, .55)) is3mesh(new THREE.ConeGeometry(1, 2, 4), '#ffd43b', 0, 1, 0, g);
+    if (kit) faReal(g, st, r / 17.5, max, rnd);
     if (!kit) is3mesh(new THREE.IcosahedronGeometry(.4, 1), '#ffb347', 0, 2.6, 0, g, true);
-  } else if (f.kind === 'house') {
+  } else if (house) {
     const col = hxCol();
-    if (!M('building_castle', col, 0, 0, 1.25)) { is3mesh(new THREE.BoxGeometry(2, 2.4, 2), '#c9c2b5', 0, 1.2, 0, g); is3mesh(new THREE.ConeGeometry(1.5, 1.2, 4), f.ac, 0, 3, 0, g).rotation.y = Math.PI / 4; }
-    M('building_tower_A', col, 2.9, 1, .8); M('building_tower_A', col, -2.8, 1.3, .8); M('flag_' + col, col, 0, 2.9, 2);
-    for (let i = 0; i < 4 && kit; i++) { const a = i / 4 * 6.28 + .4; M('wall_straight', col, Math.cos(a) * 3.6, Math.sin(a) * 3.6, 1, -a + Math.PI / 2); }
-  } else if (f.kind === 'boss') {
-    // the arena ring and this week's boss, with dark clouds over it
-    is3mesh(new THREE.CylinderGeometry(3, 3.1, .18, 16), '#8a8199', 0, .09, 0, g);
-    const rune = is3mesh(new THREE.TorusGeometry(2.3, .07, 4, 30), f.dead ? '#4ee6ff' : '#ff7a3d', 0, .2, 0, g, true); rune.rotation.x = Math.PI / 2;
+    if (!M('building_castle', col, 0, 0, .75)) { is3mesh(new THREE.BoxGeometry(2, 2.4, 2), '#c9c2b5', 0, 1.2, 0, g); is3mesh(new THREE.ConeGeometry(1.5, 1.2, 4), f.ac, 0, 3, 0, g).rotation.y = Math.PI / 4; }
+    M('flag_' + col, col, 0, 1.9, 1.4);
+    // the real house buildings if the house island is already loaded, otherwise towers
+    const st = kit && typeof hhSaved === 'function' && HI.doc ? (() => { try { return hhSaved(); } catch (e) { return null; } })() : null;
+    if (!(st && faReal(g, st, r / 21.5, max, rnd))) { M('building_tower_A', col, 2.6, 1, .6); M('building_tower_A', col, -2.5, 1.3, .6); M('building_tower_A', col, .3, -2.7, .6); }
+    // a wall round it, with towers on the corners: it's a fortress
+    if (!low) faWalls(g, r * .8, fort ? '#7a7682' : '#c9c2b5', rnd);
+    if (kit) for (let i = 0; i < 6; i += 2) { const a = i / 6 * Math.PI * 2; M('building_tower_A', col, Math.cos(a) * r * .8, Math.sin(a) * r * .8, .42); }
+    if (fort && kit) for (let i = 0; i < 7; i++) { const a = rnd() * 6.28, e = r * (.3 + rnd() * .45); M(['rock_single_A', 'rock_single_C', 'rock_single_E'][i % 3], null, Math.cos(a) * e, Math.sin(a) * e, .9 + rnd() * .6, rnd() * 6); }
+  } else if (boss) {
+    // the arena ring and this week's boss, with dark clouds over it, and the rock cracked with fire
+    is3mesh(new THREE.CylinderGeometry(2.4, 2.5, .18, 16), '#8a8199', 0, .09, 0, g);
+    const rune = is3mesh(new THREE.TorusGeometry(1.9, .07, 4, 30), f.dead ? '#4ee6ff' : '#ff7a3d', 0, .2, 0, g, true); rune.rotation.x = Math.PI / 2;
+    if (!f.dead) for (let i = 0; i < 6; i++) { const a = rnd() * 6.28, c = is3mesh(new THREE.BoxGeometry(.07, .04, .8 + rnd() * .8), '#ff922b', Math.cos(a) * 2.9, .02, Math.sin(a) * 2.9, g, true); c.rotation.y = a + (rnd() - .5); }
     if (!low && f.boss && typeof is3bossModel === 'function') { const m = new THREE.Group(); m.position.y = .2; m.scale.setScalar(.75); m.rotation.y = .6; try { is3bossModel(m, f.boss, f.dead ? 'dead' : 'live'); } catch (e) { } g.add(m); }
     else is3mesh(new THREE.IcosahedronGeometry(.9, 0), '#e03131', 0, 1.2, 0, g);
     if (!low) { const cm = new THREE.MeshStandardMaterial({ color: '#3a3346', roughness: 1, transparent: true, opacity: .85, depthWrite: false });
       for (let i = 0; i < 5; i++) { const c = new THREE.Mesh(new THREE.IcosahedronGeometry(1 + rnd() * .9, 1), cm); c.position.set((rnd() - .5) * 6, 6.5 + rnd() * 1.2, (rnd() - .5) * 4); c.scale.y = .55; g.add(c); } }
   } else {
-    if (!M('building_home_B', null, 0, 0, .8)) is3mesh(new THREE.BoxGeometry(1, .9, 1), '#e8c07d', 0, .45, 0, g);
-    M('tree_single_A', null, 1.2, .6, .8);
+    // a housemate's island: a cottage and trees, in their island look
+    const mat = kit ? faLookMat(look) : null;
+    if (!M('building_home_B', null, 0, 0, .7, rnd() * 6, mat)) is3mesh(new THREE.BoxGeometry(1, .9, 1), '#e8c07d', 0, .45, 0, g);
+    M('tree_single_A', null, 1.1, .5, .7, 0, mat); M('trees_A_small', null, -1, .6, .7, 0, mat); M(rnd() < .5 ? 'building_well' : 'tree_single_B', null, .2, -1.1, .6, 0, mat);
   }
   g.userData.fa = f;
   return g;
+}
+// a low stone wall with battlements round the fortress, merged into one mesh
+function faWalls(g, e, col, rnd) {
+  const b = usBucket(), h = .42, th = .16;
+  for (let i = 0; i < 6; i++) {
+    const a1 = i / 6 * Math.PI * 2, a2 = a1 + Math.PI / 3, A = [Math.cos(a1) * e, h / 2, Math.sin(a1) * e], B = [Math.cos(a2) * e, h / 2, Math.sin(a2) * e];
+    const L = Math.hypot(B[0] - A[0], B[2] - A[2]), mid = [(A[0] + B[0]) / 2, (A[2] + B[2]) / 2], ang = Math.atan2(B[2] - A[2], B[0] - A[0]);
+    usPut(b, new THREE.BoxGeometry(L, h, th).rotateY(-ang), col, mid[0], h / 2, mid[1]);
+    for (let j = 0; j < 6; j++) { const t = (j + .5) / 6; usPut(b, new THREE.BoxGeometry(L / 14, .12, th * 1.1).rotateY(-ang), col, A[0] + (B[0] - A[0]) * t, h + .06, A[2] + (B[2] - A[2]) * t); }
+    if (i === 1) usPut(b, new THREE.BoxGeometry(.34, .3, th * 1.3).rotateY(-ang), '#5c3d2e', mid[0], .15, mid[1]); // the gate
+  }
+  const m = usMesh(b, 'rock', g); if (m) m.castShadow = false;
+}
+// a few of an island's real buildings, shrunk onto a far island (biggest first)
+function faReal(g, st, sc, max, rnd) {
+  const W0 = hxW(st), rows = Object.entries(st.b || {}).map(([k, s]) => [k, s, W0.item(s.id)]).filter(([, , it]) => it && !it.wall).sort((a, b) => (b[2].hz || 1) - (a[2].hz || 1)).slice(0, max);
+  let n = 0;
+  for (const [k, s, it] of rows) {
+    try {
+      const [x, z] = hxMid(it, k), m = it.field ? hxModel('building_grain', hxCol()) : hxMakeModel(it, hxCol());
+      m.position.set(x * sc, 0, z * sc); m.rotation.y = -(s.rot || 0) * Math.PI / 3; m.scale.multiplyScalar(sc * 1.6);
+      m.traverse(o => { if (o.isMesh) o.castShadow = false; }); g.add(m); n++;
+    } catch (e) { }
+  }
+  // and a few trees between them
+  for (let i = 0; i < (n ? 4 : 2); i++) { const a = rnd() * 6.28, e = 2.2 + rnd() * 1.4, t = hxModel(rnd() < .5 ? 'trees_A_medium' : 'tree_single_B', hxCol(), undefined, false); t.position.set(Math.cos(a) * e, 0, Math.sin(a) * e); t.scale.setScalar(.45); g.add(t); }
+  return n;
+}
+// an island look: a theme, or the real season
+function faLook(th) { return (typeof HX_THEMES === 'object' && HX_THEMES[th]?.gr) ? HX_THEMES[th] : typeof HX_SEASONS === 'object' ? HX_SEASONS[hxSeason()] : null; }
+// the kit's material recoloured to a look (made once per look)
+function faLookMat(look) {
+  const K = HX3.kit; if (!look || typeof hxThemeTex !== 'function') return undefined;
+  const key = [look.gr, look.gs, look.lf, look.ls].join(); K.matFa = K.matFa || {};
+  if (!K.matFa[key]) { const m = K.mat.clone(); m.map = hxThemeTex(look); K.matFa[key] = m; }
+  return K.matFa[key];
 }
 // placed round you: the big ones on a near ring, housemates on a far ring
 function faBuild() {
@@ -174,7 +238,7 @@ function faMount() {
   if (!IS3.scene || !window.THREE) return;
   const show = !(typeof shell2D === 'function' && shell2D()) && (IS3.house === 'hex' || IS3.house === 'hexh' || IS3.house === 'boss');
   const L = show ? faList() : [];
-  const sig = [show, IS3.house, faHere(), faLow(), !!HX3?.kit, L.map(f => f.id + (f.boss || '') + (f.dead ? 'd' : '')).join(','), IS3.house === 'hex' ? hxState().road.length + JSON.stringify(hxState().clr) : ''].join('|');
+  const sig = [show, IS3.house, faHere(), hxGfx(), !!HX3?.kit, usFort(), hxSeason(), L.map(f => f.id + (f.boss || '') + (f.dead ? 'd' : '') + (f.th || '')).join(','), IS3.house === 'hex' ? hxState().road.length + JSON.stringify(hxState().clr) : Object.keys(hxState().b).join() + hxState().theme, HI.doc && IS3.house !== 'hexh' ? HI.ut || '' : ''].join('|');
   if (sig !== FA.sig) { FA.sig = sig; if (show) faBuild(); else if (FA.g) { IS3.scene.remove(FA.g); FA.g = null; FA.docks = []; } }
   else if (FA.g && !IS3.scene.children.includes(FA.g)) IS3.scene.add(FA.g);
 }
