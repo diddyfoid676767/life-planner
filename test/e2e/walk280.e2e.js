@@ -42,7 +42,7 @@ const S = process.argv[2]; const sleep = ms => new Promise(r => setTimeout(r, ms
   ok(await until(() => WK.ground, null, 30), '6b. and you land');
   await p.keyboard.up('Shift'); await p.keyboard.up('s'); await sleep(1200);
   ok((await st()).sp < .3 && (await st()).a === 'Idle', '7. you slow to a stop and stand idle');
-  await p.evaluate(() => { ROLL_SHIFT.tap = 5; }); await p.keyboard.press('Shift'); await sleep(100); // 2.102: a tap of Shift rolls (any press counts as a tap in this slow test browser)
+  await p.evaluate(() => { ROLL_SHIFT.tap = 5; }); await p.keyboard.press('Shift'); await sleep(100); // 2.103: a tap of Shift rolls (any press counts as a tap in this slow test browser)
   ok(await p.evaluate(() => WK.roll > 0 && WK.H.cur === 'Roll'), '8. a tap of Shift rolls (a somersault)');
   // buildings are solid: walk straight at the hall from its door side
   const hall = await p.evaluate(async () => { const [hx, hz] = hxPos(0, 0); WK.roll = 0; WK.x = hx; WK.z = hz + 2.4; WK.vx = WK.vz = 0; WK.cy = 0; WK.face = Math.PI; WK.cool = 0; WK.minD = 9; window.__opened = null; const o = hxOpen; hxOpen = id => { window.__opened = id; }; WK.__o = o; return [hx, hz]; });

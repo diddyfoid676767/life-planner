@@ -1,7 +1,7 @@
-// 2.102: smoother movement and a better roll. Walk/jog/sprint blend, the walk is drawn the same frame it moves,
+// 2.103: smoother movement and a better roll. Walk/jog/sprint blend, the walk is drawn the same frame it moves,
 // the fight draws between its 60 Hz steps, the island isn't drawn under a fight, hex-shaped walls, and the roll:
 // tap Shift (or a key picked in Settings), rolls the way you press, a buffered roll, run out of the get-up, i-frame shimmer.
-// Usage: build into DIR/LifePlanner (go build -tags noseed) with DIR/data, then: node test/e2e/move2102.e2e.js DIR
+// Usage: build into DIR/LifePlanner (go build -tags noseed) with DIR/data, then: node test/e2e/move2103.e2e.js DIR
 const { chromium } = require('playwright'); const { spawn } = require('child_process'); const fs = require('fs');
 const S = process.argv[2]; const sleep = ms => new Promise(r => setTimeout(r, ms));
 (async () => {

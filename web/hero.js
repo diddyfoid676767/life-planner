@@ -226,7 +226,7 @@ function heroMake(o = {}) {
       let a = acts[c.name]; if (!a) a = acts[c.name] = mixer.clipAction(c);
       a.timeScale = speed;
       if (name === H.cur && !restart) return a;
-      if (H.cur === 'loco') { // 2.102: leaving the blended walk/jog/sprint: fade every part of it out together
+      if (H.cur === 'loco') { // 2.103: leaving the blended walk/jog/sprint: fade every part of it out together
         for (const b of H.lc.acts) if (b !== a) b.fadeOut(fade);
         a.reset(); a.timeScale = speed; a.setLoop(loop ? THREE.LoopRepeat : THREE.LoopOnce, Infinity); a.clampWhenFinished = !loop; a.weight = 1; if (from) a.time = from * c.duration;
         a.fadeIn(fade); a.play(); H.cur = name; H.act = a; return a;
@@ -235,7 +235,7 @@ function heroMake(o = {}) {
       if (H.act && H.act !== a) a.crossFadeFrom(H.act, fade, false); a.play();
       H.cur = name; H.act = a; return a;
     },
-    // 2.102: moving on foot. Idle, walk, jog and sprint all play at once, blended by your speed, with
+    // 2.103: moving on foot. Idle, walk, jog and sprint all play at once, blended by your speed, with
     // their steps kept in time, so speeding up and slowing down never pops from one clip to the next.
     // refs: the speeds the walk, jog and sprint clips look right at. H.cur is 'loco' while it runs.
     loco(sp, { refs = [1.5, 2.7, 4.3], idle = 'Idle', fade = .2 } = {}) {

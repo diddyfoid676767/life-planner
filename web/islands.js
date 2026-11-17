@@ -155,7 +155,7 @@ function is3resize() {
 }
 function is3draw() {
   if (!IS3.R || !IS3.canvas.isConnected || IS3.queued) return;
-  // 2.102: while you walk, the walk loop draws every frame itself (straight after moving you, not a frame later),
+  // 2.103: while you walk, the walk loop draws every frame itself (straight after moving you, not a frame later),
   // and during a Souls fight the island under it isn't drawn at all
   if (typeof WK === 'object' && WK.on && WK.raf) return;
   if (typeof SO !== 'undefined' && SO && SO.R) return;

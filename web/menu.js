@@ -60,7 +60,7 @@ function gfxPick() {
   const v = D.settings.lowQuality ? 'low' : D.settings.gfxMed ? 'medium' : 'high';
   return `<label class="row">Graphics <select data-mn="gfx">${[['high', 'High: real sun, shadows and reflections'], ['medium', 'Medium: simpler sun and water'], ['low', 'Low: no shadows, sun or weather']].map(([k, t]) => `<option value="${k}" ${v === k ? 'selected' : ''}>${t}</option>`).join('')}</select></label>`;
 }
-// 2.102: which key rolls (walk.js has the list)
+// 2.103: which key rolls (walk.js has the list)
 function rollPick() {
   const v = rollKey();
   return `<label class="row">Roll <select data-mn="rollkey">${ROLL_KEYS.map(([k, t]) => `<option value="${k}" ${v === k ? 'selected' : ''}>${t}</option>`).join('')}</select></label>`;

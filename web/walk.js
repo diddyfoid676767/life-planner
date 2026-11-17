@@ -4,7 +4,7 @@
    cosmetics) walks the whole island: grass, roads, hills and terraformed slopes. It
    speeds up and slows down smoothly, sprints on Shift (uses stamina), jumps on Space
    (with a short grace window after a ledge and before landing), rolls on a tap of Shift
-   (2.102; Settings can pick another key, and a mouse side button rolls too), and swims in water. Buildings, trees, rocks, decorations, cliffs
+   (2.103; Settings can pick another key, and a mouse side button rolls too), and swims in water. Buildings, trees, rocks, decorations, cliffs
    and the island's edge block you. The camera sits over your shoulder, lags a little
    behind, zooms with the mouse wheel and pulls in rather than going through things.
    Walking into a page building opens its window. No lock-on: the camera is free.
@@ -120,7 +120,7 @@ function wkCollide(x, z, y, r = WK_C.r) {
   let hit = null;
   for (let pass = 0; pass < 2; pass++) for (const k of list) {
     const c = wkCell(k), [cx, cz] = hxPos(...hxQR(k));
-    // 2.102: the island's edge, mountains and high cliffs are the hex itself, so a row of them is a flat wall
+    // 2.103: the island's edge, mountains and high cliffs are the hex itself, so a row of them is a flat wall
     // you slide along (they were circles, which made walls bumpy)
     if (c.solid || (!c.water && c.h > y + .5)) { const q = wkHexOut(x, z, cx, cz, r); if (q) { x = q[0]; z = q[1]; hit = hit || c; } continue; }
     const R = c.r && y < c.h + (c.tall || 1) ? c.r : 0;
@@ -168,7 +168,7 @@ function wkLoop() {
     if (!IS3.canvas?.isConnected) { WK.raf = requestAnimationFrame(tick); return; }
     wkStep(now, dt);
     wkAnim(now / 1000, dt);
-    is3render(); // 2.102: drawn straight away, so what you see is never a frame behind your keys
+    is3render(); // 2.103: drawn straight away, so what you see is never a frame behind your keys
     WK.raf = requestAnimationFrame(tick);
   };
   WK.raf = requestAnimationFrame(tick);
@@ -193,7 +193,7 @@ function wkStep(now, dt) {
   if (WK.rollBuf > 0) { WK.rollBuf -= dt; if (WK.roll <= 0 && WK.ground) wkRoll(); } // a roll pressed just before you could
   if (WK.roll > 0) {
     WK.roll -= dt; const p = 1 - WK.roll / C.roll.time;
-    if (p >= C.roll.free && moving) WK.roll = 0; // 2.102: run straight out of the get-up
+    if (p >= C.roll.free && moving) WK.roll = 0; // 2.103: run straight out of the get-up
     else { const v = C.roll.speed * rollEase(p); tx = WK.rollDir[0] * v; tz = WK.rollDir[1] * v; }
   }
   const k = WK.roll > 0 ? 30 : !WK.ground && !WK.swim ? C.air : moving ? C.acc : C.dec;
@@ -236,10 +236,10 @@ function wkStep(now, dt) {
 function wkJump() { if (WK.swim) return; WK.jumpBuf = WK_C.buffer; }
 function wkRoll() {
   if (WK.swim || WK.stam < WK_C.roll.cost * .5) { WK.rollBuf = 0; return; }
-  if (WK.roll > 0 || !WK.ground) { if (!(WK.rollBuf > 0)) WK.rollBuf = .18; return; } // 2.102: kept for a moment, so a roll pressed as you land still happens
+  if (WK.roll > 0 || !WK.ground) { if (!(WK.rollBuf > 0)) WK.rollBuf = .18; return; } // 2.103: kept for a moment, so a roll pressed as you land still happens
   WK.rollBuf = 0;
   WK.stam = Math.max(0, WK.stam - WK_C.roll.cost); WK.roll = WK_C.roll.time; WK.rest = WK_C.stam.wait;
-  // 2.102: you roll the way you're pressing (relative to the camera), not the way you were already going
+  // 2.103: you roll the way you're pressing (relative to the camera), not the way you were already going
   const K = WK.keys, fw = (K.w || K.arrowup ? 1 : 0) - (K.s || K.arrowdown ? 1 : 0), st = (K.d || K.arrowright ? 1 : 0) - (K.a || K.arrowleft ? 1 : 0);
   if (fw || st) { const c = Math.cos(WK.cy), s = Math.sin(WK.cy); let x = -s * fw + c * st, z = -c * fw - s * st; const l = Math.hypot(x, z); WK.rollDir = [x / l, z / l]; }
   else WK.rollDir = [Math.sin(WK.face), Math.cos(WK.face)];
@@ -291,7 +291,7 @@ function wkAnim(t, dt) {
   else if (WK.swim) { if (sp > .3) H.play('Running_B', { speed: .55 + sp * .15 }); else H.play('Idle', { speed: .7 }); }
   else if (!WK.ground && WK.air > .08) { if (H.cur !== 'Jump_Start' && H.cur !== 'Jump_Idle') H.play(WK.vy > 0 ? 'Jump_Start' : 'Jump_Idle', { loop: WK.vy <= 0, fade: .1, speed: WK.vy > 0 ? 1.5 : 1, from: WK.vy > 0 ? .3 : 0 }); else if (H.cur === 'Jump_Start' && (H.done() || WK.vy < -1)) H.play('Jump_Idle', { fade: .2 }); }
   else if (WK.land > 0 && sp < 1) H.play('Jump_Land', { loop: false, fade: .08, speed: 1.6, from: .15 });
-  else H.loco(sp, { refs: [1.5, C.jog, C.sprint], idle: 'Idle', fade: H.cur === 'Roll' ? .3 : .2 }); // 2.102: one blended walk, jog and sprint
+  else H.loco(sp, { refs: [1.5, C.jog, C.sprint], idle: 'Idle', fade: H.cur === 'Roll' ? .3 : .2 }); // 2.103: one blended walk, jog and sprint
   H.update(dt, t);
   // footsteps on each foot fall
   if (WK.ground && !WK.swim && sp > .5 && H.cur === 'loco' && H.lc.main !== 'Idle') {
@@ -323,7 +323,7 @@ function wkStamBar() {
   b.firstChild.style.width = (WK.stam / WK_C.stam.max * 100).toFixed(1) + '%'; b.classList.toggle('tired', WK.tired);
 }
 
-// ---------- the roll key (2.102), shared with the Souls fights ----------
+// ---------- the roll key (2.103), shared with the Souls fights ----------
 // Default: tap Shift to roll, hold Shift to sprint (like most Souls games). Settings can pick a key instead,
 // and a mouse side button always rolls. ROLL_FROM skips the clip's slow crouch so the roll starts at once.
 const ROLL_KEYS = [['tap', 'Tap Shift (hold Shift to sprint)'], ['c', 'C'], ['q', 'Q'], ['e', 'E'], ['x', 'X'], ['control', 'Ctrl']];
@@ -374,7 +374,7 @@ addEventListener('blur', () => { WK.keys = {}; });
 addEventListener('pointerdown', e => {
   if (!WK.on || view !== 'islands' || !e.target.classList?.contains('g3canvas')) return;
   e.stopImmediatePropagation(); e.preventDefault();
-  if (e.button !== 0) return; // 2.83: right click is free; 2.102: side buttons roll
+  if (e.button !== 0) return; // 2.83: right click is free; 2.103: side buttons roll
   if (!document.pointerLockElement && IS3.canvas.requestPointerLock) { try { const p = IS3.canvas.requestPointerLock(); if (p?.catch) p.catch(() => { }); } catch (er) { } }
   WK.drag = [e.clientX, e.clientY];
 }, true);

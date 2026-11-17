@@ -7,7 +7,7 @@
      Easy setting for players; the owner's test mode can start a free test fight.
    - Your character is the KayKit hero (hero.js) with real animations. WASD move, Shift
      sprint, Space jump (clears the low attacks: sweeps, rings and shockwaves), tap Shift to
-     roll (2.102; was Ctrl; Settings can change it, a mouse side button rolls too) (i-frames), F block (a block just before a hit is a perfect
+     roll (2.103; was Ctrl; Settings can change it, a mouse side button rolls too) (i-frames), F block (a block just before a hit is a perfect
      guard), left click light attack (three-hit chain), hold left for a heavy, 1-9 skills,
      R drinks a potion (3 a fight), Esc pauses. No lock-on: the camera is free and every
      attack has a floor warning you can read from any angle. Stamina pays for everything.
@@ -392,7 +392,7 @@ function soStep(dt) {
   if (sprint) { M.st -= C.st.sprint * dt; M.rest = C.st.wait; }
   M.rest = Math.max(0, M.rest - dt);
   if (M.rest <= 0 && !M.block && !M.act) M.st = Math.min(C.st.max, M.st + C.st.regen * (M.drowsy > 0 ? .5 : 1) * dt);
-  if (M.act?.k === 'roll' && moving && M.actT >= C.roll.free) M.act = null; // 2.102: run straight out of the get-up
+  if (M.act?.k === 'roll' && moving && M.actT >= C.roll.free) M.act = null; // 2.103: run straight out of the get-up
   if (M.rollBuf > 0) { M.rollBuf -= dt; soAct('roll', true); } // a roll pressed a moment too early still comes out
   if (M.act?.k === 'roll') { const p = M.actT / C.roll.time, v = C.roll.speed * (M.act.far || 1) * rollEase(p); M.vx = M.act.dx * v; M.vz = M.act.dz * v; }
   else {
@@ -433,7 +433,7 @@ function soAct(k, buffered) {
   // you can roll out of an attack's tail, and attack or roll again from a roll's get-up
   // 2.87: a roll's get-up can only turn into an attack, not straight into another roll
   const cancel = M.act && ((k === 'roll' && M.act.k !== 'roll' && M.act.k !== 'stagger' && M.act.k !== 'potion' && M.actT > .12) || (M.act.k === 'roll' && k !== 'potion' && k !== 'roll' && M.actT > SO_C.roll.free));
-  // 2.102: a roll pressed while you can't yet (mid-swing, landing) waits a moment for its chance
+  // 2.103: a roll pressed while you can't yet (mid-swing, landing) waits a moment for its chance
   if ((M.act && !cancel) || (k === 'roll' && !M.ground)) { if (k === 'roll' && !buffered) M.rollBuf = .2; return; }
   if (k !== 'potion' && M.st <= 0) { if (!buffered) soPop('😮‍💨 No stamina', 'bad'); M.rollBuf = 0; return; }
   if (k === 'roll') M.rollBuf = 0;
@@ -463,7 +463,7 @@ function soAct(k, buffered) {
   else if (k === 'potion') M.act.healed = 0;
 }
 const C_ROLL0 = () => SO_C.roll.speed * (SO.me.act?.far || 1);
-// 2.102: while you're untouchable in a roll you shimmer pale blue, so the safe window is easy to see and learn
+// 2.103: while you're untouchable in a roll you shimmer pale blue, so the safe window is easy to see and learn
 function soIfrGlow(dt) {
   const on = soIfr(), mats = SO.H.mats; SO.ifrK = Math.max(on ? .9 : 0, (SO.ifrK || 0) - dt * 5);
   if (!SO.ifrK && !SO.ifrWas) return; SO.ifrWas = SO.ifrK > 0;
@@ -1160,7 +1160,7 @@ function sgAnim(dt, t) {
 }
 
 // ---------- drawing ----------
-// 2.102: the fight steps 60 times a second but screens draw at 75, 120, 144 Hz or an uneven rate, which made
+// 2.103: the fight steps 60 times a second but screens draw at 75, 120, 144 Hz or an uneven rate, which made
 // you, the boss and the camera judder. Each frame now draws you and the boss part way between the last two steps.
 function soPrev() { const M = SO.me, B = SO.B; SO.pv = { mx: M.x, my: M.y, mz: M.z, mf: M.face, bx: B.x, by: B.y, bz: B.z, bf: B.face }; }
 function soLerp() {
@@ -1185,7 +1185,7 @@ function soAnim(dt) {
   else if (M.block) H.play('Blocking', { fade: .1 });
   else if (!M.ground) { if (H.cur !== 'Jump_Start' && H.cur !== 'Jump_Idle') H.play('Jump_Start', { loop: false, fade: .08, speed: 1.6, from: .3 }); else if (H.cur === 'Jump_Start' && (H.done() || M.vy < -1)) H.play('Jump_Idle', { fade: .18 }); }
   else if (M.land > 0 && M.sp < 1) H.play('Jump_Land', { loop: false, fade: .06, speed: 1.7, from: .15 });
-  else H.loco(M.sp, { refs: [1.7, SO_C.jog, SO_C.sprint], idle: soCombo().idle, fade: H.cur === 'Roll' ? .25 : .18 }); // 2.102: one blended walk, jog and sprint
+  else H.loco(M.sp, { refs: [1.7, SO_C.jog, SO_C.sprint], idle: soCombo().idle, fade: H.cur === 'Roll' ? .25 : .18 }); // 2.103: one blended walk, jog and sprint
   H.update(dt * (M.frozen > 0 ? .02 : M.slow > 0 ? .55 : 1)); // 2.97: frozen or slowed in time (Morrow)
 }
 function soDraw(t, dt) {
@@ -1233,7 +1233,7 @@ function soDraw(t, dt) {
   // 2.87: holding right click aims: closer over the shoulder and zoomed in a little
   SO.aimK += ((SO.aim ? 1 : 0) - SO.aimK) * Math.min(1, dt * 12); const ak = SO.aimK;
   const fov = 58 - 14 * ak; if (Math.abs(cam.fov - fov) > .05) { cam.fov = fov; cam.updateProjectionMatrix(); }
-  // 2.102: the camera follows the smoothed you, and rises and falls gently with jumps
+  // 2.103: the camera follows the smoothed you, and rises and falls gently with jumps
   SO.camY = SO.camY == null ? I.my : SO.camY + (I.my - SO.camY) * Math.min(1, dt * 7);
   const tx = I.mx, ty = 1.55 + SO.camY * .6 + ak * .15, tz = I.mz, cp = C.cp, d = C.cd + (3.9 - C.cd) * ak;
   let px = tx + Math.sin(C.cy) * Math.cos(cp) * d, py = ty + Math.sin(cp) * d, pz = tz + Math.cos(C.cy) * Math.cos(cp) * d;
