@@ -10,6 +10,11 @@
 // version since the last one they saw (up to 3). D.settings.seenVersion remembers what was last shown,
 // D.settings.guidesSeen which guides have played. A brand-new install never sees either.
 const CHANGELOG = [
+  { v: '2.102.0', notes: [
+    { t: '⌛ Morrow fights like a time mage now, not a second Somnus: it keeps its distance and throws spinning clock hands down marked lanes, plants hourglasses round you that burst when their sand runs out, and vanishes if you crowd it', k: 'new' },
+    { t: 'It\'s exposed while it casts, so rush it then. Its one blade swing is only for when you get close', k: 'tweak' },
+    { t: 'Each phase changes how it fights: giant pendulums and sand Echoes of itself, then two waves of clock hands that aim where you\'re going, then Deadline, where only three circles of light are safe', k: 'new' },
+  ] },
   { v: '2.101.0', notes: [
     { t: 'Every house\'s great hall has its own look now, different from the Hall on your own island: a timber longhall on a stone plinth with a roof in your house\'s colour, two turrets, banners by the door and a bell tower with a floating house crystal on top', k: 'new' },
   ] },
