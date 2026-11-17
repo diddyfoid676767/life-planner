@@ -10,10 +10,16 @@
 // version since the last one they saw (up to 3). D.settings.seenVersion remembers what was last shown,
 // D.settings.guidesSeen which guides have played. A brand-new install never sees either.
 const CHANGELOG = [
-  { v: '2.97.0', notes: [
+  { v: '2.98.0', notes: [
     { t: 'The house island has one 🏰 House button now, in your house\'s colour. It opens a list like the main Menu: projects, the War room, votes, the pool and more', k: 'new' },
     { t: 'Building on the house island looks different: a house-coloured bar says 🏰 House build, and Projects shows it\'s paid from the house pool', k: 'new' },
     { t: 'The new looks work on your own island too: 🏯 Stone fortress, 🌸 Cherry blossom, ❄️ Frost keep, 🏜️ Sandstone citadel, 🌋 Obsidian forge and 🌴 Emerald jungle, with your own Lumen and Ember', k: 'new' },
+  ] },
+  { v: '2.97.0', notes: [
+    { t: '⌛ A new Souls boss: Morrow, the Ever-Waiting, a towering hooded figure with an hourglass for a face. It fights in its own arena, the Hall of Hours, a cathedral of stopped clocks lit by candles and a frozen sunset', k: 'new' },
+    { t: 'It moves slowly, then very fast: clock-hand blades (roll the high sweeps, jump the low ones), Stillness freezes you in time, Rewind takes it back to where it stood, and it steps out of the sand behind you', k: 'new' },
+    { t: 'Act now: everything you land in the first 20 seconds does double damage, and every 10 seconds you wait it gets faster. Its phases bring falling clock faces, Midnight (jump the floor clock\'s hands) and the Last Hour', k: 'new' },
+    { t: 'Morrow waits on the boss island in its week (from Monday 23 November), with its own intro, bells and sounds', k: 'tweak' },
   ] },
   { v: '2.96.0', notes: [
     { t: 'Six new house island looks: 🌸 Cherry blossom, 🍂 Harvest, ❄️ Frost keep, 🏜️ Sandstone citadel, 🌋 Obsidian forge and 🌴 Emerald jungle. Preview any of them for free', k: 'new' },
