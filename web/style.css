@@ -4294,3 +4294,12 @@ body.walking #fatag, body.souls-on #fatag { display: none; }
 .sglog summary { cursor: pointer; }
 .sglog.good summary { color: var(--good, #2b8a3e); }
 .sglog.bad summary { color: var(--bad, #c92a2a); }
+/* 2.94: house island menus */
+.himw { position: relative; display: inline-block; }
+.himenu { display: none; position: absolute; bottom: calc(100% + 8px); left: 0; min-width: 190px; padding: 6px; border-radius: 14px; background: rgba(12, 14, 34, .92); border: 1px solid rgba(255, 255, 255, .16); backdrop-filter: blur(8px); box-shadow: 0 10px 28px rgba(0, 0, 0, .4); z-index: 5; }
+.himw.r .himenu { left: auto; right: 0; }
+.himw.on .himenu { display: grid; gap: 2px; }
+.himi { position: relative; text-align: left; padding: 9px 12px; border-radius: 10px; border: 0; background: transparent; color: #f1f3f5; font: inherit; font-size: .92rem; font-weight: 600; cursor: pointer; white-space: nowrap; }
+.himi:hover { background: rgba(255, 255, 255, .1); }
+.himi.ping::after { content: ''; position: absolute; top: 50%; right: 10px; width: 8px; height: 8px; margin-top: -4px; border-radius: 50%; background: #ff6b6b; }
+.isbtn.on { background: rgba(60, 66, 120, .9); }

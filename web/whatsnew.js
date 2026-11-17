@@ -10,6 +10,9 @@
 // version since the last one they saw (up to 3). D.settings.seenVersion remembers what was last shown,
 // D.settings.guidesSeen which guides have played. A brand-new install never sees either.
 const CHANGELOG = [
+  { v: '2.94.0', notes: [
+    { t: 'The house island has far fewer buttons: 🏰 House, ⚔️ War, 🔨 Build and 🛒 Projects. Each one opens a short menu with the rest', k: 'fix' },
+  ] },
   { v: '2.93.0', guide: 'sieges', notes: [
     { t: '⚔️ Sieges are here: the Champion calls a siege vote, the house votes and picks a target, and war is declared with a day\'s warning', k: 'new' },
     { t: 'When the siege window opens, volunteers march on the enemy island: pick a side and a plan, then watch your character attack. Stars earn you Lumen, Ember and sometimes gear', k: 'new' },

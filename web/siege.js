@@ -590,7 +590,6 @@ function sgRunHtml() {
 }
 
 // ---------- the house island HUD buttons and panels (hisland.js calls these) ----------
-function sgHudBtns(lead) { return `<button class="isbtn ${typeof sgPing === 'function' && sgPing() ? 'ping' : ''}" data-hi="panel" data-v="sgwar" title="Sieges: votes, wars and the war log">⚔️<span>War</span></button>${lead ? '<button class="isbtn" data-sg="shape" title="Shape the land: forest, hills, cliffs, moats">⛰️<span>Shape</span></button>' : ''}<button class="isbtn" data-hi="panel" data-v="sglooks" title="The island\'s look">🎨<span>Looks</span></button><button class="isbtn" data-hi="panel" data-v="sgtest" title="Watch an attacker try to take the island">🎯<span>Test</span></button>`; }
 function sgPanel(pn, d) {
   if (pn === 'sglooks') return isPanel('🎨 House island looks', sgFortHtml(d));
   if (pn === 'sgtest') return isPanel('⚔️ Test your defences', sgTestHtml(d));
@@ -609,9 +608,9 @@ if (typeof GUIDES === 'object') GUIDES.fortify = {
   end: () => { ui.isPanel = null; if (view === 'islands') render(); },
   steps: [
     { title: 'Get your fortress ready ⚔️', text: 'Sieges are coming: one day another house will try to take your island. Now you can shape the land to defend it, and test it.', go: sgGuideHome, wait: 600 },
-    { title: 'Shape the land', go: sgGuideHome, text: 'The Architect and Warlord press ⛰️ <b>Shape</b>: forest slows attackers, cliffs and moats stop them, and towers on raised ground shoot further. Moats and cliffs cost more and are limited by house level. There\'s always one way in.', sel: '#isfull [data-sg="shape"], #isfull .ishud.is-br' },
-    { title: 'Test your defences', go: sgGuideHome, text: 'Press ⚔️ <b>Test</b> to watch your own character try to take the island from any side. Nothing is damaged. Try different sides and see where it\'s weak.', sel: '#isfull [data-v="sgtest"]' },
-    { title: 'A fortress look', go: sgGuideHome, text: 'Press 🎨 <b>Looks</b> for the Stone fortress look: stone ground, rocky crags and a keep. It\'s just a look: defences work the same either way.', sel: '#isfull [data-v="sglooks"]' },
+    { title: 'Shape the land', go: sgGuideHome, text: 'The Architect and Warlord open 🔨 <b>Build</b> and press ⛰️ <b>Shape the land</b>: forest slows attackers, cliffs and moats stop them, and towers on raised ground shoot further. Moats and cliffs cost more and are limited by house level. There\'s always one way in.', sel: '#isfull [data-hm="build"]' },
+    { title: 'Test your defences', go: sgGuideHome, text: 'Open ⚔️ <b>War</b> and press 🎯 <b>Test your defences</b> to watch your own character try to take the island from any side. Nothing is damaged. Try different sides and see where it\'s weak.', sel: '#isfull [data-hm="war"]' },
+    { title: 'A fortress look', go: sgGuideHome, text: 'Open 🔨 <b>Build</b> (or <b>Looks</b>) and press 🎨 <b>Island look</b> for the Stone fortress look: stone ground, rocky crags and a keep. It\'s just a look: defences work the same either way.', sel: '#isfull [data-hm="build"]' },
   ],
 };
 // closing the result (or the briefing) ends the replay and takes the landing ring away
