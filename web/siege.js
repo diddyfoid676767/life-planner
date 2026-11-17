@@ -222,8 +222,9 @@ function sgFortDress(W, add, rnd, col, LK = sgHLook(), L = hhLand(), R = HH_R + 
   if (!LK.keep || !keep) return;
   // the keep: a stone plinth under the great hall, small towers at three corners and banners
   is3mesh(new THREE.CylinderGeometry(1.55, 1.7, .3, 6), '#9a958b', 0, .15, 0, W).rotation.y = Math.PI / 6;
-  for (let i = 0; i < 3; i++) { const a = i / 3 * Math.PI * 2 + Math.PI / 6, t = hxModel('building_tower_A', col); t.position.set(Math.cos(a) * 1.35, .25, Math.sin(a) * 1.35); t.scale.setScalar(.5); W.add(t); }
-  for (let i = 0; i < 3; i++) { const a = i / 3 * Math.PI * 2 + Math.PI / 2, f = hxModel('flag_' + col, col); f.position.set(Math.cos(a) * 1.5, .3, Math.sin(a) * 1.5); f.scale.setScalar(2.6); f.rotation.y = -a; W.add(f); }
+  const kr = Math.max(1.35, 1.08 * (typeof hhWorld === 'function' ? hhWorld().free[0].s || 1 : 1) + .25); // 2.101: outside the bigger great hall
+  for (let i = 0; i < 3; i++) { const a = i / 3 * Math.PI * 2 + Math.PI / 6, t = hxModel('building_tower_A', col); t.position.set(Math.cos(a) * kr, .25, Math.sin(a) * kr); t.scale.setScalar(.5); W.add(t); }
+  for (let i = 0; i < 3; i++) { const a = i / 3 * Math.PI * 2 + Math.PI / 2, f = hxModel('flag_' + col, col); f.position.set(Math.cos(a) * (kr + .15), .3, Math.sin(a) * (kr + .15)); f.scale.setScalar(2.6); f.rotation.y = -a; W.add(f); }
 }
 const sgFortBase = () => sgHLook()?.base || null;
 

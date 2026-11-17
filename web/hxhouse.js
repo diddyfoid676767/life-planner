@@ -130,7 +130,7 @@ function hhWorld() {
   return (HH_W = {
     key, R: HH_R, seed: h, col: hxCol(), ac: H.col || '#ffd43b', noClear: true, house: true,
     land: () => hhLand(h), item: hhItem, look: hhLook, dress: hhDress, sig: hhSig, base: () => typeof sgFortBase === 'function' ? sgFortBase() : null,
-    free: [{ id: 'ghall', n: `${H.name} great hall`, e: H.e, m: 'building_castle', at: '0,0', rot: 0, s: 1 + Math.min(11, hl - 1) * .045 }],
+    free: [{ id: 'ghall', n: `${H.name} great hall`, e: H.e, m: 'building_castle', make: () => hhHallModel(H.col || '#ffd43b'), at: '0,0', rot: 0, s: 1.15 + Math.min(11, hl - 1) * .035 }],
   });
 }
 // ops = roads and walls being laid right now, before they're saved
@@ -183,10 +183,67 @@ function hhSig(st) {
   const d = st.__d || {};
   return [HI.ut, hiLevel(), typeof biTrophies === 'function' ? biTrophies().length : 0, JSON.stringify(st.b), st.road.join(';'), JSON.stringify(st.tf || {}), typeof sgLkId === 'function' ? sgLkId() : '', hiKeys(d).map(k => hiCond(k, today(), d) + hiLvOn(d.b[k])).join()].join('|');
 }
+// 2.101: the great hall has its own look, so it never matches the Hall on your own island (which is the KayKit
+// castle). A stone plinth, a timber-framed longhall with a steep roof in the house colour, two corner turrets,
+// a bell tower through the ridge with a floating house crystal on top, banners by the door and lit windows.
+function hhHallModel(hc = '#ffd43b') {
+  const g = new THREE.Group(), M = (geo, c, x, y, z, glow) => is3mesh(geo, c, x, y, z, g, glow), sh = f => is3shade(hc, f);
+  const stone = '#bdb5a8', stoneD = '#8f887d', wood = '#5b4232', plaster = '#f1e7d0', gold = '#ffd43b', lamp = '#ffcf70';
+  // plinth and steps
+  M(new THREE.CylinderGeometry(1.02, 1.08, .16, 6), stoneD, 0, .08, 0).rotation.y = Math.PI / 6;
+  M(new THREE.CylinderGeometry(.9, .96, .14, 6), stone, 0, .23, 0).rotation.y = Math.PI / 6;
+  for (let i = 0; i < 2; i++) M(new THREE.BoxGeometry(.42 - i * .08, .07, .14), stone, 0, .19 + i * .07, .86 - i * .1);
+  // the long hall: plaster walls with dark timber framing
+  const y0 = .3, W = 1.24, H = .62, Dp = .74;
+  M(new THREE.BoxGeometry(W, .16, Dp + .04), stoneD, 0, y0 + .08, 0);
+  M(new THREE.BoxGeometry(W - .04, H - .16, Dp), plaster, 0, y0 + .16 + (H - .16) / 2, 0);
+  for (const x of [-W / 2, -W / 6, W / 6, W / 2]) for (const z of [-Dp / 2, Dp / 2]) M(new THREE.BoxGeometry(.07, H - .14, .07), wood, x * .98, y0 + .16 + (H - .16) / 2, z);
+  for (const z of [-Dp / 2 - .01, Dp / 2 + .01]) { M(new THREE.BoxGeometry(W, .06, .05), wood, 0, y0 + H - .02, z); M(new THREE.BoxGeometry(W, .05, .05), wood, 0, y0 + .19, z); }
+  for (const z of [-1, 1]) for (const x of [-W / 3, W / 3]) { // lit windows with crossed timbers
+    M(new THREE.BoxGeometry(.16, .18, .02), lamp, x, y0 + .42, z * (Dp / 2 + .012), true);
+    M(new THREE.BoxGeometry(.2, .03, .03), wood, x, y0 + .42, z * (Dp / 2 + .02));
+  }
+  // the roof: a steep gable in the house colour, darker underneath, with a gold ridge
+  const rh = .62, ov = .1, sp = new THREE.Shape(); sp.moveTo(-Dp / 2 - ov, 0); sp.lineTo(Dp / 2 + ov, 0); sp.lineTo(0, rh); sp.closePath();
+  const rg = new THREE.ExtrudeGeometry(sp, { depth: W + .16, bevelEnabled: false }); rg.translate(0, 0, -(W + .16) / 2); rg.rotateY(Math.PI / 2);
+  M(rg, sh(.82), 0, y0 + H, 0);
+  M(new THREE.BoxGeometry(W + .2, .05, .06), gold, 0, y0 + H + rh, 0);
+  for (const x of [-(W + .16) / 2 - .01, (W + .16) / 2 + .01]) { const tr = new THREE.Shape(); tr.moveTo(-Dp / 2 + .02, 0); tr.lineTo(Dp / 2 - .02, 0); tr.lineTo(0, rh - .06); tr.closePath(); const m = M(new THREE.ShapeGeometry(tr), wood, x, y0 + H + .01, 0); m.rotation.y = x > 0 ? Math.PI / 2 : -Math.PI / 2; }
+  // the big front door under a little gabled porch
+  M(new THREE.BoxGeometry(.26, .3, .04), '#3b2a20', 0, y0 + .31, Dp / 2 + .02);
+  M(new THREE.CylinderGeometry(.13, .13, .04, 10, 1, false, 0, Math.PI), '#3b2a20', 0, y0 + .46, Dp / 2 + .02).rotation.set(Math.PI / 2, 0, Math.PI / 2);
+  M(new THREE.TorusGeometry(.15, .022, 4, 10, Math.PI), gold, 0, y0 + .46, Dp / 2 + .04);
+  const pr = new THREE.Shape(); pr.moveTo(-.22, 0); pr.lineTo(.22, 0); pr.lineTo(0, .2); pr.closePath();
+  M(new THREE.ExtrudeGeometry(pr, { depth: .18, bevelEnabled: false }), hc, 0, y0 + .64, Dp / 2 - .02);
+  // banners either side of the door, with a gold crest dot
+  for (const x of [-.3, .3]) { M(new THREE.BoxGeometry(.15, .36, .02), hc, x, y0 + .4, Dp / 2 + .03); M(new THREE.CylinderGeometry(.04, .04, .02, 8), gold, x, y0 + .44, Dp / 2 + .045).rotation.x = Math.PI / 2; M(new THREE.BoxGeometry(.2, .03, .03), wood, x, y0 + .59, Dp / 2 + .04); }
+  // two round turrets on the front corners
+  for (const x of [-1, 1]) {
+    const tx = x * (W / 2 + .02), tz = Dp / 2 + .02;
+    M(new THREE.CylinderGeometry(.16, .19, .95, 8), stone, tx, y0 + .47, tz);
+    for (let i = 0; i < 8; i++) { const a = i / 8 * Math.PI * 2; if (i % 2) M(new THREE.BoxGeometry(.07, .08, .07), stone, tx + Math.cos(a) * .17, y0 + .98, tz + Math.sin(a) * .17); }
+    M(new THREE.ConeGeometry(.22, .5, 8), hc, tx, y0 + 1.19, tz);
+    M(new THREE.BoxGeometry(.05, .1, .02), lamp, tx, y0 + .62, tz + .18, true);
+  }
+  // the bell tower rising through the ridge, a tall spire and the floating house crystal
+  const by = y0 + H + .2;
+  M(new THREE.BoxGeometry(.4, .9, .4), stone, 0, by + .45, -.05);
+  M(new THREE.BoxGeometry(.46, .07, .46), stoneD, 0, by + .9, -.05);
+  for (const [x, z] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) M(new THREE.BoxGeometry(.09, .12, .09), stoneD, x * .19, by + .99, -.05 + z * .19);
+  for (const [x, z, r] of [[0, .16, 0], [.21, -.05, Math.PI / 2]]) M(new THREE.BoxGeometry(.12, .2, .02), lamp, x, by + .62, -.05 + z, true).rotation.y = r;
+  M(new THREE.ConeGeometry(.3, .85, 4), sh(.9), 0, by + 1.38, -.05).rotation.y = Math.PI / 4;
+  M(new THREE.SphereGeometry(.05, 6, 4), gold, 0, by + 1.83, -.05);
+  const cr = M(new THREE.OctahedronGeometry(.17, 0), hc, 0, by + 2.12, -.05, true); cr.scale.y = 1.5;
+  const halo = M(new THREE.TorusGeometry(.28, .02, 4, 18), '#ffe8a3', 0, by + 2.12, -.05, true);
+  g.userData.anim = [{ fn: t => { cr.rotation.y = t * .9; cr.position.y = by + 2.12 + Math.sin(t * 1.4) * .07; halo.rotation.set(Math.PI / 2 + Math.sin(t * .7) * .25, 0, t * .5); halo.position.y = cr.position.y; } }];
+  g.userData.top = by + 2.4;
+  return g;
+}
 // flags round the great hall and the boss trophies floating by the coast
 function hhDress(W, add, rnd, col) {
   if (typeof sgFortDress === 'function') sgFortDress(W, add, rnd, col); // 2.88: the Stone fortress look
-  for (let i = 0; i < 6; i++) { const a = i / 6 * Math.PI * 2 + Math.PI / 6, g = hxModel('flag_' + col, col); g.position.set(Math.cos(a) * 1.25, 0, Math.sin(a) * 1.25); g.rotation.y = -a; g.scale.setScalar(2.2); W.add(g); }
+  const fr = 1.08 * (hhWorld().free[0].s || 1) + .08; // 2.101: just outside the great hall's plinth
+  for (let i = 0; i < 6; i++) { const a = i / 6 * Math.PI * 2 + Math.PI / 6, g = hxModel('flag_' + col, col); g.position.set(Math.cos(a) * fr, 0, Math.sin(a) * fr); g.rotation.y = -a; g.scale.setScalar(2.2); W.add(g); }
   const tro = typeof biTrophies === 'function' ? biTrophies().slice(0, 12) : [], R = (HH_R + 1) * 2 + 3.4;
   tro.forEach((t, i) => {
     const a = Math.PI / 2 - Math.PI / 5 + (i - (tro.length - 1) / 2) * .2, g = new THREE.Group(); g.position.set(Math.cos(a) * R, -.6, Math.sin(a) * R);

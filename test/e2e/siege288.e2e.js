@@ -98,6 +98,8 @@ const S = process.argv[2]; const sleep = ms => new Promise(r => setTimeout(r, ms
   ok(await ev(() => { const st = hxState(), was = st.theme, h3 = IS3.house; IS3.house = 'hex'; st.theme = 'frost'; const b = HX_HOME_W.base(); st.theme = was; IS3.house = h3; return b?.[0] === '#c9d6e4'; }), '5k. Frost keep gives your island icy rock underneath');
   // 5l. building on the house island is marked as the house's
   ok(await ev(() => { hxStartPlace({ id: 'road', mode: 'tool', ops: [] }); render(); const t = document.querySelector('#isfull .hhbar .hhchip')?.innerText || ''; ui.hxP = null; render(); return /House build/.test(t); }), '5l. the house build bar says House build, in the house colour');
+  // 5m. 2.101: the great hall has its own model, not the castle your own island's Hall uses
+  ok(await ev(() => { const f = hhWorld().free[0], g = f.make(); let n = 0; g.traverse(o => { if (o.isMesh) n++; }); return HX_HOME_W.free.find(x => x.id === 'hall').m === 'building_castle' && n > 40 && g.userData.anim?.length === 1 && IS3.marks['0,0']?.[1] > 2; }), '5m. the great hall is its own building, different from your Hall');
   // 6. the sim: deterministic, terrain and defences matter
   const sim = await ev(() => {
     const A = sgAttacker({ stats: { str: 50, end: 50, spd: 50, agi: 50, foc: 50, log: 50, kno: 50, exp: 50 }, cls: 'striker', power: 1.5, g: {} });
