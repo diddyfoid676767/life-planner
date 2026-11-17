@@ -24,7 +24,25 @@ function biTrophies() {
   return Object.entries(biDoc().t || {}).sort((a, b) => a[0] < b[0] ? 1 : -1).map(([wk, n]) => ({ wk, n, b: HS_BOSSES.find(x => x.n === n) })).filter(x => x.b);
 }
 // what the island's look depends on, so it only rebuilds when this changes
-function biSig() { const wk = mondayOf(today()), f = hsState().id ? hsFight(hsState().id) : null; return wk + (f?.dead ? 'd' : '') + (f && f.left < f.hp / 2 ? 'h' : ''); }
+function biSig() { const wk = mondayOf(today()), f = hsState().id ? hsFight(hsState().id) : null, pv = biPreview(); return wk + (pv ? 'p' + pv.n : '') + (!pv && f?.dead ? 'd' : '') + (!pv && f && f.left < f.hp / 2 ? 'h' : ''); }
+// 2.98: owner test mode can show any boss's arena on the island (ui.biView: a boss name), whatever the week
+function biPreview() { if (!ui.biView || typeof soTestOk !== 'function' || !soTestOk()) return null; return HS_BOSSES.find(x => x.n === ui.biView) || null; }
+// a boss's own hall on the island, if it has one: a def's island hook, else the builders written before hooks existed
+function biHall(n) { const d = typeof SO_DEFS === 'object' && SO_DEFS[n]; return d?.island || ({ 'Snooze Golem': typeof sgMake === 'function' && biSomnus, 'The Procrastinator': typeof mrIsland === 'function' && mrIsland })[n] || null; }
+// the owner's boss list: every boss, its hall if it has one, and a test fight if it has a Souls fight
+function biTestHtml() {
+  const wk = hsBoss(mondayOf(today())), cur = biPreview()?.n || wk.n, defs = typeof SO_DEFS === 'object' ? SO_DEFS : {};
+  return `<p class="muted small-text">Owner only. See any boss's arena here on the island, and test-fight any boss that has a real fight. New bosses show up here by themselves.</p>
+    <div class="bitest">${HS_BOSSES.map(b => { const fight = !!defs[b.n], hall = !!biHall(b.n);
+      return `<div class="bitest-row ${b.n === cur ? 'on' : ''}"><b>${b.e}</b><div><span>${esc(hsBossName(b))}</span><small>${[b.n === wk.n ? 'this week' : '', hall ? 'own arena' : 'basic arena', fight ? 'Souls fight' : 'no fight yet'].filter(Boolean).join(' · ')}</small></div>
+        <button class="btn small ${b.n === cur ? 'primary' : 'ghost'}" data-bi="view" data-b="${esc(b.n)}">${b.n === cur ? 'Showing' : 'Show arena'}</button>${fight ? `<button class="btn small" data-so="test" data-b="${esc(b.n)}">⚔️ Test fight</button>` : ''}</div>`; }).join('')}</div>
+    ${biPreview() ? '<div class="row" style="margin-top:8px"><button class="btn ghost small" data-bi="view" data-b="">Back to this week\'s boss</button></div>' : ''}`;
+}
+document.addEventListener('click', e => {
+  const el = e.target.closest?.('[data-bi]'); if (!el) return;
+  e.preventDefault();
+  if (el.dataset.bi === 'view') { ui.biView = el.dataset.b || null; if (typeof IS3 === 'object') IS3.sig = null; render(); }
+});
 
 // records trophies and raids in the house document (once, by whoever sees it first)
 let biBusy = false;
@@ -68,14 +86,16 @@ function viewBossIsland() {
   const hud = `<div class="ishud is-tl"><div class="islvl boss ${f?.dead ? 'dead' : ''}"><b>${b.e}</b><div><span>${esc(hsBossName(b))}</span><small>${bossWeek(wk) === 'rest' ? `🌴 Resting for the holidays · back ${fmtDate(bossBackOn(wk))}` : f?.dead ? `Defeated by ${esc(h.name)} 🎉` : `${bossWeek(wk) === 'term' ? '👑 Term Boss · ' : ''}${daysLeft} day${daysLeft === 1 ? '' : 's'} left · ${f ? `${f.left.toLocaleString()} / ${f.hp.toLocaleString()} HP` : 'weekly boss'}`}</small>${f ? `<i class="bihp" style="width:${pct}%"></i>` : ''}</div></div>
       <div class="isbuilders">💡 Weak to ${esc(B.wn)}${f ? ` · you: ${ftWeekDmg(wk).toLocaleString()} dmg` : ''}</div></div>
     <div class="ishud is-tr">${isBar('cd-l', LUMEN, w.lumen, 'Lumen', 1, '')}${isBar('cd-e', EMBER, w.ember, 'Ember', 1, '')}</div>
-    <div class="ishud is-bl"><button class="isbtn" data-is="panel" data-v="binfo">📜<span>Boss</span></button><button class="isbtn" data-is="panel" data-v="brank">🏆<span>Ranking</span></button><button class="isbtn" data-is="panel" data-v="btro">🏅<span>Trophies</span></button></div>
-    <div class="ishud is-br">${typeof soTestOk === 'function' && soTestOk() ? '<button class="isbtn big fight souls" data-so="test" title="Owner only: a real Souls fight (pick the boss), no attempt used, nothing added to the bar">🧪<span>Test fight</span></button>' : ''}${typeof soGolemWeek === 'function' && soGolemWeek() && hs.id ? (a.left ? '<button class="isbtn big fight souls" data-so="house" title="A 3 minute damage race in real time: everything you hit goes on the house bar">🗡️<span>Souls fight</span></button>' : !a.rest && soBonusLeft() ? `<button class="isbtn big fight souls" data-so="bonus" ${soCanBonus() ? '' : 'disabled'} title="An extra Souls fight: ${SO_BONUS.l} Lumen + ${SO_BONUS.e} Ember, ${soBonusLeft()} left today">💰<span>Bonus fight · ${SO_BONUS.l}/${SO_BONUS.e}</span></button>` : '') : `<span class="isbtn big fight off" title="Only ${typeof SO_DEFS === 'object' ? Object.values(SO_DEFS).map(d => d.title).join(' and ') : 'Somnus'} have a fight so far. More bosses are coming.">⏳<span>No fight this week</span></span>`}</div>
+    <div class="ishud is-bl"><button class="isbtn" data-is="panel" data-v="binfo">📜<span>Boss</span></button><button class="isbtn" data-is="panel" data-v="brank">🏆<span>Ranking</span></button>${typeof soTestOk === 'function' && soTestOk() ? '<button class="isbtn" data-is="panel" data-v="btest" title="Owner only: see any boss\'s arena and test its fight">🧪<span>Bosses</span></button>' : ''}<button class="isbtn" data-is="panel" data-v="btro">🏅<span>Trophies</span></button></div>
+    <div class="ishud is-br">${typeof soTestOk === 'function' && soTestOk() ? `<button class="isbtn big fight souls" data-so="test" ${biPreview() && typeof SO_DEFS === 'object' && SO_DEFS[biPreview().n] ? `data-b="${esc(biPreview().n)}"` : ''} title="Owner only: a real Souls fight (pick the boss), no attempt used, nothing added to the bar">🧪<span>Test fight</span></button>` : ''}${typeof soGolemWeek === 'function' && soGolemWeek() && hs.id ? (a.left ? '<button class="isbtn big fight souls" data-so="house" title="A 3 minute damage race in real time: everything you hit goes on the house bar">🗡️<span>Souls fight</span></button>' : !a.rest && soBonusLeft() ? `<button class="isbtn big fight souls" data-so="bonus" ${soCanBonus() ? '' : 'disabled'} title="An extra Souls fight: ${SO_BONUS.l} Lumen + ${SO_BONUS.e} Ember, ${soBonusLeft()} left today">💰<span>Bonus fight · ${SO_BONUS.l}/${SO_BONUS.e}</span></button>` : '') : `<span class="isbtn big fight off" title="Only ${typeof SO_DEFS === 'object' ? Object.values(SO_DEFS).map(d => d.title).join(' and ') : 'Somnus'} have a fight so far. More bosses are coming.">⏳<span>No fight this week</span></span>`}</div>
     ${warn && !ui.isPanel ? `<div class="ishud is-bc biwarn">${warn}</div>` : ''}`;
   const bub = f ? `<div class="isbubs"><button class="isbub ${f.dead ? 'collect' : ''}" data-b="boss" data-is="panel" data-v="binfo">${f.dead ? '☠️ Defeated' : `❤️ ${pct}%`}</button></div>` : '';
   let extra = bub; const pn = ui.isPanel;
   if (pn === 'binfo') extra += isPanel(`${b.e} ${esc(hsBossName(b))}`, biInfoHtml(b, B, a, f, raider));
   else if (pn === 'brank') extra += isPanel('🏆 This week', biRankHtml(f, h) + (typeof t2SeasonCard === 'function' ? t2SeasonCard() : ''));
   else if (pn === 'btro') extra += isPanel('🏅 Trophies', biTroHtml(h));
+  else if (pn === 'btest' && typeof soTestOk === 'function' && soTestOk()) extra += isPanel('🧪 Bosses (owner test)', biTestHtml());
+  const pv = biPreview(); if (pv && pv.n !== b.n) extra += `<div class="ishud is-bc bipv">🧪 Showing ${esc(hsBossName(pv))}'s arena (owner preview). This week's boss is ${esc(hsBossName(b))}. <button class="btn ghost small" data-bi="view" data-b="">Back</button></div>`;
   if (!hs.id && !pn) extra += `<div class="ispanel iscentre"><div class="ispanel-h"><h3>${b.e} ${esc(hsBossName(b))}</h3></div><div class="ispanel-b"><p class="muted">${esc(b.s)} ${plannerOnly() ? 'Houses are for Westbourne students, but the fight is on the Golem weeks.' : 'Join your house to fight it together each week.'}</p><div class="row" style="gap:8px">${plannerOnly() ? '' : '<button class="btn primary" data-act="goto" data-v="house">Pick your house</button>'}</div></div></div>`;
   return isFrame('boss', hud, extra);
 }
@@ -188,7 +208,7 @@ function is3bossModel(g, name, mode = 'live') {
 }
 function is3bossBuild() {
   is3clear();
-  const W = IS3.world, wk = mondayOf(today()), b = hsBoss(wk), f = hsState().id ? hsFight(hsState().id) : null, dead = !!f?.dead, hurt = f && f.left < f.hp / 2;
+  const W = IS3.world, wk = mondayOf(today()), pv = biPreview(), b = pv || hsBoss(wk), f = !pv && hsState().id ? hsFight(hsState().id) : null, dead = !!f?.dead, hurt = f && f.left < f.hp / 2;
   const S = 17, top = IS3.top = .3, rnd = seeded('solis-boss-' + wk);
   Object.assign(IS3.sun.shadow.camera, { left: -S * .75, right: S * .75, top: S * .75, bottom: -S * .75 }); IS3.sun.shadow.camera.updateProjectionMatrix();
   is3base(W, S, top, rnd, 1.1, { turf: '#4b4458', lip: '#3d3649', dirt: '#5a4b5e', dirt2: '#463a4b', rock: '#3f3650', rock2: '#352d44', rock3: '#4d4260', crys: dead ? ['#4ee6ff', '#74c0fc'] : ['#ff6b3d', '#c2255c'], root: '#2d2838', tree: false });
@@ -215,9 +235,9 @@ function is3bossBuild() {
   // the boss on its dais; beaten bosses turn to stone, topple over and get your house's banner
   const g = new THREE.Group(); g.position.set(0, top + .53, 0); g.rotation.y = Math.PI / 4; // faces the camera's starting spot W.add(g);
   // 2.88: Somnus's week: the island is its hall, as in the fight, and the real rigged Golem sleeps on its stone bed
-  if (b.n === 'Snooze Golem' && typeof sgMake === 'function' && biSomnus(W, g, top, rnd, dead)) { IS3.marks = { boss: [0, top + 5, 0] }; return; }
   // 2.97: Morrow's week: the Hall of Hours in small, with the real Morrow waiting in it, arms folded
-  if (b.n === 'The Procrastinator' && typeof mrIsland === 'function' && mrIsland(W, g, top, rnd, dead)) { IS3.marks = { boss: [0, top + 5, 0] }; return; }
+  // 2.98: any boss with its own hall builds it here (a def's island hook, see biHall)
+  const hall = biHall(b.n); if (hall && hall(W, g, top, rnd, dead)) { IS3.marks = { boss: [0, top + 5, 0] }; return; }
   const m = new THREE.Group(); g.add(m); is3bossModel(m, b.n, dead ? 'dead' : 'live'); m.scale.setScalar(hurt && !dead ? .95 : 1.05); if (!dead && typeof biIdle === 'function') biIdle(m); // 2.76: the boss breathes and looks around
   if (dead) { m.rotation.z = .5; m.position.set(.7, -.15, 0); const h = hsHouse(hsState().id); is3mesh(new THREE.CylinderGeometry(.05, .05, 2.6, 5), '#dee2e6', -1.3, 1.3, .9, g); is3mesh(new THREE.BoxGeometry(.9, .6, .04), h?.col || '#ffd43b', -.85, 2.2, .9, g); }
   IS3.marks = { boss: [0, top + 5, 0] };
