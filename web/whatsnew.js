@@ -10,6 +10,7 @@
 // version since the last one they saw (up to 3). D.settings.seenVersion remembers what was last shown,
 // D.settings.guidesSeen which guides have played. A brand-new install never sees either.
 const CHANGELOG = [
+  { v: '2.92.0', notes: [{ t: 'The sun and moon are now fixed objects in the sky, placed where they really are. They no longer follow your camera when you turn or tilt the island.', k: 'fix' }] },
   { v: '2.91.0', notes: [
     { t: 'Somnus is far bigger and scarier: wider, spiked and horned, with glowing cracks. It is faster and has five new moves (Quake Stomp, Ruin Spin, Boulder Throw, Rampage, Earthbreaker), and its combos and timing change every time', k: 'new' },
     { t: 'Your hits barely scratch it unless it\'s open. Strike after its attacks, when its cracks blaze and the bar says EXPOSED. After a long combo it pants: your best chance', k: 'new' },
