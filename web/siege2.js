@@ -1,5 +1,5 @@
 'use strict';
-/* Sieges, stage 2 (2.90.0): real wars between houses. Loaded after siege.js. Design: house-raids/plan.md.
+/* Sieges, stage 2 (2.93.0): real wars between houses. Loaded after siege.js. Design: house-raids/plan.md.
    Everything lives in each house's own document under b._sg (no rules change): a house only ever writes
    its own document, and reads the other houses' to see wars against it.
    - Siege vote (vt): the Champion calls it and pays a war chest from the pool. Active members vote yes or

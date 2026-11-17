@@ -10,12 +10,20 @@
 // version since the last one they saw (up to 3). D.settings.seenVersion remembers what was last shown,
 // D.settings.guidesSeen which guides have played. A brand-new install never sees either.
 const CHANGELOG = [
-  { v: '2.90.0', guide: 'sieges', notes: [
+  { v: '2.93.0', guide: 'sieges', notes: [
     { t: '⚔️ Sieges are here: the Champion calls a siege vote, the house votes and picks a target, and war is declared with a day\'s warning', k: 'new' },
     { t: 'When the siege window opens, volunteers march on the enemy island: pick a side and a plan, then watch your character attack. Stars earn you Lumen, Ember and sometimes gear', k: 'new' },
     { t: 'Win and the house takes loot from the other house\'s pool and damages up to 2 of its buildings. Lose and it happens to you, so stand guard and repair', k: 'new' },
     { t: 'Open the ⚔️ War room on the house island to see every house\'s strength, the war log and replays of every attack', k: 'new' },
   ] },
+  { v: '2.92.0', notes: [{ t: 'The sun and moon are now fixed objects in the sky, placed where they really are. They no longer follow your camera when you turn or tilt the island.', k: 'fix' }] },
+  { v: '2.91.0', notes: [
+    { t: 'Somnus is far bigger and scarier: wider, spiked and horned, with glowing cracks. It is faster and has five new moves (Quake Stomp, Ruin Spin, Boulder Throw, Rampage, Earthbreaker), and its combos and timing change every time', k: 'new' },
+    { t: 'Your hits barely scratch it unless it\'s open. Strike after its attacks, when its cracks blaze and the bar says EXPOSED. After a long combo it pants: your best chance', k: 'new' },
+    { t: 'The arena is lit by real fire: flickering torches and braziers that cast shadows, embers, mist and a rumbling hall. The intro lights them one by one, with new sounds', k: 'new' },
+    { t: 'No more yell when you get hit: you grunt harder the bigger the hit. The boss island now shows Somnus asleep in its hall', k: 'tweak' },
+  ] },
+  { v: '2.90.0', notes: [{ t: 'The sun and moon now stay in one spot in the sky. Turning the island moves them across the view instead of following your camera.', k: 'fix' }] },
   { v: '2.89.0', notes: [
     { t: 'Islands have proper undersides now: chunky layered rock, roots and vines that sway, glowing crystals and drifting motes in the season\'s colours', k: 'new' },
     { t: 'Waterfalls pour off the edge of your island where the river (or a pond) meets it', k: 'new' },

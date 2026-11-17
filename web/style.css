@@ -3962,6 +3962,11 @@ body.souls-on #hud { z-index: 1; }
 .so-boss { position: absolute; top: 18px; left: 50%; transform: translateX(-50%); width: min(720px, 80%); text-align: center; }
 .so-bn { font-family: Georgia, serif; font-size: 1.15rem; color: #ffe8b3; text-shadow: 0 2px 6px #000; margin-bottom: 6px; }
 .so-ph { font-size: .85rem; color: #ffa94d; }
+/* 2.88: its openings: the bar and its name burn when hits really count */
+.so-open { display: inline-block; margin-left: 8px; padding: 1px 8px; border-radius: 4px; font: 800 .7rem/1.5 inherit; letter-spacing: .14em; color: #1a0d05; background: #ffb35a; box-shadow: 0 0 14px rgba(255, 160, 70, .8); opacity: 0; transform: scale(.85); transition: opacity .12s, transform .12s; vertical-align: middle; }
+.so-boss.open .so-open { opacity: 1; transform: none; }
+.so-boss.open .so-bar { border-color: #ffd8a8; box-shadow: 0 0 16px rgba(255, 150, 60, .75); }
+.so-boss:not(.open) .so-bar .so-bhp { filter: saturate(.45) brightness(.8); }
 .so-bar { position: relative; height: 12px; border-radius: 3px; background: rgba(0, 0, 0, .6); border: 1px solid rgba(255, 214, 140, .4); overflow: hidden; }
 .so-bar .so-bhp { position: absolute; inset: 0 auto 0 0; background: linear-gradient(180deg, #e8590c, #a61e1e); transition: width .2s; }
 .so-bar .so-brun { position: absolute; top: 0; bottom: 0; background: #ffd8a8; opacity: .8; }
@@ -3986,7 +3991,7 @@ body.souls-on #hud { z-index: 1; }
 .so-sk.cd span { opacity: .5; }
 .so-help { position: absolute; bottom: 96px; left: 50%; transform: translateX(-50%); font-size: .8rem; color: #a99fc0; }
 .sonum { position: absolute; left: 0; top: 0; z-index: 4; pointer-events: none; font: 800 1.15rem/1 Georgia, serif; color: #fff; text-shadow: 0 2px 4px #000, 0 0 2px #000; }
-.sonum.weak { color: #ffd43b; font-size: 1.45rem; } .sonum.crit { color: #ffa94d; font-size: 1.35rem; } .sonum.arm { color: #adb5bd; font-size: .95rem; } .sonum.me { color: #ff6b6b; }
+.sonum.weak { color: #ffd43b; font-size: 1.45rem; } .sonum.crit { color: #ffa94d; font-size: 1.35rem; } .sonum.arm { color: #8f9bb0; font-size: .78rem; opacity: .8; } .sonum.me { color: #ff6b6b; }
 .isbtn.fight.souls { background: linear-gradient(180deg, #5f3dc4, #3b1f8f); }
 .sotrial { margin-top: 14px; padding: 12px; border-radius: 12px; border: 1px solid rgba(151, 117, 250, .45); background: rgba(151, 117, 250, .08); }
 .sotrial p { margin: 4px 0 8px; }
@@ -4239,6 +4244,7 @@ body.walking #fatag, body.souls-on #fatag { display: none; }
 .so-cine::before, .so-cine::after { content: ''; position: absolute; left: 0; right: 0; height: 11vh; background: #000; }
 .so-cine::before { top: 0; } .so-cine::after { bottom: 0; }
 .so-fade { position: absolute; inset: 0; background: #000; }
+.so-flash { position: absolute; inset: 0; opacity: 0; background: radial-gradient(ellipse at center, rgba(255, 190, 120, .5), rgba(120, 20, 10, .85)); mix-blend-mode: screen; }
 .so-title { position: absolute; left: 0; right: 0; bottom: 22vh; text-align: center; opacity: 0; transition: opacity 1.2s; }
 .so-title.on { opacity: 1; }
 .so-title b { display: block; font: 400 clamp(1.8rem, 4.4vw, 3.4rem)/1.1 'Cinzel', Georgia, 'Palatino Linotype', serif; letter-spacing: .08em; color: #f1e3c2; text-shadow: 0 0 24px rgba(0, 0, 0, .9), 0 2px 4px #000; text-transform: uppercase; }

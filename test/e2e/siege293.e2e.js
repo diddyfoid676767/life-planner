@@ -1,4 +1,4 @@
-// 2.90 (sieges stage 2): siege votes, war declaration, a real run on the enemy island, replays, the result
+// 2.93 (sieges stage 2): siege votes, war declaration, a real run on the enemy island, replays, the result
 // (loot, damage, rating, log), the defender's side (applying a loss, war lock, standing guard), repairs and the
 // owner pause. Every house document is mocked, so no sign-in is needed. Times are moved by editing the documents.
 // Usage: build into DIR/LifePlanner (go build -tags noseed) with DIR/data, then: node test/e2e/siege289.e2e.js DIR
